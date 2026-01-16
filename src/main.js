@@ -35,7 +35,24 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 document.body.style.margin = "0";
+// === Three.js 캔버스 (바닥 레이어) ===
+renderer.domElement.style.position = "fixed";
+renderer.domElement.style.inset = "0";
+renderer.domElement.style.zIndex = "0";
 document.body.appendChild(renderer.domElement);
+
+// === UI 레이어 (항상 화면 위) ===
+const uiLayer = document.createElement("div");
+uiLayer.id = "uiLayer";
+uiLayer.style.position = "fixed";
+uiLayer.style.inset = "0";
+uiLayer.style.zIndex = "999999";
+uiLayer.style.pointerEvents = "none"; // 게임 조작 방해 안 함
+document.body.appendChild(uiLayer);
+renderer.domElement.style.position = "fixed";
+renderer.domElement.style.inset = "0";
+renderer.domElement.style.zIndex = "0";
+
 // ===== UI (간단 텍스트) =====
 const ui = document.createElement("div");
 ui.style.position = "fixed";
@@ -143,10 +160,111 @@ player.add(nose);
 // Colliders
 const colliders = [];
 const colliderBoxes = []; // 콜라이더 박스 캐시(정적 오브젝트용)
+
+const mineRocks = []; // 채집 가능한 돌 목록
+
+
+// ===== Inventory (very simple) =====
+const inventory = {
+  stoneDust: 0,
+  };
+
+  const invEl = document.createElement("div");
+  invEl.style.position = "fixed";
+  invEl.style.left = "12px";
+  invEl.style.top = "12px";
+  invEl.style.padding = "8px 10px";
+  invEl.style.background = "rgba(0,0,0,0.35)";
+  invEl.style.color = "white";
+  invEl.style.fontFamily = "system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
+  invEl.style.fontSize = "14px";
+  invEl.style.borderRadius = "10px";
+  invEl.style.backdropFilter = "blur(4px)";
+  invEl.style.userSelect = "none";
+  invEl.style.zIndex = "9999";
+  uiLayer.appendChild(invEl);
+  invEl.style.zIndex = "999999";
+  document.body.appendChild(invEl); // 맨 앞으로 이동
+
+
+  function updateInventoryUI() {
+  invEl.textContent = `인벤토리: 돌가루 x ${inventory.stoneDust}`;
+}
+updateInventoryUI();
+
+// ===== Pickup hint UI =====
+const pickupEl = document.createElement("div");
+  pickupEl.id = "pickupHint";
+  pickupEl.style.position = "fixed";
+  pickupEl.style.left = "50%";
+  pickupEl.style.bottom = "22%";
+  pickupEl.style.transform = "translateX(-50%)";
+  pickupEl.style.padding = "14px 20px";
+  pickupEl.style.background = "rgba(0,0,0,0.60)";
+  pickupEl.style.color = "white";
+  pickupEl.style.fontFamily = "system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
+  pickupEl.style.fontSize = "20px";
+  pickupEl.style.borderRadius = "14px";
+  pickupEl.style.backdropFilter = "blur(4px)";
+  pickupEl.style.boxShadow = "0 10px 25px rgba(0,0,0,0.35)";
+  pickupEl.style.border = "1px solid rgba(255,255,255,0.25)";
+  pickupEl.style.letterSpacing = "0.2px";
+  pickupEl.style.userSelect = "none";
+  pickupEl.style.zIndex = "9999";
+  pickupEl.style.display = "none";
+  uiLayer.appendChild(pickupEl);
+  pickupEl.style.zIndex = "999999";
+  document.body.appendChild(pickupEl); // 맨 앞으로 이동
+
+
+  function showPickupHint(text) {
+  pickupEl.textContent = text;
+  pickupEl.style.display = "block";
+}
+function hidePickupHint() {
+  pickupEl.style.display = "none";
+}
+
+let activeMineRock = null;
+
+function findNearestMineRock(radius = 2.2) {
+  const r2 = radius * radius;
+  let best = null;
+  let bestD2 = Infinity;
+
+  for (const rock of mineRocks) {
+    if (!rock || !rock.parent) continue; // 이미 제거된 것 제외
+    const dx = rock.position.x - player.position.x;
+    const dz = rock.position.z - player.position.z;
+    const d2 = dx * dx + dz * dz;
+    if (d2 < r2 && d2 < bestD2) {
+      bestD2 = d2;
+      best = rock;
+    }
+  }
+  return best;
+}
+
+function removeColliderAt(idx) {
+  colliders.splice(idx, 1);
+  colliderBoxes.splice(idx, 1);
+
+  // 콜라이더 인덱스가 뒤로 밀리니까, 돌들의 인덱스를 보정
+  for (const rock of mineRocks) {
+    if (!rock || !rock.userData) continue;
+    const ci = rock.userData.colliderIndex;
+    if (typeof ci === "number" && ci > idx) {
+      rock.userData.colliderIndex = ci - 1;
+    }
+  }
+}
+
+
 // 콜라이더를 등록하면서 Box3를 한 번만 계산해 캐시해둠
 function addCollider(obj, shrink = 1.0) {
   obj.userData.colliderShrink = shrink;
 
+  obj.updateWorldMatrix(true, true); // ✅ 월드 좌표 반영
   const box = new THREE.Box3().setFromObject(obj);
 
   if (shrink !== 1.0) {
@@ -155,8 +273,11 @@ function addCollider(obj, shrink = 1.0) {
     box.setFromCenterAndSize(center, size);
   }
 
+  const idx = colliders.length;
   colliders.push(obj);
   colliderBoxes.push(box);
+  return idx;
+
 }
 
 // ===== Ground follow (raycast) =====
@@ -273,7 +394,11 @@ function makeRock(x, z, s = 1) {
   scene.add(rock);
   // ✅ 충돌 등록(조금 더 타이트하게)
   rock.userData.colliderShrink = 0.85; // 1보다 작을수록 더 타이트(0.8~0.9 추천)
-  addCollider(rock, 0.85); // 바위는 타이트하게
+  mineRocks.push(rock);
+
+  const colliderIndex = addCollider(rock, 0.85);
+  rock.userData.isMineRock = true;
+  rock.userData.colliderIndex = colliderIndex;
 
 }
 
@@ -452,6 +577,27 @@ function updateMovement(dt) {
   updatePlayerGroundY(dt);
 }
 
+window.addEventListener("keydown", (e) => {
+  if (e.code !== "Space") return;
+  if (!activeMineRock) return;
+
+  // 채집!
+  inventory.stoneDust += 1;
+  updateInventoryUI();
+
+  // 콜라이더 제거
+  const idx = activeMineRock.userData.colliderIndex;
+  if (typeof idx === "number") removeColliderAt(idx);
+
+  // 씬에서 제거
+  activeMineRock.removeFromParent();
+
+  // 힌트 숨기기
+  activeMineRock = null;
+  hidePickupHint();
+});
+
+
 function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.033);
@@ -495,6 +641,14 @@ function animate() {
 
   controls.target.copy(player.position).add(new THREE.Vector3(0, 1.0, 0));
   controls.update();
+
+  // 가까운 돌이 있으면 Space 힌트 표시
+  activeMineRock = findNearestMineRock(2.2);
+  if (activeMineRock) {
+  showPickupHint("Space : 돌가루 채집");
+  } else {
+  hidePickupHint();
+  }
 
   renderer.render(scene, camera);
 }
