@@ -2,6 +2,26 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 const scene = new THREE.Scene();
+// ===== Atmosphere: Sky / Fog =====
+scene.background = new THREE.Color(0xd6d8db); // 밝은 회색 하늘
+
+scene.fog = new THREE.Fog(
+  0xd6d8db, // 안개 색 (하늘과 동일)
+  15,       // 가까운 곳은 선명
+  60        // 멀리만 흐릿
+);
+
+// ===== Lighting =====
+// 전체 밝기 (부드럽게)
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+scene.add(ambientLight);
+
+// 방향광 (태양 역할, 그림자 약하게)
+const sunLight = new THREE.DirectionalLight(0xffffff, 0.4);
+sunLight.position.set(30, 50, 30);
+sunLight.castShadow = false; // 강한 그림자 제거
+scene.add(sunLight);
+
 scene.background = new THREE.Color(0xaad7ff);
 
 const camera = new THREE.PerspectiveCamera(
@@ -51,13 +71,40 @@ const dir = new THREE.DirectionalLight(0xffffff, 0.9);
 dir.position.set(10, 20, 10);
 scene.add(dir);
 
-// Ground
-const ground = new THREE.Mesh(
-  new THREE.PlaneGeometry(200, 200),
-  new THREE.MeshStandardMaterial({ color: 0x88cc88 })
-);
+// ===== Ground (mine-like bumpy terrain) =====
+const GROUND_SIZE = 120;      // STEP 3에서 80으로 키울 예정
+const GROUND_SEG = 80;       // 세그먼트가 많을수록 울퉁불퉁이 자연스러움
+const HEIGHT = 0.8;          // 울퉁불퉁 강도 (너무 크면 걸을 때 어색해짐)
+
+const groundGeo = new THREE.PlaneGeometry(GROUND_SIZE, GROUND_SIZE, GROUND_SEG, GROUND_SEG);
+
+// 정점 높이 랜덤으로 울퉁불퉁 만들기
+const pos = groundGeo.attributes.position;
+for (let i = 0; i < pos.count; i++) {
+  const x = pos.getX(i);
+  const y = pos.getY(i);
+
+  // 중심부는 조금 덜, 가장자리는 조금 더 (자연스럽게)
+  const edge = Math.min(1, (Math.abs(x) + Math.abs(y)) / (GROUND_SIZE * 0.9));
+  const amp = HEIGHT * (0.6 + 0.6 * edge);
+
+  const h = (Math.random() - 0.5) * 2 * amp;
+  pos.setZ(i, h);
+}
+pos.needsUpdate = true;
+groundGeo.computeVertexNormals(); // 조명이 자연스럽게 먹게 함
+
+const groundMat = new THREE.MeshStandardMaterial({
+  color: 0x7b6f63,      // 회갈색
+  roughness: 0.95,      // 무광/거친 느낌
+  metalness: 0.0,
+});
+
+const ground = new THREE.Mesh(groundGeo, groundMat);
 ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = false; // STEP 1에서 그림자 약하게 했으니 유지
 scene.add(ground);
+
 
 const grid = new THREE.GridHelper(200, 200);
 grid.material.opacity = 0.25;
@@ -81,6 +128,11 @@ player.add(cyl, top, bottom);
 player.position.set(0, 0, 0);
 scene.add(player);
 
+// ===== Auto foot offset (based on player mesh bounds) =====
+const playerBounds = new THREE.Box3().setFromObject(player);
+const PLAYER_FOOT_OFFSET = -playerBounds.min.y; // 플레이어 원점에서 "바닥"까지 거리
+
+
 const nose = new THREE.Mesh(
   new THREE.BoxGeometry(0.2, 0.2, 0.4),
   new THREE.MeshStandardMaterial({ color: 0xffdd59 })
@@ -90,6 +142,48 @@ player.add(nose);
 
 // Colliders
 const colliders = [];
+const colliderBoxes = []; // 콜라이더 박스 캐시(정적 오브젝트용)
+// 콜라이더를 등록하면서 Box3를 한 번만 계산해 캐시해둠
+function addCollider(obj, shrink = 1.0) {
+  obj.userData.colliderShrink = shrink;
+
+  const box = new THREE.Box3().setFromObject(obj);
+
+  if (shrink !== 1.0) {
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3()).multiplyScalar(shrink);
+    box.setFromCenterAndSize(center, size);
+  }
+
+  colliders.push(obj);
+  colliderBoxes.push(box);
+}
+
+// ===== Ground follow (raycast) =====
+const groundRay = new THREE.Raycaster();
+const rayOrigin = new THREE.Vector3();
+const rayDir = new THREE.Vector3(0, -1, 0);
+
+// 플레이어 발이 지면에 닿는 기준 오프셋(캡슐 크기에 맞게 조절)
+// const PLAYER_FOOT_OFFSET = 0.2; // 너무 뜨면 0.8, 파묻히면 1.2
+
+function updatePlayerGroundY(dt) {
+  // player 위에서 아래로 레이를 쏴서 지면 높이 측정
+  rayOrigin.set(player.position.x, player.position.y + 20, player.position.z);
+  groundRay.set(rayOrigin, rayDir);
+  groundRay.far = 50;
+
+  const hits = groundRay.intersectObject(ground, false);
+  if (hits.length > 0) {
+    const targetY = hits[0].point.y + PLAYER_FOOT_OFFSET;
+
+    // 갑자기 튀지 않게 부드럽게 따라가기
+    const follow = 1 - Math.pow(0.001, dt); // dt 기반 부드러운 보간
+    player.position.y = player.position.y + (targetY - player.position.y) * follow;
+  }
+}
+
+
 const interactables = []; // 상호작용 가능한 오브젝트 목록
 let activeInteractable = null; // 현재 가까운 대상
 let lastMessageUntil = 0; // 메시지 표시용 타이머
@@ -126,15 +220,116 @@ function makeHouse(x, z) {
   g.position.set(x, 0, z);
 
   scene.add(g);
-  colliders.push(base);
+  addCollider(base, 1.0);
+
 }
 
+/* HOUSES OFF
 for (let i = 0; i < 6; i++) makeHouse(-10 + i * 5, -12);
 for (let i = 0; i < 4; i++) makeHouse(-8 + i * 6, 10);
+HOUSES OFF */
 
-makeSign(0, 3, "표지판: 광장으로 가는 길이다.");
-makeSign(-6, -2, "표지판: 이 동네는 조용하다.");
-makeSign(8, -4, "표지판: 바람이 많이 분다.");
+// ===== Nature: Trees & Rocks =====
+function randRange(min, max) {
+  return min + Math.random() * (max - min);
+}
+
+// 간단한 나무 (충돌은 일단 없음: 바위가 메인 장애물)
+function makeTree(x, z) {
+  const g = new THREE.Group();
+
+  const trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.25, 0.35, 2.2, 8),
+    new THREE.MeshStandardMaterial({ color: 0x6b4f3a, roughness: 1.0 })
+  );
+  trunk.position.y = 1.1;
+
+  const leaves = new THREE.Mesh(
+    new THREE.SphereGeometry(1.2, 10, 10),
+    new THREE.MeshStandardMaterial({ color: 0x3f6b3a, roughness: 1.0 })
+  );
+  leaves.position.y = 2.6;
+
+  g.add(trunk, leaves);
+  g.position.set(x, 0, z);
+  scene.add(g);
+  // ✅ 나무 충돌(트렁크만): 너무 빡빡하지 않게 약간 줄임
+  trunk.updateWorldMatrix(true, true);
+  addCollider(trunk, 0.75);
+
+}
+
+// 캐릭터급 바위 (충돌 포함)
+function makeRock(x, z, s = 1) {
+  const rock = new THREE.Mesh(
+    new THREE.DodecahedronGeometry(0.9 * s, 0),
+    new THREE.MeshStandardMaterial({ color: 0x6f6f72, roughness: 1.0 })
+  );
+  rock.position.set(x, 0.9 * s, z);
+
+  // 약간 울퉁불퉁한 느낌
+  rock.rotation.set(randRange(0, Math.PI), randRange(0, Math.PI), randRange(0, Math.PI));
+
+  scene.add(rock);
+  // ✅ 충돌 등록(조금 더 타이트하게)
+  rock.userData.colliderShrink = 0.85; // 1보다 작을수록 더 타이트(0.8~0.9 추천)
+  addCollider(rock, 0.85); // 바위는 타이트하게
+
+}
+
+// 배치 실행 (맵 크기에 맞춰 랜덤 배치)
+function spawnTreesAndRocks() {
+  const half = (typeof GROUND_SIZE !== "undefined" ? GROUND_SIZE : 120) / 2;
+  const margin = 6; // 가장자리 여백
+  const minX = -half + margin;
+  const maxX = half - margin;
+  const minZ = -half + margin;
+  const maxZ = half - margin;
+
+  // 시작 지점(플레이어 초기 위치 근처) 비우기
+  const safeRadius = 8;
+
+  // 나무/바위 개수 (원하면 여기 숫자만 조절)
+  const TREE_COUNT = 20;
+  const ROCK_COUNT = 70;
+
+  // 나무
+  for (let i = 0; i < TREE_COUNT; i++) {
+    let x = 0, z = 0;
+    let tries = 0;
+
+    do {
+      x = randRange(minX, maxX);
+      z = randRange(minZ, maxZ);
+      tries++;
+    } while ((x * x + z * z) < safeRadius * safeRadius && tries < 30);
+
+    makeTree(x, z);
+  }
+
+  // 바위 (크기 조금씩 다르게)
+  for (let i = 0; i < ROCK_COUNT; i++) {
+    let x = 0, z = 0;
+    let tries = 0;
+
+    do {
+      x = randRange(minX, maxX);
+      z = randRange(minZ, maxZ);
+      tries++;
+    } while ((x * x + z * z) < safeRadius * safeRadius && tries < 30);
+
+    const s = randRange(0.8, 1.3); // 캐릭터급 크기 변주
+    makeRock(x, z, s);
+  }
+}
+
+spawnTreesAndRocks();
+
+
+
+makeSign(0, 3, "광산 안내판: 중앙 작업장 →");
+makeSign(-6, -2, "광산 안내판: 낙석 주의.");
+makeSign(8, -4, "광산 안내판: 바람이 강한 구간. 시야 흐림 주의.");
 
 
 function makeSign(x, z, text) {
@@ -172,7 +367,7 @@ const road = new THREE.Mesh(
   new THREE.MeshStandardMaterial({ color: 0x6c757d })
 );
 road.position.set(0, 0.05, 0);
-scene.add(road);
+// scene.add(road);
 
 // Input
 const keys = { w: false, a: false, s: false, d: false, shift: false };
@@ -205,12 +400,12 @@ function getPlayerBox() {
 }
 
 function intersectsAnyCollider(playerBox) {
-  for (const obj of colliders) {
-    const objBox = new THREE.Box3().setFromObject(obj);
-    if (playerBox.intersectsBox(objBox)) return true;
+  for (let i = 0; i < colliderBoxes.length; i++) {
+    if (playerBox.intersectsBox(colliderBoxes[i])) return true;
   }
   return false;
 }
+
 
 // Movement
 const clock = new THREE.Clock();
@@ -254,7 +449,7 @@ function updateMovement(dt) {
     player.rotation.y = targetYaw;
   }
 
-  player.position.y = 0;
+  updatePlayerGroundY(dt);
 }
 
 function animate() {
