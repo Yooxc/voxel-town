@@ -49,9 +49,6 @@ uiLayer.style.inset = "0";
 uiLayer.style.zIndex = "999999";
 uiLayer.style.pointerEvents = "none"; // 게임 조작 방해 안 함
 document.body.appendChild(uiLayer);
-renderer.domElement.style.position = "fixed";
-renderer.domElement.style.inset = "0";
-renderer.domElement.style.zIndex = "0";
 
 // ===== UI (간단 텍스트) =====
 const ui = document.createElement("div");
@@ -67,7 +64,7 @@ ui.style.fontSize = "14px";
 ui.style.borderRadius = "10px";
 ui.style.display = "none";
 ui.style.pointerEvents = "none";
-document.body.appendChild(ui);
+uiLayer.appendChild(ui);
 
 function showUI(text) {
   ui.textContent = text;
@@ -162,11 +159,68 @@ const colliders = [];
 const colliderBoxes = []; // 콜라이더 박스 캐시(정적 오브젝트용)
 
 const mineRocks = []; // 채집 가능한 돌 목록
+// ===== Mining particles (stone dust) =====
+const particles = [];
+
+function spawnDustBurst(pos, count = 16) {
+  // 작은 큐브 파티클(가벼움)
+  const geo = new THREE.BoxGeometry(0.08, 0.08, 0.08);
+  const mat = new THREE.MeshStandardMaterial({ color: 0xd6d0c6, roughness: 1.0 });
+
+  for (let i = 0; i < count; i++) {
+    const m = new THREE.Mesh(geo, mat);
+
+    // 시작 위치(돌 근처)
+    m.position.copy(pos);
+    m.position.y += 0.6 + Math.random() * 0.6;
+
+    // 속도(위로 + 랜덤)
+    const v = new THREE.Vector3(
+      (Math.random() - 0.5) * 2.2,
+      2.2 + Math.random() * 2.2,
+      (Math.random() - 0.5) * 2.2
+    );
+
+    // 수명
+    m.userData.v = v;
+    m.userData.life = 0.6 + Math.random() * 0.5;
+
+    scene.add(m);
+    particles.push(m);
+  }
+}
+
+function updateParticles(dt) {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.userData.life -= dt;
+
+    // 중력
+    p.userData.v.y -= 7.5 * dt;
+
+    // 이동
+    p.position.addScaledVector(p.userData.v, dt);
+
+    // 바닥에 닿으면 살짝 감속
+    if (p.position.y < 0.05) {
+      p.position.y = 0.05;
+      p.userData.v.multiplyScalar(0.35);
+    }
+
+    // 수명 끝나면 제거
+    if (p.userData.life <= 0) {
+      p.removeFromParent();
+      particles.splice(i, 1);
+    }
+  }
+}
+
 
 
 // ===== Inventory (very simple) =====
 const inventory = {
   stoneDust: 0,
+  hasPickaxe: false,
   };
 
   const invEl = document.createElement("div");
@@ -184,13 +238,7 @@ const inventory = {
   invEl.style.zIndex = "9999";
   uiLayer.appendChild(invEl);
   invEl.style.zIndex = "999999";
-  document.body.appendChild(invEl); // 맨 앞으로 이동
 
-
-  function updateInventoryUI() {
-  invEl.textContent = `인벤토리: 돌가루 x ${inventory.stoneDust}`;
-}
-updateInventoryUI();
 
 // ===== Pickup hint UI =====
 const pickupEl = document.createElement("div");
@@ -214,8 +262,6 @@ const pickupEl = document.createElement("div");
   pickupEl.style.display = "none";
   uiLayer.appendChild(pickupEl);
   pickupEl.style.zIndex = "999999";
-  document.body.appendChild(pickupEl); // 맨 앞으로 이동
-
 
   function showPickupHint(text) {
   pickupEl.textContent = text;
@@ -505,6 +551,14 @@ window.addEventListener("keydown", (e) => {
     lastMessageUntil = performance.now() + 2000; // 2초 표시
   }
 
+    if (k === "p") {
+    inventory.hasPickaxe = true;
+    showUI("곡괭이를 얻었다!");
+    lastMessageUntil = performance.now() + 1200;
+    updateInventoryUI();
+  }
+
+
   if (k in keys) keys[k] = true;
   if (k === "shift") keys.shift = true;
 });
@@ -580,10 +634,22 @@ function updateMovement(dt) {
 window.addEventListener("keydown", (e) => {
   if (e.code !== "Space") return;
   if (!activeMineRock) return;
+    if (!inventory.hasPickaxe) {
+    showUI("곡괭이가 필요해!");
+    lastMessageUntil = performance.now() + 1200;
+    return;
+  }
+
 
   // 채집!
+  spawnDustBurst(activeMineRock.position, 18);
   inventory.stoneDust += 1;
-  updateInventoryUI();
+  function updateInventoryUI() {
+  const pick = inventory.hasPickaxe ? "⛏️" : "—";
+  invEl.textContent = `🪨 돌가루 x ${inventory.stoneDust}   |   곡괭이: ${pick}`;
+}
+updateInventoryUI();
+
 
   // 콜라이더 제거
   const idx = activeMineRock.userData.colliderIndex;
@@ -650,6 +716,7 @@ function animate() {
   hidePickupHint();
   }
 
+  updateParticles(dt);
   renderer.render(scene, camera);
 }
 
