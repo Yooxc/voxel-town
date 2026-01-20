@@ -50,6 +50,187 @@ uiLayer.style.zIndex = "999999";
 uiLayer.style.pointerEvents = "none"; // 게임 조작 방해 안 함
 document.body.appendChild(uiLayer);
 
+// ===== Inventory Window (Tabs + Grid) =====
+const invWin = document.createElement("div");
+invWin.id = "invWindow";
+invWin.style.position = "fixed";
+invWin.style.left = "12px";
+invWin.style.top = "12px";
+invWin.style.width = "320px";
+invWin.style.height = "420px";
+invWin.style.background = "rgba(235, 235, 235, 0.92)";
+invWin.style.border = "1px solid rgba(0,0,0,0.25)";
+invWin.style.borderRadius = "10px";
+invWin.style.boxShadow = "0 12px 30px rgba(0,0,0,0.25)";
+invWin.style.backdropFilter = "blur(6px)";
+invWin.style.display = "none"; // I 키로 열기
+invWin.style.pointerEvents = "auto"; // 클릭 가능
+invWin.style.userSelect = "none";
+uiLayer.appendChild(invWin);
+
+// 상단 탭 바
+const tabBar = document.createElement("div");
+tabBar.style.display = "flex";
+tabBar.style.gap = "6px";
+tabBar.style.padding = "10px";
+tabBar.style.borderBottom = "1px solid rgba(0,0,0,0.15)";
+tabBar.style.background = "rgba(255,255,255,0.7)";
+tabBar.style.borderTopLeftRadius = "10px";
+tabBar.style.borderTopRightRadius = "10px";
+invWin.appendChild(tabBar);
+
+const tabs = [
+  { id: "equip", label: "장비" },
+  { id: "cons", label: "소비" },
+  { id: "misc", label: "기타" },
+];
+
+let activeTab = "cons";
+
+function makeTabButton(t) {
+  const b = document.createElement("button");
+  b.textContent = t.label;
+  b.style.border = "1px solid rgba(0,0,0,0.2)";
+  b.style.borderRadius = "8px";
+  b.style.padding = "6px 10px";
+  b.style.fontSize = "14px";
+  b.style.cursor = "pointer";
+  b.style.background = "rgba(255,255,255,0.9)";
+  b.style.color = "#222";
+  b.addEventListener("click", () => {
+    activeTab = t.id;
+    renderInventoryWindow();
+  });
+  return b;
+}
+
+const tabButtons = {};
+for (const t of tabs) {
+  const btn = makeTabButton(t);
+  tabButtons[t.id] = btn;
+  tabBar.appendChild(btn);
+}
+
+// 본문(슬롯 영역)
+const invBody = document.createElement("div");
+invBody.style.padding = "12px";
+invBody.style.height = "calc(100% - 52px)";
+invBody.style.boxSizing = "border-box";
+invWin.appendChild(invBody);
+
+// 스크롤 영역(슬롯 그리드)
+const gridWrap = document.createElement("div");
+gridWrap.style.height = "100%";
+gridWrap.style.overflowY = "auto";
+gridWrap.style.paddingRight = "6px";
+invBody.appendChild(gridWrap);
+
+const invgrid = document.createElement("div");
+invgrid.style.display = "grid";
+invgrid.style.gridTemplateColumns = "repeat(5, 1fr)"; // 5칸 x 여러줄
+invgrid.style.gap = "10px";
+gridWrap.appendChild(invgrid);
+
+// 슬롯 크기/스타일
+function makeSlot() {
+  const s = document.createElement("div");
+  s.style.width = "52px";
+  s.style.height = "52px";
+  s.style.background = "rgba(255,255,255,0.95)";
+  s.style.border = "1px solid rgba(0,0,0,0.2)";
+  s.style.borderRadius = "8px";
+  s.style.display = "flex";
+  s.style.alignItems = "center";
+  s.style.justifyContent = "center";
+  s.style.position = "relative";
+  s.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.8)";
+  return s;
+}
+
+function setTabStyles() {
+  for (const t of tabs) {
+    const btn = tabButtons[t.id];
+    const isActive = t.id === activeTab;
+    btn.style.background = isActive ? "rgba(255,180,70,0.95)" : "rgba(255,255,255,0.9)";
+    btn.style.borderColor = isActive ? "rgba(200,120,30,0.9)" : "rgba(0,0,0,0.2)";
+    btn.style.fontWeight = isActive ? "700" : "500";
+  }
+}
+
+// ===== Inventory Data (simple) =====
+// 앞으로 아이템이 늘어날 걸 대비해 "탭별 슬롯 배열" 형태로 준비
+const inventorySlots = {
+  equip: Array.from({ length: 25 }, () => null),
+  cons: Array.from({ length: 25 }, () => null),
+  misc: Array.from({ length: 25 }, () => null),
+};
+
+// 지금 있는 두 아이템을 슬롯에 "고정 배치" (원하면 나중에 드래그로 바꿀 수 있음)
+// - 곡괭이: 장비 탭 0번
+// - 돌가루: 소비 탭 0번
+function syncGameStateToSlots() {
+  inventorySlots.equip[0] = inventory.hasPickaxe ? { icon: "⛏️", name: "곡괭이", count: 1 } : null;
+  inventorySlots.cons[0] = inventory.stoneDust > 0 ? { icon: "🪨", name: "돌가루", count: inventory.stoneDust } : null;
+}
+
+function renderInventoryWindow() {
+  syncGameStateToSlots();
+  setTabStyles();
+
+  // grid 초기화
+  invgrid.innerHTML = "";
+
+  const slots = inventorySlots[activeTab];
+  for (let i = 0; i < slots.length; i++) {
+    const slot = makeSlot();
+    const item = slots[i];
+
+    if (item) {
+      const icon = document.createElement("div");
+      icon.textContent = item.icon;
+      icon.style.fontSize = "24px";
+      icon.style.transform = "translateY(-1px)";
+      slot.appendChild(icon);
+
+      if (item.count && item.count > 1) {
+        const badge = document.createElement("div");
+        badge.textContent = String(item.count);
+        badge.style.position = "absolute";
+        badge.style.right = "6px";
+        badge.style.bottom = "4px";
+        badge.style.fontSize = "12px";
+        badge.style.padding = "1px 6px";
+        badge.style.borderRadius = "10px";
+        badge.style.background = "rgba(0,0,0,0.65)";
+        badge.style.color = "white";
+        badge.style.pointerEvents = "none";
+        slot.appendChild(badge);
+      }
+
+      // 아주 가벼운 툴팁(hover)
+      slot.title = `${item.name}${item.count ? ` x ${item.count}` : ""}`;
+    }
+
+    invgrid.appendChild(slot);
+  }
+}
+
+// I 키로 인벤 열고닫기
+let invOpen = false;
+function setInvOpen(v) {
+  invOpen = v;
+  invWin.style.display = invOpen ? "block" : "none";
+  if (invOpen) renderInventoryWindow();
+}
+
+window.addEventListener("keydown", (e) => {
+  // 입력창 없으니 간단 처리
+  if (e.key.toLowerCase() === "i") {
+    setInvOpen(!invOpen);
+  }
+});
+
+
 // ===== UI (간단 텍스트) =====
 const ui = document.createElement("div");
 ui.style.position = "fixed";
@@ -120,10 +301,10 @@ ground.receiveShadow = false; // STEP 1에서 그림자 약하게 했으니 유�
 scene.add(ground);
 
 
-const grid = new THREE.GridHelper(200, 200);
-grid.material.opacity = 0.25;
-grid.material.transparent = true;
-scene.add(grid);
+const gridHelper = new THREE.GridHelper(200, 200);
+gridHelper.material.opacity = 0.25;
+gridHelper.material.transparent = true;
+scene.add(gridHelper);
 
 // Player
 const player = new THREE.Group();
@@ -141,6 +322,36 @@ bottom.position.y = 0.5;
 player.add(cyl, top, bottom);
 player.position.set(0, 0, 0);
 scene.add(player);
+
+// ===== Starting Area (safe circle) =====
+const START_RADIUS = 5;
+
+// 바닥에 깔리는 원형 표시 (시각용)
+const startCircle = new THREE.Mesh(
+  new THREE.CircleGeometry(START_RADIUS, 48),
+  new THREE.MeshStandardMaterial({
+    color: 0x9fb3c8,
+    transparent: true,
+    opacity: 0.25,
+  })
+);
+startCircle.rotation.x = -Math.PI / 2;
+startCircle.position.y = 0.02; // 바닥 위로 살짝
+scene.add(startCircle);
+
+// 테두리 링 (시작 지점 강조)
+const startRing = new THREE.Mesh(
+  new THREE.RingGeometry(START_RADIUS - 0.08, START_RADIUS + 0.08, 64),
+  new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.35,
+  })
+);
+startRing.rotation.x = -Math.PI / 2;
+startRing.position.y = 0.025;
+scene.add(startRing);
+
 
 // ===== Auto foot offset (based on player mesh bounds) =====
 const playerBounds = new THREE.Box3().setFromObject(player);
@@ -237,6 +448,17 @@ const inventory = {
   invEl.style.userSelect = "none";
   invEl.style.zIndex = "9999";
   uiLayer.appendChild(invEl);
+  invEl.style.display = "none";
+  function updateInventoryUI() {
+  const pick = inventory.hasPickaxe ? "⛏️" : "—";
+  // invEl.textContent = `🪨 돌가루 x ${inventory.stoneDust}   |   곡괭이: ${pick}`;
+
+  // 인벤 창이 열려있으면, 슬롯 표시도 즉시 갱신
+    if (invOpen) renderInventoryWindow();
+
+    }
+    updateInventoryUI(); // 처음 한번 표시
+
   invEl.style.zIndex = "999999";
 
 
@@ -448,6 +670,38 @@ function makeRock(x, z, s = 1) {
 
 }
 
+// ===== Pickaxe item =====
+function makePickaxe(x, z) {
+  const g = new THREE.Group();
+
+  // 손잡이
+  const handle = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.06, 0.06, 1.2, 8),
+    new THREE.MeshStandardMaterial({ color: 0x8b5a2b })
+  );
+  handle.position.y = 0.6;
+
+  // 헤드
+  const head = new THREE.Mesh(
+    new THREE.BoxGeometry(0.8, 0.15, 0.2),
+    new THREE.MeshStandardMaterial({ color: 0x9aa0a6 })
+  );
+  head.position.y = 1.2;
+
+  g.add(handle, head);
+  g.position.set(x, 0, z);
+
+  // 살짝 누워있는 느낌
+  g.rotation.z = Math.PI * 0.15;
+
+  // 아이템 정보
+  g.userData.isPickaxe = true;
+
+  scene.add(g);
+  return g;
+}
+
+
 // 배치 실행 (맵 크기에 맞춰 랜덤 배치)
 function spawnTreesAndRocks() {
   const half = (typeof GROUND_SIZE !== "undefined" ? GROUND_SIZE : 120) / 2;
@@ -495,6 +749,9 @@ function spawnTreesAndRocks() {
 }
 
 spawnTreesAndRocks();
+
+// ===== Place pickaxe in starting area =====
+const pickaxe = makePickaxe(2.5, 0); // 시작 원 안쪽
 
 
 
@@ -545,19 +802,63 @@ const keys = { w: false, a: false, s: false, d: false, shift: false };
 
 window.addEventListener("keydown", (e) => {
   const k = e.key.toLowerCase();
+  console.log("KEYDOWN:", k);
+
+  // ===== E : 곡괭이 줍기 =====
+    if (k === "e") {
+  if (inventory.hasPickaxe) return;
+
+  const pick = scene.children.find((o) => o?.userData?.isPickaxe);
+
+  if (pick) {
+    const dx = pick.position.x - player.position.x;
+    const dz = pick.position.z - player.position.z;
+    const d = Math.hypot(dx, dz);
+
+    if (d < 2.0) {
+      inventory.hasPickaxe = true;
+      updateInventoryUI();
+
+      showUI("곡괭이를 얻었다!");
+      lastMessageUntil = performance.now() + 1500;
+
+      pick.removeFromParent();
+      return;
+    }
+  }
+    }
+
+    // 곡괭이 줍기 (E 키)
+  if (k === "e" && pickaxe && pickaxe.parent) {
+  const dx = pickaxe.position.x - player.position.x;
+  const dz = pickaxe.position.z - player.position.z;
+  const d = Math.hypot(dx, dz); // ✅ 수평 거리만
+
+  if (d < 2.0) {
+    inventory.hasPickaxe = true;
+    updateInventoryUI();
+
+    showUI("곡괭이를 얻었다!");
+    lastMessageUntil = performance.now() + 1500;
+
+    pickaxe.removeFromParent();
+    return;
+  }
+  }
+
+
     // E 키로 상호작용
   if (k === "e" && activeInteractable) {
     showUI(activeInteractable.text);
     lastMessageUntil = performance.now() + 2000; // 2초 표시
   }
 
-    if (k === "p") {
-    inventory.hasPickaxe = true;
-    showUI("곡괭이를 얻었다!");
-    lastMessageUntil = performance.now() + 1200;
-    updateInventoryUI();
-  }
-
+   // if (k === "p") {
+   // inventory.hasPickaxe = true;
+   // showUI("곡괭이를 얻었다!");
+   // lastMessageUntil = performance.now() + 1200;
+   // updateInventoryUI();
+  // }
 
   if (k in keys) keys[k] = true;
   if (k === "shift") keys.shift = true;
@@ -644,12 +945,7 @@ window.addEventListener("keydown", (e) => {
   // 채집!
   spawnDustBurst(activeMineRock.position, 18);
   inventory.stoneDust += 1;
-  function updateInventoryUI() {
-  const pick = inventory.hasPickaxe ? "⛏️" : "—";
-  invEl.textContent = `🪨 돌가루 x ${inventory.stoneDust}   |   곡괭이: ${pick}`;
-}
-updateInventoryUI();
-
+  updateInventoryUI();
 
   // 콜라이더 제거
   const idx = activeMineRock.userData.colliderIndex;
@@ -708,13 +1004,45 @@ function animate() {
   controls.target.copy(player.position).add(new THREE.Vector3(0, 1.0, 0));
   controls.update();
 
+    // 곡괭이 힌트
+ if (pickaxe && pickaxe.parent) {
+  const dx = pickaxe.position.x - player.position.x;
+  const dz = pickaxe.position.z - player.position.z;
+  const d = Math.hypot(dx, dz); // ✅ 수평 거리만
+
+  if (d < 2.0) {
+    showPickupHint("E : 곡괭이 줍기");
+  }
+    }
+
+
+
   // 가까운 돌이 있으면 Space 힌트 표시
+ let hintShown = false;
+
+    // 1) 곡괭이 힌트가 우선
+    if (pickaxe && pickaxe.parent) {
+  const dx = pickaxe.position.x - player.position.x;
+  const dz = pickaxe.position.z - player.position.z;
+  const d = Math.hypot(dx, dz);
+  if (d < 2.0) {
+    showPickupHint("E : 곡괭이 줍기");
+    hintShown = true;
+  }
+    }
+
+    // 2) 곡괭이가 없거나 멀면, 돌 힌트
+    if (!hintShown) {
   activeMineRock = findNearestMineRock(2.2);
   if (activeMineRock) {
-  showPickupHint("Space : 돌가루 채집");
-  } else {
-  hidePickupHint();
+    showPickupHint("Space : 돌가루 채집");
+    hintShown = true;
   }
+    }
+
+    // 3) 아무것도 아니면 숨김
+    if (!hintShown) hidePickupHint();
+
 
   updateParticles(dt);
   renderer.render(scene, camera);
