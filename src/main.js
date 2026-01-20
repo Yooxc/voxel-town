@@ -169,9 +169,34 @@ const inventorySlots = {
 // - 곡괭이: 장비 탭 0번
 // - 돌가루: 소비 탭 0번
 function syncGameStateToSlots() {
-  inventorySlots.equip[0] = inventory.hasPickaxe ? { icon: "⛏️", name: "곡괭이", count: 1 } : null;
-  inventorySlots.cons[0] = inventory.stoneDust > 0 ? { icon: "🪨", name: "돌가루", count: inventory.stoneDust } : null;
-}
+  // 탭별 UI 슬롯 배열을 매번 초기화
+  inventorySlots.equip.fill(null);
+  inventorySlots.cons.fill(null);
+  inventorySlots.misc.fill(null);
+
+  // 실제 인벤 슬롯을 탭별로 옮겨 담기
+  for (const s of inventory.slots) {
+    if (!s) continue;
+
+    const def = ITEM_DEFS[s.id];
+    if (!def) continue;
+
+    const itemUI = { id: s.id, icon: def.icon, name: def.name, count: s.count };
+
+    if (def.category === "equip") {
+      // 장비 탭: 빈 칸에 순서대로 배치
+      const idx = inventorySlots.equip.findIndex((x) => x === null);
+      if (idx !== -1) inventorySlots.equip[idx] = itemUI;
+    } else if (def.category === "cons") {
+      const idx = inventorySlots.cons.findIndex((x) => x === null);
+      if (idx !== -1) inventorySlots.cons[idx] = itemUI;
+    } else {
+      const idx = inventorySlots.misc.findIndex((x) => x === null);
+      if (idx !== -1) inventorySlots.misc[idx] = itemUI;
+    }
+  }
+    }
+
 
 function renderInventoryWindow() {
   syncGameStateToSlots();
@@ -207,12 +232,47 @@ function renderInventoryWindow() {
         slot.appendChild(badge);
       }
 
+      // ===== Equip toggle (click) =====
+        const isEquipTab = activeTab === "equip";
+        const isPickaxe = item.id === "pickaxe";
+        const isEquipped = inventory.equipped.tool === item.id;
+
+        // 장착된 아이템은 테두리 하이라이트
+        if (isEquipTab && isEquipped) {
+        slot.style.borderColor = "rgba(255,140,0,0.95)";
+        slot.style.boxShadow = "0 0 0 3px rgba(255,140,0,0.35), inset 0 1px 0 rgba(255,255,255,0.8)";   
+        }
+
+        // 장비 탭에서만 클릭 가능하도록 커서/효과
+        if (isEquipTab && isPickaxe) {
+        slot.style.cursor = "pointer";
+
+        slot.addEventListener("click", () => {
+        // 토글
+        if (inventory.equipped.tool === "pickaxe") {
+      inventory.equipped.tool = null;
+      showUI(HUD_MSG.PICKAXE_UNEQUIPPED);
+        lastMessageUntil = performance.now() + 800;
+
+        } else {
+      inventory.equipped.tool = "pickaxe";
+      showUI(HUD_MSG.PICKAXE_EQUIPPED);
+        lastMessageUntil = performance.now() + 800;
+
+        }
+
+        updateInventoryUI();      // 규칙/UI 반영
+        renderInventoryWindow();  // 인벤 창 즉시 갱신(하이라이트)
+     });
+        }   
+
+
       // 아주 가벼운 툴팁(hover)
       slot.title = `${item.name}${item.count ? ` x ${item.count}` : ""}`;
-    }
+        }
 
-    invgrid.appendChild(slot);
-  }
+        invgrid.appendChild(slot);
+     }
 }
 
 // I 키로 인벤 열고닫기
@@ -235,25 +295,62 @@ window.addEventListener("keydown", (e) => {
 const ui = document.createElement("div");
 ui.style.position = "fixed";
 ui.style.left = "50%";
-ui.style.bottom = "40px";
-ui.style.transform = "translateX(-50%)";
-ui.style.padding = "10px 14px";
-ui.style.background = "rgba(0,0,0,0.55)";
+ui.style.bottom = "56px";  // 하단 중앙
+ui.style.transform = "translateX(-50%) translateY(8px)";
+ui.style.padding = "8px 10px";
+ui.style.background = "rgba(0,0,0,0.62)";
 ui.style.color = "white";
 ui.style.fontFamily = "system-ui, -apple-system, sans-serif";
-ui.style.fontSize = "14px";
+ui.style.fontSize = "13px";
 ui.style.borderRadius = "10px";
-ui.style.display = "none";
 ui.style.pointerEvents = "none";
 uiLayer.appendChild(ui);
 
-function showUI(text) {
+// 페이드/툭 애니메이션
+ui.style.opacity = "0";
+ui.style.transition = "opacity 160ms ease, transform 160ms ease";
+ui.style.willChange = "opacity, transform";
+
+// display는 이제 항상 block로 두고, opacity로만 숨김/표시
+ui.style.display = "block";
+
+
+let hudTimer = null;
+
+function showUI(text, ms = 900) {
   ui.textContent = text;
-  ui.style.display = "block";
+
+  // 기존 타이머 취소
+  if (hudTimer) {
+    clearTimeout(hudTimer);
+    hudTimer = null;
+  }
+
+  // 즉시 보이기(툭 올라오면서)
+  ui.style.opacity = "1";
+  ui.style.transform = "translateX(-50%) translateY(0px)";
+
+  // ms 후 자동으로 사라짐
+  hudTimer = setTimeout(() => {
+    hideUI();
+  }, ms);
 }
+
 function hideUI() {
-  ui.style.display = "none";
+  ui.style.opacity = "0";
+  ui.style.transform = "translateX(-50%) translateY(8px)";
 }
+
+
+// ===== HUD Messages (short, game-like) =====
+const HUD_MSG = {
+  NEED_PICKAXE: "⛏️ 필요",
+  EQUIP_PICKAXE: "⛏️ 장착 필요",
+  PICKAXE_EQUIPPED: "⛏️ 장착",
+  PICKAXE_UNEQUIPPED: "⛏️ 해제",
+  PICKAXE_GET: "⛏️ 획득!",
+};
+
 
 
 
@@ -427,12 +524,62 @@ function updateParticles(dt) {
 }
 
 
+// ===== Inventory (slot-based) =====
+// 아이템 정의(나중에 계속 늘릴 예정)
+    const ITEM_DEFS = {
+  pickaxe: { name: "곡괭이", icon: "⛏️", stackMax: 1, category: "equip" },
+  stoneDust: { name: "돌가루", icon: "🪨", stackMax: 999, category: "cons" },
+    };
 
-// ===== Inventory (very simple) =====
-const inventory = {
-  stoneDust: 0,
-  hasPickaxe: false,
-  };
+    // 인벤토리 데이터: 슬롯 + 장착 상태
+    const inventory = {
+  slots: Array.from({ length: 30 }, () => null), // 30칸(원하면 늘림)
+  equipped: {
+    tool: null, // "pickaxe" 같은 아이템 id
+  },
+    };
+
+    function findFirstSlotWithItem(id) {
+  for (let i = 0; i < inventory.slots.length; i++) {
+    const s = inventory.slots[i];
+    if (s && s.id === id) return i;
+  }
+  return -1;
+    }
+
+    function findFirstEmptySlot() {
+  for (let i = 0; i < inventory.slots.length; i++) {
+    if (!inventory.slots[i]) return i;
+  }
+  return -1;
+    }
+
+    function addItem(id, count = 1) {
+  const def = ITEM_DEFS[id];
+  if (!def) return false;
+
+  // 1) 스택 가능한 경우: 기존 스택에 더하기
+  if (def.stackMax > 1) {
+    const idx = findFirstSlotWithItem(id);
+    if (idx !== -1) {
+      inventory.slots[idx].count += count;
+      return true;
+    }
+  }
+
+  // 2) 빈 슬롯에 넣기
+  const empty = findFirstEmptySlot();
+  if (empty === -1) return false;
+
+  inventory.slots[empty] = { id, count: Math.min(count, def.stackMax) };
+  return true;
+    }
+
+    function hasEquippedTool(id) {
+  return inventory.equipped.tool === id;
+    }
+
+
 
   const invEl = document.createElement("div");
   invEl.style.position = "fixed";
@@ -450,13 +597,12 @@ const inventory = {
   uiLayer.appendChild(invEl);
   invEl.style.display = "none";
   function updateInventoryUI() {
-  const pick = inventory.hasPickaxe ? "⛏️" : "—";
-  // invEl.textContent = `🪨 돌가루 x ${inventory.stoneDust}   |   곡괭이: ${pick}`;
+  // (기존 작은 HUD는 숨겼으니 여기서 invEl 텍스트는 안 만듦)
 
-  // 인벤 창이 열려있으면, 슬롯 표시도 즉시 갱신
-    if (invOpen) renderInventoryWindow();
-
+  // 인벤 창이 열려있으면 슬롯 표시 갱신
+  if (typeof invOpen !== "undefined" && invOpen) renderInventoryWindow();
     }
+
     updateInventoryUI(); // 처음 한번 표시
 
   invEl.style.zIndex = "999999";
@@ -465,6 +611,33 @@ const inventory = {
 // ===== Pickup hint UI =====
 const pickupEl = document.createElement("div");
   pickupEl.id = "pickupHint";
+  // ===== Persistent Hint (separate from toast) =====
+    const hintEl = document.createElement("div");
+    hintEl.id = "hintUI";
+    hintEl.style.position = "fixed";
+    hintEl.style.left = "50%";
+    hintEl.style.bottom = "110px"; // 토스트(56px)보다 살짝 위
+    hintEl.style.transform = "translateX(-50%)";
+    hintEl.style.padding = "8px 10px";
+    hintEl.style.background = "rgba(0,0,0,0.45)";
+    hintEl.style.color = "white";
+    hintEl.style.fontFamily = "system-ui, -apple-system, sans-serif";
+    hintEl.style.fontSize = "13px";
+    hintEl.style.borderRadius = "10px";
+    hintEl.style.pointerEvents = "none";
+    hintEl.style.opacity = "0";
+    hintEl.style.transition = "opacity 120ms ease";
+    hintEl.style.userSelect = "none";
+    uiLayer.appendChild(hintEl);
+
+    function showHint(text) {
+  hintEl.textContent = text;
+  hintEl.style.opacity = "1";
+    }
+    function hideHint() {
+  hintEl.style.opacity = "0";
+    }
+
   pickupEl.style.position = "fixed";
   pickupEl.style.left = "50%";
   pickupEl.style.bottom = "22%";
@@ -816,11 +989,12 @@ window.addEventListener("keydown", (e) => {
     const d = Math.hypot(dx, dz);
 
     if (d < 2.0) {
-      inventory.hasPickaxe = true;
+      addItem("pickaxe", 1);
+        inventory.equipped.tool = "pickaxe";
       updateInventoryUI();
 
-      showUI("곡괭이를 얻었다!");
-      lastMessageUntil = performance.now() + 1500;
+      showUI(HUD_MSG.PICKAXE_GET);
+        lastMessageUntil = performance.now() + 900;
 
       pick.removeFromParent();
       return;
@@ -935,16 +1109,21 @@ function updateMovement(dt) {
 window.addEventListener("keydown", (e) => {
   if (e.code !== "Space") return;
   if (!activeMineRock) return;
-    if (!inventory.hasPickaxe) {
-    showUI("곡괭이가 필요해!");
-    lastMessageUntil = performance.now() + 1200;
-    return;
+  if (!hasEquippedTool("pickaxe")) {
+  // 곡괭이를 '가지고는' 있는데 장착이 안 된 상태면
+  if (findFirstSlotWithItem("pickaxe") !== -1) {
+    showUI(HUD_MSG.EQUIP_PICKAXE);
+  } else {
+    showUI(HUD_MSG.NEED_PICKAXE);
   }
+  lastMessageUntil = performance.now() + 900;
+  return;
+}
 
 
   // 채집!
   spawnDustBurst(activeMineRock.position, 18);
-  inventory.stoneDust += 1;
+  addItem("stoneDust", 1);
   updateInventoryUI();
 
   // 콜라이더 제거
@@ -992,13 +1171,17 @@ function animate() {
   // UI 표시 규칙:
   // - E로 눌러서 나온 메시지가 2초 유지되는 중이면 그걸 우선
   const now = performance.now();
-  if (now < lastMessageUntil) {
-    // 메시지 유지 중: 그대로 둠
-  } else if (activeInteractable) {
-    showUI("E : 조사하기");
-  } else {
-    hideUI();
-  }
+    if (now < lastMessageUntil) {
+  // 다른 시스템(획득/장착 등)에서 showUI로 띄운 메시지를 유지 중
+    } else if (activeInteractable) {
+  // 안내는 짧게 "토스트"로 툭 보여주되, 매 프레임 갱신은 하지 않음
+  // (가까이 갔을 때 한 번만 띄우고 싶다면 다음 패치에서 더 예쁘게 분리 가능)
+  showUI("E : 조사하기", 650);
+  lastMessageUntil = performance.now() + 650;
+    } else {
+  // 여기서 hideUI를 매번 호출하지 않음 (토스트 타이머가 처리)
+    }
+
 
 
   controls.target.copy(player.position).add(new THREE.Vector3(0, 1.0, 0));
