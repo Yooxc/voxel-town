@@ -367,6 +367,16 @@ const GROUND_SIZE = 120;      // STEP 3에서 80으로 키울 예정
 const GROUND_SEG = 80;       // 세그먼트가 많을수록 울퉁불퉁이 자연스러움
 const HEIGHT = 0.8;          // 울퉁불퉁 강도 (너무 크면 걸을 때 어색해짐)
 
+// ===== Starting Zone =====
+const START_X = 0;
+const START_Z = 0;
+const START_RADIUS = 5.0;     // 네가 말한 반경 5m
+const START_SMOOTH = 1.8;     // 경계 부드럽게 이어지는 폭(1~3 추천)
+const START_FLAT_Y = 0.0;     // 스타팅 존 바닥 높이
+const START_WALL_ON = true;   // ✅ true면 원형 경계 충돌(못 나감), false면 표시만
+const START_WALL_VISIBLE = false; // true면 돌담처럼 보이게, false면 투명 벽(충돌만)
+
+
 const groundGeo = new THREE.PlaneGeometry(GROUND_SIZE, GROUND_SIZE, GROUND_SEG, GROUND_SEG);
 
 // 정점 높이 랜덤으로 울퉁불퉁 만들기
@@ -380,6 +390,26 @@ for (let i = 0; i < pos.count; i++) {
   const amp = HEIGHT * (0.6 + 0.6 * edge);
 
   const h = (Math.random() - 0.5) * 2 * amp;
+    // ===== Starting Zone flatten (inside radius) =====
+  const dx0 = x - START_X;
+  const dz0 = y - START_Z; // PlaneGeometry에서 getY는 실제 z축 역할(회전 전)
+  const dist = Math.hypot(dx0, dz0);
+
+  // 1) 완전 내부: 평탄
+  if (dist <= START_RADIUS) {
+    pos.setZ(i, START_FLAT_Y);
+    continue;
+  }
+
+  // 2) 경계 바깥으로 자연스럽게 이어지기(부드러운 블렌딩)
+  if (dist <= START_RADIUS + START_SMOOTH) {
+    const t = (dist - START_RADIUS) / START_SMOOTH; // 0~1
+    const smooth = t * t * (3 - 2 * t);            // smoothstep
+    const blended = START_FLAT_Y * (1 - smooth) + h * smooth;
+    pos.setZ(i, blended);
+    continue;
+  }
+
   pos.setZ(i, h);
 }
 pos.needsUpdate = true;
@@ -395,6 +425,34 @@ const ground = new THREE.Mesh(groundGeo, groundMat);
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = false; // STEP 1에서 그림자 약하게 했으니 유지
 scene.add(ground);
+
+// ===== Starting Zone flat floor overlay (visual fix) =====
+const startFloorGeo = new THREE.CircleGeometry(START_RADIUS, 64);
+const startFloorMat = new THREE.MeshStandardMaterial({
+  color: 0x7b6f63,   // groundMat 색이랑 맞춰도 되고
+  roughness: 0.95,
+  metalness: 0.0,
+});
+const startFloor = new THREE.Mesh(startFloorGeo, startFloorMat);
+startFloor.rotation.x = -Math.PI / 2;
+startFloor.position.set(START_X, START_FLAT_Y + 0.03, START_Z); // 살짝 위로
+scene.add(startFloor);
+
+
+// ===== Starting Zone visual ring =====
+const ringGeo = new THREE.RingGeometry(START_RADIUS - 0.08, START_RADIUS + 0.08, 64);
+const ringMat = new THREE.MeshStandardMaterial({
+  color: 0xffffff,
+  roughness: 1.0,
+  metalness: 0.0,
+  transparent: true,
+  opacity: 0.35,
+});
+const startRing = new THREE.Mesh(ringGeo, ringMat);
+startRing.rotation.x = -Math.PI / 2;
+startRing.position.set(START_X, START_FLAT_Y + 0.02, START_Z); // 살짝 띄워서 z-fighting 방지
+scene.add(startRing);
+
 
 
 const gridHelper = new THREE.GridHelper(200, 200);
@@ -419,8 +477,6 @@ player.add(cyl, top, bottom);
 player.position.set(0, 0, 0);
 scene.add(player);
 
-// ===== Starting Area (safe circle) =====
-const START_RADIUS = 5;
 
 // 바닥에 깔리는 원형 표시 (시각용)
 const startCircle = new THREE.Mesh(
@@ -436,7 +492,7 @@ startCircle.position.y = 0.02; // 바닥 위로 살짝
 scene.add(startCircle);
 
 // 테두리 링 (시작 지점 강조)
-const startRing = new THREE.Mesh(
+startRing = new THREE.Mesh(
   new THREE.RingGeometry(START_RADIUS - 0.08, START_RADIUS + 0.08, 64),
   new THREE.MeshBasicMaterial({
     color: 0xffffff,
@@ -447,6 +503,8 @@ const startRing = new THREE.Mesh(
 startRing.rotation.x = -Math.PI / 2;
 startRing.position.y = 0.025;
 scene.add(startRing);
+
+let startRing = null; 
 
 
 // ===== Auto foot offset (based on player mesh bounds) =====
@@ -723,6 +781,39 @@ function addCollider(obj, shrink = 1.0) {
 
 }
 
+// ===== Starting Zone collision wall (optional) =====
+function buildStartZoneWall() {
+  if (!START_WALL_ON) return;
+
+  const SEG = 20;               // 많을수록 원에 가까움(16~28 추천)
+  const wallH = 1.6;
+  const wallT = 0.35;
+  const wallW = (2 * Math.PI * START_RADIUS) / SEG * 0.9;
+
+  const mat = START_WALL_VISIBLE
+    ? new THREE.MeshStandardMaterial({ color: 0x6f6f72, roughness: 1.0 })
+    : new THREE.MeshStandardMaterial({ transparent: true, opacity: 0.0 });
+
+  for (let i = 0; i < SEG; i++) {
+    const a = (i / SEG) * Math.PI * 2;
+    const cx = START_X + Math.cos(a) * START_RADIUS;
+    const cz = START_Z + Math.sin(a) * START_RADIUS;
+
+    const segMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(wallW, wallH, wallT),
+      mat
+    );
+
+    segMesh.position.set(cx, START_FLAT_Y + wallH / 2, cz);
+    segMesh.rotation.y = -a; // 원을 따라 회전
+    scene.add(segMesh);
+
+    // 충돌 등록 (벽이니까 shrink는 1.0)
+    addCollider(segMesh, 1.0);
+  }
+}
+
+
 // ===== Ground follow (raycast) =====
 const groundRay = new THREE.Raycaster();
 const rayOrigin = new THREE.Vector3();
@@ -924,6 +1015,8 @@ function spawnTreesAndRocks() {
 }
 
 spawnTreesAndRocks();
+buildStartZoneWall();
+
 
 // ===== Place pickaxe in starting area =====
 const pickaxe = makePickaxe(2.5, 0); // 시작 원 안쪽
@@ -1105,6 +1198,24 @@ function updateMovement(dt) {
     player.rotation.y = targetYaw;
   }
 
+  // ===== Starting Zone clamp (hard boundary) =====
+  if (START_WALL_ON) {
+    const dx = player.position.x - START_X;
+    const dz = player.position.z - START_Z;
+    const dist = Math.hypot(dx, dz);
+
+    // 원 밖이면, 원 둘레로 되돌려놓기
+    const margin = 0.6; // 캐릭터 반지름 여유(0.5~0.8 추천)
+    const limit = START_RADIUS - margin;
+
+    if (dist > limit && dist > 0.0001) {
+      const nx = dx / dist;
+      const nz = dz / dist;
+      player.position.x = START_X + nx * limit;
+      player.position.z = START_Z + nz * limit;
+    }
+  }
+
   updatePlayerGroundY(dt);
 }
 
@@ -1170,66 +1281,42 @@ function animate() {
 
 
 
-  // UI 표시 규칙:
-  // - E로 눌러서 나온 메시지가 2초 유지되는 중이면 그걸 우선
-  const now = performance.now();
-    if (now < lastMessageUntil) {
-  // 다른 시스템(획득/장착 등)에서 showUI로 띄운 메시지를 유지 중
-    } else if (activeInteractable) {
-  // 안내는 짧게 "토스트"로 툭 보여주되, 매 프레임 갱신은 하지 않음
-  // (가까이 갔을 때 한 번만 띄우고 싶다면 다음 패치에서 더 예쁘게 분리 가능)
-  showUI("E : 조사하기", 650);
-  lastMessageUntil = performance.now() + 650;
-    } else {
-  // 여기서 hideUI를 매번 호출하지 않음 (토스트 타이머가 처리)
-    }
-
-
 
   controls.target.copy(player.position).add(new THREE.Vector3(0, 1.0, 0));
   controls.update();
 
-    // 곡괭이 힌트
- if (pickaxe && pickaxe.parent) {
-  const dx = pickaxe.position.x - player.position.x;
-  const dz = pickaxe.position.z - player.position.z;
-  const d = Math.hypot(dx, dz); // ✅ 수평 거리만
+ // ===== 힌트(가까이 가면 뜨는 안내) =====
+// 우선순위: 1) 곡괭이 줍기 2) 돌 채집 3) 표지판 조사 4) 아무것도 없으면 숨김
+let hintText = "";
 
-  if (d < 2.0) {
-    showPickupHint("E : 곡괭이 줍기");
-  }
-    }
-
-
-
-  // 가까운 돌이 있으면 Space 힌트 표시
- let hintShown = false;
-
-    // 1) 곡괭이 힌트가 우선
-    if (pickaxe && pickaxe.parent) {
+// 1) 곡괭이 줍기 힌트
+if (pickaxe && pickaxe.parent) {
   const dx = pickaxe.position.x - player.position.x;
   const dz = pickaxe.position.z - player.position.z;
   const d = Math.hypot(dx, dz);
-  if (d < 2.0) {
-    showPickupHint("E : 곡괭이 줍기");
-    hintShown = true;
-  }
-    }
+  if (d < 2.0) hintText = "E : 곡괭이 줍기";
+}
 
-    // 2) 곡괭이가 없거나 멀면, 돌 힌트
-    if (!hintShown) {
+// 2) 돌 채집 힌트 (곡괭이가 줍기 힌트가 없을 때만)
+if (!hintText) {
   activeMineRock = findNearestMineRock(2.2);
   if (activeMineRock) {
-    showPickupHint("Space : 돌가루 채집");
-    hintShown = true;
+    // 곡괭이 필요/장착 필요/채집 가능 문구 분기
+    if (!inventory.hasPickaxe) hintText = "⛏️ 필요";
+    else if (!inventory.pickaxeEquipped) hintText = "⛏️ 장착 필요";
+    else hintText = "Space : 돌가루 채집";
   }
-    }
+}
 
-    // 3) 아무것도 아니면 숨김
-    if (!hintShown) hidePickupHint();
+// 3) 표지판 조사 힌트 (위 힌트가 없을 때만)
+if (!hintText && activeInteractable) {
+  hintText = "E : 조사하기";
+}
 
+// 4) 최종 출력
+if (hintText) showHint(hintText);
+else hideHint();
 
-  updateParticles(dt);
   renderer.render(scene, camera);
 }
 
