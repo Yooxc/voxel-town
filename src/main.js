@@ -341,7 +341,6 @@ function hideUI() {
   ui.style.transform = "translateX(-50%) translateY(8px)";
 }
 
-
 // ===== HUD Messages (short, game-like) =====
 const HUD_MSG = {
   NEED_PICKAXE: "⛏️ 필요",
@@ -637,6 +636,9 @@ const pickupEl = document.createElement("div");
     function hideHint() {
   hintEl.style.opacity = "0";
     }
+
+    let hintUntil = 0;
+
 
   pickupEl.style.position = "fixed";
   pickupEl.style.left = "50%";
