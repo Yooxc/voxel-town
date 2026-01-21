@@ -491,21 +491,6 @@ startCircle.rotation.x = -Math.PI / 2;
 startCircle.position.y = 0.02; // 바닥 위로 살짝
 scene.add(startCircle);
 
-// 테두리 링 (시작 지점 강조)
-startRing = new THREE.Mesh(
-  new THREE.RingGeometry(START_RADIUS - 0.08, START_RADIUS + 0.08, 64),
-  new THREE.MeshBasicMaterial({
-    color: 0xffffff,
-    transparent: true,
-    opacity: 0.35,
-  })
-);
-startRing.rotation.x = -Math.PI / 2;
-startRing.position.y = 0.025;
-scene.add(startRing);
-
-let startRing = null; 
-
 
 // ===== Auto foot offset (based on player mesh bounds) =====
 const playerBounds = new THREE.Box3().setFromObject(player);
