@@ -388,28 +388,28 @@ for (let i = 0; i < pos.count; i++) {
   // 중심부는 조금 덜, 가장자리는 조금 더 (자연스럽게)
   const edge = Math.min(1, (Math.abs(x) + Math.abs(y)) / (GROUND_SIZE * 0.9));
   const amp = HEIGHT * (0.6 + 0.6 * edge);
-
   const h = (Math.random() - 0.5) * 2 * amp;
-    // ===== Starting Zone flatten (inside radius) =====
-  const dx0 = x - START_X;
-  const dz0 = y - START_Z; // PlaneGeometry에서 getY는 실제 z축 역할(회전 전)
-  const dist = Math.hypot(dx0, dz0);
 
-  // 1) 완전 내부: 평탄
-  if (dist <= START_RADIUS) {
-    pos.setZ(i, START_FLAT_Y);
-    continue;
+  // ===== Starting Zone flatten (geometry) =====
+  const sx = x - START_X;
+  const sz = y - START_Z; // PlaneGeometry에서 y가 "z축 역할" (회전 전 기준)
+  const sDist = Math.hypot(sx, sz);
+
+  // 완전 내부: 평탄
+  if (sDist <= START_RADIUS) {
+  pos.setZ(i, START_FLAT_Y);
+  continue;
   }
 
-  // 2) 경계 바깥으로 자연스럽게 이어지기(부드러운 블렌딩)
-  if (dist <= START_RADIUS + START_SMOOTH) {
-    const t = (dist - START_RADIUS) / START_SMOOTH; // 0~1
-    const smooth = t * t * (3 - 2 * t);            // smoothstep
-    const blended = START_FLAT_Y * (1 - smooth) + h * smooth;
-    pos.setZ(i, blended);
-    continue;
+  // 경계는 부드럽게 이어지기(1~3m 폭 추천)
+  if (sDist <= START_RADIUS + START_SMOOTH) {
+  const t = (sDist - START_RADIUS) / START_SMOOTH; // 0~1
+  const smooth = t * t * (3 - 2 * t);              // smoothstep
+  pos.setZ(i, START_FLAT_Y * (1 - smooth) + h * smooth);
+  continue;
   }
 
+  // 그 외 영역
   pos.setZ(i, h);
 }
 pos.needsUpdate = true;
@@ -1144,6 +1144,8 @@ function intersectsAnyCollider(playerBox) {
 // Movement
 const clock = new THREE.Clock();
 
+
+
 function updateMovement(dt) {
   const forward = new THREE.Vector3();
   camera.getWorldDirection(forward);
@@ -1200,6 +1202,24 @@ function updateMovement(dt) {
       player.position.z = START_Z + nz * limit;
     }
   }
+
+  // ===== Starting Zone clamp (hard boundary) =====
+  if (START_WALL_ON) {
+  const dx = player.position.x - START_X;
+  const dz = player.position.z - START_Z;
+  const dist = Math.hypot(dx, dz);
+
+  const margin = 0.7;              // 캐릭터 크기 여유 (0.6~0.9 추천)
+  const limit = START_RADIUS - margin;
+
+  if (dist > limit && dist > 0.0001) {
+    const nx = dx / dist;
+    const nz = dz / dist;
+    player.position.x = START_X + nx * limit;
+    player.position.z = START_Z + nz * limit;
+  }
+  }
+
 
   updatePlayerGroundY(dt);
 }
