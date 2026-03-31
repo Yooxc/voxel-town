@@ -50,6 +50,62 @@ uiLayer.style.zIndex = "999999";
 uiLayer.style.pointerEvents = "none"; // 게임 조작 방해 안 함
 document.body.appendChild(uiLayer);
 
+// ===== Compass UI =====
+const compassWrap = document.createElement("div");
+compassWrap.id = "compassWrap";
+compassWrap.style.position = "fixed";
+compassWrap.style.left = "12px";
+compassWrap.style.top = "12px";
+compassWrap.style.width = "126px";
+compassWrap.style.padding = "10px 10px 8px";
+compassWrap.style.background = "rgba(20,20,20,0.52)";
+compassWrap.style.border = "1px solid rgba(255,255,255,0.18)";
+compassWrap.style.borderRadius = "12px";
+compassWrap.style.backdropFilter = "blur(4px)";
+compassWrap.style.color = "white";
+compassWrap.style.fontFamily = "system-ui, -apple-system, sans-serif";
+compassWrap.style.fontSize = "12px";
+compassWrap.style.userSelect = "none";
+compassWrap.style.pointerEvents = "none";
+compassWrap.style.zIndex = "999999";
+
+const compassTitle = document.createElement("div");
+compassTitle.textContent = "나침반";
+compassTitle.style.opacity = "0.85";
+compassTitle.style.marginBottom = "6px";
+
+const compassFace = document.createElement("div");
+compassFace.style.width = "56px";
+compassFace.style.height = "56px";
+compassFace.style.margin = "0 auto";
+compassFace.style.borderRadius = "999px";
+compassFace.style.border = "2px solid rgba(255,255,255,0.45)";
+compassFace.style.position = "relative";
+compassFace.style.background = "rgba(255,255,255,0.08)";
+
+const compassNeedle = document.createElement("div");
+compassNeedle.textContent = "▲";
+compassNeedle.style.position = "absolute";
+compassNeedle.style.left = "50%";
+compassNeedle.style.top = "50%";
+compassNeedle.style.transform = "translate(-50%, -50%)";
+compassNeedle.style.transformOrigin = "50% 50%";
+compassNeedle.style.color = "#ffde7a";
+compassNeedle.style.fontSize = "18px";
+compassNeedle.style.fontWeight = "700";
+compassFace.appendChild(compassNeedle);
+
+const compassText = document.createElement("div");
+compassText.textContent = "북 0°";
+compassText.style.marginTop = "7px";
+compassText.style.textAlign = "center";
+compassText.style.fontWeight = "700";
+
+compassWrap.appendChild(compassTitle);
+compassWrap.appendChild(compassFace);
+compassWrap.appendChild(compassText);
+uiLayer.appendChild(compassWrap);
+
 // ===== Inventory Window (Tabs + Grid) =====
 const invWin = document.createElement("div");
 invWin.id = "invWindow";
@@ -232,7 +288,7 @@ function renderInventoryWindow() {
         slot.appendChild(badge);
       }
 
-      // ===== Equip toggle (click) =====
+      // ===== Equip toggle (double click) =====
         const isEquipTab = activeTab === "equip";
         const isPickaxe = item.id === "pickaxe";
         const isEquipped = inventory.equipped.tool === item.id;
@@ -246,8 +302,9 @@ function renderInventoryWindow() {
         // 장비 탭에서만 클릭 가능하도록 커서/효과
         if (isEquipTab && isPickaxe) {
         slot.style.cursor = "pointer";
+        slot.title = "더블클릭: 장착/해제";
 
-        slot.addEventListener("click", () => {
+        slot.addEventListener("dblclick", () => {
         // 토글
         if (inventory.equipped.tool === "pickaxe") {
       inventory.equipped.tool = null;
@@ -262,7 +319,6 @@ function renderInventoryWindow() {
         }
 
         updateInventoryUI();      // 규칙/UI 반영
-        renderInventoryWindow();  // 인벤 창 즉시 갱신(하이라이트)
      });
         }   
 
@@ -363,7 +419,7 @@ dir.position.set(10, 20, 10);
 scene.add(dir);
 
 // ===== Ground (mine-like bumpy terrain) =====
-const GROUND_SIZE = 120;      // STEP 3에서 80으로 키울 예정
+const GROUND_SIZE = 100;      // 맵 크기(100 x 100)
 const GROUND_SEG = 80;       // 세그먼트가 많을수록 울퉁불퉁이 자연스러움
 const HEIGHT = 0.8;          // 울퉁불퉁 강도 (너무 크면 걸을 때 어색해짐)
 
@@ -373,8 +429,14 @@ const START_Z = 0;
 const START_RADIUS = 5.0;     // 네가 말한 반경 5m
 const START_SMOOTH = 1.8;     // 경계 부드럽게 이어지는 폭(1~3 추천)
 const START_FLAT_Y = 0.0;     // 스타팅 존 바닥 높이
-const START_WALL_ON = false;  // 경계 해제: 원형 띠 밖으로 이동 가능
-const START_WALL_VISIBLE = false; // true면 돌담처럼 보이게, false면 투명 벽(충돌만)
+const START_WALL_ON = false;  // start ring 비활성화
+const START_WALL_VISIBLE = true; // 띠를 실제로 보이게
+const START_HARD_CLAMP = false; // 하드 클램프는 끄고 벽 충돌로만 제어
+const START_RING_OPEN_RATIO = 0.20; // 20% 개방
+const START_RING_OPEN_CENTER = Math.PI / 2; // +Z 방향에 개방 구간 중심
+const START_RING_SEG = 36;
+const START_RING_HEIGHT = 1.1; // 허리춤 정도
+const START_RING_THICKNESS = 1.275; // 기존 대비 50% 두껍게
 
 
 const groundGeo = new THREE.PlaneGeometry(GROUND_SIZE, GROUND_SIZE, GROUND_SEG, GROUND_SEG);
@@ -439,22 +501,6 @@ startFloor.position.set(START_X, START_FLAT_Y + 0.03, START_Z); // 살짝 위로
 scene.add(startFloor);
 
 
-// ===== Starting Zone visual ring =====
-const ringGeo = new THREE.RingGeometry(START_RADIUS - 0.08, START_RADIUS + 0.08, 64);
-const ringMat = new THREE.MeshStandardMaterial({
-  color: 0xffffff,
-  roughness: 1.0,
-  metalness: 0.0,
-  transparent: true,
-  opacity: 0.35,
-});
-const startRing = new THREE.Mesh(ringGeo, ringMat);
-startRing.rotation.x = -Math.PI / 2;
-startRing.position.set(START_X, START_FLAT_Y + 0.02, START_Z); // 살짝 띄워서 z-fighting 방지
-scene.add(startRing);
-
-
-
 const gridHelper = new THREE.GridHelper(200, 200);
 gridHelper.material.opacity = 0.25;
 gridHelper.material.transparent = true;
@@ -462,18 +508,44 @@ scene.add(gridHelper);
 
 // Player
 const player = new THREE.Group();
-const bodyMat = new THREE.MeshStandardMaterial({ color: 0x4b7bec });
+const bodyMat = new THREE.MeshStandardMaterial({ color: 0xcfcfcf, roughness: 0.9 });
+const limbMat = new THREE.MeshStandardMaterial({ color: 0xb5b5b5, roughness: 0.95 });
 
-const cyl = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 1.0, 16), bodyMat);
-cyl.position.y = 1.0;
+const torso = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.95, 0.36), bodyMat);
+torso.position.y = 1.35;
 
-const top = new THREE.Mesh(new THREE.SphereGeometry(0.35, 16, 16), bodyMat);
-top.position.y = 1.5;
+// 얼굴은 타원형 1개만 사용
+const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 24, 18), bodyMat);
+head.scale.set(0.85, 1.2, 0.82);
+head.position.y = 2.1;
 
-const bottom = new THREE.Mesh(new THREE.SphereGeometry(0.35, 16, 16), bodyMat);
-bottom.position.y = 0.5;
+// 어깨 피벗(회전축)
+const leftArmPivot = new THREE.Group();
+leftArmPivot.position.set(-0.47, 1.8, 0);
+const rightArmPivot = new THREE.Group();
+rightArmPivot.position.set(0.47, 1.8, 0);
 
-player.add(cyl, top, bottom);
+const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.85, 0.22), limbMat);
+leftArm.position.set(0, -0.42, 0);
+const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.85, 0.22), limbMat);
+rightArm.position.set(0, -0.42, 0);
+leftArmPivot.add(leftArm);
+rightArmPivot.add(rightArm);
+
+// 허벅지(힙) 피벗
+const leftLegPivot = new THREE.Group();
+leftLegPivot.position.set(-0.18, 0.9, 0);
+const rightLegPivot = new THREE.Group();
+rightLegPivot.position.set(0.18, 0.9, 0);
+
+const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.9, 0.26), limbMat);
+leftLeg.position.set(0, -0.45, 0);
+const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.9, 0.26), limbMat);
+rightLeg.position.set(0, -0.45, 0);
+leftLegPivot.add(leftLeg);
+rightLegPivot.add(rightLeg);
+
+player.add(torso, head, leftArmPivot, rightArmPivot, leftLegPivot, rightLegPivot);
 player.position.set(0, 0, 0);
 scene.add(player);
 
@@ -495,21 +567,55 @@ scene.add(startCircle);
 const playerBounds = new THREE.Box3().setFromObject(player);
 const PLAYER_FOOT_OFFSET = -playerBounds.min.y; // 플레이어 원점에서 "바닥"까지 거리
 
-
-const nose = new THREE.Mesh(
-  new THREE.BoxGeometry(0.2, 0.2, 0.4),
-  new THREE.MeshStandardMaterial({ color: 0xffdd59 })
-);
-nose.position.set(0, 1.0, 0.55);
-player.add(nose);
-
 // Colliders
 const colliders = [];
 const colliderBoxes = []; // 콜라이더 박스 캐시(정적 오브젝트용)
 
 const mineRocks = []; // 채집 가능한 돌 목록
+const ROCK_RESPAWN_MS = 10000;
+const ROCK_COUNT = 50;
+const ROCK_SPAWN_MARGIN = 6;
+const ROCK_SAFE_RADIUS = 8;
+const ROCK_MIN_GAP = 0.55; // 돌끼리 화면상 붙어 보이지 않게 여유
 // ===== Mining particles (stone dust) =====
 const particles = [];
+
+function getRockSpawnBounds() {
+  const half = GROUND_SIZE / 2;
+  return {
+    minX: -half + ROCK_SPAWN_MARGIN,
+    maxX: half - ROCK_SPAWN_MARGIN,
+    minZ: -half + ROCK_SPAWN_MARGIN,
+    maxZ: half - ROCK_SPAWN_MARGIN,
+  };
+}
+
+function isRockSpawnValid(x, z, s) {
+  // 시작 지점 주변은 비워둠
+  if ((x * x + z * z) < ROCK_SAFE_RADIUS * ROCK_SAFE_RADIUS) return false;
+
+  // 기존 돌과의 간격 확보
+  for (const rock of mineRocks) {
+    if (!rock || !rock.parent) continue;
+    const otherS = rock.userData?.spawn?.s ?? 1;
+    const minDist = (0.9 * s) + (0.9 * otherS) + ROCK_MIN_GAP;
+    const dx = x - rock.position.x;
+    const dz = z - rock.position.z;
+    if ((dx * dx + dz * dz) < (minDist * minDist)) return false;
+  }
+
+  return true;
+}
+
+function findRockSpawnPosition(s, tries = 80) {
+  const b = getRockSpawnBounds();
+  for (let i = 0; i < tries; i++) {
+    const x = randRange(b.minX, b.maxX);
+    const z = randRange(b.minZ, b.maxZ);
+    if (isRockSpawnValid(x, z, s)) return { x, z };
+  }
+  return null;
+}
 
 function spawnDustBurst(pos, count = 16) {
   // 작은 큐브 파티클(가벼움)
@@ -567,9 +673,9 @@ function updateParticles(dt) {
 
 // ===== Inventory (slot-based) =====
 // 아이템 정의(나중에 계속 늘릴 예정)
-    const ITEM_DEFS = {
+const ITEM_DEFS = {
   pickaxe: { name: "곡괭이", icon: "⛏️", stackMax: 1, category: "equip" },
-  stoneDust: { name: "돌가루", icon: "🪨", stackMax: 999, category: "cons" },
+  stoneDust: { name: "돌가루", icon: "🪨", stackMax: 999, category: "misc" },
     };
 
     // 인벤토리 데이터: 슬롯 + 장착 상태
@@ -620,6 +726,37 @@ function updateParticles(dt) {
   return inventory.equipped.tool === id;
     }
 
+    function hasItem(id) {
+  return findFirstSlotWithItem(id) !== -1;
+    }
+
+    const equippedPickaxe = new THREE.Group();
+    const equippedHandle = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.045, 0.045, 0.95, 8),
+  new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.9 })
+    );
+    // 그룹 원점(0,0,0)을 손잡이 하단 쥐는 지점으로 사용
+    equippedHandle.position.y = 0.38;
+
+    const equippedHead = new THREE.Mesh(
+  new THREE.BoxGeometry(0.62, 0.12, 0.18),
+  new THREE.MeshStandardMaterial({ color: 0x9aa0a6, roughness: 0.8 })
+    );
+    // 금속 헤드는 손잡이 반대편(위쪽) 끝
+    equippedHead.position.y = 0.9;
+
+    equippedPickaxe.add(equippedHandle, equippedHead);
+    // 캐릭터 기준 오른손(rightArm) 기준 위치
+    equippedPickaxe.position.set(0.01, -0.44, 0.07);
+    // +Y(헤드 방향)를 +Z(진행 방향 앞)로 보내기 위해 +90도 회전
+    equippedPickaxe.rotation.set(Math.PI * 0.5, Math.PI * 0.03, -Math.PI * 0.08);
+    equippedPickaxe.visible = false;
+    leftArm.add(equippedPickaxe);
+
+    function updateEquippedVisual() {
+  equippedPickaxe.visible = hasEquippedTool("pickaxe");
+    }
+
 
 
   const invEl = document.createElement("div");
@@ -639,6 +776,7 @@ function updateParticles(dt) {
   invEl.style.display = "none";
   function updateInventoryUI() {
   // (기존 작은 HUD는 숨겼으니 여기서 invEl 텍스트는 안 만듦)
+  updateEquippedVisual();
 
   // 인벤 창이 열려있으면 슬롯 표시 갱신
   if (typeof invOpen !== "undefined" && invOpen) renderInventoryWindow();
@@ -711,6 +849,23 @@ function hidePickupHint() {
 }
 
 let activeMineRock = null;
+const latestMoveDir = new THREE.Vector3(0, 0, -1); // 월드 기준: -Z = 북, +X = 동
+
+function updateCompassFromDirection(dir) {
+  const d = dir.clone();
+  d.y = 0;
+  if (d.lengthSq() < 1e-6) return;
+  d.normalize();
+
+  // 기준: -Z = North, +X = East
+  const deg = (Math.atan2(d.x, -d.z) * 180) / Math.PI;
+  const heading = (deg + 360) % 360;
+  const labels = ["북", "북동", "동", "남동", "남", "남서", "서", "북서"];
+  const idx = Math.round(heading / 45) % 8;
+
+  compassNeedle.style.transform = `translate(-50%, -50%) rotate(${heading}deg)`;
+  compassText.textContent = `${labels[idx]} ${Math.round(heading)}°`;
+}
 
 function findNearestMineRock(radius = 2.2) {
   const r2 = radius * radius;
@@ -769,32 +924,72 @@ function addCollider(obj, shrink = 1.0) {
 function buildStartZoneWall() {
   if (!START_WALL_ON) return;
 
-  const SEG = 20;               // 많을수록 원에 가까움(16~28 추천)
-  const wallH = 1.6;
-  const wallT = 0.35;
-  const wallW = (2 * Math.PI * START_RADIUS) / SEG * 0.9;
-
+  const wallH = START_RING_HEIGHT;
+  const wallT = START_RING_THICKNESS;
   const mat = START_WALL_VISIBLE
-    ? new THREE.MeshStandardMaterial({ color: 0x6f6f72, roughness: 1.0 })
+    ? new THREE.MeshStandardMaterial({
+      color: 0xbec3c8,
+      roughness: 0.9,
+      metalness: 0.0,
+      transparent: true,
+      opacity: 0.82,
+    })
     : new THREE.MeshStandardMaterial({ transparent: true, opacity: 0.0 });
 
-  for (let i = 0; i < SEG; i++) {
-    const a = (i / SEG) * Math.PI * 2;
-    const cx = START_X + Math.cos(a) * START_RADIUS;
-    const cz = START_Z + Math.sin(a) * START_RADIUS;
+  const openAngle = Math.PI * 2 * START_RING_OPEN_RATIO;
+  const solidStart = START_RING_OPEN_CENTER + openAngle * 0.5;
+  const solidEnd = solidStart + (Math.PI * 2 - openAngle);
+  const outerR = START_RADIUS + wallT * 0.5;
+  const innerR = Math.max(0.2, START_RADIUS - wallT * 0.5);
 
-    const segMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(wallW, wallH, wallT),
-      mat
-    );
+  // 시작 구역 띠를 조각이 아닌 단일 메쉬로 생성 (깜빡임/우글거림 방지)
+  const ringShape = new THREE.Shape();
+  ringShape.moveTo(Math.cos(solidStart) * outerR, Math.sin(solidStart) * outerR);
+  ringShape.absarc(0, 0, outerR, solidStart, solidEnd, false);
+  ringShape.lineTo(Math.cos(solidEnd) * innerR, Math.sin(solidEnd) * innerR);
+  ringShape.absarc(0, 0, innerR, solidEnd, solidStart, true);
+  ringShape.closePath();
 
-    segMesh.position.set(cx, START_FLAT_Y + wallH / 2, cz);
-    segMesh.rotation.y = -a; // 원을 따라 회전
-    scene.add(segMesh);
+  const ringGeo = new THREE.ExtrudeGeometry(ringShape, {
+    depth: wallH,
+    steps: 1,
+    bevelEnabled: false,
+    curveSegments: 72,
+  });
+  ringGeo.rotateX(-Math.PI / 2); // extrude 축을 Y(높이)로 변환
 
-    // 충돌 등록 (벽이니까 shrink는 1.0)
-    addCollider(segMesh, 1.0);
+  const ringMesh = new THREE.Mesh(ringGeo, mat);
+  ringMesh.position.set(START_X, START_FLAT_Y + 0.05, START_Z);
+  scene.add(ringMesh);
+}
+
+function buildStartStall() {
+  const g = new THREE.Group();
+  const woodMat = new THREE.MeshStandardMaterial({ color: 0x8b6b4a, roughness: 0.95 });
+
+  // 상판
+  const top = new THREE.Mesh(new THREE.BoxGeometry(6.8, 0.25, 1.8), woodMat);
+  top.position.y = 1.05;
+  g.add(top);
+
+  // 다리 4개
+  const legGeo = new THREE.BoxGeometry(0.18, 1.0, 0.18);
+  const legOffsets = [
+    [-3.0, 0.5, -0.75],
+    [3.0, 0.5, -0.75],
+    [-3.0, 0.5, 0.75],
+    [3.0, 0.5, 0.75],
+  ];
+  for (const [x, y, z] of legOffsets) {
+    const leg = new THREE.Mesh(legGeo, woodMat);
+    leg.position.set(x, y, z);
+    g.add(leg);
   }
+
+  // 시작 위치 근처 배치 (플레이어 스폰 위치는 피해서)
+  g.position.set(START_X, START_FLAT_Y, START_Z - 2.3);
+  scene.add(g);
+  addCollider(g, 1.0);
 }
 
 
@@ -899,10 +1094,16 @@ function makeTree(x, z) {
 }
 
 // 캐릭터급 바위 (충돌 포함)
-function makeRock(x, z, s = 1) {
+function makeRock(x, z, s = 1, fadeIn = false) {
+  const rockMat = new THREE.MeshStandardMaterial({
+    color: 0x6f6f72,
+    roughness: 1.0,
+    transparent: fadeIn,
+    opacity: fadeIn ? 0 : 1,
+  });
   const rock = new THREE.Mesh(
     new THREE.DodecahedronGeometry(0.9 * s, 0),
-    new THREE.MeshStandardMaterial({ color: 0x6f6f72, roughness: 1.0 })
+    rockMat
   );
   rock.position.set(x, 0.9 * s, z);
 
@@ -917,7 +1118,46 @@ function makeRock(x, z, s = 1) {
   const colliderIndex = addCollider(rock, 0.85);
   rock.userData.isMineRock = true;
   rock.userData.colliderIndex = colliderIndex;
+  rock.userData.spawn = { x, z, s };
+  if (fadeIn) {
+    rock.userData.fadeInElapsed = 0;
+    rock.userData.fadeInDuration = 1.0;
+  }
 
+  return rock;
+}
+
+function scheduleRockRespawn(spawn) {
+  setTimeout(() => {
+    const s = spawn?.s ?? randRange(0.8, 1.3);
+    const next = findRockSpawnPosition(s, 120);
+    if (!next) return;
+    makeRock(next.x, next.z, s, true);
+  }, ROCK_RESPAWN_MS);
+}
+
+function unregisterMineRock(rock) {
+  const idx = mineRocks.indexOf(rock);
+  if (idx !== -1) mineRocks.splice(idx, 1);
+
+}
+
+function updateRockFadeIns(dt) {
+  for (const rock of mineRocks) {
+    if (!rock || !rock.parent) continue;
+    const dur = rock.userData.fadeInDuration;
+    if (!dur) continue;
+
+    rock.userData.fadeInElapsed += dt;
+    const t = Math.min(1, rock.userData.fadeInElapsed / dur);
+    rock.material.opacity = t;
+
+    if (t >= 1) {
+      rock.material.transparent = false;
+      delete rock.userData.fadeInElapsed;
+      delete rock.userData.fadeInDuration;
+    }
+  }
 }
 
 // ===== Pickaxe item =====
@@ -966,7 +1206,6 @@ function spawnTreesAndRocks() {
 
   // 나무/바위 개수 (원하면 여기 숫자만 조절)
   const TREE_COUNT = 20;
-  const ROCK_COUNT = 70;
 
   // 나무
   for (let i = 0; i < TREE_COUNT; i++) {
@@ -984,22 +1223,16 @@ function spawnTreesAndRocks() {
 
   // 바위 (크기 조금씩 다르게)
   for (let i = 0; i < ROCK_COUNT; i++) {
-    let x = 0, z = 0;
-    let tries = 0;
-
-    do {
-      x = randRange(minX, maxX);
-      z = randRange(minZ, maxZ);
-      tries++;
-    } while ((x * x + z * z) < safeRadius * safeRadius && tries < 30);
-
     const s = randRange(0.8, 1.3); // 캐릭터급 크기 변주
-    makeRock(x, z, s);
+    const spawnPos = findRockSpawnPosition(s, 120);
+    if (!spawnPos) continue;
+    makeRock(spawnPos.x, spawnPos.z, s);
   }
 }
 
 spawnTreesAndRocks();
 buildStartZoneWall();
+buildStartStall();
 
 
 // ===== Place pickaxe in starting area =====
@@ -1056,43 +1289,18 @@ window.addEventListener("keydown", (e) => {
   const k = e.key.toLowerCase();
   console.log("KEYDOWN:", k);
 
-  // ===== E : 곡괭이 줍기 =====
-    if (k === "e") {
-  if (inventory.hasPickaxe) return;
-
-  const pick = scene.children.find((o) => o?.userData?.isPickaxe);
-
-  if (pick) {
-    const dx = pick.position.x - player.position.x;
-    const dz = pick.position.z - player.position.z;
-    const d = Math.hypot(dx, dz);
-
-    if (d < 2.0) {
-      addItem("pickaxe", 1);
-        inventory.equipped.tool = "pickaxe";
-      updateInventoryUI();
-
-      showUI(HUD_MSG.PICKAXE_GET);
-        lastMessageUntil = performance.now() + 900;
-
-      pick.removeFromParent();
-      return;
-    }
-  }
-    }
-
-    // 곡괭이 줍기 (E 키)
+  // ===== E : 곡괭이 줍기 (획득만, 장착은 인벤 더블클릭) =====
   if (k === "e" && pickaxe && pickaxe.parent) {
   const dx = pickaxe.position.x - player.position.x;
   const dz = pickaxe.position.z - player.position.z;
   const d = Math.hypot(dx, dz); // ✅ 수평 거리만
 
   if (d < 2.0) {
-    inventory.hasPickaxe = true;
-    updateInventoryUI();
+    if (!hasItem("pickaxe")) addItem("pickaxe", 1);
 
-    showUI("곡괭이를 얻었다!");
-    lastMessageUntil = performance.now() + 1500;
+    updateInventoryUI();
+    showUI(HUD_MSG.PICKAXE_GET);
+    lastMessageUntil = performance.now() + 900;
 
     pickaxe.removeFromParent();
     return;
@@ -1139,6 +1347,117 @@ function intersectsAnyCollider(playerBox) {
   return false;
 }
 
+function isBlockedByStartRing(x, z) {
+  if (!START_WALL_ON) return false;
+
+  const dx = x - START_X;
+  const dz = z - START_Z;
+  const dist = Math.hypot(dx, dz);
+  const playerRadius = 0.55;
+  const inner = START_RADIUS - START_RING_THICKNESS * 0.5 - playerRadius;
+  const outer = START_RADIUS + START_RING_THICKNESS * 0.5 + playerRadius;
+
+  if (dist < inner || dist > outer) return false;
+
+  const angle = Math.atan2(dz, dx);
+  const d = Math.atan2(
+    Math.sin(angle - START_RING_OPEN_CENTER),
+    Math.cos(angle - START_RING_OPEN_CENTER)
+  );
+  const openHalf = Math.PI * START_RING_OPEN_RATIO;
+  const inOpening = Math.abs(d) <= openHalf;
+  return !inOpening;
+}
+
+function isInStartRingOpening(angle) {
+  const d = Math.atan2(
+    Math.sin(angle - START_RING_OPEN_CENTER),
+    Math.cos(angle - START_RING_OPEN_CENTER)
+  );
+  const openHalf = Math.PI * START_RING_OPEN_RATIO;
+  return Math.abs(d) <= openHalf;
+}
+
+function isCrossingBlockedStartRing(prevX, prevZ, nextX, nextZ) {
+  if (!START_WALL_ON) return false;
+
+  const pdx = prevX - START_X;
+  const pdz = prevZ - START_Z;
+  const ndx = nextX - START_X;
+  const ndz = nextZ - START_Z;
+  const prevDist = Math.hypot(pdx, pdz);
+  const nextDist = Math.hypot(ndx, ndz);
+
+  const wasInside = prevDist < START_RADIUS;
+  const isInside = nextDist < START_RADIUS;
+  if (wasInside === isInside) return false;
+
+  // 반경 경계 교차 지점(선형 보간)에서 개방 구간 여부 판정
+  const denom = nextDist - prevDist;
+  let t = 0.5;
+  if (Math.abs(denom) > 1e-6) {
+    t = (START_RADIUS - prevDist) / denom;
+    t = Math.max(0, Math.min(1, t));
+  }
+  const cx = prevX + (nextX - prevX) * t;
+  const cz = prevZ + (nextZ - prevZ) * t;
+  const crossingAngle = Math.atan2(cz - START_Z, cx - START_X);
+
+  return !isInStartRingOpening(crossingAngle);
+}
+
+function resolveStartRingPenetration(currentPos, prevPos = null) {
+  if (!START_WALL_ON) return;
+
+  const dx = currentPos.x - START_X;
+  const dz = currentPos.z - START_Z;
+  const dist = Math.hypot(dx, dz);
+  const playerRadius = 0.55;
+  const inner = START_RADIUS - START_RING_THICKNESS * 0.5 - playerRadius;
+  const outer = START_RADIUS + START_RING_THICKNESS * 0.5 + playerRadius;
+  if (dist < inner || dist > outer) return;
+
+  const angle = Math.atan2(dz, dx);
+  const d = Math.atan2(
+    Math.sin(angle - START_RING_OPEN_CENTER),
+    Math.cos(angle - START_RING_OPEN_CENTER)
+  );
+  const openHalf = Math.PI * START_RING_OPEN_RATIO;
+  const inOpening = Math.abs(d) <= openHalf;
+  if (inOpening) return;
+
+  const eps = 0.02;
+  const nx = dist > 1e-5 ? dx / dist : 1;
+  const nz = dist > 1e-5 ? dz / dist : 0;
+
+  // 이전 위치 기준으로 안쪽/바깥쪽 중 원래 있던 쪽으로 되돌린다.
+  const prevDist = prevPos
+    ? Math.hypot(prevPos.x - START_X, prevPos.z - START_Z)
+    : dist;
+
+  if (prevDist <= START_RADIUS) {
+    currentPos.x = START_X + nx * (inner - eps);
+    currentPos.z = START_Z + nz * (inner - eps);
+  } else {
+    currentPos.x = START_X + nx * (outer + eps);
+    currentPos.z = START_Z + nz * (outer + eps);
+  }
+}
+
+function isStartRingTransitionBlocked(x0, z0, x1, z1) {
+  if (!START_WALL_ON) return false;
+
+  const dist = Math.hypot(x1 - x0, z1 - z0);
+  const steps = Math.max(2, Math.ceil(dist / 0.08));
+  for (let i = 1; i <= steps; i++) {
+    const t = i / steps;
+    const x = x0 + (x1 - x0) * t;
+    const z = z0 + (z1 - z0) * t;
+    if (isBlockedByStartRing(x, z)) return true;
+  }
+  return false;
+}
+
 
 // Movement
 const clock = new THREE.Clock();
@@ -1158,9 +1477,11 @@ function updateMovement(dt) {
   if (keys.s) move.sub(forward);
   if (keys.d) move.add(right);
   if (keys.a) move.sub(right);
+  const isMoving = move.lengthSq() > 0;
 
-  if (move.lengthSq() > 0) {
+  if (isMoving) {
     move.normalize();
+    latestMoveDir.copy(move);
     const speed = keys.shift ? 7.0 : 4.0;
      
     const prevPos = player.position.clone();
@@ -1168,22 +1489,52 @@ function updateMovement(dt) {
 
     // 1) X축 이동만 먼저 시도
     player.position.x = prevPos.x + delta.x;
-    if (intersectsAnyCollider(getPlayerBox())) {
+    if (
+      intersectsAnyCollider(getPlayerBox()) ||
+      isStartRingTransitionBlocked(prevPos.x, prevPos.z, player.position.x, player.position.z) ||
+      isCrossingBlockedStartRing(prevPos.x, prevPos.z, player.position.x, player.position.z)
+    ) {
   player.position.x = prevPos.x; // X 이동 취소
     }
 
     // 2) Z축 이동만 시도
+    const afterX = player.position.x;
     player.position.z = prevPos.z + delta.z;
-    if (intersectsAnyCollider(getPlayerBox())) {
+    if (
+      intersectsAnyCollider(getPlayerBox()) ||
+      isStartRingTransitionBlocked(afterX, prevPos.z, player.position.x, player.position.z) ||
+      isCrossingBlockedStartRing(afterX, prevPos.z, player.position.x, player.position.z)
+    ) {
   player.position.z = prevPos.z; // Z 이동 취소
     }
+
+    // 혹시 남은 미세 침투를 정리해 벽 관통을 완전히 차단
+    resolveStartRingPenetration(player.position, prevPos);
 
     const targetYaw = Math.atan2(move.x, move.z);
     player.rotation.y = targetYaw;
   }
 
+  // 간단 보행 모션
+  const walkT = performance.now() * 0.015;
+  if (isMoving) {
+    const armSwing = Math.sin(walkT) * 0.65;
+    const legSwing = Math.sin(walkT) * 0.75;
+    leftArmPivot.rotation.x = armSwing;
+    rightArmPivot.rotation.x = -armSwing;
+    leftLegPivot.rotation.x = -legSwing;
+    rightLegPivot.rotation.x = legSwing;
+    torso.rotation.x = Math.sin(walkT * 2) * 0.04;
+  } else {
+    leftArmPivot.rotation.x *= 0.8;
+    rightArmPivot.rotation.x *= 0.8;
+    leftLegPivot.rotation.x *= 0.8;
+    rightLegPivot.rotation.x *= 0.8;
+    torso.rotation.x *= 0.8;
+  }
+
   // ===== Starting Zone clamp (hard boundary) =====
-  if (START_WALL_ON) {
+  if (START_WALL_ON && START_HARD_CLAMP) {
     const dx = player.position.x - START_X;
     const dz = player.position.z - START_Z;
     const dist = Math.hypot(dx, dz);
@@ -1219,16 +1570,25 @@ window.addEventListener("keydown", (e) => {
 
 
   // 채집!
-  spawnDustBurst(activeMineRock.position, 18);
+  const minedRock = activeMineRock;
+  const spawn = minedRock.userData.spawn
+    ? { ...minedRock.userData.spawn }
+    : { x: minedRock.position.x, z: minedRock.position.z, s: 1 };
+
+  spawnDustBurst(minedRock.position, 18);
   addItem("stoneDust", 1);
   updateInventoryUI();
 
   // 콜라이더 제거
-  const idx = activeMineRock.userData.colliderIndex;
+  const idx = minedRock.userData.colliderIndex;
   if (typeof idx === "number") removeColliderAt(idx);
 
+  // 목록/씬에서 제거
+  unregisterMineRock(minedRock);
+
   // 씬에서 제거
-  activeMineRock.removeFromParent();
+  minedRock.removeFromParent();
+  scheduleRockRespawn(spawn);
 
   // 힌트 숨기기
   activeMineRock = null;
@@ -1242,6 +1602,12 @@ function animate() {
 
   updateMovement(dt);
   updateParticles(dt);
+  updateRockFadeIns(dt);
+  if (latestMoveDir.lengthSq() > 1e-6) {
+    updateCompassFromDirection(latestMoveDir);
+  } else {
+    updateCompassFromDirection(new THREE.Vector3(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y)));
+  }
 
   // ===== 상호작용 대상 탐색 =====
     activeInteractable = null;
@@ -1287,8 +1653,8 @@ if (!hintText) {
   activeMineRock = findNearestMineRock(2.2);
   if (activeMineRock) {
     // 곡괭이 필요/장착 필요/채집 가능 문구 분기
-    if (!inventory.hasPickaxe) hintText = "⛏️ 필요";
-    else if (!inventory.pickaxeEquipped) hintText = "⛏️ 장착 필요";
+    if (!hasItem("pickaxe")) hintText = "⛏️ 필요";
+    else if (!hasEquippedTool("pickaxe")) hintText = "⛏️ 장착 필요";
     else hintText = "Space : 돌가루 채집";
   }
 }
