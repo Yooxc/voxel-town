@@ -122,7 +122,126 @@ invWin.style.backdropFilter = "blur(6px)";
 invWin.style.display = "none"; // I 키로 열기
 invWin.style.pointerEvents = "auto"; // 클릭 가능
 invWin.style.userSelect = "none";
+invWin.style.zIndex = "1000000";
 uiLayer.appendChild(invWin);
+
+const equipWin = document.createElement("div");
+equipWin.id = "equipWindow";
+equipWin.style.position = "fixed";
+equipWin.style.left = "348px";
+equipWin.style.top = "12px";
+equipWin.style.width = "288px";
+equipWin.style.height = "420px";
+equipWin.style.background = "rgba(235, 235, 235, 0.92)";
+equipWin.style.border = "1px solid rgba(0,0,0,0.25)";
+equipWin.style.borderRadius = "10px";
+equipWin.style.boxShadow = "0 12px 30px rgba(0,0,0,0.25)";
+equipWin.style.backdropFilter = "blur(6px)";
+equipWin.style.display = "none";
+equipWin.style.pointerEvents = "auto";
+equipWin.style.userSelect = "none";
+equipWin.style.zIndex = "1000001";
+equipWin.style.overflow = "hidden";
+uiLayer.appendChild(equipWin);
+
+const equipHeader = document.createElement("div");
+equipHeader.textContent = "EQUIPMENT";
+equipHeader.style.padding = "10px";
+equipHeader.style.fontFamily = "system-ui, -apple-system, sans-serif";
+equipHeader.style.fontSize = "14px";
+equipHeader.style.fontWeight = "700";
+equipHeader.style.letterSpacing = "0.04em";
+equipHeader.style.color = "#222";
+equipHeader.style.borderBottom = "1px solid rgba(0,0,0,0.15)";
+equipHeader.style.background = "rgba(255,255,255,0.7)";
+equipWin.appendChild(equipHeader);
+
+const equipBody = document.createElement("div");
+equipBody.style.padding = "12px";
+equipBody.style.height = "calc(100% - 44px)";
+equipBody.style.position = "relative";
+equipBody.style.boxSizing = "border-box";
+equipWin.appendChild(equipBody);
+
+const equipmentGrid = document.createElement("div");
+equipmentGrid.style.position = "absolute";
+equipmentGrid.style.inset = "12px";
+equipmentGrid.style.display = "grid";
+equipmentGrid.style.gridTemplateColumns = "64px minmax(0, 1.45fr) 64px";
+equipmentGrid.style.gridTemplateRows = "76px 1fr 76px";
+equipmentGrid.style.gap = "10px";
+equipBody.appendChild(equipmentGrid);
+
+const previewWrap = document.createElement("div");
+previewWrap.style.gridColumn = "2";
+previewWrap.style.gridRow = "1 / span 3";
+previewWrap.style.borderRadius = "10px";
+previewWrap.style.background = "rgba(255,255,255,0.95)";
+previewWrap.style.border = "1px solid rgba(0,0,0,0.2)";
+previewWrap.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.8)";
+previewWrap.style.position = "relative";
+previewWrap.style.overflow = "hidden";
+equipmentGrid.appendChild(previewWrap);
+
+const previewLabel = document.createElement("div");
+previewLabel.textContent = "장착 미리보기";
+previewLabel.style.position = "absolute";
+previewLabel.style.left = "12px";
+previewLabel.style.top = "10px";
+previewLabel.style.fontFamily = "system-ui, -apple-system, sans-serif";
+previewLabel.style.fontSize = "12px";
+previewLabel.style.fontWeight = "700";
+previewLabel.style.color = "rgba(34,34,34,0.78)";
+previewWrap.appendChild(previewLabel);
+
+const previewCanvasWrap = document.createElement("div");
+previewCanvasWrap.style.position = "absolute";
+previewCanvasWrap.style.inset = "34px 8px 10px";
+previewWrap.appendChild(previewCanvasWrap);
+
+const equipmentSlotEls = {};
+
+function createEquipmentSlot(slotId, label, gridColumn, gridRow) {
+  const slot = document.createElement("div");
+  slot.style.gridColumn = String(gridColumn);
+  slot.style.gridRow = String(gridRow);
+  slot.style.borderRadius = "8px";
+  slot.style.background = "rgba(255,255,255,0.95)";
+  slot.style.border = "1px solid rgba(0,0,0,0.2)";
+  slot.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.8)";
+  slot.style.padding = "8px";
+  slot.style.boxSizing = "border-box";
+  slot.style.display = "flex";
+  slot.style.flexDirection = "column";
+  slot.style.justifyContent = "space-between";
+
+  const title = document.createElement("div");
+  title.textContent = label;
+  title.style.fontFamily = "system-ui, -apple-system, sans-serif";
+  title.style.fontSize = "11px";
+  title.style.fontWeight = "800";
+  title.style.letterSpacing = "0.04em";
+  title.style.color = "rgba(70,70,70,0.92)";
+
+  const content = document.createElement("div");
+  content.style.flex = "1";
+  content.style.display = "flex";
+  content.style.alignItems = "center";
+  content.style.justifyContent = "center";
+  content.style.textAlign = "center";
+  content.style.fontFamily = "system-ui, -apple-system, sans-serif";
+  content.style.color = "rgba(48,56,66,0.82)";
+
+  slot.appendChild(title);
+  slot.appendChild(content);
+  equipmentGrid.appendChild(slot);
+  equipmentSlotEls[slotId] = { slot, content, label };
+}
+
+createEquipmentSlot("head", "모자", 1, 1);
+createEquipmentSlot("body", "상의", 1, 2);
+createEquipmentSlot("shoes", "신발", 1, 3);
+createEquipmentSlot("tool", "무기", 3, 2);
 
 // 상단 탭 바
 const tabBar = document.createElement("div");
@@ -203,6 +322,103 @@ function makeSlot() {
   return s;
 }
 
+const itemPreviewCache = new Map();
+
+function disposeObject3D(root) {
+  root.traverse((obj) => {
+    if (obj.geometry) obj.geometry.dispose();
+    if (obj.material) {
+      if (Array.isArray(obj.material)) {
+        for (const mat of obj.material) mat.dispose();
+      } else {
+        obj.material.dispose();
+      }
+    }
+  });
+}
+
+function createFallbackItemIcon(text, size = 24) {
+  const icon = document.createElement("div");
+  icon.textContent = text;
+  icon.style.fontSize = `${size}px`;
+  icon.style.lineHeight = "1";
+  icon.style.transform = "translateY(-1px)";
+  return icon;
+}
+
+function getItemPreviewDataUrl(itemId, size = 40) {
+  const cacheKey = `${itemId}:${size}`;
+  if (itemPreviewCache.has(cacheKey)) return itemPreviewCache.get(cacheKey);
+
+  const def = ITEM_DEFS[itemId];
+  if (!def?.makeInventoryModel) return null;
+
+  const renderer = new THREE.WebGLRenderer({
+    antialias: true,
+    alpha: true,
+    preserveDrawingBuffer: true,
+  });
+  renderer.setPixelRatio(1);
+  renderer.setSize(size, size, false);
+
+  const previewScene = new THREE.Scene();
+  const previewCamera = new THREE.PerspectiveCamera(32, 1, 0.1, 50);
+  previewScene.add(new THREE.AmbientLight(0xffffff, 1.35));
+
+  const keyLight = new THREE.DirectionalLight(0xffffff, 0.9);
+  keyLight.position.set(2.5, 3.5, 4.5);
+  previewScene.add(keyLight);
+
+  const fillLight = new THREE.DirectionalLight(0xcfd7e6, 0.35);
+  fillLight.position.set(-2, 1.5, -2);
+  previewScene.add(fillLight);
+
+  const model = def.makeInventoryModel();
+  previewScene.add(model);
+  model.rotation.set(-0.3, 0.68, 0.1);
+
+  const box = new THREE.Box3().setFromObject(model);
+  const center = box.getCenter(new THREE.Vector3());
+  const boxSize = box.getSize(new THREE.Vector3());
+  model.position.sub(center);
+  model.position.y -= box.min.y * 0.15;
+
+  const radius = Math.max(boxSize.x, boxSize.y, boxSize.z) * 0.5 || 1;
+  previewCamera.position.set(radius * 1.45, radius * 1.15, radius * 2.3);
+  previewCamera.lookAt(0, radius * 0.18, 0);
+  previewCamera.updateProjectionMatrix();
+
+  renderer.render(previewScene, previewCamera);
+  const dataUrl = renderer.domElement.toDataURL("image/png");
+  itemPreviewCache.set(cacheKey, dataUrl);
+
+  disposeObject3D(model);
+  renderer.dispose();
+  return dataUrl;
+}
+
+function createItemVisualElement(itemId, options = {}) {
+  const def = ITEM_DEFS[itemId];
+  const size = options.size ?? 40;
+  const dataUrl = getItemPreviewDataUrl(itemId, size);
+  if (dataUrl) {
+    const img = document.createElement("img");
+    img.src = dataUrl;
+    img.alt = def?.name ?? itemId;
+    img.width = size;
+    img.height = size;
+    img.draggable = false;
+    img.style.display = "block";
+    img.style.width = `${size}px`;
+    img.style.height = `${size}px`;
+    img.style.objectFit = "contain";
+    img.style.pointerEvents = "none";
+    return img;
+  }
+
+  return createFallbackItemIcon(def?.icon ?? "?", Math.max(20, Math.round(size * 0.6)));
+}
+
 function setTabStyles() {
   for (const t of tabs) {
     const btn = tabButtons[t.id];
@@ -237,7 +453,7 @@ function syncGameStateToSlots() {
     const def = ITEM_DEFS[s.id];
     if (!def) continue;
 
-    const itemUI = { id: s.id, icon: def.icon, name: def.name, count: s.count };
+    const itemUI = { id: s.id, name: def.name, count: s.count };
 
     if (def.category === "equip") {
       // 장비 탭: 빈 칸에 순서대로 배치
@@ -267,10 +483,7 @@ function renderInventoryWindow() {
     const item = slots[i];
 
     if (item) {
-      const icon = document.createElement("div");
-      icon.textContent = item.icon;
-      icon.style.fontSize = "24px";
-      icon.style.transform = "translateY(-1px)";
+      const icon = createItemVisualElement(item.id, { size: 38 });
       slot.appendChild(icon);
 
       if (item.count && item.count > 1) {
@@ -290,8 +503,9 @@ function renderInventoryWindow() {
 
       // ===== Equip toggle (double click) =====
         const isEquipTab = activeTab === "equip";
-        const isPickaxe = item.id === "pickaxe";
-        const isEquipped = inventory.equipped.tool === item.id;
+        const def = ITEM_DEFS[item.id];
+        const equipSlot = def?.equipSlot ?? null;
+        const isEquipped = equipSlot ? inventory.equipped[equipSlot] === item.id : false;
 
         // 장착된 아이템은 테두리 하이라이트
         if (isEquipTab && isEquipped) {
@@ -300,31 +514,18 @@ function renderInventoryWindow() {
         }
 
         // 장비 탭에서만 클릭 가능하도록 커서/효과
-        if (isEquipTab && isPickaxe) {
+        if (isEquipTab && equipSlot) {
         slot.style.cursor = "pointer";
         slot.title = "더블클릭: 장착/해제";
 
         slot.addEventListener("dblclick", () => {
-        // 토글
-        if (inventory.equipped.tool === "pickaxe") {
-      inventory.equipped.tool = null;
-      showUI(HUD_MSG.PICKAXE_UNEQUIPPED);
-        lastMessageUntil = performance.now() + 800;
-
-        } else {
-      inventory.equipped.tool = "pickaxe";
-      showUI(HUD_MSG.PICKAXE_EQUIPPED);
-        lastMessageUntil = performance.now() + 800;
-
-        }
-
-        updateInventoryUI();      // 규칙/UI 반영
+        toggleEquipItem(item.id);
      });
         }   
 
 
       // 아주 가벼운 툴팁(hover)
-      slot.title = `${item.name}${item.count ? ` x ${item.count}` : ""}`;
+      slot.title = getItemTooltipText(item.id, item.count);
         }
 
         invgrid.appendChild(slot);
@@ -336,6 +537,7 @@ let invOpen = false;
 function setInvOpen(v) {
   invOpen = v;
   invWin.style.display = invOpen ? "block" : "none";
+  equipWin.style.display = invOpen ? "block" : "none";
   if (invOpen) renderInventoryWindow();
 }
 
@@ -404,6 +606,7 @@ const HUD_MSG = {
   PICKAXE_EQUIPPED: "⛏️ 장착",
   PICKAXE_UNEQUIPPED: "⛏️ 해제",
   PICKAXE_GET: "⛏️ 획득!",
+  HELMET_GET: "🪖 획득!",
 };
 
 
@@ -508,39 +711,50 @@ scene.add(gridHelper);
 
 // Player
 const player = new THREE.Group();
+player.name = "playerRoot";
 const bodyMat = new THREE.MeshStandardMaterial({ color: 0xcfcfcf, roughness: 0.9 });
 const limbMat = new THREE.MeshStandardMaterial({ color: 0xb5b5b5, roughness: 0.95 });
 
 const torso = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.95, 0.36), bodyMat);
+torso.name = "torso";
 torso.position.y = 1.35;
 
 // 얼굴은 타원형 1개만 사용
 const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 24, 18), bodyMat);
+head.name = "head";
 head.scale.set(0.85, 1.2, 0.82);
 head.position.y = 2.1;
 
 // 어깨 피벗(회전축)
 const leftArmPivot = new THREE.Group();
+leftArmPivot.name = "leftArmPivot";
 leftArmPivot.position.set(-0.47, 1.8, 0);
 const rightArmPivot = new THREE.Group();
+rightArmPivot.name = "rightArmPivot";
 rightArmPivot.position.set(0.47, 1.8, 0);
 
 const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.85, 0.22), limbMat);
+leftArm.name = "leftArm";
 leftArm.position.set(0, -0.42, 0);
 const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.85, 0.22), limbMat);
+rightArm.name = "rightArm";
 rightArm.position.set(0, -0.42, 0);
 leftArmPivot.add(leftArm);
 rightArmPivot.add(rightArm);
 
 // 허벅지(힙) 피벗
 const leftLegPivot = new THREE.Group();
+leftLegPivot.name = "leftLegPivot";
 leftLegPivot.position.set(-0.18, 0.9, 0);
 const rightLegPivot = new THREE.Group();
+rightLegPivot.name = "rightLegPivot";
 rightLegPivot.position.set(0.18, 0.9, 0);
 
 const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.9, 0.26), limbMat);
+leftLeg.name = "leftLeg";
 leftLeg.position.set(0, -0.45, 0);
 const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.9, 0.26), limbMat);
+rightLeg.name = "rightLeg";
 rightLeg.position.set(0, -0.45, 0);
 leftLegPivot.add(leftLeg);
 rightLegPivot.add(rightLeg);
@@ -639,9 +853,55 @@ function spawnDustBurst(pos, count = 16) {
     // 수명
     m.userData.v = v;
     m.userData.life = 0.6 + Math.random() * 0.5;
+    m.userData.maxLife = m.userData.life;
+    m.userData.kind = "dust";
 
     scene.add(m);
     particles.push(m);
+  }
+}
+
+function spawnRockBreakBurst(rock) {
+  const rockScale = rock.userData.spawnScale ?? 1;
+  const chunkCount = Math.round(6 + rockScale * 3);
+  const baseColor = rock.material?.color?.getHex() ?? 0x6f6f72;
+
+  for (let i = 0; i < chunkCount; i++) {
+    const size = randRange(0.09, 0.18) * rockScale;
+    const chunk = new THREE.Mesh(
+      new THREE.DodecahedronGeometry(size, 0),
+      new THREE.MeshStandardMaterial({
+        color: baseColor,
+        roughness: 1.0,
+        transparent: true,
+        opacity: 1,
+      })
+    );
+
+    chunk.position.copy(rock.position);
+    chunk.position.add(new THREE.Vector3(
+      randRange(-0.08, 0.08),
+      randRange(0.15, 0.55) * rockScale,
+      randRange(-0.08, 0.08)
+    ));
+    chunk.rotation.set(randRange(0, Math.PI), randRange(0, Math.PI), randRange(0, Math.PI));
+
+    chunk.userData.v = new THREE.Vector3(
+      randRange(-1.7, 1.7) * rockScale,
+      randRange(1.2, 2.6) * rockScale,
+      randRange(-1.7, 1.7) * rockScale
+    );
+    chunk.userData.spin = new THREE.Vector3(
+      randRange(-7, 7),
+      randRange(-7, 7),
+      randRange(-7, 7)
+    );
+    chunk.userData.life = 0.42 + Math.random() * 0.22;
+    chunk.userData.maxLife = chunk.userData.life;
+    chunk.userData.kind = "rockChunk";
+
+    scene.add(chunk);
+    particles.push(chunk);
   }
 }
 
@@ -655,15 +915,28 @@ function updateParticles(dt) {
 
     // 이동
     p.position.addScaledVector(p.userData.v, dt);
+    if (p.userData.spin) {
+      p.rotation.x += p.userData.spin.x * dt;
+      p.rotation.y += p.userData.spin.y * dt;
+      p.rotation.z += p.userData.spin.z * dt;
+    }
 
     // 바닥에 닿으면 살짝 감속
     if (p.position.y < 0.05) {
       p.position.y = 0.05;
-      p.userData.v.multiplyScalar(0.35);
+      p.userData.v.x *= 0.45;
+      p.userData.v.z *= 0.45;
+      p.userData.v.y *= p.userData.kind === "rockChunk" ? -0.18 : 0.1;
+    }
+
+    if (p.material?.transparent && typeof p.userData.maxLife === "number" && p.userData.maxLife > 0) {
+      p.material.opacity = Math.max(0, p.userData.life / p.userData.maxLife);
     }
 
     // 수명 끝나면 제거
     if (p.userData.life <= 0) {
+      if (p.geometry) p.geometry.dispose();
+      if (p.material) p.material.dispose();
       p.removeFromParent();
       particles.splice(i, 1);
     }
@@ -674,15 +947,60 @@ function updateParticles(dt) {
 // ===== Inventory (slot-based) =====
 // 아이템 정의(나중에 계속 늘릴 예정)
 const ITEM_DEFS = {
-  pickaxe: { name: "곡괭이", icon: "⛏️", stackMax: 1, category: "equip" },
+  pickaxe: {
+    name: "곡괭이",
+    icon: "⛏️",
+    stackMax: 1,
+    category: "equip",
+    equipSlot: "tool",
+    miningPower: 1,
+    makeInventoryModel: () => buildPickaxeModel(),
+  },
+  safetyHelmet: {
+    name: "안전모",
+    icon: "🪖",
+    stackMax: 1,
+    category: "equip",
+    equipSlot: "head",
+    makeInventoryModel: () => buildSafetyHelmetModel(),
+  },
   stoneDust: { name: "돌가루", icon: "🪨", stackMax: 999, category: "misc" },
     };
+
+const ROCK_SIZE_DEFS = [
+  { id: "small", label: "작은 돌", scale: 0.8, maxHp: 1 },
+  { id: "medium", label: "중간 돌", scale: 1.05, maxHp: 2 },
+  { id: "large", label: "큰 돌", scale: 1.3, maxHp: 3 },
+];
+
+function getItemTooltipText(itemId, count = null) {
+  const def = ITEM_DEFS[itemId];
+  if (!def) return itemId;
+
+  const lines = [`이름: ${def.name}`];
+  if (typeof def.miningPower === "number") {
+    lines.push(`채굴력: ${def.miningPower}`);
+  }
+  if (count && count > 1) {
+    lines.push(`수량: ${count}`);
+  }
+  return lines.join("\n");
+}
+
+function getEquippedMiningPower() {
+  const toolId = inventory.equipped.tool;
+  const def = toolId ? ITEM_DEFS[toolId] : null;
+  return def?.miningPower ?? 0;
+}
 
     // 인벤토리 데이터: 슬롯 + 장착 상태
     const inventory = {
   slots: Array.from({ length: 30 }, () => null), // 30칸(원하면 늘림)
   equipped: {
-    tool: null, // "pickaxe" 같은 아이템 id
+    head: null,
+    body: null,
+    shoes: null,
+    tool: null,
   },
     };
 
@@ -730,22 +1048,9 @@ const ITEM_DEFS = {
   return findFirstSlotWithItem(id) !== -1;
     }
 
-    const equippedPickaxe = new THREE.Group();
-    const equippedHandle = new THREE.Mesh(
-  new THREE.CylinderGeometry(0.045, 0.045, 0.95, 8),
-  new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.9 })
-    );
-    // 그룹 원점(0,0,0)을 손잡이 하단 쥐는 지점으로 사용
-    equippedHandle.position.y = 0.38;
-
-    const equippedHead = new THREE.Mesh(
-  new THREE.BoxGeometry(0.62, 0.12, 0.18),
-  new THREE.MeshStandardMaterial({ color: 0x9aa0a6, roughness: 0.8 })
-    );
-    // 금속 헤드는 손잡이 반대편(위쪽) 끝
-    equippedHead.position.y = 0.9;
-
-    equippedPickaxe.add(equippedHandle, equippedHead);
+    const equippedPickaxe = buildPickaxeModel();
+    equippedPickaxe.name = "equippedPickaxe";
+    equippedPickaxe.scale.setScalar(0.8);
     // 캐릭터 기준 오른손(rightArm) 기준 위치
     equippedPickaxe.position.set(0.01, -0.44, 0.07);
     // +Y(헤드 방향)를 +Z(진행 방향 앞)로 보내기 위해 +90도 회전
@@ -753,8 +1058,157 @@ const ITEM_DEFS = {
     equippedPickaxe.visible = false;
     leftArm.add(equippedPickaxe);
 
+    const equippedSafetyHelmet = buildSafetyHelmetModel();
+    equippedSafetyHelmet.name = "equippedSafetyHelmet";
+    equippedSafetyHelmet.scale.setScalar(0.72);
+    equippedSafetyHelmet.visible = false;
+    head.add(equippedSafetyHelmet);
+    alignWearableOnHead(head, equippedSafetyHelmet, {
+  verticalInset: 0.36,
+  forwardBias: 0.06,
+    });
+
     function updateEquippedVisual() {
   equippedPickaxe.visible = hasEquippedTool("pickaxe");
+  equippedSafetyHelmet.visible = getEquippedItemForSlot("head") === "safetyHelmet";
+    }
+
+    function getEquippedItemForSlot(slotId) {
+  return inventory.equipped[slotId] ?? null;
+    }
+
+    function setEquippedItem(slotId, itemId) {
+  inventory.equipped[slotId] = itemId;
+    }
+
+    function toggleEquipItem(itemId) {
+  const def = ITEM_DEFS[itemId];
+  if (!def || def.category !== "equip" || !def.equipSlot) return;
+
+  const slotId = def.equipSlot;
+  const alreadyEquipped = getEquippedItemForSlot(slotId) === itemId;
+  setEquippedItem(slotId, alreadyEquipped ? null : itemId);
+
+  const itemName = def.name;
+  showUI(`${itemName} ${alreadyEquipped ? "해제" : "장착"}`);
+  lastMessageUntil = performance.now() + 800;
+
+  updateInventoryUI();
+    }
+
+    function unequipSlot(slotId) {
+  const itemId = getEquippedItemForSlot(slotId);
+  if (!itemId) return;
+  toggleEquipItem(itemId);
+    }
+
+    const equipPreviewRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    equipPreviewRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    equipPreviewRenderer.domElement.style.width = "100%";
+    equipPreviewRenderer.domElement.style.height = "100%";
+    equipPreviewRenderer.domElement.style.display = "block";
+    previewCanvasWrap.appendChild(equipPreviewRenderer.domElement);
+
+    const equipPreviewScene = new THREE.Scene();
+    const equipPreviewCamera = new THREE.PerspectiveCamera(34, 1, 0.1, 50);
+    equipPreviewCamera.position.set(0, 1.55, 5.3);
+
+    const equipPreviewAmbient = new THREE.AmbientLight(0xffffff, 1.4);
+    equipPreviewScene.add(equipPreviewAmbient);
+
+    const equipPreviewDir = new THREE.DirectionalLight(0xffffff, 0.9);
+    equipPreviewDir.position.set(2, 4, 5);
+    equipPreviewScene.add(equipPreviewDir);
+
+    const equipPreviewFill = new THREE.DirectionalLight(0xbfd7ff, 0.35);
+    equipPreviewFill.position.set(-3, 2, -2);
+    equipPreviewScene.add(equipPreviewFill);
+
+    const previewPlayer = player.clone(true);
+    previewPlayer.position.set(0, -0.12, 0);
+    previewPlayer.rotation.y = Math.PI * 0.08;
+    equipPreviewScene.add(previewPlayer);
+
+    const previewParts = {
+  torso: previewPlayer.getObjectByName("torso"),
+  head: previewPlayer.getObjectByName("head"),
+  leftArmPivot: previewPlayer.getObjectByName("leftArmPivot"),
+  rightArmPivot: previewPlayer.getObjectByName("rightArmPivot"),
+  leftLegPivot: previewPlayer.getObjectByName("leftLegPivot"),
+  rightLegPivot: previewPlayer.getObjectByName("rightLegPivot"),
+  equippedPickaxe: previewPlayer.getObjectByName("equippedPickaxe"),
+  equippedSafetyHelmet: previewPlayer.getObjectByName("equippedSafetyHelmet"),
+    };
+
+    function resizeEquipmentPreview() {
+  const width = Math.max(1, previewCanvasWrap.clientWidth);
+  const height = Math.max(1, previewCanvasWrap.clientHeight);
+  equipPreviewRenderer.setSize(width, height, false);
+  equipPreviewCamera.aspect = width / height;
+  equipPreviewCamera.updateProjectionMatrix();
+    }
+
+    function renderEquipmentPreview() {
+  previewPlayer.rotation.y = player.rotation.y;
+  previewParts.torso.rotation.x = torso.rotation.x;
+  previewParts.leftArmPivot.rotation.x = leftArmPivot.rotation.x;
+  previewParts.rightArmPivot.rotation.x = rightArmPivot.rotation.x;
+  previewParts.leftLegPivot.rotation.x = leftLegPivot.rotation.x;
+  previewParts.rightLegPivot.rotation.x = rightLegPivot.rotation.x;
+  if (previewParts.equippedPickaxe) {
+    previewParts.equippedPickaxe.visible = equippedPickaxe.visible;
+  }
+  if (previewParts.equippedSafetyHelmet) {
+    previewParts.equippedSafetyHelmet.visible = equippedSafetyHelmet.visible;
+  }
+  equipPreviewRenderer.render(equipPreviewScene, equipPreviewCamera);
+    }
+
+    function renderEquipmentWindow() {
+  const slotOrder = ["head", "body", "shoes", "tool"];
+  for (const slotId of slotOrder) {
+    const entry = equipmentSlotEls[slotId];
+    const itemId = inventory.equipped[slotId];
+    const def = itemId ? ITEM_DEFS[itemId] : null;
+    const hasItem = Boolean(def);
+
+    entry.slot.style.background = "rgba(255,255,255,0.95)";
+    entry.slot.style.borderColor = hasItem ? "rgba(255,140,0,0.95)" : "rgba(0,0,0,0.2)";
+    entry.slot.style.boxShadow = hasItem
+      ? "0 0 0 3px rgba(255,140,0,0.35), inset 0 1px 0 rgba(255,255,255,0.8)"
+      : "inset 0 1px 0 rgba(255,255,255,0.8)";
+    entry.slot.style.cursor = hasItem ? "pointer" : "default";
+    entry.slot.title = hasItem ? "더블클릭: 장착 해제" : `${entry.label} 슬롯`;
+    entry.slot.ondblclick = hasItem ? () => unequipSlot(slotId) : null;
+
+    if (hasItem) {
+      entry.content.innerHTML = "";
+      entry.content.style.opacity = "1";
+      const icon = createItemVisualElement(itemId, { size: 34 });
+
+      const name = document.createElement("div");
+      name.textContent = def.name;
+      name.style.fontSize = "11px";
+      name.style.fontWeight = "700";
+      name.style.marginTop = "6px";
+
+      const wrap = document.createElement("div");
+      wrap.style.display = "flex";
+      wrap.style.flexDirection = "column";
+      wrap.style.alignItems = "center";
+      wrap.appendChild(icon);
+      wrap.appendChild(name);
+      entry.content.appendChild(wrap);
+    } else {
+      entry.content.textContent = "비어 있음";
+      entry.content.style.fontSize = "12px";
+      entry.content.style.fontWeight = "700";
+      entry.content.style.opacity = "0.72";
+    }
+  }
+
+  resizeEquipmentPreview();
+  renderEquipmentPreview();
     }
 
 
@@ -777,6 +1231,7 @@ const ITEM_DEFS = {
   function updateInventoryUI() {
   // (기존 작은 HUD는 숨겼으니 여기서 invEl 텍스트는 안 만듦)
   updateEquippedVisual();
+  renderEquipmentWindow();
 
   // 인벤 창이 열려있으면 슬롯 표시 갱신
   if (typeof invOpen !== "undefined" && invOpen) renderInventoryWindow();
@@ -846,6 +1301,91 @@ const pickupEl = document.createElement("div");
 }
 function hidePickupHint() {
   pickupEl.style.display = "none";
+}
+
+const rockHpWrap = document.createElement("div");
+rockHpWrap.id = "rockHpBar";
+rockHpWrap.style.position = "fixed";
+rockHpWrap.style.left = "0";
+rockHpWrap.style.top = "0";
+rockHpWrap.style.width = "84px";
+rockHpWrap.style.padding = "6px 7px 7px";
+rockHpWrap.style.background = "rgba(20,20,20,0.64)";
+rockHpWrap.style.border = "1px solid rgba(255,255,255,0.22)";
+rockHpWrap.style.borderRadius = "10px";
+rockHpWrap.style.backdropFilter = "blur(4px)";
+rockHpWrap.style.pointerEvents = "none";
+rockHpWrap.style.display = "none";
+rockHpWrap.style.transform = "translate(-50%, -100%)";
+rockHpWrap.style.zIndex = "999999";
+
+const rockHpLabel = document.createElement("div");
+rockHpLabel.textContent = "채굴 대상";
+rockHpLabel.style.color = "white";
+rockHpLabel.style.fontFamily = "system-ui, -apple-system, sans-serif";
+rockHpLabel.style.fontSize = "11px";
+rockHpLabel.style.fontWeight = "700";
+rockHpLabel.style.marginBottom = "5px";
+rockHpLabel.style.textAlign = "center";
+
+const rockHpTrack = document.createElement("div");
+rockHpTrack.style.width = "100%";
+rockHpTrack.style.height = "8px";
+rockHpTrack.style.background = "rgba(255,255,255,0.14)";
+rockHpTrack.style.borderRadius = "999px";
+rockHpTrack.style.overflow = "hidden";
+rockHpTrack.style.boxShadow = "inset 0 1px 1px rgba(0,0,0,0.25)";
+
+const rockHpFill = document.createElement("div");
+rockHpFill.style.width = "100%";
+rockHpFill.style.height = "6px";
+rockHpFill.style.margin = "1px";
+rockHpFill.style.background = "linear-gradient(90deg, #ff8a4b, #ffd166)";
+rockHpFill.style.borderRadius = "999px";
+rockHpFill.style.transition = "width 120ms ease";
+
+rockHpTrack.appendChild(rockHpFill);
+rockHpWrap.appendChild(rockHpLabel);
+rockHpWrap.appendChild(rockHpTrack);
+uiLayer.appendChild(rockHpWrap);
+
+function hideRockHpBar() {
+  rockHpWrap.style.display = "none";
+}
+
+function updateRockHpBar(rock) {
+  if (!rock || !rock.parent) {
+    hideRockHpBar();
+    return;
+  }
+
+  const hp = Math.max(0, rock.userData.hp ?? 0);
+  const maxHp = Math.max(1, rock.userData.maxHp ?? 1);
+  const ratio = hp / maxHp;
+  const screenPos = rock.position.clone();
+  screenPos.y += 0.7 + (rock.userData.spawnScale ?? 1) * 0.55;
+  screenPos.project(camera);
+
+  const isVisible =
+    screenPos.z > -1 &&
+    screenPos.z < 1 &&
+    screenPos.x >= -1.15 &&
+    screenPos.x <= 1.15 &&
+    screenPos.y >= -1.15 &&
+    screenPos.y <= 1.15;
+
+  if (!isVisible) {
+    hideRockHpBar();
+    return;
+  }
+
+  const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+  const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+  rockHpWrap.style.display = "block";
+  rockHpWrap.style.left = `${x}px`;
+  rockHpWrap.style.top = `${y}px`;
+  rockHpFill.style.width = `${Math.max(0, Math.min(1, ratio)) * 100}%`;
+  rockHpLabel.textContent = `돌 체력 ${hp}/${maxHp}`;
 }
 
 let activeMineRock = null;
@@ -990,6 +1530,120 @@ function buildStartStall() {
   g.position.set(START_X, START_FLAT_Y, START_Z - 2.3);
   scene.add(g);
   addCollider(g, 1.0);
+
+  return { group: g, top };
+}
+
+const PROP_GRAVITY = 18;
+const PROP_SLEEP_VELOCITY = 0.08;
+const PROP_SURFACE_CLEARANCE = 0.01;
+const PROP_GROUND_RAY = new THREE.Raycaster();
+const dynamicProps = [];
+const supportSurfaces = [];
+
+function registerSupportSurface(mesh) {
+  supportSurfaces.push(mesh);
+  return mesh;
+}
+
+function enableDynamicProp(obj, options = {}) {
+  const body = {
+    obj,
+    velocityY: options.velocityY ?? 0,
+    sleeping: options.sleeping ?? false,
+    clearance: options.clearance ?? PROP_SURFACE_CLEARANCE,
+  };
+  dynamicProps.push(body);
+  obj.userData.dynamicPropBody = body;
+  return body;
+}
+
+function unregisterDynamicProp(obj) {
+  const body = obj?.userData?.dynamicPropBody;
+  if (!body) return;
+
+  const idx = dynamicProps.indexOf(body);
+  if (idx !== -1) dynamicProps.splice(idx, 1);
+  delete obj.userData.dynamicPropBody;
+}
+
+function getGroundYAt(x, z) {
+  PROP_GROUND_RAY.set(new THREE.Vector3(x, 40, z), new THREE.Vector3(0, -1, 0));
+  PROP_GROUND_RAY.far = 80;
+  const hits = PROP_GROUND_RAY.intersectObject(ground, false);
+  return hits.length > 0 ? hits[0].point.y : null;
+}
+
+function getHighestSupportY(box, excludeObj = null) {
+  let bestY = null;
+  const centerX = (box.min.x + box.max.x) * 0.5;
+  const centerZ = (box.min.z + box.max.z) * 0.5;
+  const groundY = getGroundYAt(centerX, centerZ);
+  if (groundY !== null) bestY = groundY;
+
+  for (const mesh of supportSurfaces) {
+    if (!mesh || mesh === excludeObj || !mesh.parent) continue;
+    const supportBox = new THREE.Box3().setFromObject(mesh);
+    const overlapsXZ =
+      box.max.x > supportBox.min.x &&
+      box.min.x < supportBox.max.x &&
+      box.max.z > supportBox.min.z &&
+      box.min.z < supportBox.max.z;
+
+    if (!overlapsXZ) continue;
+    if (supportBox.max.y > box.max.y) continue;
+    if (bestY === null || supportBox.max.y > bestY) bestY = supportBox.max.y;
+  }
+
+  for (const body of dynamicProps) {
+    const other = body.obj;
+    if (!other || other === excludeObj || !other.parent || !body.sleeping) continue;
+    const supportBox = new THREE.Box3().setFromObject(other);
+    const overlapsXZ =
+      box.max.x > supportBox.min.x &&
+      box.min.x < supportBox.max.x &&
+      box.max.z > supportBox.min.z &&
+      box.min.z < supportBox.max.z;
+
+    if (!overlapsXZ) continue;
+    if (supportBox.max.y > box.max.y) continue;
+    if (bestY === null || supportBox.max.y > bestY) bestY = supportBox.max.y;
+  }
+
+  return bestY;
+}
+
+function updateDynamicProps(dt) {
+  for (const body of dynamicProps) {
+    const obj = body.obj;
+    if (!obj || !obj.parent || body.sleeping) continue;
+
+    obj.updateWorldMatrix(true, true);
+    const prevBox = new THREE.Box3().setFromObject(obj);
+    const prevMinY = prevBox.min.y;
+
+    body.velocityY -= PROP_GRAVITY * dt;
+    obj.position.y += body.velocityY * dt;
+    obj.updateWorldMatrix(true, true);
+
+    const nextBox = new THREE.Box3().setFromObject(obj);
+    const supportY = getHighestSupportY(nextBox, obj);
+    if (supportY === null) continue;
+
+    const crossedSupport =
+      body.velocityY <= 0 &&
+      prevMinY >= supportY - body.clearance &&
+      nextBox.min.y <= supportY + body.clearance;
+
+    if (!crossedSupport) continue;
+
+    obj.position.y += supportY + body.clearance - nextBox.min.y;
+    body.velocityY = 0;
+    if (Math.abs(body.velocityY) <= PROP_SLEEP_VELOCITY) {
+      body.sleeping = true;
+    }
+    obj.updateWorldMatrix(true, true);
+  }
 }
 
 
@@ -1021,6 +1675,43 @@ function updatePlayerGroundY(dt) {
 const interactables = []; // 상호작용 가능한 오브젝트 목록
 let activeInteractable = null; // 현재 가까운 대상
 let lastMessageUntil = 0; // 메시지 표시용 타이머
+const pickupItems = [];
+let activePickupItem = null;
+
+function registerPickupItem(obj, itemId, text = null) {
+  const def = ITEM_DEFS[itemId];
+  const entry = {
+    obj,
+    itemId,
+    text: text ?? `E : ${def?.name ?? itemId} 줍기`,
+  };
+  pickupItems.push(entry);
+  obj.userData.pickupItemId = itemId;
+  return entry;
+}
+
+function unregisterPickupItem(obj) {
+  const idx = pickupItems.findIndex((entry) => entry.obj === obj);
+  if (idx !== -1) pickupItems.splice(idx, 1);
+  delete obj.userData.pickupItemId;
+}
+
+function findNearestPickupItem(radius = 2.0) {
+  let best = null;
+  let bestD2 = radius * radius;
+  for (const entry of pickupItems) {
+    const obj = entry.obj;
+    if (!obj || !obj.parent) continue;
+    const dx = obj.position.x - player.position.x;
+    const dz = obj.position.z - player.position.z;
+    const d2 = dx * dx + dz * dz;
+    if (d2 < bestD2) {
+      best = entry;
+      bestD2 = d2;
+    }
+  }
+  return best;
+}
 
 
 // Camera controls
@@ -1094,7 +1785,8 @@ function makeTree(x, z) {
 }
 
 // 캐릭터급 바위 (충돌 포함)
-function makeRock(x, z, s = 1, fadeIn = false) {
+function makeRock(x, z, rockSizeDef = ROCK_SIZE_DEFS[1], fadeIn = false) {
+  const scale = rockSizeDef.scale;
   const rockMat = new THREE.MeshStandardMaterial({
     color: 0x6f6f72,
     roughness: 1.0,
@@ -1102,10 +1794,10 @@ function makeRock(x, z, s = 1, fadeIn = false) {
     opacity: fadeIn ? 0 : 1,
   });
   const rock = new THREE.Mesh(
-    new THREE.DodecahedronGeometry(0.9 * s, 0),
+    new THREE.DodecahedronGeometry(0.9 * scale, 0),
     rockMat
   );
-  rock.position.set(x, 0.9 * s, z);
+  rock.position.set(x, 0.9 * scale, z);
 
   // 약간 울퉁불퉁한 느낌
   rock.rotation.set(randRange(0, Math.PI), randRange(0, Math.PI), randRange(0, Math.PI));
@@ -1118,7 +1810,11 @@ function makeRock(x, z, s = 1, fadeIn = false) {
   const colliderIndex = addCollider(rock, 0.85);
   rock.userData.isMineRock = true;
   rock.userData.colliderIndex = colliderIndex;
-  rock.userData.spawn = { x, z, s };
+  rock.userData.rockSize = rockSizeDef.id;
+  rock.userData.spawnScale = scale;
+  rock.userData.hp = rockSizeDef.maxHp;
+  rock.userData.maxHp = rockSizeDef.maxHp;
+  rock.userData.spawn = { x, z, rockSize: rockSizeDef.id };
   if (fadeIn) {
     rock.userData.fadeInElapsed = 0;
     rock.userData.fadeInDuration = 1.0;
@@ -1129,10 +1825,12 @@ function makeRock(x, z, s = 1, fadeIn = false) {
 
 function scheduleRockRespawn(spawn) {
   setTimeout(() => {
-    const s = spawn?.s ?? randRange(0.8, 1.3);
-    const next = findRockSpawnPosition(s, 120);
+    const rockSizeDef =
+      ROCK_SIZE_DEFS.find((entry) => entry.id === spawn?.rockSize) ??
+      ROCK_SIZE_DEFS[Math.floor(Math.random() * ROCK_SIZE_DEFS.length)];
+    const next = findRockSpawnPosition(rockSizeDef.scale, 120);
     if (!next) return;
-    makeRock(next.x, next.z, s, true);
+    makeRock(next.x, next.z, rockSizeDef, true);
   }, ROCK_RESPAWN_MS);
 }
 
@@ -1161,32 +1859,154 @@ function updateRockFadeIns(dt) {
 }
 
 // ===== Pickaxe item =====
-function makePickaxe(x, z) {
+function buildPickaxeModel() {
   const g = new THREE.Group();
 
-  // 손잡이
   const handle = new THREE.Mesh(
     new THREE.CylinderGeometry(0.06, 0.06, 1.2, 8),
-    new THREE.MeshStandardMaterial({ color: 0x8b5a2b })
+    new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.9 })
   );
   handle.position.y = 0.6;
 
-  // 헤드
   const head = new THREE.Mesh(
     new THREE.BoxGeometry(0.8, 0.15, 0.2),
-    new THREE.MeshStandardMaterial({ color: 0x9aa0a6 })
+    new THREE.MeshStandardMaterial({ color: 0x9aa0a6, roughness: 0.8 })
   );
   head.position.y = 1.2;
 
   g.add(handle, head);
-  g.position.set(x, 0, z);
+  return g;
+}
 
-  // 살짝 누워있는 느낌
-  g.rotation.z = Math.PI * 0.15;
+function buildSafetyHelmetModel() {
+  const g = new THREE.Group();
+
+  const shellMat = new THREE.MeshStandardMaterial({
+    color: 0xf7f7f9,
+    roughness: 0.5,
+    metalness: 0.02,
+  });
+  const ridgeMat = new THREE.MeshStandardMaterial({
+    color: 0xe8e8ee,
+    roughness: 0.42,
+    metalness: 0.03,
+  });
+  const trimMat = new THREE.MeshStandardMaterial({ color: 0xd9d9de, roughness: 0.72 });
+
+  const shell = new THREE.Mesh(
+    new THREE.SphereGeometry(0.37, 28, 20, 0, Math.PI * 2, 0, Math.PI * 0.64),
+    shellMat
+  );
+  shell.scale.set(1.03, 0.82, 1.14);
+  shell.position.y = 0.18;
+
+  const brim = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.37, 0.43, 0.045, 28),
+    shellMat
+  );
+  brim.scale.set(1.03, 1, 1.26);
+  brim.position.y = -0.02;
+
+  const frontLip = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.035, 0.42, 4, 10),
+    ridgeMat
+  );
+  frontLip.rotation.z = Math.PI / 2;
+  frontLip.position.set(0, 0.02, 0.38);
+
+  const shellBand = new THREE.Mesh(
+    new THREE.TorusGeometry(0.31, 0.03, 8, 28),
+    trimMat
+  );
+  shellBand.rotation.x = Math.PI / 2;
+  shellBand.scale.set(1.02, 1, 1.12);
+  shellBand.position.y = 0.02;
+
+  const ridge = new THREE.Mesh(
+    new THREE.BoxGeometry(0.11, 0.34, 0.14),
+    ridgeMat
+  );
+  ridge.position.set(0, 0.36, -0.01);
+  ridge.rotation.x = Math.PI * 0.08;
+
+  const rearRidge = new THREE.Mesh(
+    new THREE.BoxGeometry(0.08, 0.16, 0.12),
+    ridgeMat
+  );
+  rearRidge.position.set(0, 0.44, -0.08);
+  rearRidge.rotation.x = Math.PI * -0.08;
+
+  const brimEdge = new THREE.Mesh(
+    new THREE.TorusGeometry(0.33, 0.018, 8, 28),
+    trimMat
+  );
+  brimEdge.rotation.x = Math.PI / 2;
+  brimEdge.scale.set(1.04, 1, 1.22);
+  brimEdge.position.y = -0.005;
+
+  const frontBadge = new THREE.Mesh(
+    new THREE.BoxGeometry(0.12, 0.045, 0.05),
+    trimMat
+  );
+  frontBadge.position.set(0, -0.01, 0.39);
+
+  g.userData.headSeatOffsetY = -0.01;
+  g.userData.headSeatForwardZ = 0.04;
+
+  g.add(shell, brim, frontLip, shellBand, ridge, rearRidge, brimEdge, frontBadge);
+  return g;
+}
+
+function alignWearableOnHead(headMesh, wearable, options = {}) {
+  if (!headMesh?.geometry || !wearable) return;
+
+  if (!headMesh.geometry.boundingBox) {
+    headMesh.geometry.computeBoundingBox();
+  }
+
+  const headBox = headMesh.geometry.boundingBox;
+  const headHeight = headBox.max.y - headBox.min.y;
+  const headDepth = headBox.max.z - headBox.min.z;
+  const seatY = wearable.userData.headSeatOffsetY ?? 0;
+  const seatForwardZ = wearable.userData.headSeatForwardZ ?? 0;
+  const verticalInset = options.verticalInset ?? 0.26;
+  const forwardBias = options.forwardBias ?? 0.12;
+
+  const targetSeatY = headBox.max.y - headHeight * verticalInset;
+  const targetZ = (headBox.min.z + headBox.max.z) * 0.5 + headDepth * forwardBias;
+
+  wearable.position.x = 0;
+  wearable.position.y = targetSeatY - seatY;
+  wearable.position.z = targetZ - seatForwardZ;
+}
+
+function makePickaxe(x, z, y = 0, rotation = null) {
+  const g = buildPickaxeModel();
+  g.position.set(x, y, z);
+
+  if (rotation) {
+    g.rotation.set(rotation.x, rotation.y, rotation.z);
+  } else {
+    // 기본값은 바닥에 떨어진 듯한 기울기
+    g.rotation.z = Math.PI * 0.15;
+  }
 
   // 아이템 정보
   g.userData.isPickaxe = true;
 
+  scene.add(g);
+  return g;
+}
+
+function makeSafetyHelmet(x, z, y = 0, rotation = null) {
+  const g = buildSafetyHelmetModel();
+  g.position.set(x, y, z);
+
+  if (rotation) {
+    g.rotation.set(rotation.x, rotation.y, rotation.z);
+  }
+
+  g.userData.isSafetyHelmet = true;
   scene.add(g);
   return g;
 }
@@ -1223,20 +2043,45 @@ function spawnTreesAndRocks() {
 
   // 바위 (크기 조금씩 다르게)
   for (let i = 0; i < ROCK_COUNT; i++) {
-    const s = randRange(0.8, 1.3); // 캐릭터급 크기 변주
-    const spawnPos = findRockSpawnPosition(s, 120);
+    const rockSizeDef = ROCK_SIZE_DEFS[Math.floor(Math.random() * ROCK_SIZE_DEFS.length)];
+    const spawnPos = findRockSpawnPosition(rockSizeDef.scale, 120);
     if (!spawnPos) continue;
-    makeRock(spawnPos.x, spawnPos.z, s);
+    makeRock(spawnPos.x, spawnPos.z, rockSizeDef);
   }
 }
 
 spawnTreesAndRocks();
 buildStartZoneWall();
-buildStartStall();
+const startStall = buildStartStall();
+registerSupportSurface(startStall.top);
 
 
-// ===== Place pickaxe in starting area =====
-const pickaxe = makePickaxe(2.5, 0); // 시작 원 안쪽
+// ===== Place pickaxe on top of the starting stall =====
+const pickaxe = makePickaxe(
+  START_X + 0.8,
+  START_Z - 2.8,
+  START_FLAT_Y + 2.4,
+  {
+    x: Math.PI / 2,
+    y: Math.PI * 0.04,
+    z: 0,
+  }
+);
+enableDynamicProp(pickaxe);
+registerPickupItem(pickaxe, "pickaxe", "E : 곡괭이 줍기");
+
+const safetyHelmet = makeSafetyHelmet(
+  START_X - 1.15,
+  START_Z - 2.62,
+  START_FLAT_Y + 2.45,
+  {
+    x: 0,
+    y: Math.PI * -0.12,
+    z: Math.PI * 0.02,
+  }
+);
+enableDynamicProp(safetyHelmet);
+registerPickupItem(safetyHelmet, "safetyHelmet", "E : 안전모 줍기");
 
 
 
@@ -1289,20 +2134,25 @@ window.addEventListener("keydown", (e) => {
   const k = e.key.toLowerCase();
   console.log("KEYDOWN:", k);
 
-  // ===== E : 곡괭이 줍기 (획득만, 장착은 인벤 더블클릭) =====
-  if (k === "e" && pickaxe && pickaxe.parent) {
-  const dx = pickaxe.position.x - player.position.x;
-  const dz = pickaxe.position.z - player.position.z;
-  const d = Math.hypot(dx, dz); // ✅ 수평 거리만
+  // ===== E : 월드 아이템 줍기 =====
+  if (k === "e") {
+  const pickup = findNearestPickupItem(2.0);
+  if (pickup) {
+    const added = addItem(pickup.itemId, 1);
+    if (added) {
+      updateInventoryUI();
+      const def = ITEM_DEFS[pickup.itemId];
+      const msg =
+        pickup.itemId === "pickaxe" ? HUD_MSG.PICKAXE_GET :
+        pickup.itemId === "safetyHelmet" ? HUD_MSG.HELMET_GET :
+        `${def?.name ?? pickup.itemId} 획득!`;
+      showUI(msg);
+      lastMessageUntil = performance.now() + 900;
 
-  if (d < 2.0) {
-    if (!hasItem("pickaxe")) addItem("pickaxe", 1);
-
-    updateInventoryUI();
-    showUI(HUD_MSG.PICKAXE_GET);
-    lastMessageUntil = performance.now() + 900;
-
-    pickaxe.removeFromParent();
+      unregisterDynamicProp(pickup.obj);
+      unregisterPickupItem(pickup.obj);
+      pickup.obj.removeFromParent();
+    }
     return;
   }
   }
@@ -1461,6 +2311,19 @@ function isStartRingTransitionBlocked(x0, z0, x1, z1) {
 
 // Movement
 const clock = new THREE.Clock();
+const MINING_SWING_DURATION = 0.28;
+let miningSwingTime = 0;
+
+function triggerMiningSwing(target = null) {
+  miningSwingTime = MINING_SWING_DURATION;
+  if (!target) return;
+
+  const dx = target.position.x - player.position.x;
+  const dz = target.position.z - player.position.z;
+  if (Math.abs(dx) > 1e-4 || Math.abs(dz) > 1e-4) {
+    player.rotation.y = Math.atan2(dx, dz);
+  }
+}
 
 function updateMovement(dt) {
   const forward = new THREE.Vector3();
@@ -1533,6 +2396,25 @@ function updateMovement(dt) {
     torso.rotation.x *= 0.8;
   }
 
+  if (miningSwingTime > 0) {
+    miningSwingTime = Math.max(0, miningSwingTime - dt);
+    const phase = 1 - (miningSwingTime / MINING_SWING_DURATION);
+
+    let mainSwing = 0;
+    if (phase < 0.35) {
+      mainSwing = THREE.MathUtils.lerp(-1.05, -0.1, phase / 0.35);
+    } else {
+      mainSwing = THREE.MathUtils.lerp(-0.1, 1.3, (phase - 0.35) / 0.65);
+    }
+
+    const supportSwing = THREE.MathUtils.lerp(0.15, 0.65, Math.sin(Math.min(phase, 1) * Math.PI));
+    leftArmPivot.rotation.x = mainSwing;
+    rightArmPivot.rotation.x = -supportSwing * 0.65;
+    torso.rotation.x = THREE.MathUtils.lerp(-0.08, 0.22, Math.sin(phase * Math.PI));
+    leftLegPivot.rotation.x *= 0.55;
+    rightLegPivot.rotation.x *= 0.55;
+  }
+
   // ===== Starting Zone clamp (hard boundary) =====
   if (START_WALL_ON && START_HARD_CLAMP) {
     const dx = player.position.x - START_X;
@@ -1557,6 +2439,7 @@ function updateMovement(dt) {
 window.addEventListener("keydown", (e) => {
   if (e.code !== "Space") return;
   if (!activeMineRock) return;
+  triggerMiningSwing(activeMineRock);
   if (!hasEquippedTool("pickaxe")) {
   // 곡괭이를 '가지고는' 있는데 장착이 안 된 상태면
   if (findFirstSlotWithItem("pickaxe") !== -1) {
@@ -1568,14 +2451,27 @@ window.addEventListener("keydown", (e) => {
   return;
 }
 
-
-  // 채집!
   const minedRock = activeMineRock;
+  const miningPower = getEquippedMiningPower();
+  if (miningPower <= 0) return;
+
+  minedRock.userData.hp = Math.max(0, (minedRock.userData.hp ?? 1) - miningPower);
+  const remainingHp = minedRock.userData.hp ?? 0;
+
+  spawnDustBurst(minedRock.position, remainingHp > 0 ? 8 : 10);
+
+  if (remainingHp > 0) {
+    updateRockHpBar(minedRock);
+    showUI("채굴 중...");
+    lastMessageUntil = performance.now() + 700;
+    return;
+  }
+
   const spawn = minedRock.userData.spawn
     ? { ...minedRock.userData.spawn }
-    : { x: minedRock.position.x, z: minedRock.position.z, s: 1 };
+    : { x: minedRock.position.x, z: minedRock.position.z, rockSize: "small" };
 
-  spawnDustBurst(minedRock.position, 18);
+  spawnRockBreakBurst(minedRock);
   addItem("stoneDust", 1);
   updateInventoryUI();
 
@@ -1592,6 +2488,7 @@ window.addEventListener("keydown", (e) => {
 
   // 힌트 숨기기
   activeMineRock = null;
+  hideRockHpBar();
   hidePickupHint();
 });
 
@@ -1601,8 +2498,10 @@ function animate() {
   const dt = Math.min(clock.getDelta(), 0.033);
 
   updateMovement(dt);
+  updateDynamicProps(dt);
   updateParticles(dt);
   updateRockFadeIns(dt);
+  if (invOpen) renderEquipmentPreview();
   if (latestMoveDir.lengthSq() > 1e-6) {
     updateCompassFromDirection(latestMoveDir);
   } else {
@@ -1640,22 +2539,20 @@ function animate() {
 // 우선순위: 1) 곡괭이 줍기 2) 돌 채집 3) 표지판 조사 4) 아무것도 없으면 숨김
 let hintText = "";
 
-// 1) 곡괭이 줍기 힌트
-if (pickaxe && pickaxe.parent) {
-  const dx = pickaxe.position.x - player.position.x;
-  const dz = pickaxe.position.z - player.position.z;
-  const d = Math.hypot(dx, dz);
-  if (d < 2.0) hintText = "E : 곡괭이 줍기";
+// 1) 월드 장비 줍기 힌트
+activePickupItem = findNearestPickupItem(2.0);
+if (activePickupItem) {
+  hintText = activePickupItem.text;
 }
 
-// 2) 돌 채집 힌트 (곡괭이가 줍기 힌트가 없을 때만)
+// 2) 돌 채집 힌트 (아이템 줍기 힌트가 없을 때만)
 if (!hintText) {
   activeMineRock = findNearestMineRock(2.2);
   if (activeMineRock) {
     // 곡괭이 필요/장착 필요/채집 가능 문구 분기
     if (!hasItem("pickaxe")) hintText = "⛏️ 필요";
     else if (!hasEquippedTool("pickaxe")) hintText = "⛏️ 장착 필요";
-    else hintText = "Space : 돌가루 채집";
+    else hintText = "Space : 채굴";
   }
 }
 
@@ -1668,6 +2565,16 @@ if (!hintText && activeInteractable) {
 if (hintText) showHint(hintText);
 else hideHint();
 
+if (
+  activeMineRock &&
+  hasItem("pickaxe") &&
+  hasEquippedTool("pickaxe")
+) {
+  updateRockHpBar(activeMineRock);
+} else {
+  hideRockHpBar();
+}
+
   renderer.render(scene, camera);
 }
 
@@ -1677,4 +2584,5 @@ window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  resizeEquipmentPreview();
 });
