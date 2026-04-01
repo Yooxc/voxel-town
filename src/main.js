@@ -144,6 +144,110 @@ equipWin.style.zIndex = "1000001";
 equipWin.style.overflow = "hidden";
 uiLayer.appendChild(equipWin);
 
+const questWin = document.createElement("div");
+questWin.id = "questWindow";
+questWin.style.position = "fixed";
+questWin.style.right = "12px";
+questWin.style.top = "12px";
+questWin.style.width = "318px";
+questWin.style.height = "420px";
+questWin.style.background = "rgba(235, 235, 235, 0.92)";
+questWin.style.border = "1px solid rgba(0,0,0,0.25)";
+questWin.style.borderRadius = "10px";
+questWin.style.boxShadow = "0 12px 30px rgba(0,0,0,0.25)";
+questWin.style.backdropFilter = "blur(6px)";
+questWin.style.display = "none";
+questWin.style.pointerEvents = "auto";
+questWin.style.userSelect = "none";
+questWin.style.zIndex = "1000001";
+questWin.style.overflow = "hidden";
+uiLayer.appendChild(questWin);
+
+const questHeader = document.createElement("div");
+questHeader.style.padding = "10px";
+questHeader.style.display = "flex";
+questHeader.style.alignItems = "center";
+questHeader.style.justifyContent = "space-between";
+questHeader.style.gap = "10px";
+questHeader.style.fontFamily = "system-ui, -apple-system, sans-serif";
+questHeader.style.fontSize = "14px";
+questHeader.style.fontWeight = "700";
+questHeader.style.letterSpacing = "0.04em";
+questHeader.style.color = "#222";
+questHeader.style.borderBottom = "1px solid rgba(0,0,0,0.15)";
+questHeader.style.background = "rgba(255,255,255,0.7)";
+questHeader.style.cursor = "grab";
+
+const questHeaderTitle = document.createElement("div");
+questHeaderTitle.textContent = "QUEST";
+questHeader.appendChild(questHeaderTitle);
+
+const questArchiveToggleBtn = document.createElement("button");
+questArchiveToggleBtn.type = "button";
+questArchiveToggleBtn.textContent = "완료 보기";
+questArchiveToggleBtn.style.padding = "6px 10px";
+questArchiveToggleBtn.style.borderRadius = "999px";
+questArchiveToggleBtn.style.border = "1px solid rgba(0,0,0,0.14)";
+questArchiveToggleBtn.style.background = "rgba(255,255,255,0.9)";
+questArchiveToggleBtn.style.color = "#444";
+questArchiveToggleBtn.style.fontFamily = "system-ui, -apple-system, sans-serif";
+questArchiveToggleBtn.style.fontSize = "12px";
+questArchiveToggleBtn.style.fontWeight = "700";
+questArchiveToggleBtn.style.cursor = "pointer";
+questArchiveToggleBtn.style.pointerEvents = "auto";
+questHeader.appendChild(questArchiveToggleBtn);
+
+questWin.appendChild(questHeader);
+
+const questBody = document.createElement("div");
+questBody.style.padding = "14px";
+questBody.style.height = "calc(100% - 44px)";
+questBody.style.boxSizing = "border-box";
+questBody.style.display = "flex";
+questBody.style.flexDirection = "column";
+questBody.style.gap = "12px";
+questBody.style.overflowY = "auto";
+questBody.style.overflowX = "hidden";
+questBody.style.scrollbarWidth = "thin";
+questBody.style.scrollbarColor = "rgba(140,140,140,0.75) rgba(255,255,255,0.2)";
+questWin.appendChild(questBody);
+
+const questTitle = document.createElement("div");
+questTitle.style.fontFamily = "system-ui, -apple-system, sans-serif";
+questTitle.style.fontSize = "18px";
+questTitle.style.fontWeight = "800";
+questTitle.style.color = "#222";
+questBody.appendChild(questTitle);
+
+const questDesc = document.createElement("div");
+questDesc.style.padding = "12px";
+questDesc.style.borderRadius = "10px";
+questDesc.style.background = "rgba(255,255,255,0.92)";
+questDesc.style.border = "1px solid rgba(0,0,0,0.12)";
+questDesc.style.fontFamily = "system-ui, -apple-system, sans-serif";
+questDesc.style.fontSize = "13px";
+questDesc.style.lineHeight = "1.55";
+questDesc.style.color = "#444";
+questBody.appendChild(questDesc);
+
+const questStepList = document.createElement("div");
+questStepList.style.display = "grid";
+questStepList.style.gap = "8px";
+questBody.appendChild(questStepList);
+
+const questFooter = document.createElement("div");
+questFooter.style.marginTop = "auto";
+questFooter.style.padding = "10px 12px";
+questFooter.style.borderRadius = "10px";
+questFooter.style.background = "rgba(255,255,255,0.88)";
+questFooter.style.border = "1px solid rgba(0,0,0,0.12)";
+questFooter.style.fontFamily = "system-ui, -apple-system, sans-serif";
+questFooter.style.fontSize = "12px";
+questFooter.style.lineHeight = "1.5";
+questFooter.style.color = "#555";
+questFooter.textContent = "Q 키로 퀘스트를 열고, Space 키로 튜토리얼 NPC와 대화할 수 있습니다.";
+questBody.appendChild(questFooter);
+
 const equipHeader = document.createElement("div");
 equipHeader.textContent = "EQUIPMENT";
 equipHeader.style.padding = "10px";
@@ -242,6 +346,171 @@ createEquipmentSlot("head", "모자", 1, 1);
 createEquipmentSlot("body", "상의", 1, 2);
 createEquipmentSlot("shoes", "신발", 1, 3);
 createEquipmentSlot("tool", "무기", 3, 2);
+
+const forgeOverlay = document.createElement("div");
+forgeOverlay.id = "forgeOverlay";
+forgeOverlay.style.position = "fixed";
+forgeOverlay.style.inset = "0";
+forgeOverlay.style.background = "rgba(20, 24, 30, 0.3)";
+forgeOverlay.style.backdropFilter = "blur(3px)";
+forgeOverlay.style.display = "none";
+forgeOverlay.style.pointerEvents = "auto";
+forgeOverlay.style.zIndex = "1000001";
+uiLayer.appendChild(forgeOverlay);
+
+const forgeWin = document.createElement("div");
+forgeWin.id = "forgeWindow";
+forgeWin.style.position = "fixed";
+forgeWin.style.left = "50%";
+forgeWin.style.top = "50%";
+forgeWin.style.transform = "translate(-50%, -50%)";
+forgeWin.style.width = "min(620px, calc(100vw - 36px))";
+forgeWin.style.minHeight = "430px";
+forgeWin.style.background = "rgba(235, 235, 235, 0.96)";
+forgeWin.style.border = "1px solid rgba(0,0,0,0.25)";
+forgeWin.style.borderRadius = "14px";
+forgeWin.style.boxShadow = "0 18px 42px rgba(0,0,0,0.28)";
+forgeWin.style.backdropFilter = "blur(6px)";
+forgeWin.style.boxSizing = "border-box";
+forgeWin.style.display = "none";
+forgeWin.style.pointerEvents = "auto";
+forgeWin.style.userSelect = "none";
+forgeWin.style.zIndex = "1000002";
+forgeWin.style.overflow = "hidden";
+uiLayer.appendChild(forgeWin);
+
+const forgeHeader = document.createElement("div");
+forgeHeader.style.display = "flex";
+forgeHeader.style.alignItems = "center";
+forgeHeader.style.justifyContent = "space-between";
+forgeHeader.style.padding = "12px 14px";
+forgeHeader.style.borderBottom = "1px solid rgba(0,0,0,0.15)";
+forgeHeader.style.background = "rgba(255,255,255,0.7)";
+forgeWin.appendChild(forgeHeader);
+
+const forgeTitle = document.createElement("div");
+forgeTitle.textContent = "곡괭이 강화";
+forgeTitle.style.fontFamily = "system-ui, -apple-system, sans-serif";
+forgeTitle.style.fontSize = "18px";
+forgeTitle.style.fontWeight = "800";
+forgeTitle.style.color = "#222";
+forgeHeader.appendChild(forgeTitle);
+
+const forgeHeaderNote = document.createElement("div");
+forgeHeaderNote.textContent = "대장간 모루";
+forgeHeaderNote.style.fontFamily = "system-ui, -apple-system, sans-serif";
+forgeHeaderNote.style.fontSize = "12px";
+forgeHeaderNote.style.fontWeight = "700";
+forgeHeaderNote.style.color = "rgba(70,70,70,0.78)";
+forgeHeader.appendChild(forgeHeaderNote);
+
+const forgeBody = document.createElement("div");
+forgeBody.style.padding = "18px";
+forgeBody.style.display = "grid";
+forgeBody.style.gridTemplateRows = "auto auto 1fr auto";
+forgeBody.style.gap = "14px";
+forgeWin.appendChild(forgeBody);
+
+const forgeHero = document.createElement("div");
+forgeHero.style.display = "grid";
+forgeHero.style.gridTemplateColumns = "1fr 150px 1fr";
+forgeHero.style.alignItems = "center";
+forgeHero.style.gap = "14px";
+forgeBody.appendChild(forgeHero);
+
+const forgeCurrentCard = document.createElement("div");
+forgeCurrentCard.style.minHeight = "132px";
+forgeCurrentCard.style.borderRadius = "12px";
+forgeCurrentCard.style.background = "rgba(255,255,255,0.95)";
+forgeCurrentCard.style.border = "1px solid rgba(0,0,0,0.18)";
+forgeCurrentCard.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.8)";
+forgeCurrentCard.style.padding = "14px";
+forgeCurrentCard.style.boxSizing = "border-box";
+forgeCurrentCard.style.fontFamily = "system-ui, -apple-system, sans-serif";
+forgeHero.appendChild(forgeCurrentCard);
+
+const forgeCenterCard = document.createElement("div");
+forgeCenterCard.style.minHeight = "132px";
+forgeCenterCard.style.borderRadius = "14px";
+forgeCenterCard.style.background = "linear-gradient(180deg, rgba(255,194,105,0.22), rgba(255,156,64,0.12))";
+forgeCenterCard.style.border = "1px solid rgba(255,162,68,0.38)";
+forgeCenterCard.style.boxShadow = "0 0 0 3px rgba(255,186,90,0.14), inset 0 1px 0 rgba(255,255,255,0.7)";
+forgeCenterCard.style.display = "flex";
+forgeCenterCard.style.flexDirection = "column";
+forgeCenterCard.style.alignItems = "center";
+forgeCenterCard.style.justifyContent = "center";
+forgeCenterCard.style.padding = "10px";
+forgeHero.appendChild(forgeCenterCard);
+
+const forgeChanceLabel = document.createElement("div");
+forgeChanceLabel.textContent = "강화 실행";
+forgeChanceLabel.style.fontFamily = "system-ui, -apple-system, sans-serif";
+forgeChanceLabel.style.fontSize = "12px";
+forgeChanceLabel.style.fontWeight = "700";
+forgeChanceLabel.style.color = "rgba(88,66,34,0.76)";
+forgeCenterCard.appendChild(forgeChanceLabel);
+
+const forgeChanceValue = document.createElement("button");
+forgeChanceValue.type = "button";
+forgeChanceValue.style.marginTop = "10px";
+forgeChanceValue.style.minWidth = "110px";
+forgeChanceValue.style.border = "1px solid rgba(150,90,20,0.35)";
+forgeChanceValue.style.borderRadius = "12px";
+forgeChanceValue.style.padding = "14px 18px";
+forgeChanceValue.style.fontFamily = "system-ui, -apple-system, sans-serif";
+forgeChanceValue.style.fontSize = "32px";
+forgeChanceValue.style.fontWeight = "900";
+forgeChanceValue.style.color = "#7a4a12";
+forgeChanceValue.style.background = "rgba(255,255,255,0.78)";
+forgeChanceValue.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.8)";
+forgeChanceValue.style.cursor = "pointer";
+forgeCenterCard.appendChild(forgeChanceValue);
+
+const forgeNextCard = document.createElement("div");
+forgeNextCard.style.minHeight = "132px";
+forgeNextCard.style.borderRadius = "12px";
+forgeNextCard.style.background = "rgba(255,255,255,0.95)";
+forgeNextCard.style.border = "1px solid rgba(0,0,0,0.18)";
+forgeNextCard.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.8)";
+forgeNextCard.style.padding = "14px";
+forgeNextCard.style.boxSizing = "border-box";
+forgeNextCard.style.fontFamily = "system-ui, -apple-system, sans-serif";
+forgeHero.appendChild(forgeNextCard);
+
+const forgeInfo = document.createElement("div");
+forgeInfo.style.display = "grid";
+forgeInfo.style.gridTemplateColumns = "repeat(2, minmax(0, 1fr))";
+forgeInfo.style.gap = "10px";
+forgeBody.appendChild(forgeInfo);
+
+const forgeNotice = document.createElement("div");
+forgeNotice.style.padding = "12px 14px";
+forgeNotice.style.borderRadius = "10px";
+forgeNotice.style.background = "rgba(255,255,255,0.9)";
+forgeNotice.style.border = "1px solid rgba(0,0,0,0.12)";
+forgeNotice.style.fontFamily = "system-ui, -apple-system, sans-serif";
+forgeNotice.style.fontSize = "13px";
+forgeNotice.style.lineHeight = "1.5";
+forgeNotice.style.color = "#444";
+forgeBody.appendChild(forgeNotice);
+
+const forgeActions = document.createElement("div");
+forgeActions.style.display = "flex";
+forgeActions.style.justifyContent = "flex-end";
+forgeActions.style.gap = "8px";
+forgeBody.appendChild(forgeActions);
+
+const forgeCloseBtn = document.createElement("button");
+forgeCloseBtn.textContent = "닫기";
+forgeCloseBtn.style.minWidth = "96px";
+forgeCloseBtn.style.border = "1px solid rgba(0,0,0,0.18)";
+forgeCloseBtn.style.borderRadius = "10px";
+forgeCloseBtn.style.padding = "10px 12px";
+forgeCloseBtn.style.fontSize = "14px";
+forgeCloseBtn.style.cursor = "pointer";
+forgeCloseBtn.style.background = "rgba(255,255,255,0.9)";
+forgeCloseBtn.style.color = "#333";
+forgeActions.appendChild(forgeCloseBtn);
 
 // 상단 탭 바
 const tabBar = document.createElement("div");
@@ -346,12 +615,8 @@ function createFallbackItemIcon(text, size = 24) {
   return icon;
 }
 
-function getItemPreviewDataUrl(itemId, size = 40) {
-  const cacheKey = `${itemId}:${size}`;
+function getRenderedModelPreviewDataUrl(cacheKey, buildModel, size = 40) {
   if (itemPreviewCache.has(cacheKey)) return itemPreviewCache.get(cacheKey);
-
-  const def = ITEM_DEFS[itemId];
-  if (!def?.makeInventoryModel) return null;
 
   const renderer = new THREE.WebGLRenderer({
     antialias: true,
@@ -373,7 +638,7 @@ function getItemPreviewDataUrl(itemId, size = 40) {
   fillLight.position.set(-2, 1.5, -2);
   previewScene.add(fillLight);
 
-  const model = def.makeInventoryModel();
+  const model = buildModel();
   previewScene.add(model);
   model.rotation.set(-0.3, 0.68, 0.1);
 
@@ -397,6 +662,14 @@ function getItemPreviewDataUrl(itemId, size = 40) {
   return dataUrl;
 }
 
+function getItemPreviewDataUrl(itemId, size = 40) {
+  const previewVariant = itemId === "pickaxe" ? `lv${inventory?.pickaxeLevel ?? 0}` : "base";
+  const cacheKey = `${itemId}:${previewVariant}:${size}`;
+  const def = ITEM_DEFS[itemId];
+  if (!def?.makeInventoryModel) return null;
+  return getRenderedModelPreviewDataUrl(cacheKey, () => def.makeInventoryModel(), size);
+}
+
 function createItemVisualElement(itemId, options = {}) {
   const def = ITEM_DEFS[itemId];
   const size = options.size ?? 40;
@@ -417,6 +690,27 @@ function createItemVisualElement(itemId, options = {}) {
   }
 
   return createFallbackItemIcon(def?.icon ?? "?", Math.max(20, Math.round(size * 0.6)));
+}
+
+function createForgeUpgradeVisualElement(itemId, level, size = 54) {
+  if (itemId === "pickaxe") {
+    const cacheKey = `forge:${itemId}:lv${level}:${size}`;
+    const dataUrl = getRenderedModelPreviewDataUrl(cacheKey, () => buildPickaxeModel(level), size);
+    const img = document.createElement("img");
+    img.src = dataUrl;
+    img.alt = ITEM_DEFS[itemId]?.name ?? itemId;
+    img.width = size;
+    img.height = size;
+    img.draggable = false;
+    img.style.display = "block";
+    img.style.width = `${size}px`;
+    img.style.height = `${size}px`;
+    img.style.objectFit = "contain";
+    img.style.pointerEvents = "none";
+    return img;
+  }
+
+  return createItemVisualElement(itemId, { size });
 }
 
 function setTabStyles() {
@@ -516,7 +810,6 @@ function renderInventoryWindow() {
         // 장비 탭에서만 클릭 가능하도록 커서/효과
         if (isEquipTab && equipSlot) {
         slot.style.cursor = "pointer";
-        slot.title = "더블클릭: 장착/해제";
 
         slot.addEventListener("dblclick", () => {
         toggleEquipItem(item.id);
@@ -525,7 +818,16 @@ function renderInventoryWindow() {
 
 
       // 아주 가벼운 툴팁(hover)
-      slot.title = getItemTooltipText(item.id, item.count);
+      const tooltipText = getItemTooltipText(item.id, item.count);
+      slot.addEventListener("pointerenter", (e) => {
+        showItemTooltip(tooltipText, e.clientX, e.clientY);
+      });
+      slot.addEventListener("pointermove", (e) => {
+        showItemTooltip(tooltipText, e.clientX, e.clientY);
+      });
+      slot.addEventListener("pointerleave", () => {
+        hideItemTooltip();
+      });
         }
 
         invgrid.appendChild(slot);
@@ -538,13 +840,75 @@ function setInvOpen(v) {
   invOpen = v;
   invWin.style.display = invOpen ? "block" : "none";
   equipWin.style.display = invOpen ? "block" : "none";
+  if (!invOpen) hideItemTooltip();
   if (invOpen) renderInventoryWindow();
 }
 
+let questOpen = false;
+let questDragState = null;
+function setQuestOpen(v) {
+  questOpen = v;
+  questWin.style.display = questOpen ? "block" : "none";
+  if (questOpen) renderQuestWindow();
+}
+
+questHeader.addEventListener("pointerdown", (e) => {
+  if (e.target === questArchiveToggleBtn) return;
+  const rect = questWin.getBoundingClientRect();
+  questWin.style.left = `${rect.left}px`;
+  questWin.style.top = `${rect.top}px`;
+  questWin.style.right = "auto";
+
+  questDragState = {
+    pointerId: e.pointerId,
+    offsetX: e.clientX - rect.left,
+    offsetY: e.clientY - rect.top,
+  };
+  questHeader.style.cursor = "grabbing";
+  questHeader.setPointerCapture(e.pointerId);
+});
+
+questHeader.addEventListener("pointermove", (e) => {
+  if (!questDragState || questDragState.pointerId !== e.pointerId) return;
+
+  const maxLeft = window.innerWidth - questWin.offsetWidth - 8;
+  const maxTop = window.innerHeight - questWin.offsetHeight - 8;
+  const nextLeft = Math.max(8, Math.min(e.clientX - questDragState.offsetX, maxLeft));
+  const nextTop = Math.max(8, Math.min(e.clientY - questDragState.offsetY, maxTop));
+
+  questWin.style.left = `${nextLeft}px`;
+  questWin.style.top = `${nextTop}px`;
+});
+
+function endQuestDrag(pointerId = null) {
+  if (!questDragState) return;
+  if (pointerId !== null && questDragState.pointerId !== pointerId) return;
+  questDragState = null;
+  questHeader.style.cursor = "grab";
+}
+
+questHeader.addEventListener("pointerup", (e) => {
+  endQuestDrag(e.pointerId);
+});
+
+questHeader.addEventListener("pointercancel", (e) => {
+  endQuestDrag(e.pointerId);
+});
+
+questArchiveToggleBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  questViewMode = questViewMode === "active" ? "completed" : "active";
+  renderQuestWindow();
+});
+
 window.addEventListener("keydown", (e) => {
   // 입력창 없으니 간단 처리
-  if (e.key.toLowerCase() === "i") {
+  const key = e.key.toLowerCase();
+  if (key === "i") {
     setInvOpen(!invOpen);
+  }
+  if (key === "q") {
+    setQuestOpen(!questOpen);
   }
 });
 
@@ -571,6 +935,44 @@ ui.style.willChange = "opacity, transform";
 
 // display는 이제 항상 block로 두고, opacity로만 숨김/표시
 ui.style.display = "block";
+
+const itemTooltip = document.createElement("div");
+itemTooltip.id = "itemTooltip";
+itemTooltip.style.position = "fixed";
+itemTooltip.style.left = "0";
+itemTooltip.style.top = "0";
+itemTooltip.style.maxWidth = "180px";
+itemTooltip.style.padding = "8px 10px";
+itemTooltip.style.background = "rgba(20,20,20,0.9)";
+itemTooltip.style.color = "white";
+itemTooltip.style.fontFamily = "system-ui, -apple-system, sans-serif";
+itemTooltip.style.fontSize = "12px";
+itemTooltip.style.lineHeight = "1.45";
+itemTooltip.style.borderRadius = "10px";
+itemTooltip.style.border = "1px solid rgba(255,255,255,0.14)";
+itemTooltip.style.boxShadow = "0 10px 24px rgba(0,0,0,0.22)";
+itemTooltip.style.pointerEvents = "none";
+itemTooltip.style.whiteSpace = "pre-line";
+itemTooltip.style.zIndex = "1000002";
+itemTooltip.style.display = "none";
+uiLayer.appendChild(itemTooltip);
+
+function showItemTooltip(text, clientX, clientY) {
+  itemTooltip.textContent = text;
+  itemTooltip.style.display = "block";
+
+  const offset = 14;
+  const maxX = window.innerWidth - itemTooltip.offsetWidth - 8;
+  const maxY = window.innerHeight - itemTooltip.offsetHeight - 8;
+  const x = Math.min(clientX + offset, maxX);
+  const y = Math.min(clientY + offset, maxY);
+  itemTooltip.style.left = `${Math.max(8, x)}px`;
+  itemTooltip.style.top = `${Math.max(8, y)}px`;
+}
+
+function hideItemTooltip() {
+  itemTooltip.style.display = "none";
+}
 
 
 let hudTimer = null;
@@ -608,6 +1010,226 @@ const HUD_MSG = {
   PICKAXE_GET: "⛏️ 획득!",
   HELMET_GET: "🪖 획득!",
 };
+
+const npcDialog = document.createElement("div");
+npcDialog.style.position = "fixed";
+npcDialog.style.left = "50%";
+npcDialog.style.bottom = "118px";
+npcDialog.style.transform = "translateX(-50%)";
+npcDialog.style.maxWidth = "min(460px, calc(100vw - 32px))";
+npcDialog.style.padding = "12px 14px";
+npcDialog.style.background = "rgba(255,255,255,0.94)";
+npcDialog.style.border = "1px solid rgba(0,0,0,0.16)";
+npcDialog.style.borderRadius = "12px";
+npcDialog.style.boxShadow = "0 12px 26px rgba(0,0,0,0.18)";
+npcDialog.style.fontFamily = "system-ui, -apple-system, sans-serif";
+npcDialog.style.fontSize = "13px";
+npcDialog.style.lineHeight = "1.6";
+npcDialog.style.color = "#333";
+npcDialog.style.display = "none";
+npcDialog.style.pointerEvents = "none";
+npcDialog.style.zIndex = "1000002";
+uiLayer.appendChild(npcDialog);
+
+let npcDialogTimer = null;
+
+function showNpcDialog(text, ms = 2400) {
+  npcDialog.textContent = text;
+  npcDialog.style.display = "block";
+  if (npcDialogTimer) clearTimeout(npcDialogTimer);
+  npcDialogTimer = setTimeout(() => {
+    npcDialog.style.display = "none";
+  }, ms);
+}
+
+const tutorialQuest = {
+  id: "starter_tutorial",
+  title: "광산 작업 준비",
+  description: "작업 감독관의 안내를 따라 기본 장비를 챙기고 첫 채굴과 강화를 배워보세요.",
+  currentStep: 0,
+  minedRockCount: 0,
+  upgradeCount: 0,
+  completed: false,
+  archivedSteps: [],
+  steps: [
+    {
+      title: "장비 챙기기",
+      description: "가판대에서 곡괭이와 안전모를 모두 획득하세요.",
+      check: () => hasItem("pickaxe") && hasItem("safetyHelmet"),
+    },
+    {
+      title: "안전모 착용",
+      description: "인벤토리에서 안전모를 장착하세요.",
+      check: () => inventory.equipped.head === "safetyHelmet",
+    },
+    {
+      title: "곡괭이 장착",
+      description: "인벤토리에서 곡괭이를 장착하세요.",
+      check: () => inventory.equipped.tool === "pickaxe",
+    },
+    {
+      title: "첫 채굴",
+      description: "돌을 1개 채굴해서 돌가루를 모으세요.",
+      check: () => tutorialQuest.minedRockCount >= 1,
+    },
+    {
+      title: "첫 강화",
+      description: "모루에서 착용한 곡괭이를 1회 강화하세요.",
+      check: () => tutorialQuest.upgradeCount >= 1,
+    },
+  ],
+};
+
+let questViewMode = "active";
+
+function getCurrentQuestStep() {
+  if (tutorialQuest.completed) return null;
+  return tutorialQuest.steps[tutorialQuest.currentStep] ?? null;
+}
+
+function getTutorialNpcLine() {
+  const step = getCurrentQuestStep();
+  if (!step) {
+    return "좋아, 이제 기본 작업은 전부 익혔어. 새 설비가 들어오면 다시 안내해주지.";
+  }
+
+  const lines = [
+    "가판대에서 곡괭이와 안전모를 챙겨. 작업장에선 장비부터 갖추는 게 우선이야.",
+    "좋아. 이제 인벤토리를 열어서 안전모부터 써. 광산에선 보호구가 기본이야.",
+    "다음은 곡괭이를 손에 들어. 장비를 갖췄으면 바로 작업할 수 있게 준비해야지.",
+    "앞에 있는 돌을 하나 캐봐. 직접 해보는 게 제일 빠르다.",
+    "이제 모루로 가서 곡괭이를 한 번 강화해봐. 더 강한 장비가 작업 속도를 바꿔줄 거야.",
+  ];
+  return lines[tutorialQuest.currentStep] ?? step.description;
+}
+
+function refreshQuestProgress() {
+  let advanced = false;
+  while (!tutorialQuest.completed) {
+    const step = getCurrentQuestStep();
+    if (!step || !step.check()) break;
+    tutorialQuest.currentStep += 1;
+    advanced = true;
+    if (tutorialQuest.currentStep >= tutorialQuest.steps.length) {
+      tutorialQuest.completed = true;
+      showUI("튜토리얼 퀘스트 완료!", 1200);
+      break;
+    }
+    showUI(`퀘스트 갱신: ${tutorialQuest.steps[tutorialQuest.currentStep].title}`, 1100);
+  }
+  if (advanced && questOpen) renderQuestWindow();
+}
+
+function archiveQuestStep(stepIndex) {
+  const isDone = stepIndex < tutorialQuest.currentStep || tutorialQuest.completed;
+  if (!isDone) return;
+  if (!tutorialQuest.archivedSteps.includes(stepIndex)) {
+    tutorialQuest.archivedSteps.push(stepIndex);
+  }
+  if (questOpen) renderQuestWindow();
+}
+
+function renderQuestWindow() {
+  questArchiveToggleBtn.textContent = questViewMode === "active" ? "완료 보기" : "진행 보기";
+  questTitle.textContent = tutorialQuest.title;
+  const currentStep = getCurrentQuestStep();
+  questDesc.textContent = questViewMode === "completed"
+    ? "완료 버튼을 눌러 정리한 단계들이 이곳에 모여 표시됩니다."
+    : tutorialQuest.completed
+      ? "작업 감독관의 기본 교육을 모두 마쳤습니다. 앞으로 새 기능이 생기면 이 창에서 진행 상황을 확인할 수 있습니다."
+      : currentStep?.description ?? tutorialQuest.description;
+
+  questStepList.innerHTML = "";
+  const visibleSteps = tutorialQuest.steps
+    .map((step, index) => ({ step, index }))
+    .filter(({ index }) => {
+      const isDone = index < tutorialQuest.currentStep || tutorialQuest.completed;
+      const isArchived = tutorialQuest.archivedSteps.includes(index);
+      return questViewMode === "completed"
+        ? isDone && isArchived
+        : !isDone || !isArchived;
+    });
+
+  if (visibleSteps.length === 0) {
+    const row = document.createElement("div");
+    row.style.padding = "10px 12px";
+    row.style.borderRadius = "10px";
+    row.style.background = "rgba(255,255,255,0.9)";
+    row.style.border = "1px solid rgba(0,0,0,0.1)";
+    row.style.fontFamily = "system-ui, -apple-system, sans-serif";
+    row.textContent = questViewMode === "completed"
+      ? "아직 보관한 완료 퀘스트가 없습니다."
+      : "진행 중인 퀘스트가 없습니다.";
+    questStepList.appendChild(row);
+  } else {
+    visibleSteps.forEach(({ step, index }) => {
+      const row = document.createElement("div");
+      const isDone = index < tutorialQuest.currentStep || tutorialQuest.completed;
+      const isActive = !tutorialQuest.completed && index === tutorialQuest.currentStep;
+      row.style.padding = "10px 12px";
+      row.style.borderRadius = "10px";
+      row.style.background = isActive ? "rgba(255,199,120,0.2)" : "rgba(255,255,255,0.9)";
+      row.style.border = isActive
+        ? "1px solid rgba(220,140,40,0.35)"
+        : "1px solid rgba(0,0,0,0.1)";
+      row.style.fontFamily = "system-ui, -apple-system, sans-serif";
+
+      const top = document.createElement("div");
+      top.style.display = "flex";
+      top.style.alignItems = "center";
+      top.style.justifyContent = "space-between";
+      top.style.gap = "8px";
+
+      const title = document.createElement("div");
+      title.textContent = step.title;
+      title.style.fontSize = "14px";
+      title.style.fontWeight = "800";
+      title.style.color = "#222";
+      top.appendChild(title);
+
+      if (isDone && questViewMode === "active") {
+        const archiveBtn = document.createElement("button");
+        archiveBtn.type = "button";
+        archiveBtn.textContent = "완료";
+        archiveBtn.style.padding = "4px 8px";
+        archiveBtn.style.borderRadius = "999px";
+        archiveBtn.style.border = "1px solid rgba(70,150,70,0.22)";
+        archiveBtn.style.background = "rgba(81,181,81,0.16)";
+        archiveBtn.style.color = "#2d7c2d";
+        archiveBtn.style.fontSize = "12px";
+        archiveBtn.style.fontWeight = "700";
+        archiveBtn.style.cursor = "pointer";
+        archiveBtn.style.pointerEvents = "auto";
+        archiveBtn.addEventListener("click", () => {
+          archiveQuestStep(index);
+        });
+        top.appendChild(archiveBtn);
+      } else {
+        const status = document.createElement("div");
+        status.textContent = isDone ? "완료됨" : isActive ? "진행 중" : "대기";
+        status.style.fontSize = "12px";
+        status.style.fontWeight = "700";
+        status.style.color = isDone ? "#2d7c2d" : isActive ? "#9a5c12" : "#888";
+        top.appendChild(status);
+      }
+
+      const desc = document.createElement("div");
+      desc.textContent = step.description;
+      desc.style.marginTop = "6px";
+      desc.style.fontSize = "12px";
+      desc.style.lineHeight = "1.5";
+      desc.style.color = "#555";
+
+      row.appendChild(top);
+      row.appendChild(desc);
+      questStepList.appendChild(row);
+    });
+  }
+
+  questFooter.textContent = questViewMode === "completed"
+    ? "완료 버튼을 눌러 정리한 단계는 여기서 다시 확인할 수 있습니다."
+    : "Q 키로 퀘스트를 열고, Space 키로 튜토리얼 NPC와 대화할 수 있습니다.";
+}
 
 
 
@@ -793,6 +1415,14 @@ const ROCK_SAFE_RADIUS = 8;
 const ROCK_MIN_GAP = 0.55; // 돌끼리 화면상 붙어 보이지 않게 여유
 // ===== Mining particles (stone dust) =====
 const particles = [];
+const rockHitReactions = [];
+let hitStopTime = 0;
+let cameraShakeTime = 0;
+let cameraShakeStrength = 0;
+
+const HIT_STOP_DURATION = 0.045;
+const ROCK_HIT_REACTION_DURATION = 0.12;
+const CAMERA_SHAKE_DURATION = 0.11;
 
 function getRockSpawnBounds() {
   const half = GROUND_SIZE / 2;
@@ -953,8 +1583,10 @@ const ITEM_DEFS = {
     stackMax: 1,
     category: "equip",
     equipSlot: "tool",
-    miningPower: 1,
-    makeInventoryModel: () => buildPickaxeModel(),
+    upgradeKey: "pickaxe",
+    miningPowerMin: 0.9,
+    miningPowerMax: 1.1,
+    makeInventoryModel: () => buildPickaxeModel(inventory?.pickaxeLevel ?? 0),
   },
   safetyHelmet: {
     name: "안전모",
@@ -967,6 +1599,15 @@ const ITEM_DEFS = {
   stoneDust: { name: "돌가루", icon: "🪨", stackMax: 999, category: "misc" },
     };
 
+const PICKAXE_UPGRADE_LEVELS = [
+  { level: 0, miningPowerMin: 0.9, miningPowerMax: 1.1, bonusDropChance: 0.0, swingDuration: 0.28, cost: 0, successChance: 1.0 },
+  { level: 1, miningPowerMin: 1.0, miningPowerMax: 1.15, bonusDropChance: 0.0, swingDuration: 0.265, cost: 3, successChance: 1.0 },
+  { level: 2, miningPowerMin: 1.05, miningPowerMax: 1.2, bonusDropChance: 0.05, swingDuration: 0.25, cost: 6, successChance: 0.9 },
+  { level: 3, miningPowerMin: 1.15, miningPowerMax: 1.25, bonusDropChance: 0.1, swingDuration: 0.235, cost: 10, successChance: 0.75 },
+  { level: 4, miningPowerMin: 1.2, miningPowerMax: 1.35, bonusDropChance: 0.15, swingDuration: 0.22, cost: 15, successChance: 0.55 },
+  { level: 5, miningPowerMin: 1.3, miningPowerMax: 1.45, bonusDropChance: 0.2, swingDuration: 0.205, cost: 22, successChance: 0.35 },
+];
+
 const ROCK_SIZE_DEFS = [
   { id: "small", label: "작은 돌", scale: 0.8, maxHp: 1 },
   { id: "medium", label: "중간 돌", scale: 1.05, maxHp: 2 },
@@ -978,7 +1619,11 @@ function getItemTooltipText(itemId, count = null) {
   if (!def) return itemId;
 
   const lines = [`이름: ${def.name}`];
-  if (typeof def.miningPower === "number") {
+  if (itemId === "pickaxe") {
+    const stats = getCurrentPickaxeStats();
+    lines.push(`강화 단계: Lv.${stats.level}`);
+    lines.push(`채굴력: ${stats.miningPowerMin.toFixed(1)} ~ ${stats.miningPowerMax.toFixed(1)}`);
+  } else if (typeof def.miningPower === "number") {
     lines.push(`채굴력: ${def.miningPower}`);
   }
   if (count && count > 1) {
@@ -987,15 +1632,57 @@ function getItemTooltipText(itemId, count = null) {
   return lines.join("\n");
 }
 
+function getCurrentPickaxeStats() {
+  const level = inventory?.pickaxeLevel ?? 0;
+  return PICKAXE_UPGRADE_LEVELS[Math.min(level, PICKAXE_UPGRADE_LEVELS.length - 1)];
+}
+
+function getNextPickaxeUpgrade() {
+  const nextLevel = (inventory?.pickaxeLevel ?? 0) + 1;
+  return PICKAXE_UPGRADE_LEVELS[nextLevel] ?? null;
+}
+
+function getForgeTargetItemId() {
+  const slotOrder = ["tool", "head", "body", "shoes"];
+  for (const slotId of slotOrder) {
+    const itemId = inventory?.equipped?.[slotId];
+    if (!itemId) continue;
+    if (ITEM_DEFS[itemId]?.upgradeKey) return itemId;
+  }
+  return null;
+}
+
+function getForgeUpgradeState() {
+  const itemId = getForgeTargetItemId();
+  if (!itemId) return null;
+
+  if (itemId === "pickaxe") {
+    return {
+      itemId,
+      name: ITEM_DEFS[itemId].name,
+      level: inventory.pickaxeLevel,
+      current: getCurrentPickaxeStats(),
+      next: getNextPickaxeUpgrade(),
+    };
+  }
+
+  return null;
+}
+
 function getEquippedMiningPower() {
   const toolId = inventory.equipped.tool;
+  if (toolId === "pickaxe") {
+    const stats = getCurrentPickaxeStats();
+    return randRange(stats.miningPowerMin, stats.miningPowerMax);
+  }
   const def = toolId ? ITEM_DEFS[toolId] : null;
   return def?.miningPower ?? 0;
 }
 
     // 인벤토리 데이터: 슬롯 + 장착 상태
-    const inventory = {
+	    const inventory = {
   slots: Array.from({ length: 30 }, () => null), // 30칸(원하면 늘림)
+  pickaxeLevel: 0,
   equipped: {
     head: null,
     body: null,
@@ -1004,15 +1691,21 @@ function getEquippedMiningPower() {
   },
     };
 
-    function findFirstSlotWithItem(id) {
+	    function findFirstSlotWithItem(id) {
   for (let i = 0; i < inventory.slots.length; i++) {
     const s = inventory.slots[i];
     if (s && s.id === id) return i;
   }
   return -1;
+	    }
+
+    function getItemCount(id) {
+  const idx = findFirstSlotWithItem(id);
+  if (idx === -1) return 0;
+  return inventory.slots[idx]?.count ?? 0;
     }
 
-    function findFirstEmptySlot() {
+	    function findFirstEmptySlot() {
   for (let i = 0; i < inventory.slots.length; i++) {
     if (!inventory.slots[i]) return i;
   }
@@ -1036,7 +1729,18 @@ function getEquippedMiningPower() {
   const empty = findFirstEmptySlot();
   if (empty === -1) return false;
 
-  inventory.slots[empty] = { id, count: Math.min(count, def.stackMax) };
+	  inventory.slots[empty] = { id, count: Math.min(count, def.stackMax) };
+	  return true;
+	    }
+
+    function consumeItem(id, count = 1) {
+  const idx = findFirstSlotWithItem(id);
+  if (idx === -1) return false;
+  const slot = inventory.slots[idx];
+  if (!slot || slot.count < count) return false;
+
+  slot.count -= count;
+  if (slot.count <= 0) inventory.slots[idx] = null;
   return true;
     }
 
@@ -1048,7 +1752,7 @@ function getEquippedMiningPower() {
   return findFirstSlotWithItem(id) !== -1;
     }
 
-    const equippedPickaxe = buildPickaxeModel();
+    const equippedPickaxe = new THREE.Group();
     equippedPickaxe.name = "equippedPickaxe";
     equippedPickaxe.scale.setScalar(0.8);
     // 캐릭터 기준 오른손(rightArm) 기준 위치
@@ -1057,6 +1761,22 @@ function getEquippedMiningPower() {
     equippedPickaxe.rotation.set(Math.PI * 0.5, Math.PI * 0.03, -Math.PI * 0.08);
     equippedPickaxe.visible = false;
     leftArm.add(equippedPickaxe);
+
+    function syncPickaxeGroupModel(group, level) {
+  while (group.children.length) {
+    const child = group.children[0];
+    disposeObject3D(child);
+    group.remove(child);
+  }
+  group.add(buildPickaxeModel(level));
+  group.userData.pickaxeLevel = level;
+    }
+
+    function refreshEquippedPickaxeModel() {
+  syncPickaxeGroupModel(equippedPickaxe, inventory.pickaxeLevel);
+    }
+
+    refreshEquippedPickaxeModel();
 
     const equippedSafetyHelmet = buildSafetyHelmetModel();
     equippedSafetyHelmet.name = "equippedSafetyHelmet";
@@ -1094,6 +1814,7 @@ function getEquippedMiningPower() {
   lastMessageUntil = performance.now() + 800;
 
   updateInventoryUI();
+  refreshQuestProgress();
     }
 
     function unequipSlot(slotId) {
@@ -1156,6 +1877,9 @@ function getEquippedMiningPower() {
   previewParts.leftLegPivot.rotation.x = leftLegPivot.rotation.x;
   previewParts.rightLegPivot.rotation.x = rightLegPivot.rotation.x;
   if (previewParts.equippedPickaxe) {
+    if (previewParts.equippedPickaxe.userData.pickaxeLevel !== inventory.pickaxeLevel) {
+      syncPickaxeGroupModel(previewParts.equippedPickaxe, inventory.pickaxeLevel);
+    }
     previewParts.equippedPickaxe.visible = equippedPickaxe.visible;
   }
   if (previewParts.equippedSafetyHelmet) {
@@ -1187,7 +1911,7 @@ function getEquippedMiningPower() {
       const icon = createItemVisualElement(itemId, { size: 34 });
 
       const name = document.createElement("div");
-      name.textContent = def.name;
+      name.textContent = itemId === "pickaxe" ? `${def.name} Lv.${inventory.pickaxeLevel}` : def.name;
       name.style.fontSize = "11px";
       name.style.fontWeight = "700";
       name.style.marginTop = "6px";
@@ -1230,6 +1954,7 @@ function getEquippedMiningPower() {
   invEl.style.display = "none";
   function updateInventoryUI() {
   // (기존 작은 HUD는 숨겼으니 여기서 invEl 텍스트는 안 만듦)
+  refreshEquippedPickaxeModel();
   updateEquippedVisual();
   renderEquipmentWindow();
 
@@ -1237,6 +1962,7 @@ function getEquippedMiningPower() {
   if (typeof invOpen !== "undefined" && invOpen) renderInventoryWindow();
     }
 
+  addItem("stoneDust", 500);
     updateInventoryUI(); // 처음 한번 표시
 
   invEl.style.zIndex = "999999";
@@ -1353,6 +2079,13 @@ function hideRockHpBar() {
   rockHpWrap.style.display = "none";
 }
 
+function formatStatNumber(value) {
+  if (Math.abs(value - Math.round(value)) < 1e-6) {
+    return String(Math.round(value));
+  }
+  return value.toFixed(2);
+}
+
 function updateRockHpBar(rock) {
   if (!rock || !rock.parent) {
     hideRockHpBar();
@@ -1385,7 +2118,7 @@ function updateRockHpBar(rock) {
   rockHpWrap.style.left = `${x}px`;
   rockHpWrap.style.top = `${y}px`;
   rockHpFill.style.width = `${Math.max(0, Math.min(1, ratio)) * 100}%`;
-  rockHpLabel.textContent = `돌 체력 ${hp}/${maxHp}`;
+  rockHpLabel.textContent = `돌 체력 ${formatStatNumber(hp)}/${formatStatNumber(maxHp)}`;
 }
 
 let activeMineRock = null;
@@ -1613,6 +2346,15 @@ function getHighestSupportY(box, excludeObj = null) {
   return bestY;
 }
 
+function restPropOnSupport(obj, supportMesh, clearance = PROP_SURFACE_CLEARANCE) {
+  if (!obj || !supportMesh) return;
+  obj.updateWorldMatrix(true, true);
+  const objBox = new THREE.Box3().setFromObject(obj);
+  const supportBox = new THREE.Box3().setFromObject(supportMesh);
+  obj.position.y += supportBox.max.y + clearance - objBox.min.y;
+  obj.updateWorldMatrix(true, true);
+}
+
 function updateDynamicProps(dt) {
   for (const body of dynamicProps) {
     const obj = body.obj;
@@ -1677,6 +2419,14 @@ let activeInteractable = null; // 현재 가까운 대상
 let lastMessageUntil = 0; // 메시지 표시용 타이머
 const pickupItems = [];
 let activePickupItem = null;
+const tutorialNpcs = [];
+let activeTutorialNpc = null;
+let forgeStation = null;
+let activeForgeStation = null;
+let forgeOpen = false;
+const FORGE_UPGRADE_DELAY_MS = 1050;
+let forgePendingUpgrade = null;
+let forgeLastResult = null;
 
 function registerPickupItem(obj, itemId, text = null) {
   const def = ITEM_DEFS[itemId];
@@ -1712,6 +2462,265 @@ function findNearestPickupItem(radius = 2.0) {
   }
   return best;
 }
+
+function registerTutorialNpc(obj, name, hint = "Space : 대화") {
+  const entry = { obj, name, hint };
+  tutorialNpcs.push(entry);
+  return entry;
+}
+
+function findNearestTutorialNpc(radius = 2.2) {
+  let best = null;
+  let bestD2 = radius * radius;
+  for (const entry of tutorialNpcs) {
+    const obj = entry.obj;
+    if (!obj || !obj.parent) continue;
+    const dx = obj.position.x - player.position.x;
+    const dz = obj.position.z - player.position.z;
+    const d2 = dx * dx + dz * dz;
+    if (d2 < bestD2) {
+      best = entry;
+      bestD2 = d2;
+    }
+  }
+  return best;
+}
+
+function getForgeDistance() {
+  if (!forgeStation?.parent) return Infinity;
+  return forgeStation.position.distanceTo(player.position);
+}
+
+function setForgeOpen(v) {
+  forgeOpen = v;
+  forgeOverlay.style.display = forgeOpen ? "block" : "none";
+  forgeWin.style.display = forgeOpen ? "block" : "none";
+  if (forgeOpen) renderForgeWindow();
+}
+
+function renderForgeItemCard(card, heading, itemId, level, stats, emptyText = "") {
+  card.innerHTML = "";
+
+  const title = document.createElement("div");
+  title.textContent = heading;
+  title.style.fontSize = "12px";
+  title.style.fontWeight = "700";
+  title.style.color = "rgba(70,70,70,0.76)";
+  title.style.marginBottom = "8px";
+  card.appendChild(title);
+
+  if (!itemId || !stats) {
+    const empty = document.createElement("div");
+    empty.style.marginTop = "18px";
+    empty.style.fontSize = "13px";
+    empty.style.lineHeight = "1.6";
+    empty.style.color = "#555";
+    empty.innerHTML = emptyText;
+    card.appendChild(empty);
+    return;
+  }
+
+  const hero = document.createElement("div");
+  hero.style.display = "flex";
+  hero.style.alignItems = "center";
+  hero.style.gap = "12px";
+  card.appendChild(hero);
+
+  const visualWrap = document.createElement("div");
+  visualWrap.style.width = "64px";
+  visualWrap.style.height = "64px";
+  visualWrap.style.borderRadius = "12px";
+  visualWrap.style.background = "linear-gradient(180deg, rgba(246,246,246,0.96), rgba(224,224,224,0.9))";
+  visualWrap.style.border = "1px solid rgba(0,0,0,0.12)";
+  visualWrap.style.display = "flex";
+  visualWrap.style.alignItems = "center";
+  visualWrap.style.justifyContent = "center";
+  visualWrap.style.flex = "0 0 auto";
+  visualWrap.appendChild(createForgeUpgradeVisualElement(itemId, level, 50));
+  hero.appendChild(visualWrap);
+
+  const textWrap = document.createElement("div");
+  textWrap.style.minWidth = "0";
+  hero.appendChild(textWrap);
+
+  const name = document.createElement("div");
+  name.textContent = `${ITEM_DEFS[itemId]?.name ?? itemId} Lv.${level}`;
+  name.style.fontSize = "20px";
+  name.style.fontWeight = "900";
+  name.style.color = "#222";
+  textWrap.appendChild(name);
+
+  const detail = document.createElement("div");
+  detail.style.marginTop = "10px";
+  detail.style.fontSize = "13px";
+  detail.style.lineHeight = "1.6";
+  detail.style.color = "#333";
+  detail.innerHTML = `
+    채굴력 ${stats.miningPowerMin.toFixed(2)} ~ ${stats.miningPowerMax.toFixed(2)}<br>
+    추가 드랍 ${Math.round(stats.bonusDropChance * 100)}%<br>
+    속도 ${Math.round((0.28 / stats.swingDuration) * 100)}%
+  `;
+  card.appendChild(detail);
+}
+
+function finishPendingForgeUpgrade() {
+  if (!forgePendingUpgrade) return;
+
+  const pending = forgePendingUpgrade;
+  forgePendingUpgrade = null;
+  const success = Math.random() < pending.successChance;
+
+  if (success && pending.itemId === "pickaxe") {
+    inventory.pickaxeLevel = pending.targetLevel;
+  }
+
+  forgeLastResult = {
+    success,
+    text: success
+      ? `${pending.name} Lv.${pending.targetLevel} 강화 성공!`
+      : `${pending.name} 강화 실패...`,
+    until: performance.now() + 1600,
+  };
+
+  updateInventoryUI();
+  if (forgeOpen) renderForgeWindow();
+  if (success) {
+    tutorialQuest.upgradeCount += 1;
+    refreshQuestProgress();
+  }
+  showUI(forgeLastResult.text, 1100);
+  lastMessageUntil = performance.now() + 1100;
+}
+
+function renderForgeWindow() {
+  const upgradeState = getForgeUpgradeState();
+  const stats = upgradeState?.current ?? PICKAXE_UPGRADE_LEVELS[0];
+  const next = upgradeState?.next ?? null;
+  const stoneDustCount = getItemCount("stoneDust");
+  const forgeItemName = upgradeState?.name ?? "장착 장비";
+  const isProcessing = Boolean(forgePendingUpgrade);
+  const canUpgrade =
+    forgeOpen &&
+    getForgeDistance() < 2.4 &&
+    Boolean(upgradeState) &&
+    Boolean(next) &&
+    stoneDustCount >= next.cost &&
+    !isProcessing;
+
+  forgeTitle.textContent = upgradeState ? `${forgeItemName} 강화` : "장비 강화";
+  renderForgeItemCard(
+    forgeCurrentCard,
+    "현재 장비",
+    upgradeState?.itemId ?? null,
+    upgradeState?.level ?? 0,
+    upgradeState?.current ?? null,
+    "현재 착용 중인 강화 가능 장비가 없습니다.<br>장비창에서 곡괭이를 먼저 장착해보세요."
+  );
+
+  forgeChanceValue.textContent = isProcessing ? "..." : (next ? `+${next.level - stats.level}` : "MAX");
+  forgeChanceValue.disabled = !canUpgrade;
+  forgeChanceValue.style.opacity = canUpgrade ? "1" : "0.55";
+  forgeChanceValue.style.cursor = canUpgrade ? "pointer" : "default";
+  forgeChanceValue.style.background = canUpgrade
+    ? "rgba(255,255,255,0.82)"
+    : "rgba(255,255,255,0.58)";
+  forgeChanceValue.title = isProcessing ? "강화 진행 중" : (next ? `Lv.${next.level} 강화` : "최대 강화");
+
+  if (next && upgradeState?.itemId) {
+    renderForgeItemCard(forgeNextCard, "다음 강화", upgradeState.itemId, next.level, next);
+  } else {
+    forgeNextCard.innerHTML = `
+      <div style="font-size:12px;font-weight:700;color:rgba(70,70,70,0.76);margin-bottom:8px;">다음 강화</div>
+      <div style="font-size:22px;font-weight:900;color:#222;">최대 단계</div>
+      <div style="margin-top:12px;font-size:13px;line-height:1.6;color:#333;">
+        현재 장비는 더 이상 강화할 수 없습니다.
+      </div>
+    `;
+  }
+
+  forgeInfo.innerHTML = "";
+  const infoCards = [
+    { label: "보유 돌가루", value: `${stoneDustCount}` },
+    { label: "강화 조건", value: upgradeState ? `${forgeItemName} 장착` : "장착 장비 필요" },
+    { label: "현재 안정성", value: upgradeState ? `${(stats.miningPowerMax - stats.miningPowerMin).toFixed(2)} 편차` : "-" },
+    { label: "강화 성공률", value: next ? `${Math.round((next.successChance ?? 1) * 100)}%` : "MAX" },
+    { label: "강화 가능", value: canUpgrade ? "가능" : (next ? "재료 확인" : "최대 단계") },
+  ];
+  for (const entry of infoCards) {
+    const card = document.createElement("div");
+    card.style.padding = "12px";
+    card.style.borderRadius = "10px";
+    card.style.background = "rgba(255,255,255,0.92)";
+    card.style.border = "1px solid rgba(0,0,0,0.12)";
+    card.innerHTML = `
+      <div style="font-size:12px;font-weight:700;color:rgba(70,70,70,0.74);margin-bottom:6px;">${entry.label}</div>
+      <div style="font-size:18px;font-weight:800;color:#242424;">${entry.value}</div>
+    `;
+    forgeInfo.appendChild(card);
+  }
+
+  if (isProcessing && forgePendingUpgrade) {
+    forgeNotice.textContent = `${forgePendingUpgrade.name} 강화 시도 중... 잠시만 기다려주세요.`;
+  } else if (forgeLastResult && forgeLastResult.until > performance.now()) {
+    forgeNotice.textContent = forgeLastResult.text;
+    forgeNotice.style.color = forgeLastResult.success ? "#2f6a1e" : "#7b2a2a";
+    forgeNotice.style.fontWeight = "800";
+    return;
+  } else if (!upgradeState) {
+    forgeNotice.textContent = "모루에서는 현재 착용 중인 강화 가능 장비를 기준으로 강화합니다. 장비창에서 곡괭이를 먼저 장착해보세요.";
+  } else if (!next) {
+    forgeNotice.textContent = `더 이상 강화할 수 없습니다. 현재 ${forgeItemName}는 최고 단계입니다.`;
+  } else if (stoneDustCount < next.cost) {
+    forgeNotice.textContent = `강화에는 돌가루 ${next.cost}개가 필요합니다. 광산에서 더 채굴해오세요.`;
+  } else {
+    forgeNotice.textContent = `모루에서 ${forgeItemName}를 강화하면 성능과 안정성이 함께 올라갑니다. 이번 강화 비용은 돌가루 ${next.cost}개, 성공률은 ${Math.round((next.successChance ?? 1) * 100)}%입니다.`;
+  }
+  forgeNotice.style.color = "#444";
+  forgeNotice.style.fontWeight = "500";
+
+}
+
+function tryUpgradeEquippedItem() {
+  if (forgePendingUpgrade) return;
+  const upgradeState = getForgeUpgradeState();
+  if (!upgradeState) {
+    showUI("장착 중인 강화 가능 장비가 필요합니다");
+    return;
+  }
+  const next = upgradeState.next;
+  if (!next) {
+    showUI(`${upgradeState.name}가 이미 최대 강화입니다`);
+    return;
+  }
+  if (getItemCount("stoneDust") < next.cost) {
+    showUI("돌가루가 부족합니다");
+    return;
+  }
+  if (!consumeItem("stoneDust", next.cost)) return;
+  forgePendingUpgrade = {
+    itemId: upgradeState.itemId,
+    name: upgradeState.name,
+    targetLevel: next.level,
+    successChance: next.successChance ?? 1,
+    resolveAt: performance.now() + FORGE_UPGRADE_DELAY_MS,
+  };
+  forgeLastResult = null;
+  renderForgeWindow();
+  showUI(`${upgradeState.name} 강화 시도 중...`, 900);
+  lastMessageUntil = performance.now() + 900;
+}
+
+forgeChanceValue.addEventListener("click", () => {
+  tryUpgradeEquippedItem();
+});
+
+forgeCloseBtn.addEventListener("click", () => {
+  setForgeOpen(false);
+});
+
+forgeOverlay.addEventListener("click", () => {
+  setForgeOpen(false);
+});
 
 
 // Camera controls
@@ -1858,9 +2867,105 @@ function updateRockFadeIns(dt) {
   }
 }
 
+function triggerHitStop(duration = HIT_STOP_DURATION) {
+  hitStopTime = Math.max(hitStopTime, duration);
+}
+
+function triggerCameraShake(strength = 0.045, duration = CAMERA_SHAKE_DURATION) {
+  cameraShakeTime = Math.max(cameraShakeTime, duration);
+  cameraShakeStrength = Math.max(cameraShakeStrength, strength);
+}
+
+function triggerRockHitReaction(rock) {
+  if (!rock || !rock.parent) return;
+
+  const existing = rock.userData.hitReaction;
+  if (existing) {
+    existing.elapsed = 0;
+    return;
+  }
+
+  const reaction = {
+    rock,
+    elapsed: 0,
+    duration: ROCK_HIT_REACTION_DURATION,
+    basePosition: rock.position.clone(),
+    baseScale: rock.scale.clone(),
+    baseRotation: rock.rotation.clone(),
+  };
+  rock.userData.hitReaction = reaction;
+  rockHitReactions.push(reaction);
+}
+
+function updateRockHitReactions(dt) {
+  for (let i = rockHitReactions.length - 1; i >= 0; i--) {
+    const reaction = rockHitReactions[i];
+    const rock = reaction.rock;
+    if (!rock || !rock.parent) {
+      rockHitReactions.splice(i, 1);
+      continue;
+    }
+
+    reaction.elapsed += dt;
+    const t = Math.min(1, reaction.elapsed / reaction.duration);
+    const wave = Math.sin(t * Math.PI);
+
+    rock.position.copy(reaction.basePosition);
+    rock.position.x += Math.sin(t * 28) * 0.035;
+    rock.position.z += Math.cos(t * 22) * 0.025;
+    rock.position.y = reaction.basePosition.y - wave * 0.06;
+
+    rock.scale.set(
+      reaction.baseScale.x * (1 + wave * 0.08),
+      reaction.baseScale.y * (1 - wave * 0.14),
+      reaction.baseScale.z * (1 + wave * 0.08)
+    );
+
+    rock.rotation.copy(reaction.baseRotation);
+    rock.rotation.z += Math.sin(t * Math.PI) * 0.05;
+
+    if (t < 1) continue;
+
+    rock.position.copy(reaction.basePosition);
+    rock.scale.copy(reaction.baseScale);
+    rock.rotation.copy(reaction.baseRotation);
+    delete rock.userData.hitReaction;
+    rockHitReactions.splice(i, 1);
+  }
+}
+
+function applyCameraShake() {
+  if (cameraShakeTime <= 0 || cameraShakeStrength <= 0) return;
+  const scale = cameraShakeStrength * (cameraShakeTime / CAMERA_SHAKE_DURATION);
+  camera.position.x += randRange(-scale, scale);
+  camera.position.y += randRange(-scale * 0.8, scale * 0.8);
+  camera.position.z += randRange(-scale, scale);
+}
+
 // ===== Pickaxe item =====
-function buildPickaxeModel() {
+function buildPickaxeModel(level = 0) {
   const g = new THREE.Group();
+  const pickaxeLevel = Math.max(0, Math.min(5, level));
+  const steelColors = [0x9aa0a6, 0xa8afb8, 0xb4bcc6, 0x8ea3ba, 0x92a9c2, 0xc9b16d];
+  const accentColors = [0x705132, 0x7f5b37, 0x6f4720, 0x55718e, 0xa67a38, 0xd3922f];
+  const wrapColors = [0x8b5a2b, 0x8b5a2b, 0x674224, 0x62401f, 0x5d3816, 0x67340f];
+  const headWidth = 0.8 + Math.max(0, pickaxeLevel - 2) * 0.08;
+  const headHeight = 0.15 + Math.max(0, pickaxeLevel - 1) * 0.015;
+  const headDepth = 0.2 + Math.max(0, pickaxeLevel - 3) * 0.03;
+  const steelMat = new THREE.MeshStandardMaterial({
+    color: steelColors[pickaxeLevel],
+    roughness: pickaxeLevel >= 4 ? 0.46 : 0.62,
+    metalness: pickaxeLevel >= 3 ? 0.35 : 0.18,
+  });
+  const accentMat = new THREE.MeshStandardMaterial({
+    color: accentColors[pickaxeLevel],
+    roughness: 0.55,
+    metalness: pickaxeLevel >= 4 ? 0.4 : 0.15,
+  });
+  const wrapMat = new THREE.MeshStandardMaterial({
+    color: wrapColors[pickaxeLevel],
+    roughness: 0.92,
+  });
 
   const handle = new THREE.Mesh(
     new THREE.CylinderGeometry(0.06, 0.06, 1.2, 8),
@@ -1869,12 +2974,91 @@ function buildPickaxeModel() {
   handle.position.y = 0.6;
 
   const head = new THREE.Mesh(
-    new THREE.BoxGeometry(0.8, 0.15, 0.2),
-    new THREE.MeshStandardMaterial({ color: 0x9aa0a6, roughness: 0.8 })
+    new THREE.BoxGeometry(headWidth, headHeight, headDepth),
+    steelMat
   );
   head.position.y = 1.2;
 
   g.add(handle, head);
+
+  if (pickaxeLevel >= 1) {
+    const endCap = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.072, 0.07, 0.09, 8),
+      accentMat
+    );
+    endCap.position.y = 0.035;
+    g.add(endCap);
+  }
+
+  if (pickaxeLevel >= 2) {
+    const wrap = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.071, 0.071, 0.24, 10),
+      wrapMat
+    );
+    wrap.position.y = 0.43;
+    g.add(wrap);
+  }
+
+  if (pickaxeLevel >= 3) {
+    const collar = new THREE.Mesh(
+      new THREE.BoxGeometry(0.18, 0.2, 0.18),
+      accentMat
+    );
+    collar.position.y = 1.05;
+    g.add(collar);
+
+    const wingLeft = new THREE.Mesh(
+      new THREE.BoxGeometry(0.16, 0.11, 0.11),
+      steelMat
+    );
+    wingLeft.position.set(-(headWidth * 0.5 + 0.03), 1.2, 0);
+    wingLeft.rotation.z = Math.PI * 0.16;
+    g.add(wingLeft);
+
+    const wingRight = wingLeft.clone();
+    wingRight.position.x *= -1;
+    wingRight.rotation.z *= -1;
+    g.add(wingRight);
+  }
+
+  if (pickaxeLevel >= 4) {
+    const upperWrap = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.074, 0.074, 0.13, 10),
+      accentMat
+    );
+    upperWrap.position.y = 0.9;
+    g.add(upperWrap);
+
+    const spine = new THREE.Mesh(
+      new THREE.BoxGeometry(headWidth * 0.55, 0.055, 0.06),
+      accentMat
+    );
+    spine.position.set(0, 1.25, headDepth * 0.5 + 0.03);
+    g.add(spine);
+  }
+
+  if (pickaxeLevel >= 5) {
+    const crest = new THREE.Mesh(
+      new THREE.BoxGeometry(0.1, 0.34, 0.08),
+      accentMat
+    );
+    crest.position.set(0, 1.27, 0);
+    g.add(crest);
+
+    const sidePlateL = new THREE.Mesh(
+      new THREE.BoxGeometry(0.09, 0.18, 0.045),
+      accentMat
+    );
+    sidePlateL.position.set(-headWidth * 0.28, 1.19, headDepth * 0.52);
+    sidePlateL.rotation.z = Math.PI * 0.12;
+    g.add(sidePlateL);
+
+    const sidePlateR = sidePlateL.clone();
+    sidePlateR.position.x *= -1;
+    sidePlateR.rotation.z *= -1;
+    g.add(sidePlateR);
+  }
+
   return g;
 }
 
@@ -2011,7 +3195,6 @@ function makeSafetyHelmet(x, z, y = 0, rotation = null) {
   return g;
 }
 
-
 // 배치 실행 (맵 크기에 맞춰 랜덤 배치)
 function spawnTreesAndRocks() {
   const half = (typeof GROUND_SIZE !== "undefined" ? GROUND_SIZE : 120) / 2;
@@ -2060,37 +3243,54 @@ registerSupportSurface(startStall.top);
 const pickaxe = makePickaxe(
   START_X + 0.8,
   START_Z - 2.8,
-  START_FLAT_Y + 2.4,
+  START_FLAT_Y,
   {
     x: Math.PI / 2,
     y: Math.PI * 0.04,
     z: 0,
   }
 );
-enableDynamicProp(pickaxe);
+restPropOnSupport(pickaxe, startStall.top);
+enableDynamicProp(pickaxe, { sleeping: true });
 registerPickupItem(pickaxe, "pickaxe", "E : 곡괭이 줍기");
 
 const safetyHelmet = makeSafetyHelmet(
   START_X - 1.15,
   START_Z - 2.62,
-  START_FLAT_Y + 2.45,
+  START_FLAT_Y,
   {
     x: 0,
     y: Math.PI * -0.12,
     z: Math.PI * 0.02,
   }
 );
-enableDynamicProp(safetyHelmet);
+restPropOnSupport(safetyHelmet, startStall.top);
+enableDynamicProp(safetyHelmet, { sleeping: true });
 registerPickupItem(safetyHelmet, "safetyHelmet", "E : 안전모 줍기");
 
+const tutorialNpc = makeTutorialNpc(
+  START_X - 4.9,
+  START_Z + 0.7,
+  Math.PI * 0.18
+);
+
+forgeStation = buildForgeAnvil(START_X - 3.0, START_Z + 1.55);
+
+const signStartX = START_X + 3.9;
+const signStartZ = START_Z + 0.8;
+const signGap = 2.25;
+const signTexts = [
+  "곡괭이 안전모 착용 필수!!!",
+  "E키를 눌러 안전모와 곡괭이를 획득하세요",
+  "I키를 눌러 인벤토리를 열고 클릭으로 아이템을 착용하세요",
+];
+
+for (let i = 0; i < signTexts.length; i++) {
+  makeSign(signStartX, signStartZ + signGap * i, signTexts[i], -Math.PI / 2);
+}
 
 
-makeSign(0, 3, "광산 안내판: 중앙 작업장 →");
-makeSign(-6, -2, "광산 안내판: 낙석 주의.");
-makeSign(8, -4, "광산 안내판: 바람이 강한 구간. 시야 흐림 주의.");
-
-
-function makeSign(x, z, text) {
+function makeSign(x, z, text, rotationY = 0) {
   const g = new THREE.Group();
 
   const pole = new THREE.Mesh(
@@ -2111,11 +3311,95 @@ function makeSign(x, z, text) {
 
   g.add(pole, board);
   g.position.set(x, 0, z);
+  g.rotation.y = rotationY;
   scene.add(g);
   console.log("SIGN CREATED:", text, "pos=", g.position.x, g.position.z);
 
   // 상호작용 대상 등록(텍스트 포함)
   interactables.push({ obj: g, text, board });
+}
+
+function makeTutorialNpc(x, z, rotationY = 0) {
+  const g = new THREE.Group();
+
+  const clothMat = new THREE.MeshStandardMaterial({ color: 0x7b6a58, roughness: 0.95 });
+  const skinMat = new THREE.MeshStandardMaterial({ color: 0xf0efe9, roughness: 0.92 });
+  const accentMat = new THREE.MeshStandardMaterial({ color: 0x324d73, roughness: 0.88 });
+
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.72, 1.05, 0.42), clothMat);
+  torso.position.y = 1.2;
+  g.add(torso);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 18, 14), skinMat);
+  head.scale.set(0.95, 1.08, 0.95);
+  head.position.y = 1.95;
+  g.add(head);
+
+  const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.9, 0.18), clothMat);
+  leftArm.position.set(-0.48, 1.15, 0);
+  g.add(leftArm);
+
+  const rightArm = leftArm.clone();
+  rightArm.position.x *= -1;
+  g.add(rightArm);
+
+  const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.22, 1.0, 0.22), accentMat);
+  leftLeg.position.set(-0.16, 0.45, 0);
+  g.add(leftLeg);
+
+  const rightLeg = leftLeg.clone();
+  rightLeg.position.x *= -1;
+  g.add(rightLeg);
+
+  const hardHat = buildSafetyHelmetModel();
+  hardHat.scale.setScalar(0.78);
+  hardHat.rotation.y = Math.PI * 0.04;
+  head.add(hardHat);
+  alignWearableOnHead(head, hardHat, {
+    verticalInset: 0.38,
+    forwardBias: 0.06,
+  });
+
+  g.position.set(x, START_FLAT_Y, z);
+  g.rotation.y = rotationY;
+  scene.add(g);
+  registerTutorialNpc(g, "작업 감독관");
+  return g;
+}
+
+function buildForgeAnvil(x, z) {
+  const g = new THREE.Group();
+
+  const stand = new THREE.Mesh(
+    new THREE.BoxGeometry(0.7, 0.55, 0.7),
+    new THREE.MeshStandardMaterial({ color: 0x67584a, roughness: 1.0 })
+  );
+  stand.position.y = 0.28;
+
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(0.9, 0.24, 0.42),
+    new THREE.MeshStandardMaterial({ color: 0x4d5661, roughness: 0.9 })
+  );
+  body.position.y = 0.78;
+
+  const horn = new THREE.Mesh(
+    new THREE.BoxGeometry(0.5, 0.18, 0.18),
+    new THREE.MeshStandardMaterial({ color: 0x59636f, roughness: 0.85 })
+  );
+  horn.position.set(0.54, 0.81, 0);
+  horn.scale.set(1.2, 1, 0.7);
+
+  const topPlate = new THREE.Mesh(
+    new THREE.BoxGeometry(0.42, 0.08, 0.5),
+    new THREE.MeshStandardMaterial({ color: 0x717a87, roughness: 0.82 })
+  );
+  topPlate.position.set(-0.1, 0.94, 0);
+
+  g.add(stand, body, horn, topPlate);
+  g.position.set(x, START_FLAT_Y, z);
+  scene.add(g);
+  addCollider(g, 0.95);
+  return g;
 }
 
 
@@ -2138,9 +3422,11 @@ window.addEventListener("keydown", (e) => {
   if (k === "e") {
   const pickup = findNearestPickupItem(2.0);
   if (pickup) {
+    triggerPickupReach(pickup.obj);
     const added = addItem(pickup.itemId, 1);
     if (added) {
       updateInventoryUI();
+      refreshQuestProgress();
       const def = ITEM_DEFS[pickup.itemId];
       const msg =
         pickup.itemId === "pickaxe" ? HUD_MSG.PICKAXE_GET :
@@ -2155,15 +3441,12 @@ window.addEventListener("keydown", (e) => {
     }
     return;
   }
+
+  if (forgeStation?.parent && getForgeDistance() < 2.4) {
+    setForgeOpen(!forgeOpen);
+    return;
   }
-
-
-    // E 키로 상호작용
-  if (k === "e" && activeInteractable) {
-    showUI(activeInteractable.text);
-    lastMessageUntil = performance.now() + 2000; // 2초 표시
   }
-
    // if (k === "p") {
    // inventory.hasPickaxe = true;
    // showUI("곡괭이를 얻었다!");
@@ -2312,10 +3595,25 @@ function isStartRingTransitionBlocked(x0, z0, x1, z1) {
 // Movement
 const clock = new THREE.Clock();
 const MINING_SWING_DURATION = 0.28;
+const PICKUP_REACH_DURATION = 0.22;
 let miningSwingTime = 0;
+let pickupReachTime = 0;
+let currentMiningSwingDuration = MINING_SWING_DURATION;
 
 function triggerMiningSwing(target = null) {
-  miningSwingTime = MINING_SWING_DURATION;
+  currentMiningSwingDuration = getCurrentPickaxeStats().swingDuration;
+  miningSwingTime = currentMiningSwingDuration;
+  if (!target) return;
+
+  const dx = target.position.x - player.position.x;
+  const dz = target.position.z - player.position.z;
+  if (Math.abs(dx) > 1e-4 || Math.abs(dz) > 1e-4) {
+    player.rotation.y = Math.atan2(dx, dz);
+  }
+}
+
+function triggerPickupReach(target = null) {
+  pickupReachTime = PICKUP_REACH_DURATION;
   if (!target) return;
 
   const dx = target.position.x - player.position.x;
@@ -2398,21 +3696,46 @@ function updateMovement(dt) {
 
   if (miningSwingTime > 0) {
     miningSwingTime = Math.max(0, miningSwingTime - dt);
-    const phase = 1 - (miningSwingTime / MINING_SWING_DURATION);
+    const phase = 1 - (miningSwingTime / currentMiningSwingDuration);
 
     let mainSwing = 0;
-    if (phase < 0.35) {
-      mainSwing = THREE.MathUtils.lerp(-1.05, -0.1, phase / 0.35);
+    let supportSwing = 0;
+    let torsoBend = 0;
+
+    if (phase < 0.34) {
+      const t = phase / 0.34;
+      mainSwing = THREE.MathUtils.lerp(0.25, -1.7, t);
+      supportSwing = THREE.MathUtils.lerp(-0.08, -0.65, t);
+      torsoBend = THREE.MathUtils.lerp(0.02, -0.22, t);
+    } else if (phase < 0.76) {
+      const t = (phase - 0.34) / 0.42;
+      mainSwing = THREE.MathUtils.lerp(-1.7, 1.85, t);
+      supportSwing = THREE.MathUtils.lerp(-0.65, 0.48, t);
+      torsoBend = THREE.MathUtils.lerp(-0.22, 0.34, t);
     } else {
-      mainSwing = THREE.MathUtils.lerp(-0.1, 1.3, (phase - 0.35) / 0.65);
+      const t = (phase - 0.76) / 0.24;
+      mainSwing = THREE.MathUtils.lerp(1.85, 0.82, t);
+      supportSwing = THREE.MathUtils.lerp(0.48, 0.08, t);
+      torsoBend = THREE.MathUtils.lerp(0.34, 0.08, t);
     }
 
-    const supportSwing = THREE.MathUtils.lerp(0.15, 0.65, Math.sin(Math.min(phase, 1) * Math.PI));
     leftArmPivot.rotation.x = mainSwing;
-    rightArmPivot.rotation.x = -supportSwing * 0.65;
-    torso.rotation.x = THREE.MathUtils.lerp(-0.08, 0.22, Math.sin(phase * Math.PI));
+    rightArmPivot.rotation.x = supportSwing;
+    torso.rotation.x = torsoBend;
     leftLegPivot.rotation.x *= 0.55;
     rightLegPivot.rotation.x *= 0.55;
+  }
+
+  if (pickupReachTime > 0 && miningSwingTime <= 0) {
+    pickupReachTime = Math.max(0, pickupReachTime - dt);
+    const phase = 1 - (pickupReachTime / PICKUP_REACH_DURATION);
+    const reach = Math.sin(phase * Math.PI);
+
+    leftArmPivot.rotation.x = THREE.MathUtils.lerp(0.12, -0.95, reach);
+    rightArmPivot.rotation.x = THREE.MathUtils.lerp(-0.08, -0.35, reach * 0.85);
+    torso.rotation.x = THREE.MathUtils.lerp(0, 0.18, reach);
+    leftLegPivot.rotation.x *= 0.7;
+    rightLegPivot.rotation.x *= 0.7;
   }
 
   // ===== Starting Zone clamp (hard boundary) =====
@@ -2438,6 +3761,12 @@ function updateMovement(dt) {
 
 window.addEventListener("keydown", (e) => {
   if (e.code !== "Space") return;
+  if (activeTutorialNpc) {
+    showNpcDialog(getTutorialNpcLine());
+    refreshQuestProgress();
+    if (questOpen) renderQuestWindow();
+    return;
+  }
   if (!activeMineRock) return;
   triggerMiningSwing(activeMineRock);
   if (!hasEquippedTool("pickaxe")) {
@@ -2456,7 +3785,17 @@ window.addEventListener("keydown", (e) => {
   if (miningPower <= 0) return;
 
   minedRock.userData.hp = Math.max(0, (minedRock.userData.hp ?? 1) - miningPower);
+  if (
+    (minedRock.userData.maxHp ?? 1) <= 1 &&
+    (minedRock.userData.hp ?? 0) <= 0.15
+  ) {
+    minedRock.userData.hp = 0;
+  }
   const remainingHp = minedRock.userData.hp ?? 0;
+
+  triggerHitStop();
+  triggerRockHitReaction(minedRock);
+  triggerCameraShake(remainingHp > 0 ? 0.035 : 0.06);
 
   spawnDustBurst(minedRock.position, remainingHp > 0 ? 8 : 10);
 
@@ -2472,8 +3811,16 @@ window.addEventListener("keydown", (e) => {
     : { x: minedRock.position.x, z: minedRock.position.z, rockSize: "small" };
 
   spawnRockBreakBurst(minedRock);
+  tutorialQuest.minedRockCount += 1;
   addItem("stoneDust", 1);
+  const pickaxeStats = getCurrentPickaxeStats();
+  if (Math.random() < pickaxeStats.bonusDropChance) {
+    addItem("stoneDust", 1);
+    showUI("보너스 돌가루 획득!");
+    lastMessageUntil = performance.now() + 800;
+  }
   updateInventoryUI();
+  refreshQuestProgress();
 
   // 콜라이더 제거
   const idx = minedRock.userData.colliderIndex;
@@ -2495,11 +3842,23 @@ window.addEventListener("keydown", (e) => {
 
 function animate() {
   requestAnimationFrame(animate);
-  const dt = Math.min(clock.getDelta(), 0.033);
+  const rawDt = Math.min(clock.getDelta(), 0.033);
+  if (forgePendingUpgrade && performance.now() >= forgePendingUpgrade.resolveAt) {
+    finishPendingForgeUpgrade();
+  }
+  if (forgeLastResult && forgeLastResult.until <= performance.now()) {
+    forgeLastResult = null;
+  }
+  hitStopTime = Math.max(0, hitStopTime - rawDt);
+  cameraShakeTime = Math.max(0, cameraShakeTime - rawDt);
+  if (cameraShakeTime <= 0) cameraShakeStrength = 0;
+
+  const dt = hitStopTime > 0 ? 0 : rawDt;
 
   updateMovement(dt);
   updateDynamicProps(dt);
   updateParticles(dt);
+  updateRockHitReactions(rawDt);
   updateRockFadeIns(dt);
   if (invOpen) renderEquipmentPreview();
   if (latestMoveDir.lengthSq() > 1e-6) {
@@ -2510,6 +3869,12 @@ function animate() {
 
   // ===== 상호작용 대상 탐색 =====
     activeInteractable = null;
+    activeForgeStation = null;
+    activeTutorialNpc = findNearestTutorialNpc(2.2);
+
+    if (forgeStation?.parent && getForgeDistance() < 2.4) {
+  activeForgeStation = forgeStation;
+    }
 
     let bestDist = Infinity;
     for (const it of interactables) {
@@ -2534,9 +3899,17 @@ function animate() {
 
   controls.target.copy(player.position).add(new THREE.Vector3(0, 1.0, 0));
   controls.update();
+  applyCameraShake();
+  if (forgeOpen) {
+    if (getForgeDistance() >= 2.8) {
+      setForgeOpen(false);
+    } else {
+      renderForgeWindow();
+    }
+  }
 
  // ===== 힌트(가까이 가면 뜨는 안내) =====
-// 우선순위: 1) 곡괭이 줍기 2) 돌 채집 3) 표지판 조사 4) 아무것도 없으면 숨김
+// 우선순위: 1) 곡괭이 줍기 2) 모루 3) 돌 채집 4) 표지판 조사 5) 아무것도 없으면 숨김
 let hintText = "";
 
 // 1) 월드 장비 줍기 힌트
@@ -2545,7 +3918,17 @@ if (activePickupItem) {
   hintText = activePickupItem.text;
 }
 
-// 2) 돌 채집 힌트 (아이템 줍기 힌트가 없을 때만)
+// 2) 모루 강화 힌트
+if (!hintText && activeTutorialNpc) {
+  hintText = activeTutorialNpc.hint;
+}
+
+// 3) 모루 강화 힌트
+if (!hintText && activeForgeStation) {
+  hintText = forgeOpen ? "대장간 이용 중" : "E : 장비 강화";
+}
+
+// 4) 돌 채집 힌트 (아이템 줍기 힌트가 없을 때만)
 if (!hintText) {
   activeMineRock = findNearestMineRock(2.2);
   if (activeMineRock) {
@@ -2556,12 +3939,12 @@ if (!hintText) {
   }
 }
 
-// 3) 표지판 조사 힌트 (위 힌트가 없을 때만)
+// 5) 표지판 근접 문구 (위 힌트가 없을 때만)
 if (!hintText && activeInteractable) {
-  hintText = "E : 조사하기";
+  hintText = activeInteractable.text;
 }
 
-// 4) 최종 출력
+// 6) 최종 출력
 if (hintText) showHint(hintText);
 else hideHint();
 
