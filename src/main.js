@@ -84,15 +84,17 @@ compassFace.style.position = "relative";
 compassFace.style.background = "rgba(255,255,255,0.08)";
 
 const compassNeedle = document.createElement("div");
-compassNeedle.textContent = "▲";
 compassNeedle.style.position = "absolute";
 compassNeedle.style.left = "50%";
 compassNeedle.style.top = "50%";
 compassNeedle.style.transform = "translate(-50%, -50%)";
-compassNeedle.style.transformOrigin = "50% 50%";
-compassNeedle.style.color = "#ffde7a";
-compassNeedle.style.fontSize = "18px";
-compassNeedle.style.fontWeight = "700";
+compassNeedle.style.transformOrigin = "50% 72%";
+compassNeedle.style.width = "0";
+compassNeedle.style.height = "0";
+compassNeedle.style.borderLeft = "7px solid transparent";
+compassNeedle.style.borderRight = "7px solid transparent";
+compassNeedle.style.borderBottom = "18px solid #ffde7a";
+compassNeedle.style.filter = "drop-shadow(0 1px 2px rgba(0,0,0,0.35))";
 compassFace.appendChild(compassNeedle);
 
 const compassText = document.createElement("div");
@@ -247,6 +249,15 @@ questFooter.style.lineHeight = "1.5";
 questFooter.style.color = "#555";
 questFooter.textContent = "Q 키로 퀘스트를 열고, Space 키로 튜토리얼 NPC와 대화할 수 있습니다.";
 questBody.appendChild(questFooter);
+
+const mapFade = document.createElement("div");
+mapFade.style.position = "fixed";
+mapFade.style.inset = "0";
+mapFade.style.background = "rgba(10,12,16,0.0)";
+mapFade.style.pointerEvents = "none";
+mapFade.style.transition = "background 260ms ease";
+mapFade.style.zIndex = "1000003";
+uiLayer.appendChild(mapFade);
 
 const equipHeader = document.createElement("div");
 equipHeader.textContent = "EQUIPMENT";
@@ -464,6 +475,8 @@ forgeChanceValue.style.color = "#7a4a12";
 forgeChanceValue.style.background = "rgba(255,255,255,0.78)";
 forgeChanceValue.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.8)";
 forgeChanceValue.style.cursor = "pointer";
+forgeChanceValue.style.transform = "translateY(0)";
+forgeChanceValue.style.transition = "transform 90ms ease, box-shadow 90ms ease, background 90ms ease";
 forgeCenterCard.appendChild(forgeChanceValue);
 
 const forgeNextCard = document.createElement("div");
@@ -1001,6 +1014,46 @@ function hideUI() {
   ui.style.transform = "translateX(-50%) translateY(8px)";
 }
 
+const mapArrivalBanner = document.createElement("div");
+mapArrivalBanner.style.position = "fixed";
+mapArrivalBanner.style.left = "50%";
+mapArrivalBanner.style.top = "36px";
+mapArrivalBanner.style.transform = "translateX(-50%) translateY(-10px)";
+mapArrivalBanner.style.padding = "12px 22px";
+mapArrivalBanner.style.borderRadius = "14px";
+mapArrivalBanner.style.background = "rgba(18,22,28,0.62)";
+mapArrivalBanner.style.border = "1px solid rgba(255,255,255,0.16)";
+mapArrivalBanner.style.backdropFilter = "blur(5px)";
+mapArrivalBanner.style.boxShadow = "0 14px 32px rgba(0,0,0,0.22)";
+mapArrivalBanner.style.color = "#fff6dc";
+mapArrivalBanner.style.fontFamily = "system-ui, -apple-system, sans-serif";
+mapArrivalBanner.style.fontSize = "28px";
+mapArrivalBanner.style.fontWeight = "900";
+mapArrivalBanner.style.letterSpacing = "0.04em";
+mapArrivalBanner.style.pointerEvents = "none";
+mapArrivalBanner.style.zIndex = "1000002";
+mapArrivalBanner.style.opacity = "0";
+mapArrivalBanner.style.transition = "opacity 260ms ease, transform 260ms ease";
+uiLayer.appendChild(mapArrivalBanner);
+
+let mapArrivalTimer = null;
+
+function showMapArrivalBanner(mapName, ms = 1800) {
+  mapArrivalBanner.textContent = mapName;
+  mapArrivalBanner.style.opacity = "1";
+  mapArrivalBanner.style.transform = "translateX(-50%) translateY(0)";
+
+  if (mapArrivalTimer) {
+    clearTimeout(mapArrivalTimer);
+    mapArrivalTimer = null;
+  }
+
+  mapArrivalTimer = setTimeout(() => {
+    mapArrivalBanner.style.opacity = "0";
+    mapArrivalBanner.style.transform = "translateX(-50%) translateY(-10px)";
+  }, ms);
+}
+
 // ===== HUD Messages (short, game-like) =====
 const HUD_MSG = {
   NEED_PICKAXE: "⛏️ 필요",
@@ -1009,18 +1062,19 @@ const HUD_MSG = {
   PICKAXE_UNEQUIPPED: "⛏️ 해제",
   PICKAXE_GET: "⛏️ 획득!",
   HELMET_GET: "🪖 획득!",
+  MINE_KEY_GET: "🗝️ 폐광 열쇠 획득!",
 };
 
 const npcDialog = document.createElement("div");
 npcDialog.style.position = "fixed";
-npcDialog.style.left = "50%";
-npcDialog.style.bottom = "118px";
-npcDialog.style.transform = "translateX(-50%)";
+npcDialog.style.left = "0";
+npcDialog.style.top = "0";
+npcDialog.style.transform = "translate(-50%, -100%)";
 npcDialog.style.maxWidth = "min(460px, calc(100vw - 32px))";
 npcDialog.style.padding = "12px 14px";
 npcDialog.style.background = "rgba(255,255,255,0.94)";
 npcDialog.style.border = "1px solid rgba(0,0,0,0.16)";
-npcDialog.style.borderRadius = "12px";
+npcDialog.style.borderRadius = "14px";
 npcDialog.style.boxShadow = "0 12px 26px rgba(0,0,0,0.18)";
 npcDialog.style.fontFamily = "system-ui, -apple-system, sans-serif";
 npcDialog.style.fontSize = "13px";
@@ -1029,17 +1083,112 @@ npcDialog.style.color = "#333";
 npcDialog.style.display = "none";
 npcDialog.style.pointerEvents = "none";
 npcDialog.style.zIndex = "1000002";
+npcDialog.style.willChange = "transform, left, top";
 uiLayer.appendChild(npcDialog);
 
-let npcDialogTimer = null;
+const npcDialogText = document.createElement("div");
+npcDialog.appendChild(npcDialogText);
 
-function showNpcDialog(text, ms = 2400) {
-  npcDialog.textContent = text;
+const npcDialogTail = document.createElement("div");
+npcDialogTail.style.position = "absolute";
+npcDialogTail.style.left = "50%";
+npcDialogTail.style.bottom = "-10px";
+npcDialogTail.style.width = "0";
+npcDialogTail.style.height = "0";
+npcDialogTail.style.transform = "translateX(-50%)";
+npcDialogTail.style.borderLeft = "10px solid transparent";
+npcDialogTail.style.borderRight = "10px solid transparent";
+npcDialogTail.style.borderTop = "12px solid rgba(255,255,255,0.94)";
+npcDialogTail.style.filter = "drop-shadow(0 2px 1px rgba(0,0,0,0.08))";
+npcDialog.appendChild(npcDialogTail);
+
+const tutorialNpcNameTag = document.createElement("div");
+tutorialNpcNameTag.style.position = "fixed";
+tutorialNpcNameTag.style.left = "0";
+tutorialNpcNameTag.style.top = "0";
+tutorialNpcNameTag.style.transform = "translate(-50%, -50%)";
+tutorialNpcNameTag.style.padding = "5px 10px";
+tutorialNpcNameTag.style.borderRadius = "999px";
+tutorialNpcNameTag.style.background = "rgba(20,20,20,0.72)";
+tutorialNpcNameTag.style.border = "1px solid rgba(255,255,255,0.18)";
+tutorialNpcNameTag.style.color = "#fff6d2";
+tutorialNpcNameTag.style.fontFamily = "system-ui, -apple-system, sans-serif";
+tutorialNpcNameTag.style.fontSize = "12px";
+tutorialNpcNameTag.style.fontWeight = "800";
+tutorialNpcNameTag.style.letterSpacing = "0.02em";
+tutorialNpcNameTag.style.pointerEvents = "none";
+tutorialNpcNameTag.style.zIndex = "999998";
+tutorialNpcNameTag.style.opacity = "1";
+tutorialNpcNameTag.style.transition = "opacity 120ms ease";
+tutorialNpcNameTag.style.display = "none";
+uiLayer.appendChild(tutorialNpcNameTag);
+
+let npcDialogTimer = null;
+const npcNameScreenPos = new THREE.Vector3();
+const npcDialogScreenPos = new THREE.Vector3();
+let npcDialogTarget = null;
+
+function showNpcDialog(text, ms = 3000) {
+  npcDialogText.textContent = text;
+  npcDialogTarget = activeTutorialNpc?.obj ?? tutorialNpcs[0]?.obj ?? null;
   npcDialog.style.display = "block";
+  updateNpcDialogPosition();
   if (npcDialogTimer) clearTimeout(npcDialogTimer);
   npcDialogTimer = setTimeout(() => {
     npcDialog.style.display = "none";
+    npcDialogTarget = null;
   }, ms);
+}
+
+function updateNpcDialogPosition() {
+  if (npcDialog.style.display === "none" || !npcDialogTarget?.parent) return;
+
+  npcDialogScreenPos.copy(npcDialogTarget.position);
+  npcDialogScreenPos.y += 3.45;
+  npcDialogScreenPos.project(camera);
+
+  const isVisible = npcDialogScreenPos.z >= -1 && npcDialogScreenPos.z <= 1;
+  if (!isVisible) {
+    npcDialog.style.display = "none";
+    return;
+  }
+
+  const x = (npcDialogScreenPos.x * 0.5 + 0.5) * window.innerWidth;
+  const y = (-npcDialogScreenPos.y * 0.5 + 0.5) * window.innerHeight;
+  npcDialog.style.left = `${x}px`;
+  npcDialog.style.top = `${Math.max(28, y)}px`;
+}
+
+function updateTutorialNpcNameTag() {
+  const npcEntry = tutorialNpcs[0];
+  const npcObj = npcEntry?.obj;
+  if (!npcObj?.parent || npcDialog.style.display !== "none") {
+    tutorialNpcNameTag.style.display = "none";
+    return;
+  }
+
+  npcNameScreenPos.copy(npcObj.position);
+  npcNameScreenPos.y += 2.7;
+  npcNameScreenPos.project(camera);
+
+  const isVisible = npcNameScreenPos.z >= -1 && npcNameScreenPos.z <= 1;
+  if (!isVisible) {
+    tutorialNpcNameTag.style.display = "none";
+    return;
+  }
+
+  const x = (npcNameScreenPos.x * 0.5 + 0.5) * window.innerWidth;
+  const y = (-npcNameScreenPos.y * 0.5 + 0.5) * window.innerHeight;
+  const distance = npcObj.position.distanceTo(player.position);
+  const fadeStart = 8;
+  const fadeEnd = 26;
+  const distanceAlpha = THREE.MathUtils.clamp(1 - (distance - fadeStart) / (fadeEnd - fadeStart), 0.12, 1);
+
+  tutorialNpcNameTag.textContent = npcEntry.name;
+  tutorialNpcNameTag.style.left = `${x}px`;
+  tutorialNpcNameTag.style.top = `${y}px`;
+  tutorialNpcNameTag.style.opacity = `${distanceAlpha}`;
+  tutorialNpcNameTag.style.display = "block";
 }
 
 const tutorialQuest = {
@@ -1073,9 +1222,14 @@ const tutorialQuest = {
       check: () => tutorialQuest.minedRockCount >= 1,
     },
     {
-      title: "첫 강화",
-      description: "모루에서 착용한 곡괭이를 1회 강화하세요.",
-      check: () => tutorialQuest.upgradeCount >= 1,
+      title: "장비 단련",
+      description: "모루에서 착용한 곡괭이를 3회 강화하세요.",
+      check: () => tutorialQuest.upgradeCount >= 3,
+    },
+    {
+      title: "폐광 열쇠 수령",
+      description: "작업 감독관과 대화하여 폐광 열쇠를 획득하세요.",
+      check: () => inventory.mineKeyIssued,
     },
   ],
 };
@@ -1090,7 +1244,13 @@ function getCurrentQuestStep() {
 function getTutorialNpcLine() {
   const step = getCurrentQuestStep();
   if (!step) {
-    return "좋아, 이제 기본 작업은 전부 익혔어. 새 설비가 들어오면 다시 안내해주지.";
+    if (!inventory.mineKeyIssued) {
+      return "좋아, 이제 폐광에 들어갈 자격이 생겼다. 이 열쇠를 가져가서 북쪽 폐광 입구를 열어.";
+    }
+    if (!inventory.abandonedMineUnlocked) {
+      return "북쪽 폐광 입구로 가서 E키로 열쇠를 사용해. 한 번 열어두면 계속 드나들 수 있다.";
+    }
+    return "좋아, 폐광 통로도 열렸다. 더 깊은 곳으로 들어갈 준비가 됐군.";
   }
 
   const lines = [
@@ -1098,7 +1258,8 @@ function getTutorialNpcLine() {
     "좋아. 이제 인벤토리를 열어서 안전모부터 써. 광산에선 보호구가 기본이야.",
     "다음은 곡괭이를 손에 들어. 장비를 갖췄으면 바로 작업할 수 있게 준비해야지.",
     "앞에 있는 돌을 하나 캐봐. 직접 해보는 게 제일 빠르다.",
-    "이제 모루로 가서 곡괭이를 한 번 강화해봐. 더 강한 장비가 작업 속도를 바꿔줄 거야.",
+    "이제 모루로 가서 곡괭이를 세 번 강화해봐. 장비를 충분히 다뤄봐야 폐광 출입을 맡길 수 있어.",
+    "좋아, 준비는 끝났다. 나에게 말을 걸면 폐광 열쇠를 넘겨주지.",
   ];
   return lines[tutorialQuest.currentStep] ?? step.description;
 }
@@ -1262,6 +1423,18 @@ const START_RING_OPEN_CENTER = Math.PI / 2; // +Z 방향에 개방 구간 중심
 const START_RING_SEG = 36;
 const START_RING_HEIGHT = 1.1; // 허리춤 정도
 const START_RING_THICKNESS = 1.275; // 기존 대비 50% 두껍게
+const CAMP_MAP_X = 0;
+const CAMP_MAP_Z = -126;
+const MAP_GATE_RADIUS = 1.15;
+const DEV_PRESET_ENABLED = true;
+const DEV_PRESET = {
+  startMapId: "폐광맵",
+  completeTutorial: true,
+  unlockAbandonedMine: true,
+  giveStarterGear: true,
+  pickaxeLevel: 3,
+  stoneDust: 500,
+};
 
 
 const groundGeo = new THREE.PlaneGeometry(GROUND_SIZE, GROUND_SIZE, GROUND_SEG, GROUND_SEG);
@@ -1312,6 +1485,15 @@ const ground = new THREE.Mesh(groundGeo, groundMat);
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = false; // STEP 1에서 그림자 약하게 했으니 유지
 scene.add(ground);
+const groundSurfaces = [ground];
+const walkableMapSurfaces = new Map();
+
+function registerWalkableSurface(mapId, mesh, padding = 0.55) {
+  if (!mesh) return;
+  const entries = walkableMapSurfaces.get(mapId) ?? [];
+  entries.push({ mesh, padding });
+  walkableMapSurfaces.set(mapId, entries);
+}
 
 // ===== Starting Zone flat floor overlay (visual fix) =====
 const startFloorGeo = new THREE.CircleGeometry(START_RADIUS, 64);
@@ -1324,6 +1506,7 @@ const startFloor = new THREE.Mesh(startFloorGeo, startFloorMat);
 startFloor.rotation.x = -Math.PI / 2;
 startFloor.position.set(START_X, START_FLAT_Y + 0.03, START_Z); // 살짝 위로
 scene.add(startFloor);
+registerWalkableSurface("광산맵", ground, 1.4);
 
 
 const gridHelper = new THREE.GridHelper(200, 200);
@@ -1596,6 +1779,12 @@ const ITEM_DEFS = {
     equipSlot: "head",
     makeInventoryModel: () => buildSafetyHelmetModel(),
   },
+  abandonedMineKey: {
+    name: "폐광 열쇠",
+    icon: "🗝️",
+    stackMax: 1,
+    category: "misc",
+  },
   stoneDust: { name: "돌가루", icon: "🪨", stackMax: 999, category: "misc" },
     };
 
@@ -1683,6 +1872,8 @@ function getEquippedMiningPower() {
 	    const inventory = {
   slots: Array.from({ length: 30 }, () => null), // 30칸(원하면 늘림)
   pickaxeLevel: 0,
+  mineKeyIssued: false,
+  abandonedMineUnlocked: false,
   equipped: {
     head: null,
     body: null,
@@ -1957,13 +2148,13 @@ function getEquippedMiningPower() {
   refreshEquippedPickaxeModel();
   updateEquippedVisual();
   renderEquipmentWindow();
+  if (forgeWin.style.display !== "none") renderForgeWindow();
 
   // 인벤 창이 열려있으면 슬롯 표시 갱신
   if (typeof invOpen !== "undefined" && invOpen) renderInventoryWindow();
     }
 
-  addItem("stoneDust", 500);
-    updateInventoryUI(); // 처음 한번 표시
+  updateInventoryUI(); // 처음 한번 표시
 
   invEl.style.zIndex = "999999";
 
@@ -2403,7 +2594,7 @@ function updatePlayerGroundY(dt) {
   groundRay.set(rayOrigin, rayDir);
   groundRay.far = 50;
 
-  const hits = groundRay.intersectObject(ground, false);
+  const hits = groundRay.intersectObjects(groundSurfaces, false);
   if (hits.length > 0) {
     const targetY = hits[0].point.y + PLAYER_FOOT_OFFSET;
 
@@ -2423,6 +2614,12 @@ const tutorialNpcs = [];
 let activeTutorialNpc = null;
 let forgeStation = null;
 let activeForgeStation = null;
+const mapGates = [];
+let activeMapGate = null;
+let currentMapId = "광산맵";
+let lastAnnouncedMapId = currentMapId;
+let mapTransitionLockUntil = 0;
+let mapTransitionPending = null;
 let forgeOpen = false;
 const FORGE_UPGRADE_DELAY_MS = 1050;
 let forgePendingUpgrade = null;
@@ -2484,6 +2681,71 @@ function findNearestTutorialNpc(radius = 2.2) {
     }
   }
   return best;
+}
+
+function registerMapGate(entry) {
+  mapGates.push(entry);
+  return entry;
+}
+
+function findTriggeredMapGate() {
+  if (performance.now() < mapTransitionLockUntil) return null;
+  for (const gate of mapGates) {
+    if (gate.mapId !== currentMapId) continue;
+    const dx = player.position.x - gate.trigger.x;
+    const dz = player.position.z - gate.trigger.z;
+    if (dx * dx + dz * dz <= gate.trigger.radius * gate.trigger.radius) return gate;
+  }
+  return null;
+}
+
+function canUseMapGate(gate) {
+  if (!gate) return false;
+  if (typeof gate.require === "function") {
+    return gate.require();
+  }
+  return true;
+}
+
+function updateCurrentMapFromPlayerPosition() {
+  const mineDoorThresholdZ = mineGate.position.z - 0.35;
+  const campDoorThresholdZ = campGate.position.z + 0.35;
+
+  if (player.position.z <= campDoorThresholdZ) {
+    currentMapId = "폐광맵";
+    return;
+  }
+
+  if (player.position.z >= mineDoorThresholdZ) {
+    currentMapId = "광산맵";
+  }
+}
+
+function tryUnlockMapGate(gate) {
+  if (!gate?.unlockWithItem || !gate.unlockFlag) return false;
+  if (inventory[gate.unlockFlag]) return true;
+  if (!hasItem(gate.unlockWithItem)) {
+    showUI(gate.denyText ?? "필요한 아이템이 없습니다.", 1100);
+    return false;
+  }
+  if (!consumeItem(gate.unlockWithItem, 1)) {
+    showUI(gate.denyText ?? "필요한 아이템이 없습니다.", 1100);
+    return false;
+  }
+
+  inventory[gate.unlockFlag] = true;
+  if (typeof gate.lockColliderIndex === "number") {
+    removeColliderAt(gate.lockColliderIndex);
+    gate.lockColliderIndex = null;
+  }
+  if (gate.lockBlocker?.parent) {
+    gate.lockBlocker.removeFromParent();
+  }
+  updateInventoryUI();
+  if (questOpen) renderQuestWindow();
+  showUI(gate.unlockText ?? "통로가 열렸습니다.", 1200);
+  lastMessageUntil = performance.now() + 1200;
+  return true;
 }
 
 function getForgeDistance() {
@@ -2617,7 +2879,7 @@ function renderForgeWindow() {
     "현재 착용 중인 강화 가능 장비가 없습니다.<br>장비창에서 곡괭이를 먼저 장착해보세요."
   );
 
-  forgeChanceValue.textContent = isProcessing ? "..." : (next ? `+${next.level - stats.level}` : "MAX");
+  forgeChanceValue.textContent = isProcessing ? "..." : (next ? "가즈아" : "MAX");
   forgeChanceValue.disabled = !canUpgrade;
   forgeChanceValue.style.opacity = canUpgrade ? "1" : "0.55";
   forgeChanceValue.style.cursor = canUpgrade ? "pointer" : "default";
@@ -2625,6 +2887,7 @@ function renderForgeWindow() {
     ? "rgba(255,255,255,0.82)"
     : "rgba(255,255,255,0.58)";
   forgeChanceValue.title = isProcessing ? "강화 진행 중" : (next ? `Lv.${next.level} 강화` : "최대 강화");
+  setForgeButtonPressed(false);
 
   if (next && upgradeState?.itemId) {
     renderForgeItemCard(forgeNextCard, "다음 강화", upgradeState.itemId, next.level, next);
@@ -2710,8 +2973,45 @@ function tryUpgradeEquippedItem() {
   lastMessageUntil = performance.now() + 900;
 }
 
+function setForgeButtonPressed(pressed) {
+  if (forgeChanceValue.disabled) {
+    forgeChanceValue.style.transform = "translateY(0)";
+    forgeChanceValue.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.8)";
+    return;
+  }
+
+  if (pressed) {
+    forgeChanceValue.style.transform = "translateY(2px) scale(0.985)";
+    forgeChanceValue.style.boxShadow = "inset 0 2px 6px rgba(120,70,15,0.22)";
+    forgeChanceValue.style.background = "rgba(246,233,206,0.96)";
+  } else {
+    forgeChanceValue.style.transform = "translateY(0) scale(1)";
+    forgeChanceValue.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.8)";
+    forgeChanceValue.style.background = forgeChanceValue.disabled
+      ? "rgba(255,255,255,0.58)"
+      : "rgba(255,255,255,0.82)";
+  }
+}
+
 forgeChanceValue.addEventListener("click", () => {
+  setForgeButtonPressed(false);
   tryUpgradeEquippedItem();
+});
+
+forgeChanceValue.addEventListener("pointerdown", () => {
+  setForgeButtonPressed(true);
+});
+
+forgeChanceValue.addEventListener("pointerup", () => {
+  setForgeButtonPressed(false);
+});
+
+forgeChanceValue.addEventListener("pointerleave", () => {
+  setForgeButtonPressed(false);
+});
+
+forgeChanceValue.addEventListener("pointercancel", () => {
+  setForgeButtonPressed(false);
 });
 
 forgeCloseBtn.addEventListener("click", () => {
@@ -3289,6 +3589,105 @@ for (let i = 0; i < signTexts.length; i++) {
   makeSign(signStartX, signStartZ + signGap * i, signTexts[i], -Math.PI / 2);
 }
 
+const mineGate = buildTravelGate(START_X, START_Z - 51.2, Math.PI, "폐광 입구");
+registerWalkableSurface("광산맵", mineGate.userData.walkSurface, 0.45);
+buildCampTestArea();
+const campGate = buildTravelGate(CAMP_MAP_X, CAMP_MAP_Z + GROUND_SIZE * 0.5 + 1.25, 0, "광산 복귀");
+registerWalkableSurface("폐광맵", campGate.userData.walkSurface, 0.45);
+buildMapConnectorTunnel(mineGate, campGate);
+
+const abandonedMineGate = registerMapGate({
+  mapId: "광산맵",
+  targetMapId: "폐광맵",
+  require: () => inventory.abandonedMineUnlocked,
+  unlockWithItem: "abandonedMineKey",
+  unlockFlag: "abandonedMineUnlocked",
+  unlockText: "폐광 입구의 잠금이 해제되었습니다.",
+  denyText: "감독관에게서 폐광 열쇠를 받아야 합니다.",
+  trigger: {
+    x: mineGate.position.x,
+    z: mineGate.position.z + 0.8,
+    radius: 1.85,
+  },
+  hint: "북쪽 갱도로 들어가면 폐광맵으로 이어집니다",
+});
+
+const mineGateLockBlocker = new THREE.Mesh(
+  new THREE.BoxGeometry(1.72, 2.05, 0.28),
+  new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 })
+);
+mineGateLockBlocker.position.set(mineGate.position.x, 1.02, mineGate.position.z + 0.72);
+scene.add(mineGateLockBlocker);
+abandonedMineGate.lockBlocker = mineGateLockBlocker;
+abandonedMineGate.lockColliderIndex = addCollider(mineGateLockBlocker, 1.0);
+
+function applyDevPreset() {
+  if (!DEV_PRESET_ENABLED) return;
+
+  for (let i = 0; i < inventory.slots.length; i++) {
+    inventory.slots[i] = null;
+  }
+
+  inventory.pickaxeLevel = Math.max(0, Math.min(DEV_PRESET.pickaxeLevel ?? 0, PICKAXE_UPGRADE_LEVELS.length - 1));
+  inventory.mineKeyIssued = Boolean(DEV_PRESET.unlockAbandonedMine);
+  inventory.abandonedMineUnlocked = Boolean(DEV_PRESET.unlockAbandonedMine);
+  inventory.equipped.head = null;
+  inventory.equipped.body = null;
+  inventory.equipped.shoes = null;
+  inventory.equipped.tool = null;
+
+  tutorialQuest.minedRockCount = DEV_PRESET.completeTutorial ? 1 : 0;
+  tutorialQuest.upgradeCount = DEV_PRESET.completeTutorial ? 3 : 0;
+  tutorialQuest.archivedSteps = [];
+  tutorialQuest.currentStep = DEV_PRESET.completeTutorial ? tutorialQuest.steps.length : 0;
+  tutorialQuest.completed = Boolean(DEV_PRESET.completeTutorial);
+
+  if (DEV_PRESET.giveStarterGear) {
+    addItem("pickaxe", 1);
+    addItem("safetyHelmet", 1);
+    inventory.equipped.tool = "pickaxe";
+    inventory.equipped.head = "safetyHelmet";
+  }
+
+  if (typeof DEV_PRESET.stoneDust === "number" && DEV_PRESET.stoneDust > 0) {
+    addItem("stoneDust", DEV_PRESET.stoneDust);
+  }
+
+  if (inventory.mineKeyIssued) {
+    addItem("abandonedMineKey", 1);
+  }
+  if (inventory.abandonedMineUnlocked) {
+    if (typeof abandonedMineGate.lockColliderIndex === "number") {
+      removeColliderAt(abandonedMineGate.lockColliderIndex);
+      abandonedMineGate.lockColliderIndex = null;
+    }
+    if (abandonedMineGate.lockBlocker?.parent) {
+      abandonedMineGate.lockBlocker.removeFromParent();
+    }
+  }
+
+  currentMapId = DEV_PRESET.startMapId ?? "광산맵";
+  const startSpawn = currentMapId === "폐광맵"
+    ? {
+        x: campGate.position.x,
+        z: campGate.position.z - 2.45,
+        rotationY: Math.PI,
+      }
+    : {
+        x: START_X,
+        z: START_Z,
+        rotationY: 0,
+      };
+
+  player.position.set(startSpawn.x, player.position.y, startSpawn.z);
+  player.rotation.y = startSpawn.rotationY;
+  latestMoveDir.set(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
+  controls.target.copy(player.position).add(new THREE.Vector3(0, 1.0, 0));
+  updateInventoryUI();
+}
+
+applyDevPreset();
+
 
 function makeSign(x, z, text, rotationY = 0) {
   const g = new THREE.Group();
@@ -3402,6 +3801,309 @@ function buildForgeAnvil(x, z) {
   return g;
 }
 
+function buildTravelGate(x, z, rotationY = 0, label = "") {
+  const g = new THREE.Group();
+
+  const timberMat = new THREE.MeshStandardMaterial({
+    color: 0x6c5138,
+    roughness: 0.96,
+  });
+  const ironMat = new THREE.MeshStandardMaterial({
+    color: 0x535961,
+    roughness: 0.82,
+    metalness: 0.18,
+  });
+  const shadowMat = new THREE.MeshStandardMaterial({
+    color: 0x2c2520,
+    roughness: 1.0,
+  });
+
+  const leftPost = new THREE.Mesh(new THREE.BoxGeometry(0.38, 2.95, 0.36), timberMat);
+  leftPost.position.set(-1.0, 1.48, 0);
+  g.add(leftPost);
+
+  const rightPost = leftPost.clone();
+  rightPost.position.x = 1.0;
+  g.add(rightPost);
+
+  const lintel = new THREE.Mesh(new THREE.BoxGeometry(2.58, 0.32, 0.42), timberMat);
+  lintel.position.set(0, 2.88, 0);
+  g.add(lintel);
+
+  const leftBrace = new THREE.Mesh(new THREE.BoxGeometry(0.24, 1.34, 0.18), timberMat);
+  leftBrace.position.set(-0.64, 1.62, 0);
+  leftBrace.rotation.z = Math.PI * -0.12;
+  g.add(leftBrace);
+
+  const rightBrace = leftBrace.clone();
+  rightBrace.position.x *= -1;
+  rightBrace.rotation.z *= -1;
+  g.add(rightBrace);
+
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(2.96, 0.18, 1.5), shadowMat);
+  roof.position.set(0, 3.02, -0.22);
+  g.add(roof);
+
+  const roofCap = new THREE.Mesh(new THREE.BoxGeometry(2.78, 0.08, 1.18), ironMat);
+  roofCap.position.set(0, 3.18, -0.18);
+  g.add(roofCap);
+
+  const tunnelMouth = new THREE.Mesh(new THREE.BoxGeometry(1.76, 2.0, 1.18), shadowMat);
+  tunnelMouth.position.set(0, 1.22, -0.44);
+  g.add(tunnelMouth);
+
+  const floorPlate = new THREE.Mesh(new THREE.BoxGeometry(3.1, 0.12, 2.1), ironMat);
+  floorPlate.position.set(0, 0.06, -0.28);
+  g.add(floorPlate);
+  g.userData.walkSurface = floorPlate;
+
+  const railLeft = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 1.82), ironMat);
+  railLeft.position.set(-0.42, 0.11, -0.26);
+  g.add(railLeft);
+
+  const railRight = railLeft.clone();
+  railRight.position.x *= -1;
+  g.add(railRight);
+
+  if (label) {
+    const signBoard = new THREE.Mesh(
+      new THREE.BoxGeometry(1.24, 0.3, 0.08),
+      new THREE.MeshStandardMaterial({ color: 0xcab690, roughness: 0.96 })
+    );
+    signBoard.position.set(0, 2.14, 0.24);
+    g.add(signBoard);
+  }
+
+  g.position.set(x, START_FLAT_Y, z);
+  g.rotation.y = rotationY;
+  scene.add(g);
+
+  leftPost.updateWorldMatrix(true, true);
+  rightPost.updateWorldMatrix(true, true);
+  addCollider(leftPost, 0.98);
+  addCollider(rightPost, 0.98);
+
+  return g;
+}
+
+function buildCampTestArea() {
+  const campSize = GROUND_SIZE;
+  const pillarMat = new THREE.MeshStandardMaterial({
+    color: 0x4a4037,
+    roughness: 1.0,
+  });
+  const ceilingMat = new THREE.MeshStandardMaterial({
+    color: 0x211b17,
+    roughness: 1.0,
+    side: THREE.DoubleSide,
+  });
+
+  const pad = new THREE.Mesh(
+    new THREE.BoxGeometry(campSize, 0.18, campSize),
+    new THREE.MeshStandardMaterial({
+      color: 0x342a22,
+      roughness: 0.98,
+    })
+  );
+  pad.position.set(CAMP_MAP_X, 0.09, CAMP_MAP_Z);
+  scene.add(pad);
+  groundSurfaces.push(pad);
+  registerWalkableSurface("폐광맵", pad, 0.45);
+
+  const pillarDefs = [
+    { x: -28, z: -36, sx: 4.6, sz: 9.6, sy: 6.72, ry: 0.14 },
+    { x: -8, z: -40, sx: 2.4, sz: 2.0, sy: 6.24, ry: -0.08 },
+    { x: 20, z: -34, sx: 3.8, sz: 7.8, sy: 6.56, ry: 0.18 },
+    { x: -18, z: -22, sx: 2.8, sz: 3.7, sy: 6.4, ry: -0.12 },
+    { x: 12, z: -24, sx: 4.2, sz: 2.4, sy: 6.8, ry: 0.09 },
+    { x: -34, z: -8, sx: 3.2, sz: 4.4, sy: 6.96, ry: 0.22 },
+    { x: -4, z: -10, sx: 1.9, sz: 9.9, sy: 8.08, ry: -0.16 },
+    { x: 28, z: -12, sx: 3.6, sz: 3.1, sy: 6.48, ry: 0.13 },
+    { x: -20, z: 2, sx: 2.5, sz: 2.1, sy: 6.32, ry: -0.06 },
+    { x: 10, z: 0, sx: 3.9, sz: 15.3, sy: 8.96, ry: 0.28 },
+    { x: -32, z: 14, sx: 3.1, sz: 2.7, sy: 6.4, ry: 0.11 },
+    { x: -2, z: 16, sx: 1.8, sz: 15.0, sy: 8.64, ry: -0.24 },
+    { x: 24, z: 12, sx: 3.9, sz: 2.2, sy: 6.24, ry: 0.07 },
+    { x: -16, z: 26, sx: 3.4, sz: 4.8, sy: 8.48, ry: -0.2 },
+    { x: 14, z: 28, sx: 2.6, sz: 2.9, sy: 6.08, ry: 0.16 },
+    { x: -30, z: 36, sx: 3.4, sz: 13.8, sy: 6.8, ry: 0.21 },
+    { x: 2, z: 38, sx: 1.7, sz: 2.8, sy: 7.92, ry: -0.15 },
+    { x: 30, z: 36, sx: 4.4, sz: 9.0, sy: 6.72, ry: 0.12 },
+    { x: -12, z: 44, sx: 2.8, sz: 3.6, sy: 6.4, ry: -0.14 },
+    { x: 18, z: 46, sx: 3.7, sz: 2.4, sy: 6.56, ry: 0.1 },
+  ];
+
+  const pillarMeshes = [];
+
+  for (const pillar of pillarDefs) {
+    const column = new THREE.Mesh(
+      new THREE.BoxGeometry(pillar.sx, pillar.sy, pillar.sz),
+      pillarMat
+    );
+    column.position.set(CAMP_MAP_X + pillar.x, pillar.sy * 0.5, CAMP_MAP_Z + pillar.z);
+    column.rotation.set(
+      THREE.MathUtils.degToRad((pillar.x + pillar.z) * 0.08),
+      pillar.ry,
+      THREE.MathUtils.degToRad((pillar.x - pillar.z) * 0.05)
+    );
+    scene.add(column);
+    addCollider(column, 0.96);
+    pillarMeshes.push(column);
+  }
+
+  const ceilingSlabs = [
+    { x: 0, z: -34, sx: 104, sy: 3.0, sz: 30, rx: 0.05, rz: -0.03, topY: 10.24 },
+    { x: 0, z: -8, sx: 104, sy: 3.4, sz: 28, rx: -0.04, rz: 0.02, topY: 9.92 },
+    { x: 0, z: 18, sx: 104, sy: 3.2, sz: 28, rx: 0.03, rz: -0.04, topY: 10.08 },
+    { x: -18, z: 42, sx: 70, sy: 3.1, sz: 22, rx: -0.05, rz: 0.03, topY: 9.76 },
+    { x: 22, z: 42, sx: 68, sy: 2.9, sz: 22, rx: 0.04, rz: -0.02, topY: 9.96 },
+  ];
+
+  function getCeilingBottomY(localX, localZ) {
+    for (const slab of ceilingSlabs) {
+      const halfX = slab.sx * 0.5;
+      const halfZ = slab.sz * 0.5;
+      if (
+        localX >= slab.x - halfX &&
+        localX <= slab.x + halfX &&
+        localZ >= slab.z - halfZ &&
+        localZ <= slab.z + halfZ
+      ) {
+        return slab.topY;
+      }
+    }
+    return 10.08;
+  }
+
+  for (const slab of ceilingSlabs) {
+    const roof = new THREE.Mesh(
+      new THREE.BoxGeometry(slab.sx, slab.sy, slab.sz),
+      ceilingMat
+    );
+    roof.position.set(
+      CAMP_MAP_X + slab.x,
+      slab.topY + slab.sy * 0.5,
+      CAMP_MAP_Z + slab.z
+    );
+    roof.rotation.set(slab.rx, 0, slab.rz);
+    scene.add(roof);
+  }
+
+  function createTaperedConnectorGeometry(bottomX, bottomZ, topX, topZ, height) {
+    const hx0 = bottomX * 0.5;
+    const hz0 = bottomZ * 0.5;
+    const hx1 = topX * 0.5;
+    const hz1 = topZ * 0.5;
+    const y0 = -height * 0.5;
+    const y1 = height * 0.5;
+    const vertices = [
+      // bottom
+      -hx0, y0, -hz0,
+       hx0, y0, -hz0,
+       hx0, y0,  hz0,
+      -hx0, y0,  hz0,
+      // top
+      -hx1, y1, -hz1,
+       hx1, y1, -hz1,
+       hx1, y1,  hz1,
+      -hx1, y1,  hz1,
+    ];
+    const indices = [
+      0, 1, 2, 0, 2, 3,
+      4, 6, 5, 4, 7, 6,
+      0, 4, 5, 0, 5, 1,
+      1, 5, 6, 1, 6, 2,
+      2, 6, 7, 2, 7, 3,
+      3, 7, 4, 3, 4, 0,
+    ];
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    return geometry;
+  }
+
+  for (let i = 0; i < pillarDefs.length; i += 1) {
+    const pillar = pillarDefs[i];
+    const localBottomY = getCeilingBottomY(pillar.x, pillar.z);
+    const connectorHeight = Math.max(0.45, localBottomY - pillar.sy);
+    const bottomX = pillar.sx;
+    const bottomZ = pillar.sz;
+    const topX = Math.max(bottomX + 4.2, pillar.sx + 5.0);
+    const topZ = Math.max(bottomZ + 4.2, pillar.sz + 5.0);
+    const connector = new THREE.Mesh(
+      createTaperedConnectorGeometry(bottomX, bottomZ, topX, topZ, connectorHeight),
+      ceilingMat
+    );
+    connector.position.set(
+      CAMP_MAP_X + pillar.x,
+      pillar.sy + connectorHeight * 0.5,
+      CAMP_MAP_Z + pillar.z
+    );
+    connector.rotation.set(0, pillar.ry * 0.65, 0);
+    scene.add(connector);
+  }
+}
+
+function buildMapConnectorTunnel(startGate, endGate) {
+  const centerX = (startGate.position.x + endGate.position.x) * 0.5;
+  const minZ = Math.min(startGate.position.z, endGate.position.z) - 1.2;
+  const maxZ = Math.max(startGate.position.z, endGate.position.z) + 1.2;
+  const length = maxZ - minZ;
+  const centerZ = (minZ + maxZ) * 0.5;
+  const tunnelWidth = 10.8;
+  const curbWidth = 0.24;
+  const curbOffset = tunnelWidth * 0.5 - curbWidth * 0.5;
+  const postOffset = tunnelWidth * 0.5 - 1.0;
+
+  const floor = new THREE.Mesh(
+    new THREE.BoxGeometry(tunnelWidth, 0.14, length),
+    new THREE.MeshStandardMaterial({
+      color: 0x706455,
+      roughness: 0.98,
+    })
+  );
+  floor.position.set(centerX, 0.07, centerZ);
+  scene.add(floor);
+  groundSurfaces.push(floor);
+  registerWalkableSurface("광산맵", floor, 0.38);
+  registerWalkableSurface("폐광맵", floor, 0.38);
+
+  const curbMat = new THREE.MeshStandardMaterial({
+    color: 0x4e4032,
+    roughness: 0.98,
+  });
+  const leftCurb = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.36, length), curbMat);
+  leftCurb.position.set(centerX - curbOffset, 0.18, centerZ);
+  scene.add(leftCurb);
+
+  const rightCurb = leftCurb.clone();
+  rightCurb.position.x = centerX + curbOffset;
+  scene.add(rightCurb);
+
+  const beamMat = new THREE.MeshStandardMaterial({
+    color: 0x5d4732,
+    roughness: 0.95,
+  });
+  const beamCount = Math.max(3, Math.floor(length / 6));
+  for (let i = 0; i <= beamCount; i++) {
+    const t = beamCount === 0 ? 0 : i / beamCount;
+    const z = THREE.MathUtils.lerp(minZ + 1.3, maxZ - 1.3, t);
+
+    const leftPost = new THREE.Mesh(new THREE.BoxGeometry(0.18, 2.1, 0.18), beamMat);
+    leftPost.position.set(centerX - postOffset, 1.05, z);
+    scene.add(leftPost);
+
+    const rightPost = leftPost.clone();
+    rightPost.position.x = centerX + postOffset;
+    scene.add(rightPost);
+
+    const topBeam = new THREE.Mesh(new THREE.BoxGeometry(tunnelWidth - 1.8, 0.16, 0.18), beamMat);
+    topBeam.position.set(centerX, 2.04, z);
+    scene.add(topBeam);
+  }
+}
+
 
 // Road
 const road = new THREE.Mesh(
@@ -3438,6 +4140,13 @@ window.addEventListener("keydown", (e) => {
       unregisterDynamicProp(pickup.obj);
       unregisterPickupItem(pickup.obj);
       pickup.obj.removeFromParent();
+    }
+    return;
+  }
+
+  if (activeMapGate && !canUseMapGate(activeMapGate)) {
+    if (tryUnlockMapGate(activeMapGate)) {
+      return;
     }
     return;
   }
@@ -3591,6 +4300,83 @@ function isStartRingTransitionBlocked(x0, z0, x1, z1) {
   return false;
 }
 
+function getCurrentMapBounds() {
+  const entries = walkableMapSurfaces.get(currentMapId) ?? [];
+  if (entries.length === 0) {
+    return {
+      minX: -GROUND_SIZE * 0.5 + 1.4,
+      maxX: GROUND_SIZE * 0.5 - 1.4,
+      minZ: -GROUND_SIZE * 0.5 + 1.4,
+      maxZ: GROUND_SIZE * 0.5 - 1.4,
+    };
+  }
+
+  const union = new THREE.Box3();
+  let seeded = false;
+
+  for (const entry of entries) {
+    const mesh = entry.mesh;
+    if (!mesh?.parent) continue;
+    mesh.updateWorldMatrix(true, true);
+    const box = new THREE.Box3().setFromObject(mesh);
+    box.min.x -= entry.padding;
+    box.max.x += entry.padding;
+    box.min.z -= entry.padding;
+    box.max.z += entry.padding;
+    if (!seeded) {
+      union.copy(box);
+      seeded = true;
+    } else {
+      union.union(box);
+    }
+  }
+
+  if (!seeded) {
+    return {
+      minX: -GROUND_SIZE * 0.5 + 1.4,
+      maxX: GROUND_SIZE * 0.5 - 1.4,
+      minZ: -GROUND_SIZE * 0.5 + 1.4,
+      maxZ: GROUND_SIZE * 0.5 - 1.4,
+    };
+  }
+
+  return {
+    minX: union.min.x,
+    maxX: union.max.x,
+    minZ: union.min.z,
+    maxZ: union.max.z,
+  };
+}
+
+function isInsideCurrentMapBounds(x, z) {
+  const entries = walkableMapSurfaces.get(currentMapId) ?? [];
+  if (entries.length === 0) {
+    const bounds = getCurrentMapBounds();
+    return (
+      x >= bounds.minX &&
+      x <= bounds.maxX &&
+      z >= bounds.minZ &&
+      z <= bounds.maxZ
+    );
+  }
+
+  for (const entry of entries) {
+    const mesh = entry.mesh;
+    if (!mesh?.parent) continue;
+    mesh.updateWorldMatrix(true, true);
+    const box = new THREE.Box3().setFromObject(mesh);
+    box.min.x -= entry.padding;
+    box.max.x += entry.padding;
+    box.min.z -= entry.padding;
+    box.max.z += entry.padding;
+    if (x >= box.min.x && x <= box.max.x && z >= box.min.z && z <= box.max.z) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 
 // Movement
 const clock = new THREE.Clock();
@@ -3643,7 +4429,8 @@ function updateMovement(dt) {
   if (isMoving) {
     move.normalize();
     latestMoveDir.copy(move);
-    const speed = keys.shift ? 7.0 : 4.0;
+    const devSpeedMultiplier = DEV_PRESET_ENABLED ? 3 : 1;
+    const speed = (keys.shift ? 7.0 : 4.0) * devSpeedMultiplier;
      
     const prevPos = player.position.clone();
     const delta = move.clone().multiplyScalar(speed * dt);
@@ -3651,6 +4438,7 @@ function updateMovement(dt) {
     // 1) X축 이동만 먼저 시도
     player.position.x = prevPos.x + delta.x;
     if (
+      !isInsideCurrentMapBounds(player.position.x, player.position.z) ||
       intersectsAnyCollider(getPlayerBox()) ||
       isStartRingTransitionBlocked(prevPos.x, prevPos.z, player.position.x, player.position.z) ||
       isCrossingBlockedStartRing(prevPos.x, prevPos.z, player.position.x, player.position.z)
@@ -3662,6 +4450,7 @@ function updateMovement(dt) {
     const afterX = player.position.x;
     player.position.z = prevPos.z + delta.z;
     if (
+      !isInsideCurrentMapBounds(player.position.x, player.position.z) ||
       intersectsAnyCollider(getPlayerBox()) ||
       isStartRingTransitionBlocked(afterX, prevPos.z, player.position.x, player.position.z) ||
       isCrossingBlockedStartRing(afterX, prevPos.z, player.position.x, player.position.z)
@@ -3762,6 +4551,18 @@ function updateMovement(dt) {
 window.addEventListener("keydown", (e) => {
   if (e.code !== "Space") return;
   if (activeTutorialNpc) {
+    const currentStep = getCurrentQuestStep();
+    if (currentStep?.title === "폐광 열쇠 수령" && !inventory.mineKeyIssued) {
+      inventory.mineKeyIssued = true;
+      addItem("abandonedMineKey", 1);
+      updateInventoryUI();
+      showUI(HUD_MSG.MINE_KEY_GET, 1200);
+      lastMessageUntil = performance.now() + 1200;
+      showNpcDialog("좋아, 이제 폐광에 들어갈 자격이 생겼다. 이 폐광 열쇠를 가져가서 북쪽 폐광 입구를 열어.", 3000);
+      refreshQuestProgress();
+      if (questOpen) renderQuestWindow();
+      return;
+    }
     showNpcDialog(getTutorialNpcLine());
     refreshQuestProgress();
     if (questOpen) renderQuestWindow();
@@ -3856,6 +4657,11 @@ function animate() {
   const dt = hitStopTime > 0 ? 0 : rawDt;
 
   updateMovement(dt);
+  updateCurrentMapFromPlayerPosition();
+  if (currentMapId !== lastAnnouncedMapId) {
+    showMapArrivalBanner(currentMapId);
+    lastAnnouncedMapId = currentMapId;
+  }
   updateDynamicProps(dt);
   updateParticles(dt);
   updateRockHitReactions(rawDt);
@@ -3871,6 +4677,7 @@ function animate() {
     activeInteractable = null;
     activeForgeStation = null;
     activeTutorialNpc = findNearestTutorialNpc(2.2);
+    activeMapGate = findTriggeredMapGate();
 
     if (forgeStation?.parent && getForgeDistance() < 2.4) {
   activeForgeStation = forgeStation;
@@ -3899,12 +4706,12 @@ function animate() {
 
   controls.target.copy(player.position).add(new THREE.Vector3(0, 1.0, 0));
   controls.update();
+  updateNpcDialogPosition();
+  updateTutorialNpcNameTag();
   applyCameraShake();
   if (forgeOpen) {
     if (getForgeDistance() >= 2.8) {
       setForgeOpen(false);
-    } else {
-      renderForgeWindow();
     }
   }
 
@@ -3942,6 +4749,16 @@ if (!hintText) {
 // 5) 표지판 근접 문구 (위 힌트가 없을 때만)
 if (!hintText && activeInteractable) {
   hintText = activeInteractable.text;
+}
+
+if (!hintText && activeMapGate && !mapTransitionPending) {
+  if (!canUseMapGate(activeMapGate)) {
+    hintText = activeMapGate.unlockWithItem && hasItem(activeMapGate.unlockWithItem)
+      ? `E : ${ITEM_DEFS[activeMapGate.unlockWithItem]?.name ?? "열쇠"} 사용`
+      : (activeMapGate.denyText ?? "잠겨 있습니다");
+  } else {
+    hintText = activeMapGate.hint ?? "";
+  }
 }
 
 // 6) 최종 출력
