@@ -1017,17 +1017,17 @@ function hideUI() {
 const mapArrivalBanner = document.createElement("div");
 mapArrivalBanner.style.position = "fixed";
 mapArrivalBanner.style.left = "50%";
-mapArrivalBanner.style.top = "36px";
+mapArrivalBanner.style.top = "96px";
 mapArrivalBanner.style.transform = "translateX(-50%) translateY(-10px)";
-mapArrivalBanner.style.padding = "12px 22px";
-mapArrivalBanner.style.borderRadius = "14px";
+mapArrivalBanner.style.padding = "24px 40px";
+mapArrivalBanner.style.borderRadius = "22px";
 mapArrivalBanner.style.background = "rgba(18,22,28,0.62)";
 mapArrivalBanner.style.border = "1px solid rgba(255,255,255,0.16)";
 mapArrivalBanner.style.backdropFilter = "blur(5px)";
 mapArrivalBanner.style.boxShadow = "0 14px 32px rgba(0,0,0,0.22)";
 mapArrivalBanner.style.color = "#fff6dc";
 mapArrivalBanner.style.fontFamily = "system-ui, -apple-system, sans-serif";
-mapArrivalBanner.style.fontSize = "28px";
+mapArrivalBanner.style.fontSize = "56px";
 mapArrivalBanner.style.fontWeight = "900";
 mapArrivalBanner.style.letterSpacing = "0.04em";
 mapArrivalBanner.style.pointerEvents = "none";
@@ -2625,6 +2625,12 @@ const FORGE_UPGRADE_DELAY_MS = 1050;
 let forgePendingUpgrade = null;
 let forgeLastResult = null;
 
+function getMapDisplayName(mapId) {
+  if (mapId === "광산맵") return "광산";
+  if (mapId === "폐광맵") return "폐광";
+  return mapId;
+}
+
 function registerPickupItem(obj, itemId, text = null) {
   const def = ITEM_DEFS[itemId];
   const entry = {
@@ -3804,84 +3810,17 @@ function buildForgeAnvil(x, z) {
 function buildTravelGate(x, z, rotationY = 0, label = "") {
   const g = new THREE.Group();
 
-  const timberMat = new THREE.MeshStandardMaterial({
-    color: 0x6c5138,
-    roughness: 0.96,
-  });
-  const ironMat = new THREE.MeshStandardMaterial({
-    color: 0x535961,
-    roughness: 0.82,
-    metalness: 0.18,
-  });
-  const shadowMat = new THREE.MeshStandardMaterial({
-    color: 0x2c2520,
-    roughness: 1.0,
-  });
-
-  const leftPost = new THREE.Mesh(new THREE.BoxGeometry(0.38, 2.95, 0.36), timberMat);
-  leftPost.position.set(-1.0, 1.48, 0);
-  g.add(leftPost);
-
-  const rightPost = leftPost.clone();
-  rightPost.position.x = 1.0;
-  g.add(rightPost);
-
-  const lintel = new THREE.Mesh(new THREE.BoxGeometry(2.58, 0.32, 0.42), timberMat);
-  lintel.position.set(0, 2.88, 0);
-  g.add(lintel);
-
-  const leftBrace = new THREE.Mesh(new THREE.BoxGeometry(0.24, 1.34, 0.18), timberMat);
-  leftBrace.position.set(-0.64, 1.62, 0);
-  leftBrace.rotation.z = Math.PI * -0.12;
-  g.add(leftBrace);
-
-  const rightBrace = leftBrace.clone();
-  rightBrace.position.x *= -1;
-  rightBrace.rotation.z *= -1;
-  g.add(rightBrace);
-
-  const roof = new THREE.Mesh(new THREE.BoxGeometry(2.96, 0.18, 1.5), shadowMat);
-  roof.position.set(0, 3.02, -0.22);
-  g.add(roof);
-
-  const roofCap = new THREE.Mesh(new THREE.BoxGeometry(2.78, 0.08, 1.18), ironMat);
-  roofCap.position.set(0, 3.18, -0.18);
-  g.add(roofCap);
-
-  const tunnelMouth = new THREE.Mesh(new THREE.BoxGeometry(1.76, 2.0, 1.18), shadowMat);
-  tunnelMouth.position.set(0, 1.22, -0.44);
-  g.add(tunnelMouth);
-
-  const floorPlate = new THREE.Mesh(new THREE.BoxGeometry(3.1, 0.12, 2.1), ironMat);
+  const floorPlate = new THREE.Mesh(
+    new THREE.BoxGeometry(3.1, 0.12, 2.1),
+    new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 })
+  );
   floorPlate.position.set(0, 0.06, -0.28);
   g.add(floorPlate);
   g.userData.walkSurface = floorPlate;
 
-  const railLeft = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 1.82), ironMat);
-  railLeft.position.set(-0.42, 0.11, -0.26);
-  g.add(railLeft);
-
-  const railRight = railLeft.clone();
-  railRight.position.x *= -1;
-  g.add(railRight);
-
-  if (label) {
-    const signBoard = new THREE.Mesh(
-      new THREE.BoxGeometry(1.24, 0.3, 0.08),
-      new THREE.MeshStandardMaterial({ color: 0xcab690, roughness: 0.96 })
-    );
-    signBoard.position.set(0, 2.14, 0.24);
-    g.add(signBoard);
-  }
-
   g.position.set(x, START_FLAT_Y, z);
   g.rotation.y = rotationY;
   scene.add(g);
-
-  leftPost.updateWorldMatrix(true, true);
-  rightPost.updateWorldMatrix(true, true);
-  addCollider(leftPost, 0.98);
-  addCollider(rightPost, 0.98);
 
   return g;
 }
@@ -4054,7 +3993,6 @@ function buildMapConnectorTunnel(startGate, endGate) {
   const tunnelWidth = 10.8;
   const curbWidth = 0.24;
   const curbOffset = tunnelWidth * 0.5 - curbWidth * 0.5;
-  const postOffset = tunnelWidth * 0.5 - 1.0;
 
   const floor = new THREE.Mesh(
     new THREE.BoxGeometry(tunnelWidth, 0.14, length),
@@ -4081,27 +4019,33 @@ function buildMapConnectorTunnel(startGate, endGate) {
   rightCurb.position.x = centerX + curbOffset;
   scene.add(rightCurb);
 
-  const beamMat = new THREE.MeshStandardMaterial({
-    color: 0x5d4732,
-    roughness: 0.95,
-  });
-  const beamCount = Math.max(3, Math.floor(length / 6));
-  for (let i = 0; i <= beamCount; i++) {
-    const t = beamCount === 0 ? 0 : i / beamCount;
-    const z = THREE.MathUtils.lerp(minZ + 1.3, maxZ - 1.3, t);
+  const transitionLength = 4.2;
+  const transitionWidth = tunnelWidth + 0.6;
 
-    const leftPost = new THREE.Mesh(new THREE.BoxGeometry(0.18, 2.1, 0.18), beamMat);
-    leftPost.position.set(centerX - postOffset, 1.05, z);
-    scene.add(leftPost);
+  const mineTransition = new THREE.Mesh(
+    new THREE.BoxGeometry(transitionWidth, 0.12, transitionLength),
+    new THREE.MeshStandardMaterial({
+      color: 0x7b6f63,
+      roughness: 0.97,
+    })
+  );
+  mineTransition.position.set(startGate.position.x, 0.065, startGate.position.z + 1.45);
+  scene.add(mineTransition);
+  groundSurfaces.push(mineTransition);
+  registerWalkableSurface("광산맵", mineTransition, 0.32);
 
-    const rightPost = leftPost.clone();
-    rightPost.position.x = centerX + postOffset;
-    scene.add(rightPost);
+  const campTransition = new THREE.Mesh(
+    new THREE.BoxGeometry(transitionWidth, 0.12, transitionLength),
+    new THREE.MeshStandardMaterial({
+      color: 0x342a22,
+      roughness: 0.98,
+    })
+  );
+  campTransition.position.set(endGate.position.x, 0.065, endGate.position.z - 1.45);
+  scene.add(campTransition);
+  groundSurfaces.push(campTransition);
+  registerWalkableSurface("폐광맵", campTransition, 0.32);
 
-    const topBeam = new THREE.Mesh(new THREE.BoxGeometry(tunnelWidth - 1.8, 0.16, 0.18), beamMat);
-    topBeam.position.set(centerX, 2.04, z);
-    scene.add(topBeam);
-  }
 }
 
 
@@ -4659,7 +4603,7 @@ function animate() {
   updateMovement(dt);
   updateCurrentMapFromPlayerPosition();
   if (currentMapId !== lastAnnouncedMapId) {
-    showMapArrivalBanner(currentMapId);
+    showMapArrivalBanner(getMapDisplayName(currentMapId));
     lastAnnouncedMapId = currentMapId;
   }
   updateDynamicProps(dt);
