@@ -1,15 +1,16 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
+const LAST_PATCHED_AT = "2026-04-04 18:24:00 KST";
+
 const scene = new THREE.Scene();
 // ===== Atmosphere: Sky / Fog =====
 scene.background = new THREE.Color(0xd6d8db); // 밝은 회색 하늘
-
-scene.fog = new THREE.Fog(
-  0xd6d8db, // 안개 색 (하늘과 동일)
-  15,       // 가까운 곳은 선명
-  60        // 멀리만 흐릿
-);
+const WORLD_FOG_COLOR = 0xd6d8db;
+const CAVE_FOG_COLOR = 0x120e0b;
+const WORLD_FOG_NEAR = 15;
+const WORLD_FOG_FAR = 60;
+scene.fog = new THREE.Fog(WORLD_FOG_COLOR, WORLD_FOG_NEAR, WORLD_FOG_FAR);
 
 // ===== Lighting =====
 // 전체 밝기 (부드럽게)
@@ -22,7 +23,23 @@ sunLight.position.set(30, 50, 30);
 sunLight.castShadow = false; // 강한 그림자 제거
 scene.add(sunLight);
 
+const torchLight = new THREE.PointLight(0xffc46b, 0, 14, 2);
+torchLight.visible = false;
+scene.add(torchLight);
+
 scene.background = new THREE.Color(0xaad7ff);
+
+const caveDarkenableMaterials = [];
+
+function registerCaveDarkMaterial(material, minScalar = 0.28) {
+  if (!material || !material.color) return material;
+  caveDarkenableMaterials.push({
+    material,
+    baseColor: material.color.clone(),
+    minScalar,
+  });
+  return material;
+}
 
 const camera = new THREE.PerspectiveCamera(
   60,
@@ -49,6 +66,28 @@ uiLayer.style.inset = "0";
 uiLayer.style.zIndex = "999999";
 uiLayer.style.pointerEvents = "none"; // 게임 조작 방해 안 함
 document.body.appendChild(uiLayer);
+
+const patchInfoWrap = document.createElement("div");
+patchInfoWrap.id = "patchInfoWrap";
+patchInfoWrap.style.position = "fixed";
+patchInfoWrap.style.right = "12px";
+patchInfoWrap.style.top = "12px";
+patchInfoWrap.style.padding = "10px 12px";
+patchInfoWrap.style.background = "rgba(20,20,20,0.52)";
+patchInfoWrap.style.border = "1px solid rgba(255,255,255,0.18)";
+patchInfoWrap.style.borderRadius = "12px";
+patchInfoWrap.style.backdropFilter = "blur(4px)";
+patchInfoWrap.style.color = "white";
+patchInfoWrap.style.fontFamily = "system-ui, -apple-system, sans-serif";
+patchInfoWrap.style.fontSize = "12px";
+patchInfoWrap.style.lineHeight = "1.45";
+patchInfoWrap.style.whiteSpace = "pre-line";
+patchInfoWrap.style.userSelect = "none";
+patchInfoWrap.style.pointerEvents = "none";
+patchInfoWrap.style.zIndex = "999999";
+patchInfoWrap.style.display = "none";
+patchInfoWrap.textContent = `마지막 패치\n${LAST_PATCHED_AT}`;
+uiLayer.appendChild(patchInfoWrap);
 
 // ===== Compass UI =====
 const compassWrap = document.createElement("div");
@@ -1426,7 +1465,8 @@ const START_RING_THICKNESS = 1.275; // 기존 대비 50% 두껍게
 const CAMP_MAP_X = 0;
 const CAMP_MAP_Z = -126;
 const MAP_GATE_RADIUS = 1.15;
-const DEV_PRESET_ENABLED = false;
+const DEV_PRESET_ENABLED = true;
+patchInfoWrap.style.display = DEV_PRESET_ENABLED ? "block" : "none";
 const DEV_PRESET = {
   startMapId: "폐광맵",
   completeTutorial: true,
@@ -2618,6 +2658,41 @@ const mapGates = [];
 let activeMapGate = null;
 let currentMapId = "광산맵";
 let lastAnnouncedMapId = currentMapId;
+let torchEquipped = false;
+
+function updateSceneFogForCurrentMap() {
+  const mineDoorThresholdZ = mineGate.position.z - 0.35;
+  const campDoorThresholdZ = campGate.position.z + 0.35;
+
+  let caveBlend = 0;
+  if (player.position.z <= campDoorThresholdZ) {
+    caveBlend = 1;
+  } else if (player.position.z >= mineDoorThresholdZ) {
+    caveBlend = 0;
+  } else {
+    const rawBlend = 1 - ((player.position.z - campDoorThresholdZ) / (mineDoorThresholdZ - campDoorThresholdZ));
+    caveBlend = THREE.MathUtils.smoothstep(rawBlend, 0, 1);
+  }
+
+  ambientLight.intensity = 0.8;
+  sunLight.intensity = 0.4;
+
+  for (const entry of caveDarkenableMaterials) {
+    const scalar = THREE.MathUtils.lerp(1, entry.minScalar, caveBlend);
+    entry.material.color.copy(entry.baseColor).multiplyScalar(scalar);
+  }
+
+  const caveFogNear = torchEquipped ? 5.6 : 1.8;
+  const caveFogFar = torchEquipped ? 18.0 : 5.6;
+  scene.fog.color.copy(new THREE.Color(WORLD_FOG_COLOR)).lerp(new THREE.Color(CAVE_FOG_COLOR), caveBlend);
+  scene.fog.near = THREE.MathUtils.lerp(WORLD_FOG_NEAR, caveFogNear, caveBlend);
+  scene.fog.far = THREE.MathUtils.lerp(WORLD_FOG_FAR, caveFogFar, caveBlend);
+
+  torchLight.visible = caveBlend > 0.02 && torchEquipped;
+  torchLight.intensity = THREE.MathUtils.lerp(0, 1.8, caveBlend);
+  torchLight.distance = THREE.MathUtils.lerp(14, 24, caveBlend);
+  torchLight.position.copy(player.position).add(new THREE.Vector3(0, 1.55, 0));
+}
 let mapTransitionLockUntil = 0;
 let mapTransitionPending = null;
 let forgeOpen = false;
@@ -3691,6 +3766,7 @@ function applyDevPreset() {
   }
 
   currentMapId = DEV_PRESET.startMapId ?? "광산맵";
+  updateSceneFogForCurrentMap();
   const startSpawn = currentMapId === "폐광맵"
     ? {
         x: campGate.position.x,
@@ -4031,27 +4107,68 @@ function buildTravelGate(x, z, rotationY = 0, label = "") {
 
 function buildCampTestArea() {
   const campSize = GROUND_SIZE;
-  const pillarMat = new THREE.MeshStandardMaterial({
+  const pillarMat = registerCaveDarkMaterial(new THREE.MeshStandardMaterial({
     color: 0x4a4037,
     roughness: 1.0,
-  });
-  const ceilingMat = new THREE.MeshStandardMaterial({
+  }), 0.18);
+  const wallMat = registerCaveDarkMaterial(new THREE.MeshStandardMaterial({
+    color: 0x2d251f,
+    roughness: 1.0,
+  }), 0.14);
+  const ceilingMat = registerCaveDarkMaterial(new THREE.MeshStandardMaterial({
     color: 0x211b17,
     roughness: 1.0,
     side: THREE.DoubleSide,
-  });
+  }), 0.1);
 
   const pad = new THREE.Mesh(
     new THREE.BoxGeometry(campSize, 0.18, campSize),
-    new THREE.MeshStandardMaterial({
+    registerCaveDarkMaterial(new THREE.MeshStandardMaterial({
       color: 0x342a22,
       roughness: 0.98,
-    })
+    }), 0.22)
   );
   pad.position.set(CAMP_MAP_X, 0.09, CAMP_MAP_Z);
   scene.add(pad);
   groundSurfaces.push(pad);
   registerWalkableSurface("폐광맵", pad, 0.45);
+
+  const campHalf = campSize * 0.5;
+  const wallThickness = 4.8;
+  const wallHeight = 13.44;
+  const southOpeningWidth = 18;
+  const wallBaseY = wallHeight * 0.5 - 0.55;
+
+  const wallDefs = [
+    { x: 0, z: -campHalf - wallThickness * 0.22, sx: campSize + 6, sy: wallHeight, sz: wallThickness, ry: 0.02 }, // north
+    { x: -campHalf - wallThickness * 0.28, z: 0, sx: wallThickness, sy: wallHeight + 0.4, sz: campSize + 5, ry: -0.03 }, // west
+    { x: campHalf + wallThickness * 0.28, z: 0, sx: wallThickness, sy: wallHeight - 0.2, sz: campSize + 7, ry: 0.025 }, // east
+    { x: -(campSize - southOpeningWidth) * 0.25 - southOpeningWidth * 0.5, z: campHalf + wallThickness * 0.24, sx: (campSize - southOpeningWidth) * 0.5 + 4, sy: wallHeight - 0.3, sz: wallThickness, ry: -0.01 }, // south-west
+    { x: (campSize - southOpeningWidth) * 0.25 + southOpeningWidth * 0.5, z: campHalf + wallThickness * 0.24, sx: (campSize - southOpeningWidth) * 0.5 + 4, sy: wallHeight + 0.2, sz: wallThickness, ry: 0.015 }, // south-east
+  ];
+
+  for (const wall of wallDefs) {
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(wall.sx, wall.sy, wall.sz),
+      wallMat
+    );
+    mesh.position.set(CAMP_MAP_X + wall.x, wallBaseY, CAMP_MAP_Z + wall.z);
+    mesh.rotation.y = wall.ry;
+    scene.add(mesh);
+    addCollider(mesh, 1.0);
+
+    const cap = new THREE.Mesh(
+      new THREE.BoxGeometry(wall.sx * 0.86, 1.4, wall.sz * 0.88),
+      wallMat
+    );
+    cap.position.set(
+      mesh.position.x + Math.sin(wall.ry) * 0.35,
+      mesh.position.y + wall.sy * 0.5 - 0.15,
+      mesh.position.z + Math.cos(wall.ry) * 0.25
+    );
+    cap.rotation.y = wall.ry * 1.2;
+    scene.add(cap);
+  }
 
   const pillarDefs = [
     { x: -28, z: -36, sx: 4.6, sz: 9.6, sy: 6.72, ry: 0.14 },
@@ -4360,6 +4477,14 @@ window.addEventListener("keydown", (e) => {
     return;
   }
   }
+
+  if (k === "t" && DEV_PRESET_ENABLED) {
+    torchEquipped = !torchEquipped;
+    showUI(torchEquipped ? "횃불 점화" : "횃불 소등", 900);
+    lastMessageUntil = performance.now() + 900;
+    return;
+  }
+
    // if (k === "p") {
    // inventory.hasPickaxe = true;
    // showUI("곡괭이를 얻었다!");
@@ -4862,6 +4987,7 @@ function animate() {
 
   updateMovement(dt);
   updateCurrentMapFromPlayerPosition();
+  updateSceneFogForCurrentMap();
   if (currentMapId !== lastAnnouncedMapId) {
     showMapArrivalBanner(currentMapId);
     lastAnnouncedMapId = currentMapId;
