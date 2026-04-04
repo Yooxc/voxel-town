@@ -1017,17 +1017,17 @@ function hideUI() {
 const mapArrivalBanner = document.createElement("div");
 mapArrivalBanner.style.position = "fixed";
 mapArrivalBanner.style.left = "50%";
-mapArrivalBanner.style.top = "96px";
+mapArrivalBanner.style.top = "36px";
 mapArrivalBanner.style.transform = "translateX(-50%) translateY(-10px)";
-mapArrivalBanner.style.padding = "24px 40px";
-mapArrivalBanner.style.borderRadius = "22px";
+mapArrivalBanner.style.padding = "12px 22px";
+mapArrivalBanner.style.borderRadius = "14px";
 mapArrivalBanner.style.background = "rgba(18,22,28,0.62)";
 mapArrivalBanner.style.border = "1px solid rgba(255,255,255,0.16)";
 mapArrivalBanner.style.backdropFilter = "blur(5px)";
 mapArrivalBanner.style.boxShadow = "0 14px 32px rgba(0,0,0,0.22)";
 mapArrivalBanner.style.color = "#fff6dc";
 mapArrivalBanner.style.fontFamily = "system-ui, -apple-system, sans-serif";
-mapArrivalBanner.style.fontSize = "56px";
+mapArrivalBanner.style.fontSize = "28px";
 mapArrivalBanner.style.fontWeight = "900";
 mapArrivalBanner.style.letterSpacing = "0.04em";
 mapArrivalBanner.style.pointerEvents = "none";
@@ -1060,8 +1060,8 @@ const HUD_MSG = {
   EQUIP_PICKAXE: "⛏️ 장착 필요",
   PICKAXE_EQUIPPED: "⛏️ 장착",
   PICKAXE_UNEQUIPPED: "⛏️ 해제",
-  PICKAXE_GET: "⛏️ 획득!",
-  HELMET_GET: "🪖 획득!",
+  PICKAXE_GET: "⛏️ 곡괭이 획득!",
+  HELMET_GET: "🪖 핼멧 획득!",
   MINE_KEY_GET: "🗝️ 폐광 열쇠 획득!",
 };
 
@@ -1426,7 +1426,7 @@ const START_RING_THICKNESS = 1.275; // 기존 대비 50% 두껍게
 const CAMP_MAP_X = 0;
 const CAMP_MAP_Z = -126;
 const MAP_GATE_RADIUS = 1.15;
-const DEV_PRESET_ENABLED = true;
+const DEV_PRESET_ENABLED = false;
 const DEV_PRESET = {
   startMapId: "폐광맵",
   completeTutorial: true,
@@ -2625,12 +2625,6 @@ const FORGE_UPGRADE_DELAY_MS = 1050;
 let forgePendingUpgrade = null;
 let forgeLastResult = null;
 
-function getMapDisplayName(mapId) {
-  if (mapId === "광산맵") return "광산";
-  if (mapId === "폐광맵") return "폐광";
-  return mapId;
-}
-
 function registerPickupItem(obj, itemId, text = null) {
   const def = ITEM_DEFS[itemId];
   const entry = {
@@ -2700,6 +2694,15 @@ function findTriggeredMapGate() {
     if (gate.mapId !== currentMapId) continue;
     const dx = player.position.x - gate.trigger.x;
     const dz = player.position.z - gate.trigger.z;
+    if (typeof gate.trigger.width === "number" && typeof gate.trigger.depth === "number") {
+      if (
+        Math.abs(dx) <= gate.trigger.width * 0.5 &&
+        Math.abs(dz) <= gate.trigger.depth * 0.5
+      ) {
+        return gate;
+      }
+      continue;
+    }
     if (dx * dx + dz * dz <= gate.trigger.radius * gate.trigger.radius) return gate;
   }
   return null;
@@ -3038,6 +3041,19 @@ controls.minDistance = 3;
 controls.maxDistance = 20;
 controls.maxPolarAngle = Math.PI * 0.49;
 controls.minPolarAngle = Math.PI * 0.1;
+controls.enablePan = false;
+
+const followTargetOffset = new THREE.Vector3(0, 1.0, 0);
+const lastFollowPlayerPosition = new THREE.Vector3().copy(player.position);
+const framePlayerDelta = new THREE.Vector3();
+
+function snapCameraToPlayer() {
+  const currentOffset = new THREE.Vector3().copy(camera.position).sub(controls.target);
+  controls.target.copy(player.position).add(followTargetOffset);
+  camera.position.copy(controls.target).add(currentOffset);
+  lastFollowPlayerPosition.copy(player.position);
+  controls.update();
+}
 
 // Houses
 function makeHouse(x, z) {
@@ -3540,6 +3556,7 @@ function spawnTreesAndRocks() {
 }
 
 spawnTreesAndRocks();
+buildMinePerimeterCliffs();
 buildStartZoneWall();
 const startStall = buildStartStall();
 registerSupportSurface(startStall.top);
@@ -3612,20 +3629,21 @@ const abandonedMineGate = registerMapGate({
   denyText: "감독관에게서 폐광 열쇠를 받아야 합니다.",
   trigger: {
     x: mineGate.position.x,
-    z: mineGate.position.z + 0.8,
-    radius: 1.85,
+    z: mineGate.position.z + 0.95,
+    width: 10.6,
+    depth: 2.4,
   },
   hint: "북쪽 갱도로 들어가면 폐광맵으로 이어집니다",
 });
 
-const mineGateLockBlocker = new THREE.Mesh(
-  new THREE.BoxGeometry(1.72, 2.05, 0.28),
-  new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 })
+const mineGateFence = buildTunnelFence(
+  mineGate.position.x,
+  mineGate.position.z + 0.95,
+  10.2,
+  0
 );
-mineGateLockBlocker.position.set(mineGate.position.x, 1.02, mineGate.position.z + 0.72);
-scene.add(mineGateLockBlocker);
-abandonedMineGate.lockBlocker = mineGateLockBlocker;
-abandonedMineGate.lockColliderIndex = addCollider(mineGateLockBlocker, 1.0);
+abandonedMineGate.lockBlocker = mineGateFence;
+abandonedMineGate.lockColliderIndex = addCollider(mineGateFence, 1.0);
 
 function applyDevPreset() {
   if (!DEV_PRESET_ENABLED) return;
@@ -3688,7 +3706,7 @@ function applyDevPreset() {
   player.position.set(startSpawn.x, player.position.y, startSpawn.z);
   player.rotation.y = startSpawn.rotationY;
   latestMoveDir.set(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
-  controls.target.copy(player.position).add(new THREE.Vector3(0, 1.0, 0));
+  snapCameraToPlayer();
   updateInventoryUI();
 }
 
@@ -3805,6 +3823,192 @@ function buildForgeAnvil(x, z) {
   scene.add(g);
   addCollider(g, 0.95);
   return g;
+}
+
+function buildTunnelFence(x, z, width, rotationY = 0) {
+  const g = new THREE.Group();
+  const woodMat = new THREE.MeshStandardMaterial({
+    color: 0x6f5138,
+    roughness: 0.98,
+  });
+
+  const railThickness = 0.2;
+  const postSize = 0.24;
+  const postHeight = 1.7;
+  const railInset = 0.28;
+
+  const topRail = new THREE.Mesh(
+    new THREE.BoxGeometry(width, railThickness, railThickness),
+    woodMat
+  );
+  topRail.position.set(0, 1.38, 0);
+  g.add(topRail);
+
+  const midRail = new THREE.Mesh(
+    new THREE.BoxGeometry(width, railThickness, railThickness),
+    woodMat
+  );
+  midRail.position.set(0, 0.8, 0);
+  g.add(midRail);
+
+  const postCount = 6;
+  for (let i = 0; i < postCount; i += 1) {
+    const t = postCount === 1 ? 0.5 : i / (postCount - 1);
+    const px = THREE.MathUtils.lerp(-width * 0.5 + railInset, width * 0.5 - railInset, t);
+    const post = new THREE.Mesh(
+      new THREE.BoxGeometry(postSize, postHeight, postSize),
+      woodMat
+    );
+    post.position.set(px, postHeight * 0.5, 0);
+    g.add(post);
+  }
+
+  const braceOffsets = [-width * 0.28, 0, width * 0.28];
+  for (const bx of braceOffsets) {
+    const brace = new THREE.Mesh(
+      new THREE.BoxGeometry(0.18, 1.35, 0.18),
+      woodMat
+    );
+    brace.position.set(bx, 0.72, 0);
+    brace.rotation.z = bx < 0 ? Math.PI * 0.18 : bx > 0 ? -Math.PI * 0.18 : 0;
+    g.add(brace);
+  }
+
+  g.position.set(x, START_FLAT_Y, z);
+  g.rotation.y = rotationY;
+  scene.add(g);
+  return g;
+}
+
+function buildMinePerimeterCliffs() {
+  const half = GROUND_SIZE * 0.5;
+  const cliffMat = new THREE.MeshStandardMaterial({
+    color: 0x6d5e4f,
+    roughness: 0.98,
+  });
+  const rockMat = new THREE.MeshStandardMaterial({
+    color: 0x726b65,
+    roughness: 1.0,
+  });
+
+  const segments = [
+    { x: 0, z: half + 2.3, sx: 108, sy: 6.4, sz: 6.2, rx: 0, rz: 0 },
+    { x: -half - 2.2, z: 0, sx: 6.0, sy: 6.8, sz: 108, rx: 0, rz: 0 },
+    { x: half + 2.2, z: 0, sx: 6.0, sy: 6.2, sz: 108, rx: 0, rz: 0 },
+    { x: -half * 0.52, z: -half - 2.1, sx: 39, sy: 6.2, sz: 5.8, rx: 0, rz: 0 },
+    { x: half * 0.52, z: -half - 2.1, sx: 39, sy: 6.6, sz: 5.8, rx: 0, rz: 0 },
+    { x: -half - 1.4, z: -half - 1.5, sx: 10.0, sy: 6.4, sz: 10.0, rx: 0, rz: 0 },
+  ];
+
+  function createBermGeometry(bottomX, bottomZ, topX, topZ, height) {
+    const bx = bottomX * 0.5;
+    const bz = bottomZ * 0.5;
+    const tx = topX * 0.5;
+    const tz = topZ * 0.5;
+    const y0 = -height * 0.5;
+    const y1 = height * 0.5;
+    const vertices = [
+      -bx, y0, -bz,
+       bx, y0, -bz,
+       bx, y0,  bz,
+      -bx, y0,  bz,
+      -tx, y1, -tz,
+       tx, y1, -tz,
+       tx, y1,  tz,
+      -tx, y1,  tz,
+    ];
+    const indices = [
+      0, 1, 2, 0, 2, 3,
+      4, 6, 5, 4, 7, 6,
+      0, 4, 5, 0, 5, 1,
+      1, 5, 6, 1, 6, 2,
+      2, 6, 7, 2, 7, 3,
+      3, 7, 4, 3, 4, 0,
+    ];
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    return geometry;
+  }
+
+  for (const seg of segments) {
+    const topX = Math.max(seg.sx * 0.78, seg.sx - 2.4);
+    const topZ = Math.max(seg.sz * 0.46, seg.sz - 3.6);
+    const berm = new THREE.Mesh(
+      createBermGeometry(seg.sx, seg.sz, topX, topZ, seg.sy),
+      cliffMat
+    );
+    berm.position.set(START_X + seg.x, seg.sy * 0.5 - 0.35, START_Z + seg.z);
+    berm.rotation.set(seg.rx, 0, seg.rz);
+    scene.add(berm);
+    addCollider(berm, 1.0);
+  }
+
+  const rockDefs = [
+    { x: -41, z: -50.6, sx: 8.4, sy: 6.8, sz: 6.6, ry: 0.28 },
+    { x: -27, z: -51.0, sx: 7.4, sy: 5.4, sz: 5.8, ry: -0.18 },
+    { x: 29, z: -50.9, sx: 7.8, sy: 5.8, sz: 6.0, ry: 0.22 },
+    { x: 42, z: -50.4, sx: 8.8, sy: 6.5, sz: 6.8, ry: -0.25 },
+    { x: -52.0, z: -30, sx: 6.2, sy: 5.2, sz: 8.2, ry: 0.16 },
+    { x: -52.2, z: 18, sx: 7.4, sy: 5.8, sz: 9.2, ry: -0.22 },
+    { x: 52.1, z: -16, sx: 7.1, sy: 5.2, sz: 8.8, ry: 0.2 },
+    { x: 52.4, z: 28, sx: 8.2, sy: 6.0, sz: 9.6, ry: -0.18 },
+    { x: -34, z: 51.2, sx: 7.8, sy: 5.8, sz: 5.6, ry: 0.14 },
+    { x: 33, z: 51.0, sx: 8.0, sy: 6.2, sz: 5.8, ry: -0.15 },
+  ];
+
+  for (const rock of rockDefs) {
+    const chunk = new THREE.Mesh(
+      new THREE.DodecahedronGeometry(1, 0),
+      rockMat
+    );
+    chunk.scale.set(rock.sx, rock.sy, rock.sz);
+    chunk.position.set(START_X + rock.x, rock.sy * 0.5 + 0.5, START_Z + rock.z);
+    chunk.rotation.set(
+      THREE.MathUtils.degToRad(rock.x * 0.6),
+      rock.ry,
+      THREE.MathUtils.degToRad(rock.z * 0.35)
+    );
+    scene.add(chunk);
+
+    const colliderMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 });
+    const colliderLayers = [
+      {
+        sx: rock.sx * 0.72,
+        sy: Math.max(2.2, rock.sy * 0.42),
+        sz: rock.sz * 0.72,
+        y: Math.max(1.2, rock.sy * 0.22 + 0.35),
+      },
+      {
+        sx: rock.sx * 0.54,
+        sy: Math.max(1.4, rock.sy * 0.24),
+        sz: rock.sz * 0.54,
+        y: Math.max(2.35, rock.sy * 0.5 + 0.15),
+      },
+      {
+        sx: rock.sx * 0.34,
+        sy: Math.max(1.0, rock.sy * 0.16),
+        sz: rock.sz * 0.34,
+        y: Math.max(3.25, rock.sy * 0.73 + 0.12),
+      },
+    ];
+
+    for (const layer of colliderLayers) {
+      const rockCollider = new THREE.Mesh(
+        new THREE.BoxGeometry(layer.sx, layer.sy, layer.sz),
+        colliderMat
+      );
+      rockCollider.position.set(
+        chunk.position.x,
+        layer.y,
+        chunk.position.z
+      );
+      rockCollider.rotation.y = chunk.rotation.y;
+      scene.add(rockCollider);
+      addCollider(rockCollider, 1.0);
+    }
+  }
 }
 
 function buildTravelGate(x, z, rotationY = 0, label = "") {
@@ -3993,6 +4197,11 @@ function buildMapConnectorTunnel(startGate, endGate) {
   const tunnelWidth = 10.8;
   const curbWidth = 0.24;
   const curbOffset = tunnelWidth * 0.5 - curbWidth * 0.5;
+  const sideBermWidth = 4.6;
+  const sideBermHeight = 6.4;
+  const sideBermCenterOffset = tunnelWidth * 0.5 + sideBermWidth * 0.42;
+  const sideBermLength = length;
+  const sideBermCenterZ = centerZ;
 
   const floor = new THREE.Mesh(
     new THREE.BoxGeometry(tunnelWidth, 0.14, length),
@@ -4007,6 +4216,30 @@ function buildMapConnectorTunnel(startGate, endGate) {
   registerWalkableSurface("광산맵", floor, 0.38);
   registerWalkableSurface("폐광맵", floor, 0.38);
 
+  const mineTransition = new THREE.Mesh(
+    new THREE.BoxGeometry(tunnelWidth + 0.9, 0.12, 3.2),
+    new THREE.MeshStandardMaterial({
+      color: 0x7b6f63,
+      roughness: 0.98,
+    })
+  );
+  mineTransition.position.set(startGate.position.x, 0.06, startGate.position.z + 1.55);
+  scene.add(mineTransition);
+  groundSurfaces.push(mineTransition);
+  registerWalkableSurface("광산맵", mineTransition, 0.4);
+
+  const campTransition = new THREE.Mesh(
+    new THREE.BoxGeometry(tunnelWidth + 0.9, 0.12, 3.4),
+    new THREE.MeshStandardMaterial({
+      color: 0x342a22,
+      roughness: 0.99,
+    })
+  );
+  campTransition.position.set(endGate.position.x, 0.06, endGate.position.z - 1.6);
+  scene.add(campTransition);
+  groundSurfaces.push(campTransition);
+  registerWalkableSurface("폐광맵", campTransition, 0.4);
+
   const curbMat = new THREE.MeshStandardMaterial({
     color: 0x4e4032,
     roughness: 0.98,
@@ -4019,32 +4252,59 @@ function buildMapConnectorTunnel(startGate, endGate) {
   rightCurb.position.x = centerX + curbOffset;
   scene.add(rightCurb);
 
-  const transitionLength = 4.2;
-  const transitionWidth = tunnelWidth + 0.6;
+  function createBermGeometry(bottomX, bottomZ, topX, topZ, height) {
+    const bx = bottomX * 0.5;
+    const bz = bottomZ * 0.5;
+    const tx = topX * 0.5;
+    const tz = topZ * 0.5;
+    const y0 = -height * 0.5;
+    const y1 = height * 0.5;
+    const vertices = [
+      -bx, y0, -bz,
+       bx, y0, -bz,
+       bx, y0,  bz,
+      -bx, y0,  bz,
+      -tx, y1, -tz,
+       tx, y1, -tz,
+       tx, y1,  tz,
+      -tx, y1,  tz,
+    ];
+    const indices = [
+      0, 1, 2, 0, 2, 3,
+      4, 6, 5, 4, 7, 6,
+      0, 4, 5, 0, 5, 1,
+      1, 5, 6, 1, 6, 2,
+      2, 6, 7, 2, 7, 3,
+      3, 7, 4, 3, 4, 0,
+    ];
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    return geometry;
+  }
 
-  const mineTransition = new THREE.Mesh(
-    new THREE.BoxGeometry(transitionWidth, 0.12, transitionLength),
-    new THREE.MeshStandardMaterial({
-      color: 0x7b6f63,
-      roughness: 0.97,
-    })
+  const sideBermMat = new THREE.MeshStandardMaterial({
+    color: 0x6d5e4f,
+    roughness: 0.98,
+  });
+  const sideBermGeometry = createBermGeometry(
+    sideBermWidth,
+    sideBermLength,
+    Math.max(1.8, sideBermWidth * 0.48),
+    Math.max(6, sideBermLength - 1.2),
+    sideBermHeight
   );
-  mineTransition.position.set(startGate.position.x, 0.065, startGate.position.z + 1.45);
-  scene.add(mineTransition);
-  groundSurfaces.push(mineTransition);
-  registerWalkableSurface("광산맵", mineTransition, 0.32);
 
-  const campTransition = new THREE.Mesh(
-    new THREE.BoxGeometry(transitionWidth, 0.12, transitionLength),
-    new THREE.MeshStandardMaterial({
-      color: 0x342a22,
-      roughness: 0.98,
-    })
-  );
-  campTransition.position.set(endGate.position.x, 0.065, endGate.position.z - 1.45);
-  scene.add(campTransition);
-  groundSurfaces.push(campTransition);
-  registerWalkableSurface("폐광맵", campTransition, 0.32);
+  const leftBerm = new THREE.Mesh(sideBermGeometry, sideBermMat);
+  leftBerm.position.set(centerX - sideBermCenterOffset, sideBermHeight * 0.5 - 0.4, sideBermCenterZ);
+  scene.add(leftBerm);
+  addCollider(leftBerm, 1.0);
+
+  const rightBerm = leftBerm.clone();
+  rightBerm.position.x = centerX + sideBermCenterOffset;
+  scene.add(rightBerm);
+  addCollider(rightBerm, 1.0);
 
 }
 
@@ -4603,7 +4863,7 @@ function animate() {
   updateMovement(dt);
   updateCurrentMapFromPlayerPosition();
   if (currentMapId !== lastAnnouncedMapId) {
-    showMapArrivalBanner(getMapDisplayName(currentMapId));
+    showMapArrivalBanner(currentMapId);
     lastAnnouncedMapId = currentMapId;
   }
   updateDynamicProps(dt);
@@ -4645,10 +4905,12 @@ function animate() {
   activeInteractable.board.material.emissive.set(0xffaa00); // 하이라이트 ON
     }
 
-
-
-
-  controls.target.copy(player.position).add(new THREE.Vector3(0, 1.0, 0));
+  framePlayerDelta.copy(player.position).sub(lastFollowPlayerPosition);
+  if (framePlayerDelta.lengthSq() > 0) {
+    camera.position.add(framePlayerDelta);
+    controls.target.add(framePlayerDelta);
+    lastFollowPlayerPosition.copy(player.position);
+  }
   controls.update();
   updateNpcDialogPosition();
   updateTutorialNpcNameTag();
@@ -4683,10 +4945,7 @@ if (!hintText && activeForgeStation) {
 if (!hintText) {
   activeMineRock = findNearestMineRock(2.2);
   if (activeMineRock) {
-    // 곡괭이 필요/장착 필요/채집 가능 문구 분기
-    if (!hasItem("pickaxe")) hintText = "⛏️ 필요";
-    else if (!hasEquippedTool("pickaxe")) hintText = "⛏️ 장착 필요";
-    else hintText = "Space : 채굴";
+    hintText = "Space : 채굴";
   }
 }
 
