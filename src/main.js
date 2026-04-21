@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-const LAST_PATCHED_AT = "2026-04-04 18:24:00 KST";
+const LAST_PATCHED_AT = "2026-04-21 18:55:04 KST";
 
 const scene = new THREE.Scene();
 // ===== Atmosphere: Sky / Fog =====
@@ -3667,9 +3667,9 @@ enableDynamicProp(safetyHelmet, { sleeping: true });
 registerPickupItem(safetyHelmet, "safetyHelmet", "E : 안전모 줍기");
 
 const tutorialNpc = makeTutorialNpc(
-  START_X - 4.9,
-  START_Z + 0.7,
-  Math.PI * 0.18
+  START_X,
+  START_Z - 5.15,
+  0
 );
 
 forgeStation = buildForgeAnvil(START_X - 3.0, START_Z + 1.55);
@@ -3808,10 +3808,17 @@ function makeSign(x, z, text, rotationY = 0) {
 
   board.position.set(0, 1.2, 0);
 
-  g.add(pole, board);
+  const signCollider = new THREE.Mesh(
+    new THREE.BoxGeometry(1.45, 1.75, 0.5),
+    new THREE.MeshBasicMaterial({ visible: false })
+  );
+  signCollider.position.set(0, 0.88, 0);
+
+  g.add(pole, board, signCollider);
   g.position.set(x, 0, z);
   g.rotation.y = rotationY;
   scene.add(g);
+  g.userData.colliderIndex = addCollider(signCollider, 1.0);
   console.log("SIGN CREATED:", text, "pos=", g.position.x, g.position.z);
 
   // 상호작용 대상 등록(텍스트 포함)
@@ -3850,6 +3857,13 @@ function makeTutorialNpc(x, z, rotationY = 0) {
   rightLeg.position.x *= -1;
   g.add(rightLeg);
 
+  const npcCollider = new THREE.Mesh(
+    new THREE.BoxGeometry(0.95, 2.15, 0.95),
+    new THREE.MeshBasicMaterial({ visible: false })
+  );
+  npcCollider.position.set(0, 1.08, 0);
+  g.add(npcCollider);
+
   const hardHat = buildSafetyHelmetModel();
   hardHat.scale.setScalar(0.78);
   hardHat.rotation.y = Math.PI * 0.04;
@@ -3862,6 +3876,7 @@ function makeTutorialNpc(x, z, rotationY = 0) {
   g.position.set(x, START_FLAT_Y, z);
   g.rotation.y = rotationY;
   scene.add(g);
+  g.userData.colliderIndex = addCollider(npcCollider, 1.0);
   registerTutorialNpc(g, "작업 감독관");
   return g;
 }
