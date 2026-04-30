@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-const LAST_PATCHED_AT = "2026-04-30 16:14:41 KST";
+const LAST_PATCHED_AT = "2026-04-30 16:44:54 KST";
 
 const scene = new THREE.Scene();
 // ===== Atmosphere: Sky / Fog =====
@@ -90,7 +90,7 @@ patchInfoWrap.textContent = `마지막 패치\n${LAST_PATCHED_AT}`;
 uiLayer.appendChild(patchInfoWrap);
 
 const WALLET_SESSION_KEY = "voxel-town.wallet-auth.v1";
-const WALLET_PROFILE_PREFIX = "voxel-town.wallet-profile.v1";
+const AUTH_API_BASE_URL = "http://localhost:8787";
 const walletAuth = {
   authenticated: false,
   address: "",
@@ -98,6 +98,7 @@ const walletAuth = {
   nonce: "",
   issuedAt: "",
   chainId: "",
+  token: "",
   providerBound: false,
 };
 const walletProfile = {
@@ -193,7 +194,7 @@ walletLoginTitle.style.letterSpacing = "-0.02em";
 walletLoginCard.appendChild(walletLoginTitle);
 
 const walletLoginDesc = document.createElement("div");
-walletLoginDesc.textContent = "지갑을 연결하고 서명하면 게임에 입장할 수 있습니다. 현재는 프론트 프로토타입 단계이며, 이후 백엔드 nonce 검증으로 확장할 예정입니다.";
+walletLoginDesc.textContent = "지갑을 연결하고 서명하면 인증 서버가 nonce 검증을 거쳐 게임 세션을 발급합니다. 이후 닉네임과 플레이 데이터는 이 세션을 기준으로 저장됩니다.";
 walletLoginDesc.style.marginTop = "10px";
 walletLoginDesc.style.fontSize = "14px";
 walletLoginDesc.style.lineHeight = "1.65";
@@ -360,12 +361,9 @@ function saveWalletSession() {
       nonce: walletAuth.nonce,
       issuedAt: walletAuth.issuedAt,
       chainId: walletAuth.chainId,
+      token: walletAuth.token,
     })
   );
-}
-
-function getWalletProfileStorageKey(address) {
-  return `${WALLET_PROFILE_PREFIX}.${String(address || "").toLowerCase()}`;
 }
 
 function hasNickname() {
@@ -374,31 +372,6 @@ function hasNickname() {
 
 function canPlayGame() {
   return isWalletAuthenticated() && hasNickname();
-}
-
-function loadWalletProfileForAddress(address) {
-  walletProfile.nickname = "";
-  if (!address || address === "dev-mode-local") {
-    return;
-  }
-  try {
-    const raw = localStorage.getItem(getWalletProfileStorageKey(address));
-    if (!raw) return;
-    const saved = JSON.parse(raw);
-    walletProfile.nickname = typeof saved?.nickname === "string" ? saved.nickname : "";
-  } catch {
-    localStorage.removeItem(getWalletProfileStorageKey(address));
-  }
-}
-
-function saveWalletProfile() {
-  if (!walletAuth.address || walletAuth.address === "dev-mode-local") return;
-  localStorage.setItem(
-    getWalletProfileStorageKey(walletAuth.address),
-    JSON.stringify({
-      nickname: walletProfile.nickname,
-    })
-  );
 }
 
 function validateNickname(raw) {
@@ -410,6 +383,44 @@ function validateNickname(raw) {
     return "닉네임은 한글, 영문, 숫자, 밑줄만 사용할 수 있습니다.";
   }
   return "";
+}
+
+async function apiFetchJson(path, options = {}) {
+  try {
+    const response = await fetch(`${AUTH_API_BASE_URL}${path}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers ?? {}),
+      },
+      ...options,
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data?.ok === false) {
+      return {
+        ok: false,
+        status: response.status,
+        error: data?.error || "인증 서버 요청에 실패했습니다.",
+      };
+    }
+    return {
+      ok: true,
+      data,
+    };
+  } catch {
+    return {
+      ok: false,
+      status: 0,
+      error: "인증 서버에 연결하지 못했습니다. server를 먼저 실행해주세요.",
+    };
+  }
+}
+
+function getAuthHeaders() {
+  return walletAuth.token
+    ? {
+        Authorization: `Bearer ${walletAuth.token}`,
+      }
+    : {};
 }
 
 function updateWalletUi() {
@@ -443,10 +454,11 @@ function setWalletAuthState(nextState, { persist = true } = {}) {
   walletAuth.nonce = nextState.nonce ?? "";
   walletAuth.issuedAt = nextState.issuedAt ?? "";
   walletAuth.chainId = nextState.chainId ?? "";
+  walletAuth.token = nextState.token ?? "";
   if (walletAuth.address === "dev-mode-local") {
-    walletProfile.nickname = "개발자";
+    walletProfile.nickname = nextState.nickname ?? "개발자";
   } else {
-    loadWalletProfileForAddress(walletAuth.address);
+    walletProfile.nickname = nextState.nickname ?? "";
   }
   if (persist) saveWalletSession();
   updateWalletUi();
@@ -461,6 +473,7 @@ function clearWalletSession() {
       nonce: "",
       issuedAt: "",
       chainId: "",
+      token: "",
     },
     { persist: true }
   );
@@ -477,11 +490,43 @@ function restoreWalletSession() {
     const raw = localStorage.getItem(WALLET_SESSION_KEY);
     if (!raw) return;
     const saved = JSON.parse(raw);
-    if (!saved?.authenticated || !saved?.address) return;
+    if (!saved?.authenticated || !saved?.address || !saved?.token) return;
     setWalletAuthState(saved, { persist: false });
   } catch {
     localStorage.removeItem(WALLET_SESSION_KEY);
   }
+}
+
+async function hydrateWalletSessionFromServer() {
+  if (!walletAuth.authenticated || !walletAuth.token || walletAuth.address === "dev-mode-local") {
+    return;
+  }
+
+  walletLoginStatus.textContent = "로그인 세션을 확인하는 중입니다...";
+  const meResponse = await apiFetchJson("/auth/me", {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  if (!meResponse.ok) {
+    clearWalletSession();
+    walletLoginStatus.textContent = "저장된 세션이 만료되었습니다. 다시 로그인해주세요.";
+    return;
+  }
+
+  setWalletAuthState(
+    {
+      authenticated: true,
+      address: meResponse.data.user?.walletAddress ?? walletAuth.address,
+      signature: walletAuth.signature,
+      nonce: walletAuth.nonce,
+      issuedAt: walletAuth.issuedAt,
+      chainId: walletAuth.chainId,
+      token: walletAuth.token,
+      nickname: meResponse.data.user?.nickname ?? "",
+    },
+    { persist: true }
+  );
 }
 
 function bindWalletProviderEvents() {
@@ -525,11 +570,17 @@ async function connectWalletLogin() {
     const address = accounts?.[0];
     if (!address) throw new Error("지갑 주소를 불러오지 못했습니다.");
 
-    const nonce = globalThis.crypto?.randomUUID
-      ? globalThis.crypto.randomUUID()
-      : `nonce-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    const issuedAt = new Date().toISOString();
-    const message = getWalletLoginMessage(address, nonce, issuedAt);
+    const nonceResponse = await apiFetchJson("/auth/nonce", {
+      method: "POST",
+      body: JSON.stringify({ address }),
+    });
+    if (!nonceResponse.ok) {
+      throw new Error(nonceResponse.error);
+    }
+
+    const nonce = nonceResponse.data.nonce;
+    const issuedAt = nonceResponse.data.issuedAt;
+    const message = nonceResponse.data.message || getWalletLoginMessage(address, nonce, issuedAt);
     const signature = await window.ethereum.request({
       method: "personal_sign",
       params: [message, address],
@@ -538,6 +589,18 @@ async function connectWalletLogin() {
       .request({ method: "eth_chainId" })
       .catch(() => "");
 
+    const verifyResponse = await apiFetchJson("/auth/verify", {
+      method: "POST",
+      body: JSON.stringify({
+        address,
+        nonce,
+        signature,
+      }),
+    });
+    if (!verifyResponse.ok) {
+      throw new Error(verifyResponse.error);
+    }
+
     setWalletAuthState({
       authenticated: true,
       address,
@@ -545,6 +608,8 @@ async function connectWalletLogin() {
       nonce,
       issuedAt,
       chainId,
+      token: verifyResponse.data.token,
+      nickname: verifyResponse.data.user?.nickname ?? "",
     });
     walletLoginStatus.textContent = `${shortenWalletAddress(address)} 주소로 서명이 완료되었습니다.`;
   } catch (error) {
@@ -573,18 +638,46 @@ walletDevBypassBtn.addEventListener("click", () => {
   );
 });
 
-function commitNickname() {
+async function commitNickname() {
   const nickname = walletNicknameInput.value.trim();
   const error = validateNickname(nickname);
   if (error) {
     walletNicknameStatus.textContent = error;
     return;
   }
-  walletProfile.nickname = nickname;
+
+  if (walletAuth.address === "dev-mode-local") {
+    walletProfile.nickname = nickname;
+    walletNicknameStatus.textContent = "";
+    updateWalletUi();
+    showUI(`닉네임 설정 완료: ${nickname}`, 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return;
+  }
+
+  walletNicknameSaveBtn.disabled = true;
+  walletNicknameSaveBtn.style.opacity = "0.65";
+  walletNicknameStatus.textContent = "닉네임을 서버에 저장하는 중입니다...";
+
+  const response = await apiFetchJson("/auth/nickname", {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ nickname }),
+  });
+
+  walletNicknameSaveBtn.disabled = false;
+  walletNicknameSaveBtn.style.opacity = "1";
+
+  if (!response.ok) {
+    walletNicknameStatus.textContent = response.error;
+    return;
+  }
+
+  walletProfile.nickname = response.data.user?.nickname ?? nickname;
   walletNicknameStatus.textContent = "";
-  saveWalletProfile();
+  saveWalletSession();
   updateWalletUi();
-  showUI(`닉네임 설정 완료: ${nickname}`, 1000);
+  showUI(`닉네임 설정 완료: ${walletProfile.nickname}`, 1000);
   lastMessageUntil = performance.now() + 1000;
 }
 
@@ -3636,6 +3729,7 @@ controls.enablePan = false;
 restoreWalletSession();
 bindWalletProviderEvents();
 updateWalletUi();
+hydrateWalletSessionFromServer();
 
 const followTargetOffset = new THREE.Vector3(0, 1.0, 0);
 const lastFollowPlayerPosition = new THREE.Vector3().copy(player.position);
