@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-const LAST_PATCHED_AT = "2026-04-21 18:55:04 KST";
+const LAST_PATCHED_AT = "2026-04-30 16:14:41 KST";
 
 const scene = new THREE.Scene();
 // ===== Atmosphere: Sky / Fog =====
@@ -88,6 +88,520 @@ patchInfoWrap.style.zIndex = "999999";
 patchInfoWrap.style.display = "none";
 patchInfoWrap.textContent = `마지막 패치\n${LAST_PATCHED_AT}`;
 uiLayer.appendChild(patchInfoWrap);
+
+const WALLET_SESSION_KEY = "voxel-town.wallet-auth.v1";
+const WALLET_PROFILE_PREFIX = "voxel-town.wallet-profile.v1";
+const walletAuth = {
+  authenticated: false,
+  address: "",
+  signature: "",
+  nonce: "",
+  issuedAt: "",
+  chainId: "",
+  providerBound: false,
+};
+const walletProfile = {
+  nickname: "",
+};
+
+const walletHud = document.createElement("div");
+walletHud.id = "walletHud";
+walletHud.style.position = "fixed";
+walletHud.style.right = "12px";
+walletHud.style.top = "72px";
+walletHud.style.padding = "10px 12px";
+walletHud.style.background = "rgba(20,20,20,0.52)";
+walletHud.style.border = "1px solid rgba(255,255,255,0.18)";
+walletHud.style.borderRadius = "12px";
+walletHud.style.backdropFilter = "blur(4px)";
+walletHud.style.color = "white";
+walletHud.style.fontFamily = "system-ui, -apple-system, sans-serif";
+walletHud.style.fontSize = "12px";
+walletHud.style.lineHeight = "1.45";
+walletHud.style.userSelect = "none";
+walletHud.style.pointerEvents = "auto";
+walletHud.style.zIndex = "1000002";
+walletHud.style.display = "none";
+uiLayer.appendChild(walletHud);
+
+const walletHudTitle = document.createElement("div");
+walletHudTitle.textContent = "WALLET";
+walletHudTitle.style.fontWeight = "800";
+walletHudTitle.style.letterSpacing = "0.06em";
+walletHudTitle.style.opacity = "0.82";
+walletHudTitle.style.marginBottom = "6px";
+walletHud.appendChild(walletHudTitle);
+
+const walletHudAddress = document.createElement("div");
+walletHudAddress.style.fontWeight = "700";
+walletHud.appendChild(walletHudAddress);
+
+const walletHudChain = document.createElement("div");
+walletHudChain.style.marginTop = "4px";
+walletHudChain.style.opacity = "0.78";
+walletHud.appendChild(walletHudChain);
+
+const walletHudNickname = document.createElement("div");
+walletHudNickname.style.marginTop = "6px";
+walletHudNickname.style.fontWeight = "700";
+walletHudNickname.style.color = "#fff2bf";
+walletHud.appendChild(walletHudNickname);
+
+const walletHudLogoutBtn = document.createElement("button");
+walletHudLogoutBtn.type = "button";
+walletHudLogoutBtn.textContent = "로그아웃";
+walletHudLogoutBtn.style.marginTop = "8px";
+walletHudLogoutBtn.style.padding = "6px 10px";
+walletHudLogoutBtn.style.borderRadius = "999px";
+walletHudLogoutBtn.style.border = "1px solid rgba(255,255,255,0.18)";
+walletHudLogoutBtn.style.background = "rgba(255,255,255,0.1)";
+walletHudLogoutBtn.style.color = "white";
+walletHudLogoutBtn.style.cursor = "pointer";
+walletHudLogoutBtn.style.fontSize = "12px";
+walletHudLogoutBtn.style.fontWeight = "700";
+walletHud.appendChild(walletHudLogoutBtn);
+
+const walletLoginOverlay = document.createElement("div");
+walletLoginOverlay.id = "walletLoginOverlay";
+walletLoginOverlay.style.position = "fixed";
+walletLoginOverlay.style.inset = "0";
+walletLoginOverlay.style.display = "flex";
+walletLoginOverlay.style.alignItems = "center";
+walletLoginOverlay.style.justifyContent = "center";
+walletLoginOverlay.style.background = "rgba(8,10,14,0.62)";
+walletLoginOverlay.style.backdropFilter = "blur(8px)";
+walletLoginOverlay.style.pointerEvents = "auto";
+walletLoginOverlay.style.zIndex = "1000003";
+uiLayer.appendChild(walletLoginOverlay);
+
+const walletLoginCard = document.createElement("div");
+walletLoginCard.style.width = "min(460px, calc(100vw - 36px))";
+walletLoginCard.style.padding = "24px 24px 20px";
+walletLoginCard.style.background = "rgba(245,245,245,0.96)";
+walletLoginCard.style.border = "1px solid rgba(0,0,0,0.14)";
+walletLoginCard.style.borderRadius = "18px";
+walletLoginCard.style.boxShadow = "0 20px 48px rgba(0,0,0,0.28)";
+walletLoginCard.style.fontFamily = "system-ui, -apple-system, sans-serif";
+walletLoginCard.style.color = "#222";
+walletLoginOverlay.appendChild(walletLoginCard);
+
+const walletLoginTitle = document.createElement("div");
+walletLoginTitle.textContent = "메타마스크 로그인";
+walletLoginTitle.style.fontSize = "26px";
+walletLoginTitle.style.fontWeight = "900";
+walletLoginTitle.style.letterSpacing = "-0.02em";
+walletLoginCard.appendChild(walletLoginTitle);
+
+const walletLoginDesc = document.createElement("div");
+walletLoginDesc.textContent = "지갑을 연결하고 서명하면 게임에 입장할 수 있습니다. 현재는 프론트 프로토타입 단계이며, 이후 백엔드 nonce 검증으로 확장할 예정입니다.";
+walletLoginDesc.style.marginTop = "10px";
+walletLoginDesc.style.fontSize = "14px";
+walletLoginDesc.style.lineHeight = "1.65";
+walletLoginDesc.style.color = "#555";
+walletLoginCard.appendChild(walletLoginDesc);
+
+const walletLoginStatus = document.createElement("div");
+walletLoginStatus.textContent = "메타마스크 연결을 기다리는 중입니다.";
+walletLoginStatus.style.marginTop = "16px";
+walletLoginStatus.style.padding = "10px 12px";
+walletLoginStatus.style.background = "rgba(0,0,0,0.05)";
+walletLoginStatus.style.borderRadius = "12px";
+walletLoginStatus.style.fontSize = "13px";
+walletLoginStatus.style.lineHeight = "1.6";
+walletLoginStatus.style.color = "#444";
+walletLoginCard.appendChild(walletLoginStatus);
+
+const walletLoginActions = document.createElement("div");
+walletLoginActions.style.display = "flex";
+walletLoginActions.style.flexWrap = "wrap";
+walletLoginActions.style.gap = "10px";
+walletLoginActions.style.marginTop = "18px";
+walletLoginCard.appendChild(walletLoginActions);
+
+const walletConnectBtn = document.createElement("button");
+walletConnectBtn.type = "button";
+walletConnectBtn.textContent = "메타마스크 로그인";
+walletConnectBtn.style.padding = "12px 16px";
+walletConnectBtn.style.borderRadius = "12px";
+walletConnectBtn.style.border = "none";
+walletConnectBtn.style.background = "#f6851b";
+walletConnectBtn.style.color = "white";
+walletConnectBtn.style.fontSize = "14px";
+walletConnectBtn.style.fontWeight = "800";
+walletConnectBtn.style.cursor = "pointer";
+walletConnectBtn.style.pointerEvents = "auto";
+walletLoginActions.appendChild(walletConnectBtn);
+
+const walletDevBypassBtn = document.createElement("button");
+walletDevBypassBtn.type = "button";
+walletDevBypassBtn.textContent = "개발자 모드로 바로 입장";
+walletDevBypassBtn.style.padding = "12px 16px";
+walletDevBypassBtn.style.borderRadius = "12px";
+walletDevBypassBtn.style.border = "1px solid rgba(0,0,0,0.12)";
+walletDevBypassBtn.style.background = "rgba(255,255,255,0.9)";
+walletDevBypassBtn.style.color = "#333";
+walletDevBypassBtn.style.fontSize = "14px";
+walletDevBypassBtn.style.fontWeight = "800";
+walletDevBypassBtn.style.cursor = "pointer";
+walletDevBypassBtn.style.pointerEvents = "auto";
+walletLoginActions.appendChild(walletDevBypassBtn);
+
+const walletNicknameOverlay = document.createElement("div");
+walletNicknameOverlay.id = "walletNicknameOverlay";
+walletNicknameOverlay.style.position = "fixed";
+walletNicknameOverlay.style.inset = "0";
+walletNicknameOverlay.style.display = "none";
+walletNicknameOverlay.style.alignItems = "center";
+walletNicknameOverlay.style.justifyContent = "center";
+walletNicknameOverlay.style.background = "rgba(8,10,14,0.58)";
+walletNicknameOverlay.style.backdropFilter = "blur(8px)";
+walletNicknameOverlay.style.pointerEvents = "auto";
+walletNicknameOverlay.style.zIndex = "1000003";
+uiLayer.appendChild(walletNicknameOverlay);
+
+const walletNicknameCard = document.createElement("div");
+walletNicknameCard.style.width = "min(420px, calc(100vw - 36px))";
+walletNicknameCard.style.padding = "22px";
+walletNicknameCard.style.background = "rgba(245,245,245,0.97)";
+walletNicknameCard.style.border = "1px solid rgba(0,0,0,0.14)";
+walletNicknameCard.style.borderRadius = "18px";
+walletNicknameCard.style.boxShadow = "0 20px 48px rgba(0,0,0,0.28)";
+walletNicknameCard.style.fontFamily = "system-ui, -apple-system, sans-serif";
+walletNicknameCard.style.color = "#222";
+walletNicknameOverlay.appendChild(walletNicknameCard);
+
+const walletNicknameTitle = document.createElement("div");
+walletNicknameTitle.textContent = "닉네임 설정";
+walletNicknameTitle.style.fontSize = "24px";
+walletNicknameTitle.style.fontWeight = "900";
+walletNicknameCard.appendChild(walletNicknameTitle);
+
+const walletNicknameDesc = document.createElement("div");
+walletNicknameDesc.textContent = "게임 안에서 사용할 닉네임을 정해주세요. 지갑 주소와 연결되어 로컬에 저장됩니다.";
+walletNicknameDesc.style.marginTop = "10px";
+walletNicknameDesc.style.fontSize = "14px";
+walletNicknameDesc.style.lineHeight = "1.65";
+walletNicknameDesc.style.color = "#555";
+walletNicknameCard.appendChild(walletNicknameDesc);
+
+const walletNicknameInput = document.createElement("input");
+walletNicknameInput.type = "text";
+walletNicknameInput.maxLength = 12;
+walletNicknameInput.placeholder = "예: 광부민수";
+walletNicknameInput.style.width = "100%";
+walletNicknameInput.style.boxSizing = "border-box";
+walletNicknameInput.style.marginTop = "16px";
+walletNicknameInput.style.padding = "12px 14px";
+walletNicknameInput.style.borderRadius = "12px";
+walletNicknameInput.style.border = "1px solid rgba(0,0,0,0.18)";
+walletNicknameInput.style.fontSize = "15px";
+walletNicknameInput.style.fontWeight = "700";
+walletNicknameInput.style.outline = "none";
+walletNicknameInput.style.pointerEvents = "auto";
+walletNicknameCard.appendChild(walletNicknameInput);
+
+const walletNicknameHint = document.createElement("div");
+walletNicknameHint.textContent = "2~12자 / 한글, 영문, 숫자, 밑줄 사용 가능";
+walletNicknameHint.style.marginTop = "8px";
+walletNicknameHint.style.fontSize = "12px";
+walletNicknameHint.style.color = "#666";
+walletNicknameCard.appendChild(walletNicknameHint);
+
+const walletNicknameStatus = document.createElement("div");
+walletNicknameStatus.textContent = "";
+walletNicknameStatus.style.marginTop = "12px";
+walletNicknameStatus.style.minHeight = "20px";
+walletNicknameStatus.style.fontSize = "13px";
+walletNicknameStatus.style.lineHeight = "1.5";
+walletNicknameStatus.style.color = "#8a2b2b";
+walletNicknameCard.appendChild(walletNicknameStatus);
+
+const walletNicknameSaveBtn = document.createElement("button");
+walletNicknameSaveBtn.type = "button";
+walletNicknameSaveBtn.textContent = "닉네임 저장";
+walletNicknameSaveBtn.style.marginTop = "14px";
+walletNicknameSaveBtn.style.padding = "12px 16px";
+walletNicknameSaveBtn.style.borderRadius = "12px";
+walletNicknameSaveBtn.style.border = "none";
+walletNicknameSaveBtn.style.background = "#2d6cdf";
+walletNicknameSaveBtn.style.color = "white";
+walletNicknameSaveBtn.style.fontSize = "14px";
+walletNicknameSaveBtn.style.fontWeight = "800";
+walletNicknameSaveBtn.style.cursor = "pointer";
+walletNicknameSaveBtn.style.pointerEvents = "auto";
+walletNicknameCard.appendChild(walletNicknameSaveBtn);
+
+function shortenWalletAddress(address) {
+  if (!address) return "";
+  if (address === "dev-mode-local") return "DEV MODE";
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
+function getWalletLoginMessage(address, nonce, issuedAt) {
+  return [
+    "voxel-town 로그인",
+    `주소: ${address}`,
+    `Nonce: ${nonce}`,
+    `시간: ${issuedAt}`,
+  ].join("\n");
+}
+
+function saveWalletSession() {
+  if (!walletAuth.authenticated || !walletAuth.address) {
+    localStorage.removeItem(WALLET_SESSION_KEY);
+    return;
+  }
+  localStorage.setItem(
+    WALLET_SESSION_KEY,
+    JSON.stringify({
+      authenticated: walletAuth.authenticated,
+      address: walletAuth.address,
+      signature: walletAuth.signature,
+      nonce: walletAuth.nonce,
+      issuedAt: walletAuth.issuedAt,
+      chainId: walletAuth.chainId,
+    })
+  );
+}
+
+function getWalletProfileStorageKey(address) {
+  return `${WALLET_PROFILE_PREFIX}.${String(address || "").toLowerCase()}`;
+}
+
+function hasNickname() {
+  return walletProfile.nickname.trim().length > 0;
+}
+
+function canPlayGame() {
+  return isWalletAuthenticated() && hasNickname();
+}
+
+function loadWalletProfileForAddress(address) {
+  walletProfile.nickname = "";
+  if (!address || address === "dev-mode-local") {
+    return;
+  }
+  try {
+    const raw = localStorage.getItem(getWalletProfileStorageKey(address));
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    walletProfile.nickname = typeof saved?.nickname === "string" ? saved.nickname : "";
+  } catch {
+    localStorage.removeItem(getWalletProfileStorageKey(address));
+  }
+}
+
+function saveWalletProfile() {
+  if (!walletAuth.address || walletAuth.address === "dev-mode-local") return;
+  localStorage.setItem(
+    getWalletProfileStorageKey(walletAuth.address),
+    JSON.stringify({
+      nickname: walletProfile.nickname,
+    })
+  );
+}
+
+function validateNickname(raw) {
+  const nickname = raw.trim();
+  if (nickname.length < 2 || nickname.length > 12) {
+    return "닉네임은 2자 이상 12자 이하로 입력해주세요.";
+  }
+  if (!/^[A-Za-z0-9가-힣_]+$/.test(nickname)) {
+    return "닉네임은 한글, 영문, 숫자, 밑줄만 사용할 수 있습니다.";
+  }
+  return "";
+}
+
+function updateWalletUi() {
+  const loggedIn = walletAuth.authenticated;
+  walletLoginOverlay.style.display = loggedIn ? "none" : "flex";
+  walletHud.style.display = loggedIn ? "block" : "none";
+  walletHudAddress.textContent = loggedIn
+    ? `${shortenWalletAddress(walletAuth.address)}`
+    : "";
+  walletHudChain.textContent = walletAuth.chainId
+    ? `체인: ${walletAuth.chainId}`
+    : "체인: 확인 전";
+  walletHudNickname.textContent = hasNickname()
+    ? `닉네임: ${walletProfile.nickname}`
+    : "닉네임: 설정 필요";
+  walletNicknameInput.value = walletProfile.nickname;
+  walletLoginStatus.textContent = loggedIn
+    ? `${shortenWalletAddress(walletAuth.address)} 주소로 로그인되었습니다.`
+    : "메타마스크 연결을 기다리는 중입니다.";
+  walletDevBypassBtn.style.display = DEV_PRESET_ENABLED ? "inline-flex" : "none";
+  walletNicknameOverlay.style.display = loggedIn && !hasNickname() ? "flex" : "none";
+  if (typeof controls !== "undefined" && controls) {
+    controls.enabled = canPlayGame();
+  }
+}
+
+function setWalletAuthState(nextState, { persist = true } = {}) {
+  walletAuth.authenticated = Boolean(nextState.authenticated);
+  walletAuth.address = nextState.address ?? "";
+  walletAuth.signature = nextState.signature ?? "";
+  walletAuth.nonce = nextState.nonce ?? "";
+  walletAuth.issuedAt = nextState.issuedAt ?? "";
+  walletAuth.chainId = nextState.chainId ?? "";
+  if (walletAuth.address === "dev-mode-local") {
+    walletProfile.nickname = "개발자";
+  } else {
+    loadWalletProfileForAddress(walletAuth.address);
+  }
+  if (persist) saveWalletSession();
+  updateWalletUi();
+}
+
+function clearWalletSession() {
+  setWalletAuthState(
+    {
+      authenticated: false,
+      address: "",
+      signature: "",
+      nonce: "",
+      issuedAt: "",
+      chainId: "",
+    },
+    { persist: true }
+  );
+  walletProfile.nickname = "";
+  updateWalletUi();
+}
+
+function isWalletAuthenticated() {
+  return walletAuth.authenticated;
+}
+
+function restoreWalletSession() {
+  try {
+    const raw = localStorage.getItem(WALLET_SESSION_KEY);
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    if (!saved?.authenticated || !saved?.address) return;
+    setWalletAuthState(saved, { persist: false });
+  } catch {
+    localStorage.removeItem(WALLET_SESSION_KEY);
+  }
+}
+
+function bindWalletProviderEvents() {
+  if (!window.ethereum || walletAuth.providerBound) return;
+  walletAuth.providerBound = true;
+  window.ethereum.on?.("accountsChanged", (accounts) => {
+    const next = accounts?.[0] ?? "";
+    if (!next) {
+      clearWalletSession();
+      walletLoginStatus.textContent = "지갑 연결이 해제되었습니다. 다시 로그인해주세요.";
+      return;
+    }
+    if (
+      walletAuth.authenticated &&
+      walletAuth.address &&
+      walletAuth.address.toLowerCase() !== next.toLowerCase()
+    ) {
+      clearWalletSession();
+      walletLoginStatus.textContent = "지갑 주소가 변경되었습니다. 새 주소로 다시 로그인해주세요.";
+    }
+  });
+  window.ethereum.on?.("chainChanged", (chainId) => {
+    walletAuth.chainId = chainId ?? "";
+    saveWalletSession();
+    updateWalletUi();
+  });
+}
+
+async function connectWalletLogin() {
+  if (!window.ethereum) {
+    walletLoginStatus.textContent = "메타마스크가 설치되어 있지 않습니다. 브라우저 확장 프로그램을 먼저 설치해주세요.";
+    return;
+  }
+
+  walletConnectBtn.disabled = true;
+  walletConnectBtn.style.opacity = "0.65";
+  walletLoginStatus.textContent = "지갑 연결과 서명을 요청하는 중입니다...";
+
+  try {
+    const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+    const address = accounts?.[0];
+    if (!address) throw new Error("지갑 주소를 불러오지 못했습니다.");
+
+    const nonce = globalThis.crypto?.randomUUID
+      ? globalThis.crypto.randomUUID()
+      : `nonce-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const issuedAt = new Date().toISOString();
+    const message = getWalletLoginMessage(address, nonce, issuedAt);
+    const signature = await window.ethereum.request({
+      method: "personal_sign",
+      params: [message, address],
+    });
+    const chainId = await window.ethereum
+      .request({ method: "eth_chainId" })
+      .catch(() => "");
+
+    setWalletAuthState({
+      authenticated: true,
+      address,
+      signature,
+      nonce,
+      issuedAt,
+      chainId,
+    });
+    walletLoginStatus.textContent = `${shortenWalletAddress(address)} 주소로 서명이 완료되었습니다.`;
+  } catch (error) {
+    walletLoginStatus.textContent = `로그인 실패: ${error?.message ?? "사용자 취소 또는 지갑 오류"}`;
+  } finally {
+    walletConnectBtn.disabled = false;
+    walletConnectBtn.style.opacity = "1";
+  }
+}
+
+walletConnectBtn.addEventListener("click", () => {
+  connectWalletLogin();
+});
+
+walletDevBypassBtn.addEventListener("click", () => {
+  setWalletAuthState(
+    {
+      authenticated: true,
+      address: "dev-mode-local",
+      signature: "",
+      nonce: "",
+      issuedAt: new Date().toISOString(),
+      chainId: "development",
+    },
+    { persist: false }
+  );
+});
+
+function commitNickname() {
+  const nickname = walletNicknameInput.value.trim();
+  const error = validateNickname(nickname);
+  if (error) {
+    walletNicknameStatus.textContent = error;
+    return;
+  }
+  walletProfile.nickname = nickname;
+  walletNicknameStatus.textContent = "";
+  saveWalletProfile();
+  updateWalletUi();
+  showUI(`닉네임 설정 완료: ${nickname}`, 1000);
+  lastMessageUntil = performance.now() + 1000;
+}
+
+walletNicknameSaveBtn.addEventListener("click", () => {
+  commitNickname();
+});
+
+walletNicknameInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    commitNickname();
+  }
+});
+
+walletHudLogoutBtn.addEventListener("click", () => {
+  clearWalletSession();
+  walletLoginStatus.textContent = "로그아웃되었습니다. 다시 메타마스크로 로그인해주세요.";
+});
 
 // ===== Compass UI =====
 const compassWrap = document.createElement("div");
@@ -954,6 +1468,7 @@ questArchiveToggleBtn.addEventListener("click", (e) => {
 });
 
 window.addEventListener("keydown", (e) => {
+  if (!canPlayGame()) return;
   // 입력창 없으니 간단 처리
   const key = e.key.toLowerCase();
   if (key === "i") {
@@ -3109,7 +3624,7 @@ forgeOverlay.addEventListener("click", () => {
 
 // Camera controls
 camera.position.set(0, 4, 8);
-const controls = new OrbitControls(camera, renderer.domElement);
+let controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.target.copy(player.position).add(new THREE.Vector3(0, 1.0, 0));
 controls.minDistance = 3;
@@ -3117,6 +3632,10 @@ controls.maxDistance = 20;
 controls.maxPolarAngle = Math.PI * 0.49;
 controls.minPolarAngle = Math.PI * 0.1;
 controls.enablePan = false;
+
+restoreWalletSession();
+bindWalletProviderEvents();
+updateWalletUi();
 
 const followTargetOffset = new THREE.Vector3(0, 1.0, 0);
 const lastFollowPlayerPosition = new THREE.Vector3().copy(player.position);
@@ -4453,6 +4972,7 @@ road.position.set(0, 0.05, 0);
 const keys = { w: false, a: false, s: false, d: false, shift: false };
 
 window.addEventListener("keydown", (e) => {
+  if (!canPlayGame()) return;
   const k = e.key.toLowerCase();
   console.log("KEYDOWN:", k);
 
@@ -4513,6 +5033,11 @@ window.addEventListener("keydown", (e) => {
 
 window.addEventListener("keyup", (e) => {
   const k = e.key.toLowerCase();
+  if (!canPlayGame()) {
+    if (k in keys) keys[k] = false;
+    if (k === "shift") keys.shift = false;
+    return;
+  }
   if (k in keys) keys[k] = false;
   if (k === "shift") keys.shift = false;
 });
@@ -4754,6 +5279,12 @@ function triggerPickupReach(target = null) {
 }
 
 function updateMovement(dt) {
+  if (!canPlayGame()) {
+    for (const key of Object.keys(keys)) keys[key] = false;
+    updatePlayerGroundY(dt);
+    return;
+  }
+
   const forward = new THREE.Vector3();
   camera.getWorldDirection(forward);
   forward.y = 0;
@@ -4893,6 +5424,7 @@ function updateMovement(dt) {
 }
 
 window.addEventListener("keydown", (e) => {
+  if (!canPlayGame()) return;
   if (e.code !== "Space") return;
   if (activeTutorialNpc) {
     const currentStep = getCurrentQuestStep();
