@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-const LAST_PATCHED_AT = "2026-04-30 16:44:54 KST";
+const LAST_PATCHED_AT = "2026-04-30 17:54:02 KST";
 
 const scene = new THREE.Scene();
 // ===== Atmosphere: Sky / Fog =====
@@ -99,6 +99,7 @@ const walletAuth = {
   issuedAt: "",
   chainId: "",
   token: "",
+  sessionType: "",
   providerBound: false,
 };
 const walletProfile = {
@@ -194,7 +195,7 @@ walletLoginTitle.style.letterSpacing = "-0.02em";
 walletLoginCard.appendChild(walletLoginTitle);
 
 const walletLoginDesc = document.createElement("div");
-walletLoginDesc.textContent = "지갑을 연결하고 서명하면 인증 서버가 nonce 검증을 거쳐 게임 세션을 발급합니다. 이후 닉네임과 플레이 데이터는 이 세션을 기준으로 저장됩니다.";
+walletLoginDesc.textContent = "지갑을 연결하고 서명하면 인증 서버가 nonce 검증을 거쳐 게임 세션을 발급합니다. 메타마스크 없이 먼저 체험하고 싶다면 게스트로 바로 시작할 수도 있습니다.";
 walletLoginDesc.style.marginTop = "10px";
 walletLoginDesc.style.fontSize = "14px";
 walletLoginDesc.style.lineHeight = "1.65";
@@ -232,6 +233,20 @@ walletConnectBtn.style.fontWeight = "800";
 walletConnectBtn.style.cursor = "pointer";
 walletConnectBtn.style.pointerEvents = "auto";
 walletLoginActions.appendChild(walletConnectBtn);
+
+const walletGuestBtn = document.createElement("button");
+walletGuestBtn.type = "button";
+walletGuestBtn.textContent = "게스트로 시작";
+walletGuestBtn.style.padding = "12px 16px";
+walletGuestBtn.style.borderRadius = "12px";
+walletGuestBtn.style.border = "1px solid rgba(0,0,0,0.12)";
+walletGuestBtn.style.background = "rgba(255,255,255,0.9)";
+walletGuestBtn.style.color = "#333";
+walletGuestBtn.style.fontSize = "14px";
+walletGuestBtn.style.fontWeight = "800";
+walletGuestBtn.style.cursor = "pointer";
+walletGuestBtn.style.pointerEvents = "auto";
+walletLoginActions.appendChild(walletGuestBtn);
 
 const walletDevBypassBtn = document.createElement("button");
 walletDevBypassBtn.type = "button";
@@ -278,7 +293,7 @@ walletNicknameTitle.style.fontWeight = "900";
 walletNicknameCard.appendChild(walletNicknameTitle);
 
 const walletNicknameDesc = document.createElement("div");
-walletNicknameDesc.textContent = "게임 안에서 사용할 닉네임을 정해주세요. 지갑 주소와 연결되어 로컬에 저장됩니다.";
+walletNicknameDesc.textContent = "게임 안에서 사용할 닉네임을 정해주세요. 로그인 방식에 따라 지갑 계정 또는 로컬 게스트 세션에 저장됩니다.";
 walletNicknameDesc.style.marginTop = "10px";
 walletNicknameDesc.style.fontSize = "14px";
 walletNicknameDesc.style.lineHeight = "1.65";
@@ -335,6 +350,7 @@ walletNicknameCard.appendChild(walletNicknameSaveBtn);
 function shortenWalletAddress(address) {
   if (!address) return "";
   if (address === "dev-mode-local") return "DEV MODE";
+  if (address === "guest-local") return "GUEST";
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
@@ -362,6 +378,7 @@ function saveWalletSession() {
       issuedAt: walletAuth.issuedAt,
       chainId: walletAuth.chainId,
       token: walletAuth.token,
+      sessionType: walletAuth.sessionType,
     })
   );
 }
@@ -387,12 +404,13 @@ function validateNickname(raw) {
 
 async function apiFetchJson(path, options = {}) {
   try {
+    const { headers: optionHeaders = {}, ...restOptions } = options;
     const response = await fetch(`${AUTH_API_BASE_URL}${path}`, {
+      ...restOptions,
       headers: {
         "Content-Type": "application/json",
-        ...(options.headers ?? {}),
+        ...optionHeaders,
       },
-      ...options,
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok || data?.ok === false) {
@@ -423,6 +441,14 @@ function getAuthHeaders() {
     : {};
 }
 
+function isGuestSession() {
+  return walletAuth.sessionType === "guest" || walletAuth.address === "guest-local";
+}
+
+function isLocalProfileSession() {
+  return walletAuth.address === "dev-mode-local" || isGuestSession();
+}
+
 function updateWalletUi() {
   const loggedIn = walletAuth.authenticated;
   walletLoginOverlay.style.display = loggedIn ? "none" : "flex";
@@ -438,7 +464,9 @@ function updateWalletUi() {
     : "닉네임: 설정 필요";
   walletNicknameInput.value = walletProfile.nickname;
   walletLoginStatus.textContent = loggedIn
-    ? `${shortenWalletAddress(walletAuth.address)} 주소로 로그인되었습니다.`
+    ? isGuestSession()
+      ? "게스트 계정으로 입장했습니다."
+      : `${shortenWalletAddress(walletAuth.address)} 주소로 로그인되었습니다.`
     : "메타마스크 연결을 기다리는 중입니다.";
   walletDevBypassBtn.style.display = DEV_PRESET_ENABLED ? "inline-flex" : "none";
   walletNicknameOverlay.style.display = loggedIn && !hasNickname() ? "flex" : "none";
@@ -455,8 +483,11 @@ function setWalletAuthState(nextState, { persist = true } = {}) {
   walletAuth.issuedAt = nextState.issuedAt ?? "";
   walletAuth.chainId = nextState.chainId ?? "";
   walletAuth.token = nextState.token ?? "";
+  walletAuth.sessionType = nextState.sessionType ?? "";
   if (walletAuth.address === "dev-mode-local") {
     walletProfile.nickname = nextState.nickname ?? "개발자";
+  } else if (isGuestSession()) {
+    walletProfile.nickname = nextState.nickname ?? "";
   } else {
     walletProfile.nickname = nextState.nickname ?? "";
   }
@@ -474,6 +505,7 @@ function clearWalletSession() {
       issuedAt: "",
       chainId: "",
       token: "",
+      sessionType: "",
     },
     { persist: true }
   );
@@ -490,15 +522,24 @@ function restoreWalletSession() {
     const raw = localStorage.getItem(WALLET_SESSION_KEY);
     if (!raw) return;
     const saved = JSON.parse(raw);
-    if (!saved?.authenticated || !saved?.address || !saved?.token) return;
+    const isGuestSaved = saved?.sessionType === "guest" || saved?.address === "guest-local";
+    if (!saved?.authenticated || !saved?.address || (!saved?.token && !isGuestSaved)) return;
     setWalletAuthState(saved, { persist: false });
+    if (saved?.sessionType === "wallet" || isGuestSaved) {
+      applyFreshPlayerStartState();
+    }
   } catch {
     localStorage.removeItem(WALLET_SESSION_KEY);
   }
 }
 
 async function hydrateWalletSessionFromServer() {
-  if (!walletAuth.authenticated || !walletAuth.token || walletAuth.address === "dev-mode-local") {
+  if (
+    !walletAuth.authenticated ||
+    !walletAuth.token ||
+    walletAuth.address === "dev-mode-local" ||
+    isGuestSession()
+  ) {
     return;
   }
 
@@ -527,6 +568,7 @@ async function hydrateWalletSessionFromServer() {
     },
     { persist: true }
   );
+  applyFreshPlayerStartState();
 }
 
 function bindWalletProviderEvents() {
@@ -609,8 +651,10 @@ async function connectWalletLogin() {
       issuedAt,
       chainId,
       token: verifyResponse.data.token,
+      sessionType: "wallet",
       nickname: verifyResponse.data.user?.nickname ?? "",
     });
+    applyFreshPlayerStartState();
     walletLoginStatus.textContent = `${shortenWalletAddress(address)} 주소로 서명이 완료되었습니다.`;
   } catch (error) {
     walletLoginStatus.textContent = `로그인 실패: ${error?.message ?? "사용자 취소 또는 지갑 오류"}`;
@@ -624,6 +668,25 @@ walletConnectBtn.addEventListener("click", () => {
   connectWalletLogin();
 });
 
+walletGuestBtn.addEventListener("click", () => {
+  setWalletAuthState(
+    {
+      authenticated: true,
+      address: "guest-local",
+      signature: "",
+      nonce: "",
+      issuedAt: new Date().toISOString(),
+      chainId: "guest",
+      token: "",
+      sessionType: "guest",
+      nickname: "",
+    },
+    { persist: true }
+  );
+  applyFreshPlayerStartState();
+  walletLoginStatus.textContent = "게스트 계정으로 입장했습니다. 닉네임을 설정해주세요.";
+});
+
 walletDevBypassBtn.addEventListener("click", () => {
   setWalletAuthState(
     {
@@ -633,6 +696,7 @@ walletDevBypassBtn.addEventListener("click", () => {
       nonce: "",
       issuedAt: new Date().toISOString(),
       chainId: "development",
+      sessionType: "dev",
     },
     { persist: false }
   );
@@ -646,9 +710,10 @@ async function commitNickname() {
     return;
   }
 
-  if (walletAuth.address === "dev-mode-local") {
+  if (isLocalProfileSession()) {
     walletProfile.nickname = nickname;
     walletNicknameStatus.textContent = "";
+    saveWalletSession();
     updateWalletUi();
     showUI(`닉네임 설정 완료: ${nickname}`, 1000);
     lastMessageUntil = performance.now() + 1000;
@@ -1770,9 +1835,31 @@ tutorialNpcNameTag.style.transition = "opacity 120ms ease";
 tutorialNpcNameTag.style.display = "none";
 uiLayer.appendChild(tutorialNpcNameTag);
 
+const playerNameTag = document.createElement("div");
+playerNameTag.style.position = "fixed";
+playerNameTag.style.left = "0";
+playerNameTag.style.top = "0";
+playerNameTag.style.transform = "translate(-50%, -50%)";
+playerNameTag.style.padding = "5px 10px";
+playerNameTag.style.borderRadius = "999px";
+playerNameTag.style.background = "rgba(20,20,20,0.72)";
+playerNameTag.style.border = "1px solid rgba(255,255,255,0.18)";
+playerNameTag.style.color = "#dff7ff";
+playerNameTag.style.fontFamily = "system-ui, -apple-system, sans-serif";
+playerNameTag.style.fontSize = "12px";
+playerNameTag.style.fontWeight = "800";
+playerNameTag.style.letterSpacing = "0.02em";
+playerNameTag.style.pointerEvents = "none";
+playerNameTag.style.zIndex = "999997";
+playerNameTag.style.opacity = "1";
+playerNameTag.style.transition = "opacity 120ms ease";
+playerNameTag.style.display = "none";
+uiLayer.appendChild(playerNameTag);
+
 let npcDialogTimer = null;
 const npcNameScreenPos = new THREE.Vector3();
 const npcDialogScreenPos = new THREE.Vector3();
+const playerNameScreenPos = new THREE.Vector3();
 let npcDialogTarget = null;
 
 function showNpcDialog(text, ms = 3000) {
@@ -1836,6 +1923,32 @@ function updateTutorialNpcNameTag() {
   tutorialNpcNameTag.style.top = `${y}px`;
   tutorialNpcNameTag.style.opacity = `${distanceAlpha}`;
   tutorialNpcNameTag.style.display = "block";
+}
+
+function updatePlayerNameTag() {
+  if (!canPlayGame() || !hasNickname()) {
+    playerNameTag.style.display = "none";
+    return;
+  }
+
+  playerNameScreenPos.copy(player.position);
+  playerNameScreenPos.y += 2.7;
+  playerNameScreenPos.project(camera);
+
+  const isVisible = playerNameScreenPos.z >= -1 && playerNameScreenPos.z <= 1;
+  if (!isVisible) {
+    playerNameTag.style.display = "none";
+    return;
+  }
+
+  const x = (playerNameScreenPos.x * 0.5 + 0.5) * window.innerWidth;
+  const y = (-playerNameScreenPos.y * 0.5 + 0.5) * window.innerHeight;
+
+  playerNameTag.textContent = walletProfile.nickname;
+  playerNameTag.style.left = `${x}px`;
+  playerNameTag.style.top = `${y}px`;
+  playerNameTag.style.opacity = "1";
+  playerNameTag.style.display = "block";
 }
 
 const tutorialQuest = {
@@ -3440,6 +3553,16 @@ function tryUnlockMapGate(gate) {
   return true;
 }
 
+function restoreLockedMapGate(gate) {
+  if (!gate?.lockBlocker) return;
+  if (!gate.lockBlocker.parent) {
+    scene.add(gate.lockBlocker);
+  }
+  if (typeof gate.lockColliderIndex !== "number") {
+    gate.lockColliderIndex = addCollider(gate.lockBlocker, 1.0);
+  }
+}
+
 function getForgeDistance() {
   if (!forgeStation?.parent) return Infinity;
   return forgeStation.position.distanceTo(player.position);
@@ -4397,6 +4520,37 @@ function applyDevPreset() {
   latestMoveDir.set(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
   snapCameraToPlayer();
   updateInventoryUI();
+}
+
+function applyFreshPlayerStartState() {
+  for (let i = 0; i < inventory.slots.length; i++) {
+    inventory.slots[i] = null;
+  }
+
+  inventory.pickaxeLevel = 0;
+  inventory.mineKeyIssued = false;
+  inventory.abandonedMineUnlocked = false;
+  inventory.equipped.head = null;
+  inventory.equipped.body = null;
+  inventory.equipped.shoes = null;
+  inventory.equipped.tool = null;
+
+  tutorialQuest.currentStep = 0;
+  tutorialQuest.minedRockCount = 0;
+  tutorialQuest.upgradeCount = 0;
+  tutorialQuest.completed = false;
+  tutorialQuest.archivedSteps = [];
+
+  restoreLockedMapGate(abandonedMineGate);
+
+  currentMapId = "광산맵";
+  updateSceneFogForCurrentMap();
+  player.position.set(START_X, player.position.y, START_Z);
+  player.rotation.y = 0;
+  latestMoveDir.set(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
+  snapCameraToPlayer();
+  updateInventoryUI();
+  if (questOpen) renderQuestWindow();
 }
 
 applyDevPreset();
@@ -5681,6 +5835,7 @@ function animate() {
   controls.update();
   updateNpcDialogPosition();
   updateTutorialNpcNameTag();
+  updatePlayerNameTag();
   applyCameraShake();
   if (forgeOpen) {
     if (getForgeDistance() >= 2.8) {

@@ -1,0 +1,60 @@
+{
+  "users": [
+    {
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "nickname": "XC",
+      "createdAt": "2026-04-30T08:26:16.091Z",
+      "lastLoginAt": "2026-04-30T08:56:06.851Z"
+    }
+  ],
+  "nonces": [
+    {
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "nonce": "0948628e-1b3c-4be7-8df6-c345029b6407",
+      "issuedAt": "2026-04-30T08:56:04.850Z",
+      "expiresAt": "2026-04-30T09:01:04.851Z",
+      "message": "voxel-town 로그인\n주소: 0xfb5674f5e88be965977261a2200292a63d89975f\nNonce: 0948628e-1b3c-4be7-8df6-c345029b6407\n시간: 2026-04-30T08:56:04.850Z",
+      "used": true,
+      "createdAt": "2026-04-30T08:56:04.850Z",
+      "usedAt": "2026-04-30T08:56:06.851Z"
+    }
+  ],
+  "sessions": [
+    {
+      "token": "89fa5cf5-a63f-4b26-b0a1-e7ec55cd52cc",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-04-30T08:26:16.091Z",
+      "expiresAt": "2026-05-30T08:26:16.091Z"
+    },
+    {
+      "token": "b60f01f1-f9f1-48fe-b4b2-196aeefffcf3",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-04-30T08:32:28.954Z",
+      "expiresAt": "2026-05-30T08:32:28.954Z"
+    },
+    {
+      "token": "c499f68d-e975-4834-97e7-5c82e43088cc",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-04-30T08:45:35.433Z",
+      "expiresAt": "2026-05-30T08:45:35.433Z"
+    },
+    {
+      "token": "2c701177-80b5-40f1-b05b-56f14ff58529",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-04-30T08:46:26.284Z",
+      "expiresAt": "2026-05-30T08:46:26.284Z"
+    },
+    {
+      "token": "5acba3e0-8a37-436d-a61c-f435a16df3a0",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-04-30T08:48:43.101Z",
+      "expiresAt": "2026-05-30T08:48:43.101Z"
+    },
+    {
+      "token": "0122b48e-9444-4c82-8b28-26223763cc10",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-04-30T08:56:06.851Z",
+      "expiresAt": "2026-05-30T08:56:06.851Z"
+    }
+  ]
+}
