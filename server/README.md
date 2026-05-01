@@ -33,7 +33,8 @@ npm run server:dev
 
 ```bash
 PORT=8787
-CLIENT_ORIGIN=http://localhost:5173
+HOST=localhost
+CLIENT_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 NONCE_TTL_SECONDS=300
 SESSION_TTL_SECONDS=2592000
 ```

@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-const LAST_PATCHED_AT = "2026-04-30 17:54:02 KST";
+const LAST_PATCHED_AT = "2026-05-01 16:21:39 KST";
 
 const scene = new THREE.Scene();
 // ===== Atmosphere: Sky / Fog =====
@@ -105,6 +105,14 @@ const walletAuth = {
 const walletProfile = {
   nickname: "",
 };
+const PLAYER_SAVE_VERSION = 1;
+const PLAYER_SAVE_INTERVAL_MS = 4000;
+let playerSaveSyncInFlight = null;
+let lastPlayerSaveSnapshot = "";
+let lastPlayerSaveAttemptAt = 0;
+let playerSaveSyncPaused = false;
+let playerSaveStatusTimer = null;
+let lastKnownPlayerSaveUpdatedAt = "";
 
 const walletHud = document.createElement("div");
 walletHud.id = "walletHud";
@@ -162,6 +170,30 @@ walletHudLogoutBtn.style.cursor = "pointer";
 walletHudLogoutBtn.style.fontSize = "12px";
 walletHudLogoutBtn.style.fontWeight = "700";
 walletHud.appendChild(walletHudLogoutBtn);
+
+const playerSaveStatusBadge = document.createElement("div");
+playerSaveStatusBadge.id = "playerSaveStatus";
+playerSaveStatusBadge.style.position = "fixed";
+playerSaveStatusBadge.style.left = "12px";
+playerSaveStatusBadge.style.bottom = "12px";
+playerSaveStatusBadge.style.padding = "8px 12px";
+playerSaveStatusBadge.style.borderRadius = "12px";
+playerSaveStatusBadge.style.background = "rgba(20,20,20,0.52)";
+playerSaveStatusBadge.style.border = "1px solid rgba(255,255,255,0.18)";
+playerSaveStatusBadge.style.backdropFilter = "blur(4px)";
+playerSaveStatusBadge.style.color = "white";
+playerSaveStatusBadge.style.fontFamily = "system-ui, -apple-system, sans-serif";
+playerSaveStatusBadge.style.fontSize = "12px";
+playerSaveStatusBadge.style.fontWeight = "700";
+playerSaveStatusBadge.style.lineHeight = "1.4";
+playerSaveStatusBadge.style.userSelect = "none";
+playerSaveStatusBadge.style.pointerEvents = "none";
+playerSaveStatusBadge.style.zIndex = "1000002";
+playerSaveStatusBadge.style.opacity = "0";
+playerSaveStatusBadge.style.transform = "translateY(4px)";
+playerSaveStatusBadge.style.transition = "opacity 180ms ease, transform 180ms ease, border-color 180ms ease";
+playerSaveStatusBadge.textContent = "";
+uiLayer.appendChild(playerSaveStatusBadge);
 
 const walletLoginOverlay = document.createElement("div");
 walletLoginOverlay.id = "walletLoginOverlay";
@@ -414,12 +446,13 @@ async function apiFetchJson(path, options = {}) {
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok || data?.ok === false) {
-      return {
-        ok: false,
-        status: response.status,
-        error: data?.error || "인증 서버 요청에 실패했습니다.",
-      };
-    }
+    return {
+      ok: false,
+      status: response.status,
+      error: data?.error || "인증 서버 요청에 실패했습니다.",
+      data,
+    };
+  }
     return {
       ok: true,
       data,
@@ -449,6 +482,51 @@ function isLocalProfileSession() {
   return walletAuth.address === "dev-mode-local" || isGuestSession();
 }
 
+function isServerBackedWalletSession() {
+  return walletAuth.authenticated && walletAuth.sessionType === "wallet" && Boolean(walletAuth.token);
+}
+
+function hidePlayerSaveStatus(delay = 1400) {
+  if (playerSaveStatusTimer) {
+    clearTimeout(playerSaveStatusTimer);
+    playerSaveStatusTimer = null;
+  }
+  playerSaveStatusTimer = setTimeout(() => {
+    playerSaveStatusBadge.style.opacity = "0";
+    playerSaveStatusBadge.style.transform = "translateY(4px)";
+  }, delay);
+}
+
+function setPlayerSaveStatus(text, tone = "neutral", { persist = false } = {}) {
+  const palette = {
+    neutral: {
+      border: "rgba(255,255,255,0.18)",
+      color: "white",
+    },
+    saving: {
+      border: "rgba(114,179,255,0.5)",
+      color: "#dceeff",
+    },
+    success: {
+      border: "rgba(122,209,151,0.5)",
+      color: "#dff8e7",
+    },
+    error: {
+      border: "rgba(255,122,122,0.55)",
+      color: "#ffe3e3",
+    },
+  };
+  const style = palette[tone] ?? palette.neutral;
+  playerSaveStatusBadge.textContent = text;
+  playerSaveStatusBadge.style.borderColor = style.border;
+  playerSaveStatusBadge.style.color = style.color;
+  playerSaveStatusBadge.style.opacity = isServerBackedWalletSession() ? "1" : "0";
+  playerSaveStatusBadge.style.transform = isServerBackedWalletSession()
+    ? "translateY(0)"
+    : "translateY(4px)";
+  if (!persist) hidePlayerSaveStatus();
+}
+
 function updateWalletUi() {
   const loggedIn = walletAuth.authenticated;
   walletLoginOverlay.style.display = loggedIn ? "none" : "flex";
@@ -470,6 +548,7 @@ function updateWalletUi() {
     : "메타마스크 연결을 기다리는 중입니다.";
   walletDevBypassBtn.style.display = DEV_PRESET_ENABLED ? "inline-flex" : "none";
   walletNicknameOverlay.style.display = loggedIn && !hasNickname() ? "flex" : "none";
+  playerSaveStatusBadge.style.opacity = isServerBackedWalletSession() ? playerSaveStatusBadge.style.opacity : "0";
   if (typeof controls !== "undefined" && controls) {
     controls.enabled = canPlayGame();
   }
@@ -510,6 +589,15 @@ function clearWalletSession() {
     { persist: true }
   );
   walletProfile.nickname = "";
+  lastPlayerSaveSnapshot = "";
+  playerSaveSyncPaused = false;
+  lastKnownPlayerSaveUpdatedAt = "";
+  if (playerSaveStatusTimer) {
+    clearTimeout(playerSaveStatusTimer);
+    playerSaveStatusTimer = null;
+  }
+  playerSaveStatusBadge.style.opacity = "0";
+  playerSaveStatusBadge.style.transform = "translateY(4px)";
   updateWalletUi();
 }
 
@@ -525,7 +613,10 @@ function restoreWalletSession() {
     const isGuestSaved = saved?.sessionType === "guest" || saved?.address === "guest-local";
     if (!saved?.authenticated || !saved?.address || (!saved?.token && !isGuestSaved)) return;
     setWalletAuthState(saved, { persist: false });
-    if (saved?.sessionType === "wallet" || isGuestSaved) {
+    if (saved?.sessionType === "wallet") {
+      playerSaveSyncPaused = true;
+      applyFreshPlayerStartState();
+    } else if (isGuestSaved) {
       applyFreshPlayerStartState();
     }
   } catch {
@@ -544,12 +635,14 @@ async function hydrateWalletSessionFromServer() {
   }
 
   walletLoginStatus.textContent = "로그인 세션을 확인하는 중입니다...";
+  playerSaveSyncPaused = true;
   const meResponse = await apiFetchJson("/auth/me", {
     method: "GET",
     headers: getAuthHeaders(),
   });
 
   if (!meResponse.ok) {
+    playerSaveSyncPaused = false;
     clearWalletSession();
     walletLoginStatus.textContent = "저장된 세션이 만료되었습니다. 다시 로그인해주세요.";
     return;
@@ -569,6 +662,8 @@ async function hydrateWalletSessionFromServer() {
     { persist: true }
   );
   applyFreshPlayerStartState();
+  await hydratePlayerSaveFromServer();
+  playerSaveSyncPaused = false;
 }
 
 function bindWalletProviderEvents() {
@@ -654,9 +749,13 @@ async function connectWalletLogin() {
       sessionType: "wallet",
       nickname: verifyResponse.data.user?.nickname ?? "",
     });
+    playerSaveSyncPaused = true;
     applyFreshPlayerStartState();
+    await hydratePlayerSaveFromServer();
+    playerSaveSyncPaused = false;
     walletLoginStatus.textContent = `${shortenWalletAddress(address)} 주소로 서명이 완료되었습니다.`;
   } catch (error) {
+    playerSaveSyncPaused = false;
     walletLoginStatus.textContent = `로그인 실패: ${error?.message ?? "사용자 취소 또는 지갑 오류"}`;
   } finally {
     walletConnectBtn.disabled = false;
@@ -742,6 +841,7 @@ async function commitNickname() {
   walletNicknameStatus.textContent = "";
   saveWalletSession();
   updateWalletUi();
+  schedulePlayerSaveSync(true);
   showUI(`닉네임 설정 완료: ${walletProfile.nickname}`, 1000);
   lastMessageUntil = performance.now() + 1000;
 }
@@ -756,7 +856,12 @@ walletNicknameInput.addEventListener("keydown", (e) => {
   }
 });
 
-walletHudLogoutBtn.addEventListener("click", () => {
+walletHudLogoutBtn.addEventListener("click", async () => {
+  if (isServerBackedWalletSession()) {
+    try {
+      await pushPlayerSaveToServer();
+    } catch {}
+  }
   clearWalletSession();
   walletLoginStatus.textContent = "로그아웃되었습니다. 다시 메타마스크로 로그인해주세요.";
 });
@@ -1637,6 +1742,14 @@ window.addEventListener("keydown", (e) => {
   }
 });
 
+window.addEventListener("pagehide", () => {
+  flushPlayerSaveOnExit();
+});
+
+window.addEventListener("beforeunload", () => {
+  flushPlayerSaveOnExit();
+});
+
 
 // ===== UI (간단 텍스트) =====
 const ui = document.createElement("div");
@@ -2038,6 +2151,7 @@ function refreshQuestProgress() {
     }
     showUI(`퀘스트 갱신: ${tutorialQuest.steps[tutorialQuest.currentStep].title}`, 1100);
   }
+  if (advanced) schedulePlayerSaveSync(true);
   if (advanced && questOpen) renderQuestWindow();
 }
 
@@ -2046,6 +2160,7 @@ function archiveQuestStep(stepIndex) {
   if (!isDone) return;
   if (!tutorialQuest.archivedSteps.includes(stepIndex)) {
     tutorialQuest.archivedSteps.push(stepIndex);
+    schedulePlayerSaveSync(true);
   }
   if (questOpen) renderQuestWindow();
 }
@@ -2913,6 +3028,7 @@ function getEquippedMiningPower() {
 
   // 인벤 창이 열려있으면 슬롯 표시 갱신
   if (typeof invOpen !== "undefined" && invOpen) renderInventoryWindow();
+  schedulePlayerSaveSync(true);
     }
 
   updateInventoryUI(); // 처음 한번 표시
@@ -4553,6 +4669,235 @@ function applyFreshPlayerStartState() {
   if (questOpen) renderQuestWindow();
 }
 
+function createDefaultPlayerSave() {
+  return {
+    version: PLAYER_SAVE_VERSION,
+    mapId: "광산맵",
+    position: {
+      x: START_X,
+      y: player.position.y,
+      z: START_Z,
+    },
+    rotationY: 0,
+    inventory: {
+      slots: Array.from({ length: inventory.slots.length }, () => null),
+      pickaxeLevel: 0,
+      mineKeyIssued: false,
+      abandonedMineUnlocked: false,
+      equipped: {
+        head: null,
+        body: null,
+        shoes: null,
+        tool: null,
+      },
+    },
+    tutorial: {
+      currentStep: 0,
+      minedRockCount: 0,
+      upgradeCount: 0,
+      completed: false,
+      archivedSteps: [],
+    },
+  };
+}
+
+function serializePlayerSave() {
+  return {
+    version: PLAYER_SAVE_VERSION,
+    mapId: currentMapId,
+    position: {
+      x: Number(player.position.x.toFixed(3)),
+      y: Number(player.position.y.toFixed(3)),
+      z: Number(player.position.z.toFixed(3)),
+    },
+    rotationY: Number(player.rotation.y.toFixed(4)),
+    inventory: {
+      slots: inventory.slots.map((slot) => (slot ? { id: slot.id, count: slot.count } : null)),
+      pickaxeLevel: inventory.pickaxeLevel,
+      mineKeyIssued: inventory.mineKeyIssued,
+      abandonedMineUnlocked: inventory.abandonedMineUnlocked,
+      equipped: { ...inventory.equipped },
+    },
+    tutorial: {
+      currentStep: tutorialQuest.currentStep,
+      minedRockCount: tutorialQuest.minedRockCount,
+      upgradeCount: tutorialQuest.upgradeCount,
+      completed: tutorialQuest.completed,
+      archivedSteps: [...tutorialQuest.archivedSteps],
+    },
+  };
+}
+
+function applySerializedPlayerSave(rawSave) {
+  const save = rawSave && typeof rawSave === "object" ? rawSave : createDefaultPlayerSave();
+  const source = {
+    ...createDefaultPlayerSave(),
+    ...save,
+    inventory: {
+      ...createDefaultPlayerSave().inventory,
+      ...(save.inventory ?? {}),
+      equipped: {
+        ...createDefaultPlayerSave().inventory.equipped,
+        ...(save.inventory?.equipped ?? {}),
+      },
+    },
+    tutorial: {
+      ...createDefaultPlayerSave().tutorial,
+      ...(save.tutorial ?? {}),
+    },
+  };
+
+  for (let i = 0; i < inventory.slots.length; i++) {
+    const slot = source.inventory.slots[i] ?? null;
+    inventory.slots[i] = slot ? { id: slot.id, count: slot.count } : null;
+  }
+
+  inventory.pickaxeLevel = Math.max(
+    0,
+    Math.min(source.inventory.pickaxeLevel ?? 0, PICKAXE_UPGRADE_LEVELS.length - 1)
+  );
+  inventory.mineKeyIssued = Boolean(source.inventory.mineKeyIssued);
+  inventory.abandonedMineUnlocked = Boolean(source.inventory.abandonedMineUnlocked);
+  inventory.equipped.head = source.inventory.equipped.head ?? null;
+  inventory.equipped.body = source.inventory.equipped.body ?? null;
+  inventory.equipped.shoes = source.inventory.equipped.shoes ?? null;
+  inventory.equipped.tool = source.inventory.equipped.tool ?? null;
+
+  tutorialQuest.currentStep = Math.max(0, Math.min(source.tutorial.currentStep ?? 0, tutorialQuest.steps.length));
+  tutorialQuest.minedRockCount = Math.max(0, source.tutorial.minedRockCount ?? 0);
+  tutorialQuest.upgradeCount = Math.max(0, source.tutorial.upgradeCount ?? 0);
+  tutorialQuest.completed = Boolean(source.tutorial.completed);
+  tutorialQuest.archivedSteps = Array.isArray(source.tutorial.archivedSteps)
+    ? [...source.tutorial.archivedSteps]
+    : [];
+
+  if (inventory.abandonedMineUnlocked) {
+    if (typeof abandonedMineGate.lockColliderIndex === "number") {
+      removeColliderAt(abandonedMineGate.lockColliderIndex);
+      abandonedMineGate.lockColliderIndex = null;
+    }
+    if (abandonedMineGate.lockBlocker?.parent) {
+      abandonedMineGate.lockBlocker.removeFromParent();
+    }
+  } else {
+    restoreLockedMapGate(abandonedMineGate);
+  }
+
+  currentMapId = source.mapId === "폐광맵" ? "폐광맵" : "광산맵";
+  updateSceneFogForCurrentMap();
+  player.position.set(
+    Number.isFinite(source.position?.x) ? source.position.x : START_X,
+    Number.isFinite(source.position?.y) ? source.position.y : player.position.y,
+    Number.isFinite(source.position?.z) ? source.position.z : START_Z
+  );
+  player.rotation.y = Number.isFinite(source.rotationY) ? source.rotationY : 0;
+  latestMoveDir.set(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
+  snapCameraToPlayer();
+  updateInventoryUI();
+  refreshQuestProgress();
+  if (questOpen) renderQuestWindow();
+  lastPlayerSaveSnapshot = JSON.stringify(serializePlayerSave());
+}
+
+async function hydratePlayerSaveFromServer() {
+  if (!isServerBackedWalletSession()) return false;
+
+  setPlayerSaveStatus("저장 불러오는 중...", "saving", { persist: true });
+  const saveResponse = await apiFetchJson("/auth/save", {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+  if (!saveResponse.ok) {
+    walletLoginStatus.textContent = `저장 데이터 확인 실패: ${saveResponse.error}`;
+    setPlayerSaveStatus("저장 불러오기 실패", "error");
+    return false;
+  }
+
+  const serverSaveEntry = saveResponse.data.save ?? null;
+  const serverSave = serverSaveEntry?.data ?? null;
+  if (!serverSave) {
+    lastKnownPlayerSaveUpdatedAt = "";
+    lastPlayerSaveSnapshot = JSON.stringify(serializePlayerSave());
+    setPlayerSaveStatus("새로운 저장 데이터", "success");
+    return false;
+  }
+
+  applySerializedPlayerSave(serverSave);
+  lastKnownPlayerSaveUpdatedAt = serverSaveEntry.updatedAt ?? "";
+  walletLoginStatus.textContent = "이전 플레이 기록을 불러왔습니다.";
+  setPlayerSaveStatus("저장 불러오기 완료", "success");
+  return true;
+}
+
+async function pushPlayerSaveToServer() {
+  if (!isServerBackedWalletSession()) return false;
+  const snapshot = JSON.stringify(serializePlayerSave());
+  if (snapshot === lastPlayerSaveSnapshot) return true;
+
+  setPlayerSaveStatus("저장 중...", "saving", { persist: true });
+
+  const response = await apiFetchJson("/auth/save", {
+    method: "PUT",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({
+      save: JSON.parse(snapshot),
+      knownUpdatedAt: lastKnownPlayerSaveUpdatedAt,
+    }),
+  });
+  if (!response.ok) {
+    if (response.status === 409 && response.data?.save?.data) {
+      applySerializedPlayerSave(response.data.save.data);
+      lastKnownPlayerSaveUpdatedAt = response.data.save.updatedAt ?? "";
+      walletLoginStatus.textContent = "다른 탭의 더 최신 저장 기록을 불러왔습니다.";
+      setPlayerSaveStatus("다른 창의 최신 저장으로 동기화됨", "error");
+      return false;
+    }
+    setPlayerSaveStatus("저장 실패", "error");
+    return false;
+  }
+  lastPlayerSaveSnapshot = snapshot;
+  lastKnownPlayerSaveUpdatedAt = response.data.save?.updatedAt ?? lastKnownPlayerSaveUpdatedAt;
+  setPlayerSaveStatus("저장됨", "success");
+  return true;
+}
+
+function flushPlayerSaveOnExit() {
+  if (!isServerBackedWalletSession()) return;
+  if (playerSaveSyncPaused) return;
+
+  const snapshot = JSON.stringify(serializePlayerSave());
+  if (snapshot === lastPlayerSaveSnapshot) return;
+
+  try {
+    fetch(`${AUTH_API_BASE_URL}/auth/save`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${walletAuth.token}`,
+      },
+      body: JSON.stringify({
+        save: JSON.parse(snapshot),
+        knownUpdatedAt: lastKnownPlayerSaveUpdatedAt,
+      }),
+      keepalive: true,
+    });
+    lastPlayerSaveSnapshot = snapshot;
+  } catch {}
+}
+
+function schedulePlayerSaveSync(force = false) {
+  if (!isServerBackedWalletSession()) return;
+  if (playerSaveSyncPaused) return;
+  const now = performance.now();
+  if (!force && now - lastPlayerSaveAttemptAt < PLAYER_SAVE_INTERVAL_MS) return;
+  if (playerSaveSyncInFlight) return;
+
+  lastPlayerSaveAttemptAt = now;
+  playerSaveSyncInFlight = pushPlayerSaveToServer().finally(() => {
+    playerSaveSyncInFlight = null;
+  });
+}
+
 applyDevPreset();
 
 
@@ -5590,6 +5935,10 @@ function updateMovement(dt) {
 
   // 간단 보행 모션
   const walkT = performance.now() * 0.015;
+  const torsoBaseY = 1.35;
+  const torsoBaseZ = 0;
+  const headBaseY = 2.1;
+  const headBaseZ = 0;
   if (isMoving) {
     const armSwing = Math.sin(walkT) * 0.65;
     const legSwing = Math.sin(walkT) * 0.75;
@@ -5606,6 +5955,16 @@ function updateMovement(dt) {
     torso.rotation.x *= 0.8;
   }
 
+  torso.rotation.y = THREE.MathUtils.lerp(torso.rotation.y, 0, 0.18);
+  torso.rotation.z = THREE.MathUtils.lerp(torso.rotation.z, 0, 0.18);
+  torso.position.y = THREE.MathUtils.lerp(torso.position.y, torsoBaseY, 0.18);
+  torso.position.z = THREE.MathUtils.lerp(torso.position.z, torsoBaseZ, 0.18);
+  head.position.y = THREE.MathUtils.lerp(head.position.y, headBaseY, 0.18);
+  head.position.z = THREE.MathUtils.lerp(head.position.z, headBaseZ, 0.18);
+  head.rotation.x = THREE.MathUtils.lerp(head.rotation.x, 0, 0.18);
+  leftArmPivot.rotation.z = THREE.MathUtils.lerp(leftArmPivot.rotation.z, 0, 0.22);
+  rightArmPivot.rotation.z = THREE.MathUtils.lerp(rightArmPivot.rotation.z, 0, 0.22);
+
   if (miningSwingTime > 0) {
     miningSwingTime = Math.max(0, miningSwingTime - dt);
     const phase = 1 - (miningSwingTime / currentMiningSwingDuration);
@@ -5613,29 +5972,78 @@ function updateMovement(dt) {
     let mainSwing = 0;
     let supportSwing = 0;
     let torsoBend = 0;
+    let torsoTwist = 0;
+    let torsoTilt = 0;
+    let torsoDrop = 0;
+    let torsoDrive = 0;
+    let headDrop = 0;
+    let headNod = 0;
+    let leadLeg = 0;
+    let trailLeg = 0;
+    let mainArmRoll = 0;
+    let supportArmRoll = 0;
 
-    if (phase < 0.34) {
-      const t = phase / 0.34;
+    if (phase < 0.32) {
+      const t = phase / 0.32;
       mainSwing = THREE.MathUtils.lerp(0.25, -1.7, t);
       supportSwing = THREE.MathUtils.lerp(-0.08, -0.65, t);
       torsoBend = THREE.MathUtils.lerp(0.02, -0.22, t);
-    } else if (phase < 0.76) {
-      const t = (phase - 0.34) / 0.42;
+      torsoTwist = THREE.MathUtils.lerp(-0.04, -0.2, t);
+      torsoTilt = THREE.MathUtils.lerp(0.02, 0.12, t);
+      torsoDrop = THREE.MathUtils.lerp(-0.02, -0.09, t);
+      torsoDrive = THREE.MathUtils.lerp(-0.01, -0.06, t);
+      headDrop = THREE.MathUtils.lerp(-0.01, -0.05, t);
+      headNod = THREE.MathUtils.lerp(-0.02, -0.08, t);
+      leadLeg = THREE.MathUtils.lerp(0.02, 0.14, t);
+      trailLeg = THREE.MathUtils.lerp(-0.01, 0.08, t);
+      mainArmRoll = THREE.MathUtils.lerp(0.02, 0.16, t);
+      supportArmRoll = THREE.MathUtils.lerp(-0.02, -0.08, t);
+    } else if (phase < 0.74) {
+      const t = (phase - 0.32) / 0.42;
       mainSwing = THREE.MathUtils.lerp(-1.7, 1.85, t);
       supportSwing = THREE.MathUtils.lerp(-0.65, 0.48, t);
       torsoBend = THREE.MathUtils.lerp(-0.22, 0.34, t);
+      torsoTwist = THREE.MathUtils.lerp(-0.2, 0.18, t);
+      torsoTilt = THREE.MathUtils.lerp(0.12, -0.08, t);
+      torsoDrop = THREE.MathUtils.lerp(-0.09, -0.17, t);
+      torsoDrive = THREE.MathUtils.lerp(-0.06, 0.12, t);
+      headDrop = THREE.MathUtils.lerp(-0.05, -0.12, t);
+      headNod = THREE.MathUtils.lerp(-0.08, 0.2, t);
+      leadLeg = THREE.MathUtils.lerp(0.14, -0.08, t);
+      trailLeg = THREE.MathUtils.lerp(0.08, 0.26, t);
+      mainArmRoll = THREE.MathUtils.lerp(0.16, -0.12, t);
+      supportArmRoll = THREE.MathUtils.lerp(-0.08, -0.18, t);
     } else {
-      const t = (phase - 0.76) / 0.24;
+      const t = (phase - 0.74) / 0.26;
       mainSwing = THREE.MathUtils.lerp(1.85, 0.82, t);
       supportSwing = THREE.MathUtils.lerp(0.48, 0.08, t);
       torsoBend = THREE.MathUtils.lerp(0.34, 0.08, t);
+      torsoTwist = THREE.MathUtils.lerp(0.18, 0.04, t);
+      torsoTilt = THREE.MathUtils.lerp(-0.08, -0.02, t);
+      torsoDrop = THREE.MathUtils.lerp(-0.17, -0.04, t);
+      torsoDrive = THREE.MathUtils.lerp(0.12, 0.03, t);
+      headDrop = THREE.MathUtils.lerp(-0.12, -0.03, t);
+      headNod = THREE.MathUtils.lerp(0.2, 0.05, t);
+      leadLeg = THREE.MathUtils.lerp(-0.08, 0.03, t);
+      trailLeg = THREE.MathUtils.lerp(0.26, 0.06, t);
+      mainArmRoll = THREE.MathUtils.lerp(-0.12, -0.02, t);
+      supportArmRoll = THREE.MathUtils.lerp(-0.18, -0.04, t);
     }
 
     leftArmPivot.rotation.x = mainSwing;
     rightArmPivot.rotation.x = supportSwing;
+    leftArmPivot.rotation.z = mainArmRoll;
+    rightArmPivot.rotation.z = supportArmRoll;
     torso.rotation.x = torsoBend;
-    leftLegPivot.rotation.x *= 0.55;
-    rightLegPivot.rotation.x *= 0.55;
+    torso.rotation.y = torsoTwist;
+    torso.rotation.z = torsoTilt;
+    torso.position.y = torsoBaseY + torsoDrop;
+    torso.position.z = torsoBaseZ + torsoDrive;
+    head.position.y = headBaseY + headDrop;
+    head.position.z = headBaseZ + torsoDrive * 0.5;
+    head.rotation.x = headNod;
+    leftLegPivot.rotation.x = leadLeg;
+    rightLegPivot.rotation.x = trailLeg;
   }
 
   if (pickupReachTime > 0 && miningSwingTime <= 0) {
@@ -5783,6 +6191,7 @@ function animate() {
   updateMovement(dt);
   updateCurrentMapFromPlayerPosition();
   updateSceneFogForCurrentMap();
+  schedulePlayerSaveSync();
   if (currentMapId !== lastAnnouncedMapId) {
     showMapArrivalBanner(currentMapId);
     lastAnnouncedMapId = currentMapId;

@@ -1,6 +1,13 @@
 import express from "express";
 
-import { createNonce, getSessionUser, updateNickname, verifyWalletLogin } from "../auth/service.js";
+import {
+  createNonce,
+  getPlayerSave,
+  getSessionUser,
+  updateNickname,
+  updatePlayerSave,
+  verifyWalletLogin,
+} from "../auth/service.js";
 
 export const authRouter = express.Router();
 
@@ -43,6 +50,26 @@ authRouter.patch("/nickname", (req, res) => {
   const result = updateNickname(token, req.body?.nickname);
   if (!result.ok) {
     res.status(result.status).json({ ok: false, error: result.error });
+    return;
+  }
+  res.json({ ok: true, ...result.payload });
+});
+
+authRouter.get("/save", (req, res) => {
+  const token = getBearerToken(req);
+  const result = getPlayerSave(token);
+  if (!result.ok) {
+    res.status(result.status).json({ ok: false, error: result.error });
+    return;
+  }
+  res.json({ ok: true, ...result.payload });
+});
+
+authRouter.put("/save", (req, res) => {
+  const token = getBearerToken(req);
+  const result = updatePlayerSave(token, req.body?.save, req.body?.knownUpdatedAt);
+  if (!result.ok) {
+    res.status(result.status).json({ ok: false, error: result.error, ...(result.payload ?? {}) });
     return;
   }
   res.json({ ok: true, ...result.payload });

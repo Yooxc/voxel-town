@@ -4,21 +4,10 @@
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
       "nickname": "XC",
       "createdAt": "2026-04-30T08:26:16.091Z",
-      "lastLoginAt": "2026-04-30T08:56:06.851Z"
+      "lastLoginAt": "2026-05-01T07:24:07.851Z"
     }
   ],
-  "nonces": [
-    {
-      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
-      "nonce": "0948628e-1b3c-4be7-8df6-c345029b6407",
-      "issuedAt": "2026-04-30T08:56:04.850Z",
-      "expiresAt": "2026-04-30T09:01:04.851Z",
-      "message": "voxel-town 로그인\n주소: 0xfb5674f5e88be965977261a2200292a63d89975f\nNonce: 0948628e-1b3c-4be7-8df6-c345029b6407\n시간: 2026-04-30T08:56:04.850Z",
-      "used": true,
-      "createdAt": "2026-04-30T08:56:04.850Z",
-      "usedAt": "2026-04-30T08:56:06.851Z"
-    }
-  ],
+  "nonces": [],
   "sessions": [
     {
       "token": "89fa5cf5-a63f-4b26-b0a1-e7ec55cd52cc",
@@ -55,6 +44,135 @@
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
       "createdAt": "2026-04-30T08:56:06.851Z",
       "expiresAt": "2026-05-30T08:56:06.851Z"
+    },
+    {
+      "token": "5eef7932-24de-4b74-9069-ab6ea3451abd",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-04-30T09:08:05.769Z",
+      "expiresAt": "2026-05-30T09:08:05.769Z"
+    },
+    {
+      "token": "2fd0349a-8595-43cd-b80c-a135f6bc6b5d",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-01T05:07:14.910Z",
+      "expiresAt": "2026-05-31T05:07:14.910Z"
+    },
+    {
+      "token": "c68564b3-da54-4c30-8a9e-4650439c647b",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-01T05:09:33.047Z",
+      "expiresAt": "2026-05-31T05:09:33.047Z"
+    },
+    {
+      "token": "bcc897d4-3bc8-47cc-ad54-c47e141cae03",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-01T05:22:29.940Z",
+      "expiresAt": "2026-05-31T05:22:29.940Z"
+    },
+    {
+      "token": "25575181-1b8a-4183-bae4-230ff7f13bd6",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-01T05:25:09.426Z",
+      "expiresAt": "2026-05-31T05:25:09.426Z"
+    },
+    {
+      "token": "b6cb5066-6671-42e5-91b2-c261eb44a321",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-01T07:03:45.133Z",
+      "expiresAt": "2026-05-31T07:03:45.133Z"
+    },
+    {
+      "token": "8645aa26-e8d2-42ac-80df-6af53c626fcd",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-01T07:04:34.740Z",
+      "expiresAt": "2026-05-31T07:04:34.740Z"
+    },
+    {
+      "token": "cabd6cec-c266-499b-bf65-b42108a62df8",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-01T07:14:26.008Z",
+      "expiresAt": "2026-05-31T07:14:26.008Z"
+    },
+    {
+      "token": "c908b44a-6e3a-4eee-adf9-cae44671d787",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-01T07:24:07.851Z",
+      "expiresAt": "2026-05-31T07:24:07.851Z"
+    }
+  ],
+  "playerSaves": [
+    {
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "data": {
+        "version": 1,
+        "mapId": "광산맵",
+        "position": {
+          "x": -6.215,
+          "y": -0.045,
+          "z": -1.669
+        },
+        "rotationY": 0.0025,
+        "inventory": {
+          "slots": [
+            {
+              "id": "pickaxe",
+              "count": 1
+            },
+            {
+              "id": "safetyHelmet",
+              "count": 1
+            },
+            {
+              "id": "stoneDust",
+              "count": 14
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "pickaxeLevel": 0,
+          "mineKeyIssued": false,
+          "abandonedMineUnlocked": false,
+          "equipped": {
+            "head": "safetyHelmet",
+            "body": null,
+            "shoes": null,
+            "tool": "pickaxe"
+          }
+        },
+        "tutorial": {
+          "currentStep": 4,
+          "minedRockCount": 14,
+          "upgradeCount": 0,
+          "completed": false,
+          "archivedSteps": []
+        }
+      },
+      "updatedAt": "2026-05-01T07:24:35.546Z"
     }
   ]
 }

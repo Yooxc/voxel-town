@@ -9,7 +9,17 @@ const app = express();
 
 app.use(
   cors({
-    origin: config.clientOrigin,
+    origin(origin, callback) {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+      if (config.clientOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error(`CORS origin not allowed: ${origin}`));
+    },
     credentials: true,
   })
 );
@@ -33,8 +43,8 @@ app.use((req, res) => {
   });
 });
 
-app.listen(config.port, () => {
-  console.log(`voxel-town auth server listening on http://localhost:${config.port}`);
-  console.log(`allowed client origin: ${config.clientOrigin}`);
+app.listen(config.port, config.host, () => {
+  console.log(`voxel-town auth server listening on http://${config.host}:${config.port}`);
+  console.log(`allowed client origins: ${config.clientOrigins.join(", ")}`);
   console.log(`storage file: ${store.filePath}`);
 });

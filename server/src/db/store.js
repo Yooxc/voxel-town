@@ -8,6 +8,7 @@ const defaultState = {
   users: [],
   nonces: [],
   sessions: [],
+  playerSaves: [],
 };
 
 function ensureStorage() {
@@ -26,6 +27,7 @@ function readState() {
       users: Array.isArray(parsed.users) ? parsed.users : [],
       nonces: Array.isArray(parsed.nonces) ? parsed.nonces : [],
       sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
+      playerSaves: Array.isArray(parsed.playerSaves) ? parsed.playerSaves : [],
     };
   } catch {
     return structuredClone(defaultState);

@@ -161,6 +161,15 @@ export function getSessionUser(token) {
   return state.users.find((entry) => entry.walletAddress === session.walletAddress) ?? null;
 }
 
+function getValidSessionFromState(state, token) {
+  if (!token) return null;
+  cleanupExpiredRecords(state);
+  const session = state.sessions.find((entry) => entry.token === token);
+  if (!session) return null;
+  if (Date.parse(session.expiresAt) <= Date.now()) return null;
+  return session;
+}
+
 export function updateNickname(token, nickname) {
   const trimmedNickname = String(nickname || "").trim();
   if (trimmedNickname.length < 2 || trimmedNickname.length > 12) {
@@ -200,6 +209,86 @@ export function updateNickname(token, nickname) {
     ok: true,
     payload: {
       user: updatedUser,
+    },
+  };
+}
+
+export function getPlayerSave(token) {
+  const state = store.read();
+  const session = getValidSessionFromState(state, token);
+  if (!session) {
+    return { ok: false, status: 401, error: "세션이 유효하지 않습니다." };
+  }
+
+  const save = state.playerSaves.find((entry) => entry.walletAddress === session.walletAddress) ?? null;
+  return {
+    ok: true,
+    payload: {
+      save,
+    },
+  };
+}
+
+export function updatePlayerSave(token, saveData, knownUpdatedAt = "") {
+  if (!saveData || typeof saveData !== "object") {
+    return { ok: false, status: 400, error: "저장할 데이터가 올바르지 않습니다." };
+  }
+
+  let savedEntry = null;
+  let conflictEntry = null;
+  const state = store.mutate((draft) => {
+    const session = getValidSessionFromState(draft, token);
+    if (!session) {
+      draft.__error = { status: 401, error: "세션이 유효하지 않습니다." };
+      return draft;
+    }
+
+    const existingEntry =
+      draft.playerSaves.find((entry) => entry.walletAddress === session.walletAddress) ?? null;
+    if (existingEntry && knownUpdatedAt && existingEntry.updatedAt !== knownUpdatedAt) {
+      conflictEntry = structuredClone(existingEntry);
+      draft.__error = {
+        status: 409,
+        error: "다른 탭에서 더 최신 저장 데이터가 있어 현재 저장을 적용하지 않았습니다.",
+      };
+      return draft;
+    }
+
+    const now = nowIso();
+    const nextSave = {
+      walletAddress: session.walletAddress,
+      data: structuredClone(saveData),
+      updatedAt: now,
+    };
+    const existingIndex = draft.playerSaves.findIndex(
+      (entry) => entry.walletAddress === session.walletAddress
+    );
+    if (existingIndex === -1) {
+      draft.playerSaves.push(nextSave);
+    } else {
+      draft.playerSaves[existingIndex] = nextSave;
+    }
+    savedEntry = nextSave;
+    return draft;
+  });
+
+  if (state.__error) {
+    return {
+      ok: false,
+      status: state.__error.status,
+      error: state.__error.error,
+      payload: conflictEntry
+        ? {
+            save: conflictEntry,
+          }
+        : undefined,
+    };
+  }
+
+  return {
+    ok: true,
+    payload: {
+      save: savedEntry,
     },
   };
 }
