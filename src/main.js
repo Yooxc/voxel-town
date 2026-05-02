@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-const LAST_PATCHED_AT = "2026-05-01 16:21:39 KST";
+const LAST_PATCHED_AT = "2026-05-02 17:51:08 KST";
 
 const scene = new THREE.Scene();
 // ===== Atmosphere: Sky / Fog =====
@@ -1521,6 +1521,40 @@ function createItemVisualElement(itemId, options = {}) {
   return createFallbackItemIcon(def?.icon ?? "?", Math.max(20, Math.round(size * 0.6)));
 }
 
+function getNftPreviewDataUrl(entry, size = 40) {
+  if (!isNftInventoryEntry(entry)) return null;
+
+  const cacheKey = `nft:${entry.contractAddress}:${entry.tokenId}:${size}`;
+  if (entry.contractAddress === "0xMockHelmetCollection" && String(entry.tokenId) === "1") {
+    return getRenderedModelPreviewDataUrl(cacheKey, () => buildSafetyHelmetModel("gold"), size);
+  }
+
+  return null;
+}
+
+function createInventoryEntryVisualElement(entry, options = {}) {
+  if (isNftInventoryEntry(entry)) {
+    const size = options.size ?? 40;
+    const dataUrl = getNftPreviewDataUrl(entry, size);
+    if (dataUrl) {
+      const img = document.createElement("img");
+      img.src = dataUrl;
+      img.alt = getInventoryEntryDisplayName(entry);
+      img.width = size;
+      img.height = size;
+      img.draggable = false;
+      img.style.display = "block";
+      img.style.width = `${size}px`;
+      img.style.height = `${size}px`;
+      img.style.objectFit = "contain";
+      img.style.pointerEvents = "none";
+      return img;
+    }
+    return createFallbackItemIcon(getInventoryEntryDisplayIcon(entry), Math.max(20, Math.round((options.size ?? 40) * 0.6)));
+  }
+  return createItemVisualElement(getSlotItemId(entry), options);
+}
+
 function createForgeUpgradeVisualElement(itemId, level, size = 54) {
   if (itemId === "pickaxe") {
     const cacheKey = `forge:${itemId}:lv${level}:${size}`;
@@ -1573,16 +1607,16 @@ function syncGameStateToSlots() {
   for (const s of inventory.slots) {
     if (!s) continue;
 
-    const def = ITEM_DEFS[s.id];
-    if (!def) continue;
+    const category = getInventoryEntryCategory(s);
+    if (!category) continue;
 
-    const itemUI = { id: s.id, name: def.name, count: s.count };
+    const itemUI = structuredClone(s);
 
-    if (def.category === "equip") {
+    if (category === "equip") {
       // 장비 탭: 빈 칸에 순서대로 배치
       const idx = inventorySlots.equip.findIndex((x) => x === null);
       if (idx !== -1) inventorySlots.equip[idx] = itemUI;
-    } else if (def.category === "cons") {
+    } else if (category === "cons") {
       const idx = inventorySlots.cons.findIndex((x) => x === null);
       if (idx !== -1) inventorySlots.cons[idx] = itemUI;
     } else {
@@ -1606,10 +1640,10 @@ function renderInventoryWindow() {
     const item = slots[i];
 
     if (item) {
-      const icon = createItemVisualElement(item.id, { size: 38 });
+      const icon = createInventoryEntryVisualElement(item, { size: 38 });
       slot.appendChild(icon);
 
-      if (item.count && item.count > 1) {
+      if (!isNftInventoryEntry(item) && item.count && item.count > 1) {
         const badge = document.createElement("div");
         badge.textContent = String(item.count);
         badge.style.position = "absolute";
@@ -1626,9 +1660,16 @@ function renderInventoryWindow() {
 
       // ===== Equip toggle (double click) =====
         const isEquipTab = activeTab === "equip";
-        const def = ITEM_DEFS[item.id];
-        const equipSlot = def?.equipSlot ?? null;
-        const isEquipped = equipSlot ? inventory.equipped[equipSlot] === item.id : false;
+        const itemId = getSlotItemId(item);
+        const def = itemId ? ITEM_DEFS[itemId] : null;
+        const equipSlot = getInventoryEntryEquipSlot(item);
+        const isEquipped = equipSlot
+          ? isNftInventoryEntry(item)
+            ? inventory.equipped[equipSlot]?.kind === "nft" &&
+              inventory.equipped[equipSlot]?.contractAddress === item.contractAddress &&
+              String(inventory.equipped[equipSlot]?.tokenId) === String(item.tokenId)
+            : getEquippedItemForSlot(equipSlot) === itemId
+          : false;
 
         // 장착된 아이템은 테두리 하이라이트
         if (isEquipTab && isEquipped) {
@@ -1641,13 +1682,29 @@ function renderInventoryWindow() {
         slot.style.cursor = "pointer";
 
         slot.addEventListener("dblclick", () => {
-        toggleEquipItem(item.id);
+        toggleEquipItem(itemId ?? item);
      });
         }   
 
+      if (isNftInventoryEntry(item)) {
+        const nftBadge = document.createElement("div");
+        nftBadge.textContent = "NFT";
+        nftBadge.style.position = "absolute";
+        nftBadge.style.left = "6px";
+        nftBadge.style.top = "4px";
+        nftBadge.style.fontSize = "10px";
+        nftBadge.style.fontWeight = "800";
+        nftBadge.style.padding = "2px 6px";
+        nftBadge.style.borderRadius = "999px";
+        nftBadge.style.background = "rgba(106, 76, 255, 0.88)";
+        nftBadge.style.color = "white";
+        nftBadge.style.pointerEvents = "none";
+        slot.appendChild(nftBadge);
+      }
+
 
       // 아주 가벼운 툴팁(hover)
-      const tooltipText = getItemTooltipText(item.id, item.count);
+      const tooltipText = getInventoryEntryTooltipText(item);
       slot.addEventListener("pointerenter", (e) => {
         showItemTooltip(tooltipText, e.clientX, e.clientY);
       });
@@ -2082,12 +2139,12 @@ const tutorialQuest = {
     {
       title: "안전모 착용",
       description: "인벤토리에서 안전모를 장착하세요.",
-      check: () => inventory.equipped.head === "safetyHelmet",
+      check: () => getEquippedItemForSlot("head") === "safetyHelmet",
     },
     {
       title: "곡괭이 장착",
       description: "인벤토리에서 곡괭이를 장착하세요.",
-      check: () => inventory.equipped.tool === "pickaxe",
+      check: () => getEquippedItemForSlot("tool") === "pickaxe",
     },
     {
       title: "첫 채굴",
@@ -2664,6 +2721,167 @@ const ITEM_DEFS = {
   stoneDust: { name: "돌가루", icon: "🪨", stackMax: 999, category: "misc" },
     };
 
+const DEV_MOCK_NFT_ITEMS = [
+  {
+    kind: "nft",
+    contractAddress: "0xMockHelmetCollection",
+    tokenId: "1",
+    nftType: "head",
+    name: "황금 안전모 NFT",
+    rarity: "legendary",
+    icon: "👑",
+  },
+];
+
+function createInventorySlotEntry(itemId, count = 1, extra = {}) {
+  return {
+    kind: "item",
+    itemId,
+    count,
+    ...extra,
+  };
+}
+
+function addInventoryEntry(entry) {
+  const normalizedEntry = normalizeInventorySlotEntry(entry);
+  if (!normalizedEntry) return false;
+  const empty = findFirstEmptySlot();
+  if (empty === -1) return false;
+  inventory.slots[empty] = normalizedEntry;
+  return true;
+}
+
+function normalizeInventorySlotEntry(rawSlot) {
+  if (!rawSlot) return null;
+  if (typeof rawSlot === "string") {
+    return createInventorySlotEntry(rawSlot, 1);
+  }
+  if (typeof rawSlot === "object") {
+    if (rawSlot.kind === "nft" && rawSlot.contractAddress && rawSlot.tokenId) {
+      return {
+        ...rawSlot,
+        kind: "nft",
+        tokenId: String(rawSlot.tokenId),
+        count: 1,
+      };
+    }
+    if (rawSlot.kind === "item" && rawSlot.itemId) {
+      return {
+        ...rawSlot,
+        kind: "item",
+        itemId: rawSlot.itemId,
+        count: Number.isFinite(rawSlot.count) ? rawSlot.count : 1,
+      };
+    }
+    if (rawSlot.id) {
+      return createInventorySlotEntry(rawSlot.id, Number.isFinite(rawSlot.count) ? rawSlot.count : 1);
+    }
+  }
+  return null;
+}
+
+function createEquippedItemRef(itemId, extra = {}) {
+  return itemId
+    ? {
+        kind: "item",
+        itemId,
+        ...extra,
+      }
+    : null;
+}
+
+function normalizeEquippedItemRef(rawRef) {
+  if (!rawRef) return null;
+  if (typeof rawRef === "string") {
+    return createEquippedItemRef(rawRef);
+  }
+  if (typeof rawRef === "object") {
+    if (rawRef.kind === "nft" && rawRef.contractAddress && rawRef.tokenId) {
+      return {
+        ...rawRef,
+        kind: "nft",
+        tokenId: String(rawRef.tokenId),
+      };
+    }
+    if (rawRef.kind === "item" && rawRef.itemId) {
+      return {
+        ...rawRef,
+        kind: "item",
+        itemId: rawRef.itemId,
+      };
+    }
+    if (rawRef.itemId) {
+      return createEquippedItemRef(rawRef.itemId);
+    }
+  }
+  return null;
+}
+
+function getSlotItemId(slot) {
+  return slot?.itemId ?? slot?.id ?? null;
+}
+
+function getSlotItemCount(slot) {
+  return Number.isFinite(slot?.count) ? slot.count : 0;
+}
+
+function isNftInventoryEntry(entry) {
+  return entry?.kind === "nft";
+}
+
+function getInventoryEntryCategory(entry) {
+  if (!entry) return null;
+  if (isNftInventoryEntry(entry)) {
+    const nftType = entry.nftType ?? "";
+    return ["tool", "head", "body", "shoes"].includes(nftType) ? "equip" : "misc";
+  }
+  const itemId = getSlotItemId(entry);
+  return ITEM_DEFS[itemId]?.category ?? null;
+}
+
+function getInventoryEntryEquipSlot(entry) {
+  if (!entry) return null;
+  if (isNftInventoryEntry(entry)) {
+    return entry.nftType ?? null;
+  }
+  const itemId = getSlotItemId(entry);
+  return ITEM_DEFS[itemId]?.equipSlot ?? null;
+}
+
+function getInventoryEntryDisplayName(entry) {
+  if (!entry) return "";
+  if (isNftInventoryEntry(entry)) {
+    return entry.name ?? `NFT #${entry.tokenId}`;
+  }
+  const itemId = getSlotItemId(entry);
+  const def = ITEM_DEFS[itemId];
+  return def?.name ?? itemId ?? "";
+}
+
+function getInventoryEntryDisplayIcon(entry) {
+  if (!entry) return "?";
+  if (isNftInventoryEntry(entry)) {
+    return entry.icon ?? "🧿";
+  }
+  const itemId = getSlotItemId(entry);
+  return ITEM_DEFS[itemId]?.icon ?? "?";
+}
+
+function getInventoryEntryTooltipText(entry) {
+  if (!entry) return "";
+  if (isNftInventoryEntry(entry)) {
+    const lines = [
+      `이름: ${getInventoryEntryDisplayName(entry)}`,
+      "타입: NFT 장비",
+    ];
+    if (entry.rarity) lines.push(`희귀도: ${entry.rarity}`);
+    if (entry.nftType) lines.push(`장착 슬롯: ${entry.nftType}`);
+    lines.push(`Token ID: ${entry.tokenId}`);
+    return lines.join("\n");
+  }
+  return getItemTooltipText(getSlotItemId(entry), getSlotItemCount(entry));
+}
+
 const PICKAXE_UPGRADE_LEVELS = [
   { level: 0, miningPowerMin: 0.9, miningPowerMax: 1.1, bonusDropChance: 0.0, swingDuration: 0.28, cost: 0, successChance: 1.0 },
   { level: 1, miningPowerMin: 1.0, miningPowerMax: 1.15, bonusDropChance: 0.0, swingDuration: 0.265, cost: 3, successChance: 1.0 },
@@ -2710,7 +2928,7 @@ function getNextPickaxeUpgrade() {
 function getForgeTargetItemId() {
   const slotOrder = ["tool", "head", "body", "shoes"];
   for (const slotId of slotOrder) {
-    const itemId = inventory?.equipped?.[slotId];
+    const itemId = getEquippedItemForSlot(slotId);
     if (!itemId) continue;
     if (ITEM_DEFS[itemId]?.upgradeKey) return itemId;
   }
@@ -2735,7 +2953,7 @@ function getForgeUpgradeState() {
 }
 
 function getEquippedMiningPower() {
-  const toolId = inventory.equipped.tool;
+  const toolId = getEquippedItemForSlot("tool");
   if (toolId === "pickaxe") {
     const stats = getCurrentPickaxeStats();
     return randRange(stats.miningPowerMin, stats.miningPowerMax);
@@ -2761,7 +2979,7 @@ function getEquippedMiningPower() {
 	    function findFirstSlotWithItem(id) {
   for (let i = 0; i < inventory.slots.length; i++) {
     const s = inventory.slots[i];
-    if (s && s.id === id) return i;
+    if (s && getSlotItemId(s) === id) return i;
   }
   return -1;
 	    }
@@ -2769,7 +2987,7 @@ function getEquippedMiningPower() {
     function getItemCount(id) {
   const idx = findFirstSlotWithItem(id);
   if (idx === -1) return 0;
-  return inventory.slots[idx]?.count ?? 0;
+  return getSlotItemCount(inventory.slots[idx]);
     }
 
 	    function findFirstEmptySlot() {
@@ -2796,7 +3014,7 @@ function getEquippedMiningPower() {
   const empty = findFirstEmptySlot();
   if (empty === -1) return false;
 
-	  inventory.slots[empty] = { id, count: Math.min(count, def.stackMax) };
+	  inventory.slots[empty] = createInventorySlotEntry(id, Math.min(count, def.stackMax));
 	  return true;
 	    }
 
@@ -2812,7 +3030,7 @@ function getEquippedMiningPower() {
     }
 
     function hasEquippedTool(id) {
-  return inventory.equipped.tool === id;
+  return getEquippedItemForSlot("tool") === id;
     }
 
     function hasItem(id) {
@@ -2855,28 +3073,73 @@ function getEquippedMiningPower() {
   forwardBias: 0.06,
     });
 
+    const equippedNftHelmet = buildSafetyHelmetModel("gold");
+    equippedNftHelmet.name = "equippedNftHelmet";
+    equippedNftHelmet.scale.setScalar(0.72);
+    equippedNftHelmet.visible = false;
+    head.add(equippedNftHelmet);
+    alignWearableOnHead(head, equippedNftHelmet, {
+  verticalInset: 0.36,
+  forwardBias: 0.06,
+    });
+
     function updateEquippedVisual() {
+  const headRef = getEquippedItemRef("head");
+  const isNftHelmetEquipped =
+    headRef?.kind === "nft" &&
+    headRef?.contractAddress === "0xMockHelmetCollection" &&
+    String(headRef?.tokenId) === "1";
   equippedPickaxe.visible = hasEquippedTool("pickaxe");
-  equippedSafetyHelmet.visible = getEquippedItemForSlot("head") === "safetyHelmet";
+  equippedSafetyHelmet.visible = !isNftHelmetEquipped && getEquippedItemForSlot("head") === "safetyHelmet";
+  equippedNftHelmet.visible = isNftHelmetEquipped;
     }
 
-    function getEquippedItemForSlot(slotId) {
+    function getEquippedItemRef(slotId) {
   return inventory.equipped[slotId] ?? null;
     }
 
-    function setEquippedItem(slotId, itemId) {
-  inventory.equipped[slotId] = itemId;
+    function getEquippedItemForSlot(slotId) {
+  return getEquippedItemRef(slotId)?.itemId ?? getEquippedItemRef(slotId)?.id ?? null;
     }
 
-    function toggleEquipItem(itemId) {
-  const def = ITEM_DEFS[itemId];
-  if (!def || def.category !== "equip" || !def.equipSlot) return;
+    function setEquippedItem(slotId, itemOrRef) {
+  inventory.equipped[slotId] = normalizeEquippedItemRef(itemOrRef);
+    }
 
-  const slotId = def.equipSlot;
-  const alreadyEquipped = getEquippedItemForSlot(slotId) === itemId;
-  setEquippedItem(slotId, alreadyEquipped ? null : itemId);
+    function toggleEquipItem(itemOrId) {
+  const normalizedEntry =
+    typeof itemOrId === "string"
+      ? createInventorySlotEntry(itemOrId, 1)
+      : normalizeInventorySlotEntry(itemOrId);
+  if (!normalizedEntry) return;
 
-  const itemName = def.name;
+  const equipSlot = getInventoryEntryEquipSlot(normalizedEntry);
+  if (!equipSlot) return;
+
+  const equippedRef = getEquippedItemRef(equipSlot);
+  const alreadyEquipped = isNftInventoryEntry(normalizedEntry)
+    ? equippedRef?.kind === "nft" &&
+      equippedRef?.contractAddress === normalizedEntry.contractAddress &&
+      String(equippedRef?.tokenId) === String(normalizedEntry.tokenId)
+    : getEquippedItemForSlot(equipSlot) === getSlotItemId(normalizedEntry);
+
+  if (alreadyEquipped) {
+    setEquippedItem(equipSlot, null);
+  } else if (isNftInventoryEntry(normalizedEntry)) {
+    setEquippedItem(equipSlot, {
+      kind: "nft",
+      contractAddress: normalizedEntry.contractAddress,
+      tokenId: normalizedEntry.tokenId,
+      nftType: normalizedEntry.nftType,
+      name: normalizedEntry.name,
+      rarity: normalizedEntry.rarity,
+      icon: normalizedEntry.icon,
+    });
+  } else {
+    setEquippedItem(equipSlot, getSlotItemId(normalizedEntry));
+  }
+
+  const itemName = getInventoryEntryDisplayName(normalizedEntry);
   showUI(`${itemName} ${alreadyEquipped ? "해제" : "장착"}`);
   lastMessageUntil = performance.now() + 800;
 
@@ -2885,6 +3148,12 @@ function getEquippedMiningPower() {
     }
 
     function unequipSlot(slotId) {
+  const equippedRef = getEquippedItemRef(slotId);
+  if (!equippedRef) return;
+  if (equippedRef.kind === "nft") {
+    toggleEquipItem(equippedRef);
+    return;
+  }
   const itemId = getEquippedItemForSlot(slotId);
   if (!itemId) return;
   toggleEquipItem(itemId);
@@ -2926,6 +3195,7 @@ function getEquippedMiningPower() {
   rightLegPivot: previewPlayer.getObjectByName("rightLegPivot"),
   equippedPickaxe: previewPlayer.getObjectByName("equippedPickaxe"),
   equippedSafetyHelmet: previewPlayer.getObjectByName("equippedSafetyHelmet"),
+  equippedNftHelmet: previewPlayer.getObjectByName("equippedNftHelmet"),
     };
 
     function resizeEquipmentPreview() {
@@ -2952,6 +3222,9 @@ function getEquippedMiningPower() {
   if (previewParts.equippedSafetyHelmet) {
     previewParts.equippedSafetyHelmet.visible = equippedSafetyHelmet.visible;
   }
+  if (previewParts.equippedNftHelmet) {
+    previewParts.equippedNftHelmet.visible = equippedNftHelmet.visible;
+  }
   equipPreviewRenderer.render(equipPreviewScene, equipPreviewCamera);
     }
 
@@ -2959,9 +3232,10 @@ function getEquippedMiningPower() {
   const slotOrder = ["head", "body", "shoes", "tool"];
   for (const slotId of slotOrder) {
     const entry = equipmentSlotEls[slotId];
-    const itemId = inventory.equipped[slotId];
+    const equippedRef = getEquippedItemRef(slotId);
+    const itemId = getEquippedItemForSlot(slotId);
     const def = itemId ? ITEM_DEFS[itemId] : null;
-    const hasItem = Boolean(def);
+    const hasItem = Boolean(equippedRef);
 
     entry.slot.style.background = "rgba(255,255,255,0.95)";
     entry.slot.style.borderColor = hasItem ? "rgba(255,140,0,0.95)" : "rgba(0,0,0,0.2)";
@@ -2975,10 +3249,12 @@ function getEquippedMiningPower() {
     if (hasItem) {
       entry.content.innerHTML = "";
       entry.content.style.opacity = "1";
-      const icon = createItemVisualElement(itemId, { size: 34 });
+      const icon = createInventoryEntryVisualElement(equippedRef, { size: 34 });
 
       const name = document.createElement("div");
-      name.textContent = itemId === "pickaxe" ? `${def.name} Lv.${inventory.pickaxeLevel}` : def.name;
+      name.textContent = itemId === "pickaxe"
+        ? `${def.name} Lv.${inventory.pickaxeLevel}`
+        : getInventoryEntryDisplayName(equippedRef);
       name.style.fontSize = "11px";
       name.style.fontWeight = "700";
       name.style.marginTop = "6px";
@@ -2989,6 +3265,18 @@ function getEquippedMiningPower() {
       wrap.style.alignItems = "center";
       wrap.appendChild(icon);
       wrap.appendChild(name);
+      if (isNftInventoryEntry(equippedRef)) {
+        const nftBadge = document.createElement("div");
+        nftBadge.textContent = "NFT";
+        nftBadge.style.marginTop = "4px";
+        nftBadge.style.fontSize = "10px";
+        nftBadge.style.fontWeight = "800";
+        nftBadge.style.padding = "2px 6px";
+        nftBadge.style.borderRadius = "999px";
+        nftBadge.style.background = "rgba(106, 76, 255, 0.88)";
+        nftBadge.style.color = "white";
+        wrap.appendChild(nftBadge);
+      }
       entry.content.appendChild(wrap);
     } else {
       entry.content.textContent = "비어 있음";
@@ -4311,20 +4599,29 @@ function buildPickaxeModel(level = 0) {
   return g;
 }
 
-function buildSafetyHelmetModel() {
+function buildSafetyHelmetModel(theme = "default") {
   const g = new THREE.Group();
 
+  const isGoldenTheme = theme === "gold";
+  const shellColor = isGoldenTheme ? 0xd9b24f : 0xf7f7f9;
+  const ridgeColor = isGoldenTheme ? 0xf3d983 : 0xe8e8ee;
+  const trimColor = isGoldenTheme ? 0x8c5f18 : 0xd9d9de;
+
   const shellMat = new THREE.MeshStandardMaterial({
-    color: 0xf7f7f9,
-    roughness: 0.5,
-    metalness: 0.02,
+    color: shellColor,
+    roughness: isGoldenTheme ? 0.34 : 0.5,
+    metalness: isGoldenTheme ? 0.42 : 0.02,
   });
   const ridgeMat = new THREE.MeshStandardMaterial({
-    color: 0xe8e8ee,
-    roughness: 0.42,
-    metalness: 0.03,
+    color: ridgeColor,
+    roughness: isGoldenTheme ? 0.28 : 0.42,
+    metalness: isGoldenTheme ? 0.55 : 0.03,
   });
-  const trimMat = new THREE.MeshStandardMaterial({ color: 0xd9d9de, roughness: 0.72 });
+  const trimMat = new THREE.MeshStandardMaterial({
+    color: trimColor,
+    roughness: isGoldenTheme ? 0.4 : 0.72,
+    metalness: isGoldenTheme ? 0.3 : 0,
+  });
 
   const shell = new THREE.Mesh(
     new THREE.SphereGeometry(0.37, 28, 20, 0, Math.PI * 2, 0, Math.PI * 0.64),
@@ -4596,12 +4893,16 @@ function applyDevPreset() {
   if (DEV_PRESET.giveStarterGear) {
     addItem("pickaxe", 1);
     addItem("safetyHelmet", 1);
-    inventory.equipped.tool = "pickaxe";
-    inventory.equipped.head = "safetyHelmet";
+    setEquippedItem("tool", "pickaxe");
+    setEquippedItem("head", "safetyHelmet");
   }
 
   if (typeof DEV_PRESET.stoneDust === "number" && DEV_PRESET.stoneDust > 0) {
     addItem("stoneDust", DEV_PRESET.stoneDust);
+  }
+
+  for (const nftEntry of DEV_MOCK_NFT_ITEMS) {
+    addInventoryEntry(nftEntry);
   }
 
   if (inventory.mineKeyIssued) {
@@ -4712,11 +5013,16 @@ function serializePlayerSave() {
     },
     rotationY: Number(player.rotation.y.toFixed(4)),
     inventory: {
-      slots: inventory.slots.map((slot) => (slot ? { id: slot.id, count: slot.count } : null)),
+      slots: inventory.slots.map((slot) => (slot ? structuredClone(slot) : null)),
       pickaxeLevel: inventory.pickaxeLevel,
       mineKeyIssued: inventory.mineKeyIssued,
       abandonedMineUnlocked: inventory.abandonedMineUnlocked,
-      equipped: { ...inventory.equipped },
+      equipped: {
+        head: inventory.equipped.head ? structuredClone(inventory.equipped.head) : null,
+        body: inventory.equipped.body ? structuredClone(inventory.equipped.body) : null,
+        shoes: inventory.equipped.shoes ? structuredClone(inventory.equipped.shoes) : null,
+        tool: inventory.equipped.tool ? structuredClone(inventory.equipped.tool) : null,
+      },
     },
     tutorial: {
       currentStep: tutorialQuest.currentStep,
@@ -4749,7 +5055,7 @@ function applySerializedPlayerSave(rawSave) {
 
   for (let i = 0; i < inventory.slots.length; i++) {
     const slot = source.inventory.slots[i] ?? null;
-    inventory.slots[i] = slot ? { id: slot.id, count: slot.count } : null;
+    inventory.slots[i] = normalizeInventorySlotEntry(slot);
   }
 
   inventory.pickaxeLevel = Math.max(
@@ -4758,10 +5064,10 @@ function applySerializedPlayerSave(rawSave) {
   );
   inventory.mineKeyIssued = Boolean(source.inventory.mineKeyIssued);
   inventory.abandonedMineUnlocked = Boolean(source.inventory.abandonedMineUnlocked);
-  inventory.equipped.head = source.inventory.equipped.head ?? null;
-  inventory.equipped.body = source.inventory.equipped.body ?? null;
-  inventory.equipped.shoes = source.inventory.equipped.shoes ?? null;
-  inventory.equipped.tool = source.inventory.equipped.tool ?? null;
+  inventory.equipped.head = normalizeEquippedItemRef(source.inventory.equipped.head);
+  inventory.equipped.body = normalizeEquippedItemRef(source.inventory.equipped.body);
+  inventory.equipped.shoes = normalizeEquippedItemRef(source.inventory.equipped.shoes);
+  inventory.equipped.tool = normalizeEquippedItemRef(source.inventory.equipped.tool);
 
   tutorialQuest.currentStep = Math.max(0, Math.min(source.tutorial.currentStep ?? 0, tutorialQuest.steps.length));
   tutorialQuest.minedRockCount = Math.max(0, source.tutorial.minedRockCount ?? 0);

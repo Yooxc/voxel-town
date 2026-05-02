@@ -4,7 +4,7 @@
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
       "nickname": "XC",
       "createdAt": "2026-04-30T08:26:16.091Z",
-      "lastLoginAt": "2026-05-01T07:24:07.851Z"
+      "lastLoginAt": "2026-05-02T08:41:08.918Z"
     }
   ],
   "nonces": [],
@@ -98,6 +98,30 @@
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
       "createdAt": "2026-05-01T07:24:07.851Z",
       "expiresAt": "2026-05-31T07:24:07.851Z"
+    },
+    {
+      "token": "dc744608-2a76-433c-b0aa-2cd04d231fec",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-02T07:10:28.900Z",
+      "expiresAt": "2026-06-01T07:10:28.901Z"
+    },
+    {
+      "token": "ced44708-6976-4066-a9a0-9a0183366003",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-02T08:35:02.807Z",
+      "expiresAt": "2026-06-01T08:35:02.807Z"
+    },
+    {
+      "token": "8ab3bac3-70a7-42dd-8a7f-ab8d480e49c2",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-02T08:35:24.120Z",
+      "expiresAt": "2026-06-01T08:35:24.121Z"
+    },
+    {
+      "token": "a76c1834-822c-4800-91d2-ad44ca1d132d",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-02T08:41:08.918Z",
+      "expiresAt": "2026-06-01T08:41:08.918Z"
     }
   ],
   "playerSaves": [
@@ -107,24 +131,27 @@
         "version": 1,
         "mapId": "광산맵",
         "position": {
-          "x": -6.215,
-          "y": -0.045,
-          "z": -1.669
+          "x": -2.274,
+          "y": 0.385,
+          "z": 7.412
         },
-        "rotationY": 0.0025,
+        "rotationY": -0.0057,
         "inventory": {
           "slots": [
             {
-              "id": "pickaxe",
+              "kind": "item",
+              "itemId": "pickaxe",
               "count": 1
             },
             {
-              "id": "safetyHelmet",
+              "kind": "item",
+              "itemId": "safetyHelmet",
               "count": 1
             },
             {
-              "id": "stoneDust",
-              "count": 14
+              "kind": "item",
+              "itemId": "stoneDust",
+              "count": 7
             },
             null,
             null,
@@ -154,25 +181,31 @@
             null,
             null
           ],
-          "pickaxeLevel": 0,
+          "pickaxeLevel": 2,
           "mineKeyIssued": false,
           "abandonedMineUnlocked": false,
           "equipped": {
-            "head": "safetyHelmet",
+            "head": {
+              "kind": "item",
+              "itemId": "safetyHelmet"
+            },
             "body": null,
             "shoes": null,
-            "tool": "pickaxe"
+            "tool": {
+              "kind": "item",
+              "itemId": "pickaxe"
+            }
           }
         },
         "tutorial": {
           "currentStep": 4,
-          "minedRockCount": 14,
-          "upgradeCount": 0,
+          "minedRockCount": 16,
+          "upgradeCount": 2,
           "completed": false,
           "archivedSteps": []
         }
       },
-      "updatedAt": "2026-05-01T07:24:35.546Z"
+      "updatedAt": "2026-05-02T08:41:12.962Z"
     }
   ]
 }
