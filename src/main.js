@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-const LAST_PATCHED_AT = "2026-05-02 17:51:08 KST";
+const LAST_PATCHED_AT = "2026-05-03 15:45:36 KST";
 
 const scene = new THREE.Scene();
 // ===== Atmosphere: Sky / Fog =====
@@ -91,6 +91,14 @@ uiLayer.appendChild(patchInfoWrap);
 
 const WALLET_SESSION_KEY = "voxel-town.wallet-auth.v1";
 const AUTH_API_BASE_URL = "http://localhost:8787";
+const NFT_EXHIBIT_TARGET = {
+  chainId: "0x1",
+  contractAddress: "0x3aAA87FBe562AC659F9e657a8EFe00b411a56273",
+  tokenId: "1",
+  title: "지갑 NFT 전시",
+};
+const NFT_BOARD_CANVAS_WIDTH = 1152;
+const NFT_BOARD_CANVAS_HEIGHT = 1000;
 const walletAuth = {
   authenticated: false,
   address: "",
@@ -113,6 +121,10 @@ let lastPlayerSaveAttemptAt = 0;
 let playerSaveSyncPaused = false;
 let playerSaveStatusTimer = null;
 let lastKnownPlayerSaveUpdatedAt = "";
+let nftExhibitBoard = null;
+let nftExhibitScreenMaterial = null;
+let nftExhibitRefreshToken = 0;
+let nftExhibitRefreshTimer = null;
 
 const walletHud = document.createElement("div");
 walletHud.id = "walletHud";
@@ -395,6 +407,309 @@ function getWalletLoginMessage(address, nonce, issuedAt) {
   ].join("\n");
 }
 
+function stripHexPrefix(hex) {
+  return String(hex || "").replace(/^0x/i, "");
+}
+
+function normalizeIpfsUrl(rawUrl) {
+  if (!rawUrl) return "";
+  if (rawUrl.startsWith("ipfs://ipfs/")) {
+    return `https://ipfs.io/ipfs/${rawUrl.slice("ipfs://ipfs/".length)}`;
+  }
+  if (rawUrl.startsWith("ipfs://")) {
+    return `https://ipfs.io/ipfs/${rawUrl.slice("ipfs://".length)}`;
+  }
+  return rawUrl;
+}
+
+function createBoardTextTexture(title, lines = [], accent = "#d9b24f") {
+  const canvas = document.createElement("canvas");
+  canvas.width = NFT_BOARD_CANVAS_WIDTH;
+  canvas.height = NFT_BOARD_CANVAS_HEIGHT;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+
+  ctx.fillStyle = "#18130f";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = "#2a211b";
+  ctx.fillRect(34, 34, canvas.width - 68, canvas.height - 68);
+
+  ctx.strokeStyle = accent;
+  ctx.lineWidth = 14;
+  ctx.strokeRect(34, 34, canvas.width - 68, canvas.height - 68);
+
+  ctx.fillStyle = accent;
+  ctx.font = "700 54px system-ui";
+  ctx.textAlign = "center";
+  ctx.fillText(title, canvas.width * 0.5, 132);
+
+  ctx.fillStyle = "#f0e7dc";
+  ctx.font = "600 34px system-ui";
+  let y = 238;
+  for (const line of lines) {
+    ctx.fillText(line, canvas.width * 0.5, y);
+    y += 56;
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function loadImageElement(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("NFT 이미지를 불러오지 못했습니다."));
+    img.src = src;
+  });
+}
+
+async function createBoardImageTexture(imageUrl, title, subtitle = "") {
+  const img = await loadImageElement(normalizeIpfsUrl(imageUrl));
+  const canvas = document.createElement("canvas");
+  canvas.width = NFT_BOARD_CANVAS_WIDTH;
+  canvas.height = NFT_BOARD_CANVAS_HEIGHT;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+
+  ctx.fillStyle = "#f4f6f8";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(24, 24, canvas.width - 48, canvas.height - 48);
+
+  ctx.strokeStyle = "#2a2f37";
+  ctx.lineWidth = 10;
+  ctx.strokeRect(24, 24, canvas.width - 48, canvas.height - 48);
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(54, 96, canvas.width - 108, canvas.height - 248);
+
+  const frameX = 52;
+  const frameY = 68;
+  const frameW = canvas.width - 104;
+  const frameH = canvas.height - 190;
+  const scale = Math.min(frameW / img.width, frameH / img.height);
+  const drawW = img.width * scale;
+  const drawH = img.height * scale;
+  const drawX = frameX + (frameW - drawW) * 0.5;
+  const drawY = frameY + (frameH - drawH) * 0.5;
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.22)";
+  ctx.shadowBlur = 24;
+  ctx.shadowOffsetY = 12;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(drawX - 14, drawY - 14, drawW + 28, drawH + 28);
+  ctx.restore();
+  ctx.save();
+  ctx.filter = "brightness(1.42) contrast(1.16) saturate(1.08)";
+  ctx.drawImage(img, drawX, drawY, drawW, drawH);
+  ctx.restore();
+
+  ctx.fillStyle = "#eef2f6";
+  ctx.fillRect(42, canvas.height - 114, canvas.width - 84, 54);
+  ctx.strokeStyle = "#2a2f37";
+  ctx.lineWidth = 4;
+  ctx.strokeRect(42, canvas.height - 114, canvas.width - 84, 54);
+
+  ctx.fillStyle = "#1f2730";
+  ctx.textAlign = "center";
+  ctx.font = "700 28px system-ui";
+  ctx.fillText(title, canvas.width * 0.5, canvas.height - 78);
+  if (subtitle) {
+    ctx.fillStyle = "#5d6a78";
+    ctx.font = "600 14px system-ui";
+    ctx.fillText(subtitle, canvas.width * 0.5, canvas.height - 58);
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function applyNftBoardTexture(texture) {
+  if (!nftExhibitScreenMaterial) return;
+  if (nftExhibitScreenMaterial.map && nftExhibitScreenMaterial.map !== texture) {
+    nftExhibitScreenMaterial.map.dispose?.();
+  }
+  nftExhibitScreenMaterial.map = texture;
+  nftExhibitScreenMaterial.needsUpdate = true;
+}
+
+function setNftBoardMessage(title, lines, accent = "#d9b24f") {
+  const texture = createBoardTextTexture(title, lines, accent);
+  if (!texture) return;
+  applyNftBoardTexture(texture);
+}
+
+function encodeUint256Call(selector, value) {
+  const encodedValue = BigInt(value).toString(16).padStart(64, "0");
+  return `${selector}${encodedValue}`;
+}
+
+function decodeAbiAddress(resultHex) {
+  const clean = stripHexPrefix(resultHex);
+  if (clean.length < 64) return "";
+  return `0x${clean.slice(clean.length - 40)}`.toLowerCase();
+}
+
+function decodeAbiString(resultHex) {
+  const clean = stripHexPrefix(resultHex);
+  if (clean.length < 128) return "";
+  const offset = Number.parseInt(clean.slice(0, 64), 16) * 2;
+  if (!Number.isFinite(offset) || offset < 0 || clean.length < offset + 64) return "";
+  const length = Number.parseInt(clean.slice(offset, offset + 64), 16);
+  if (!Number.isFinite(length) || length < 0) return "";
+  const dataHex = clean.slice(offset + 64, offset + 64 + length * 2);
+  const bytes = new Uint8Array(dataHex.match(/.{1,2}/g)?.map((pair) => Number.parseInt(pair, 16)) ?? []);
+  return new TextDecoder().decode(bytes);
+}
+
+async function fetchErc721Owner(contractAddress, tokenId) {
+  const result = await window.ethereum.request({
+    method: "eth_call",
+    params: [
+      {
+        to: contractAddress,
+        data: encodeUint256Call("0x6352211e", tokenId),
+      },
+      "latest",
+    ],
+  });
+  return decodeAbiAddress(result);
+}
+
+async function fetchErc721TokenUri(contractAddress, tokenId) {
+  const result = await window.ethereum.request({
+    method: "eth_call",
+    params: [
+      {
+        to: contractAddress,
+        data: encodeUint256Call("0xc87b56dd", tokenId),
+      },
+      "latest",
+    ],
+  });
+  return decodeAbiString(result);
+}
+
+async function fetchNftMetadata(tokenUri) {
+  const normalizedUri = normalizeIpfsUrl(tokenUri);
+  if (normalizedUri.startsWith("data:application/json;base64,")) {
+    const encoded = normalizedUri.slice("data:application/json;base64,".length);
+    return JSON.parse(atob(encoded));
+  }
+  if (normalizedUri.startsWith("data:application/json,")) {
+    return JSON.parse(decodeURIComponent(normalizedUri.slice("data:application/json,".length)));
+  }
+  const response = await fetch(normalizedUri);
+  if (!response.ok) {
+    throw new Error("NFT 메타데이터를 불러오지 못했습니다.");
+  }
+  return response.json();
+}
+
+function scheduleNftExhibitBoardRefresh() {
+  if (nftExhibitRefreshTimer) {
+    clearTimeout(nftExhibitRefreshTimer);
+    nftExhibitRefreshTimer = null;
+  }
+  nftExhibitRefreshTimer = setTimeout(() => {
+    nftExhibitRefreshTimer = null;
+    void refreshNftExhibitBoard();
+  }, 40);
+}
+
+async function refreshNftExhibitBoard() {
+  if (!nftExhibitScreenMaterial) return;
+  const refreshToken = ++nftExhibitRefreshToken;
+
+  if (!walletAuth.authenticated || walletAuth.sessionType !== "wallet" || !walletAuth.address) {
+    setNftBoardMessage(
+      "지갑 NFT 전시",
+      ["메타마스크 로그인 후", "보유 NFT를 전시합니다."],
+      "#9dbce0"
+    );
+    return;
+  }
+
+  const chainId = walletAuth.chainId || (await window.ethereum?.request?.({ method: "eth_chainId" }).catch(() => ""));
+  if (refreshToken !== nftExhibitRefreshToken) return;
+  if (chainId !== NFT_EXHIBIT_TARGET.chainId) {
+    setNftBoardMessage(
+      "지갑 NFT 전시",
+      ["Ethereum 메인넷으로", "전환하면 작품을 불러옵니다."],
+      "#d9b24f"
+    );
+    return;
+  }
+
+  setNftBoardMessage(
+    "지갑 NFT 전시",
+    ["작품 정보를", "불러오는 중입니다..."],
+    "#d9b24f"
+  );
+
+  try {
+    const owner = await fetchErc721Owner(
+      NFT_EXHIBIT_TARGET.contractAddress,
+      NFT_EXHIBIT_TARGET.tokenId
+    );
+    if (refreshToken !== nftExhibitRefreshToken) return;
+    if (owner.toLowerCase() !== walletAuth.address.toLowerCase()) {
+      setNftBoardMessage(
+        "지갑 NFT 전시",
+        ["현재 로그인한 지갑에", "해당 작품이 없습니다."],
+        "#d97575"
+      );
+      return;
+    }
+
+    const tokenUri = await fetchErc721TokenUri(
+      NFT_EXHIBIT_TARGET.contractAddress,
+      NFT_EXHIBIT_TARGET.tokenId
+    );
+    if (refreshToken !== nftExhibitRefreshToken) return;
+    const metadata = await fetchNftMetadata(tokenUri);
+    if (refreshToken !== nftExhibitRefreshToken) return;
+
+    const imageUrl =
+      metadata?.image ||
+      metadata?.image_url ||
+      metadata?.imageUrl ||
+      "";
+
+    if (!imageUrl) {
+      setNftBoardMessage(
+        metadata?.name || "NFT 작품",
+        ["이미지 메타데이터가", "비어 있습니다."],
+        "#d97575"
+      );
+      return;
+    }
+
+    const texture = await createBoardImageTexture(
+      imageUrl,
+      metadata?.name || NFT_EXHIBIT_TARGET.title,
+      `#${NFT_EXHIBIT_TARGET.tokenId} · 소유자 확인 완료`
+    );
+    if (refreshToken !== nftExhibitRefreshToken || !texture) return;
+    applyNftBoardTexture(texture);
+  } catch (error) {
+    if (refreshToken !== nftExhibitRefreshToken) return;
+    setNftBoardMessage(
+      "지갑 NFT 전시",
+      [error?.message || "NFT를 불러오지 못했습니다."],
+      "#d97575"
+    );
+  }
+}
+
 function saveWalletSession() {
   if (!walletAuth.authenticated || !walletAuth.address) {
     localStorage.removeItem(WALLET_SESSION_KEY);
@@ -552,6 +867,7 @@ function updateWalletUi() {
   if (typeof controls !== "undefined" && controls) {
     controls.enabled = canPlayGame();
   }
+  scheduleNftExhibitBoardRefresh();
 }
 
 function setWalletAuthState(nextState, { persist = true } = {}) {
@@ -4822,6 +5138,7 @@ const tutorialNpc = makeTutorialNpc(
 );
 
 forgeStation = buildForgeAnvil(START_X - 3.0, START_Z + 1.55);
+buildNftExhibitBoard(forgeStation.position.x - 2.85, forgeStation.position.z - 2.45, Math.PI * 0.5);
 
 const signStartX = START_X + 3.9;
 const signStartZ = START_Z + 0.8;
@@ -5331,6 +5648,118 @@ function buildForgeAnvil(x, z) {
   g.position.set(x, START_FLAT_Y, z);
   scene.add(g);
   addCollider(g, 0.95);
+  return g;
+}
+
+function buildNftExhibitBoard(x, z, rotationY = Math.PI * 0.5) {
+  const g = new THREE.Group();
+  const boardWidth = 4.02;
+  const boardHeight = 3.52;
+  const boardHalfWidth = boardWidth * 0.5;
+  const frameThickness = 0.12;
+
+  const frameMat = new THREE.MeshStandardMaterial({
+    color: 0x2d3138,
+    roughness: 0.55,
+    metalness: 0.45,
+  });
+  const panelMat = new THREE.MeshStandardMaterial({
+    color: 0xf8fafc,
+    roughness: 0.92,
+    metalness: 0.03,
+  });
+  const wheelMat = new THREE.MeshStandardMaterial({
+    color: 0x1d1f24,
+    roughness: 0.72,
+    metalness: 0.25,
+  });
+
+  const leftPost = new THREE.Mesh(
+    new THREE.BoxGeometry(0.12, 3.55, 0.12),
+    frameMat
+  );
+  leftPost.position.set(-boardHalfWidth - 0.12, 1.78, 0);
+  g.add(leftPost);
+
+  const rightPost = new THREE.Mesh(
+    new THREE.BoxGeometry(0.12, 3.55, 0.12),
+    frameMat
+  );
+  rightPost.position.set(boardHalfWidth + 0.12, 1.78, 0);
+  g.add(rightPost);
+
+  const bottomBeam = new THREE.Mesh(
+    new THREE.BoxGeometry(boardWidth + 0.18, 0.1, 0.1),
+    frameMat
+  );
+  bottomBeam.position.set(0, 0.42, 0);
+  g.add(bottomBeam);
+
+  const frame = new THREE.Mesh(
+    new THREE.BoxGeometry(boardWidth + frameThickness, boardHeight + frameThickness, 0.08),
+    frameMat
+  );
+  frame.position.set(0, 2.66, -0.02);
+  g.add(frame);
+
+  const backPanel = new THREE.Mesh(
+    new THREE.BoxGeometry(boardWidth, boardHeight, 0.04),
+    panelMat
+  );
+  backPanel.position.set(0, 2.66, 0.03);
+  g.add(backPanel);
+
+  const screenMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const screen = new THREE.Mesh(
+    new THREE.PlaneGeometry(boardWidth - 0.16, boardHeight - 0.16),
+    screenMat
+  );
+  screen.position.set(0, 2.66, 0.055);
+  g.add(screen);
+
+  const leftFoot = new THREE.Mesh(
+    new THREE.BoxGeometry(1.22, 0.08, 0.18),
+    frameMat
+  );
+  leftFoot.position.set(-boardHalfWidth + 0.42, 0.08, 0);
+  g.add(leftFoot);
+
+  const rightFoot = new THREE.Mesh(
+    new THREE.BoxGeometry(1.22, 0.08, 0.18),
+    frameMat
+  );
+  rightFoot.position.set(boardHalfWidth - 0.42, 0.08, 0);
+  g.add(rightFoot);
+
+  const wheelOffsets = [
+    [-boardHalfWidth - 0.08, 0.02, -0.08],
+    [-boardHalfWidth + 0.78, 0.02, 0.08],
+    [boardHalfWidth - 0.78, 0.02, -0.08],
+    [boardHalfWidth + 0.08, 0.02, 0.08],
+  ];
+  for (const [wx, wy, wz] of wheelOffsets) {
+    const wheel = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.045, 0.045, 0.03, 16),
+      wheelMat
+    );
+    wheel.rotation.z = Math.PI * 0.5;
+    wheel.position.set(wx, wy, wz);
+    g.add(wheel);
+  }
+
+  g.position.set(x, START_FLAT_Y + 0.22, z);
+  g.rotation.y = rotationY;
+  scene.add(g);
+  addCollider(g, 0.88);
+
+  nftExhibitBoard = g;
+  nftExhibitScreenMaterial = screenMat;
+  setNftBoardMessage(
+    "지갑 NFT 전시",
+    ["메타마스크 로그인 후", "작품을 불러옵니다."],
+    "#9dbce0"
+  );
+  scheduleNftExhibitBoardRefresh();
   return g;
 }
 

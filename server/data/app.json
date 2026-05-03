@@ -4,7 +4,7 @@
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
       "nickname": "XC",
       "createdAt": "2026-04-30T08:26:16.091Z",
-      "lastLoginAt": "2026-05-02T08:41:08.918Z"
+      "lastLoginAt": "2026-05-03T06:47:11.450Z"
     }
   ],
   "nonces": [],
@@ -122,6 +122,66 @@
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
       "createdAt": "2026-05-02T08:41:08.918Z",
       "expiresAt": "2026-06-01T08:41:08.918Z"
+    },
+    {
+      "token": "0f648aeb-2253-4765-b62e-f79fc3f0d898",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-03T06:00:22.683Z",
+      "expiresAt": "2026-06-02T06:00:22.683Z"
+    },
+    {
+      "token": "b30d44d3-280b-464d-bb5e-17d7e9edde57",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-03T06:17:40.867Z",
+      "expiresAt": "2026-06-02T06:17:40.867Z"
+    },
+    {
+      "token": "cf2afd1b-4251-445b-ac40-dd4384059dc5",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-03T06:20:57.524Z",
+      "expiresAt": "2026-06-02T06:20:57.524Z"
+    },
+    {
+      "token": "6723c54b-9f91-4e9b-9674-5f4a5f2a441d",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-03T06:26:54.248Z",
+      "expiresAt": "2026-06-02T06:26:54.248Z"
+    },
+    {
+      "token": "66ed7912-03d5-444b-bad2-0d4f8fef95b8",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-03T06:30:01.094Z",
+      "expiresAt": "2026-06-02T06:30:01.094Z"
+    },
+    {
+      "token": "f350c6d9-de06-4287-8f25-fe4ca06a28a1",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-03T06:30:15.738Z",
+      "expiresAt": "2026-06-02T06:30:15.738Z"
+    },
+    {
+      "token": "d59c8513-3920-47cb-bb2b-f24964bd2a9e",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-03T06:33:00.255Z",
+      "expiresAt": "2026-06-02T06:33:00.255Z"
+    },
+    {
+      "token": "4cbaf86b-2882-4cd6-8458-5e3442a95a30",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-03T06:36:21.839Z",
+      "expiresAt": "2026-06-02T06:36:21.839Z"
+    },
+    {
+      "token": "338e6c14-bb6d-49ee-a887-d80a6cca5912",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-03T06:38:34.950Z",
+      "expiresAt": "2026-06-02T06:38:34.950Z"
+    },
+    {
+      "token": "c45cf7e6-5798-49ec-8ae2-d289b29847e0",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-03T06:47:11.450Z",
+      "expiresAt": "2026-06-02T06:47:11.450Z"
     }
   ],
   "playerSaves": [
@@ -131,11 +191,11 @@
         "version": 1,
         "mapId": "광산맵",
         "position": {
-          "x": -2.274,
-          "y": 0.385,
-          "z": 7.412
+          "x": -4.835,
+          "y": 0.034,
+          "z": 1.685
         },
-        "rotationY": -0.0057,
+        "rotationY": 1.4231,
         "inventory": {
           "slots": [
             {
@@ -205,7 +265,7 @@
           "archivedSteps": []
         }
       },
-      "updatedAt": "2026-05-02T08:41:12.962Z"
+      "updatedAt": "2026-05-03T06:47:15.537Z"
     }
   ]
 }
