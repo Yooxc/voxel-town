@@ -4,7 +4,7 @@
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
       "nickname": "XC",
       "createdAt": "2026-04-30T08:26:16.091Z",
-      "lastLoginAt": "2026-05-03T07:40:15.640Z"
+      "lastLoginAt": "2026-05-03T09:03:17.285Z"
     }
   ],
   "nonces": [],
@@ -206,6 +206,36 @@
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
       "createdAt": "2026-05-03T07:40:15.640Z",
       "expiresAt": "2026-06-02T07:40:15.640Z"
+    },
+    {
+      "token": "53e82239-b798-4ac7-87b3-8ffe280be205",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-03T08:18:48.721Z",
+      "expiresAt": "2026-06-02T08:18:48.721Z"
+    },
+    {
+      "token": "05b10a5d-a07d-4fe4-8389-46f4d44b7a8b",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-03T08:41:52.128Z",
+      "expiresAt": "2026-06-02T08:41:52.129Z"
+    },
+    {
+      "token": "61a93b01-681f-4457-9a1a-86100c5029ba",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-03T08:45:43.308Z",
+      "expiresAt": "2026-06-02T08:45:43.308Z"
+    },
+    {
+      "token": "6a0767ed-6ee6-4493-9384-eeecfe1430db",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-03T08:53:02.927Z",
+      "expiresAt": "2026-06-02T08:53:02.927Z"
+    },
+    {
+      "token": "7fe92d17-cc93-4c86-82c6-ace4b379873f",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-03T09:03:17.285Z",
+      "expiresAt": "2026-06-02T09:03:17.285Z"
     }
   ],
   "playerSaves": [
@@ -215,11 +245,11 @@
         "version": 1,
         "mapId": "광산맵",
         "position": {
-          "x": -4.806,
-          "y": 0.003,
-          "z": 2.79
+          "x": 1.113,
+          "y": 0,
+          "z": 2.986
         },
-        "rotationY": 1.6885,
+        "rotationY": 0.3013,
         "inventory": {
           "slots": [
             {
@@ -232,11 +262,7 @@
               "itemId": "safetyHelmet",
               "count": 1
             },
-            {
-              "kind": "item",
-              "itemId": "stoneDust",
-              "count": 7
-            },
+            null,
             null,
             null,
             null,
@@ -265,7 +291,7 @@
             null,
             null
           ],
-          "pickaxeLevel": 2,
+          "pickaxeLevel": 3,
           "mineKeyIssued": false,
           "abandonedMineUnlocked": false,
           "equipped": {
@@ -282,9 +308,9 @@
           }
         },
         "tutorial": {
-          "currentStep": 4,
-          "minedRockCount": 16,
-          "upgradeCount": 2,
+          "currentStep": 5,
+          "minedRockCount": 29,
+          "upgradeCount": 3,
           "completed": false,
           "archivedSteps": []
         },
@@ -297,7 +323,7 @@
           "subtitle": "I call myself as a Digitalian, because I spend most of my daytime in digital world. My artwork captures my gaze in the digital world I live in as a landscape painting.\n\nArtwork 'DLP #00 concept' is a concept image of the DLP collection. DLP will show 12 artworks. The selling price of all artworks is 121% of the selling price of the previous works."
         }
       },
-      "updatedAt": "2026-05-03T07:40:30.910Z"
+      "updatedAt": "2026-05-03T09:04:03.748Z"
     }
   ]
 }

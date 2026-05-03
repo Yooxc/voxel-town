@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-const LAST_PATCHED_AT = "2026-05-03 16:42:11 KST";
+const LAST_PATCHED_AT = "2026-05-03 17:08:41 KST";
 
 const scene = new THREE.Scene();
 // ===== Atmosphere: Sky / Fog =====
@@ -128,8 +128,18 @@ let nftExhibitRefreshTimer = null;
 let nftExhibitSelectionOpen = false;
 let nftExhibitSelectionLoading = false;
 let nftExhibitSelectionStatus = "";
+let nftExhibitSelectionTone = "neutral";
 let nftExhibitOwnedTokens = [];
 let nftExhibitSelectedItem = null;
+let nftExhibitSelectionOwnershipMismatch = false;
+let nftExhibitSelectionOwnershipMessage = "";
+let nftExhibitOwnedTokensCache = {
+  walletAddress: "",
+  chainId: "",
+  contractAddress: "",
+  items: [],
+  fetchedAt: 0,
+};
 
 const walletHud = document.createElement("div");
 walletHud.id = "walletHud";
@@ -574,6 +584,29 @@ function createNftBoardClearedSelection() {
   };
 }
 
+function isValidHexAddress(value) {
+  return /^0x[a-fA-F0-9]{40}$/.test(String(value || "").trim());
+}
+
+function isValidChainId(value) {
+  return /^0x[a-fA-F0-9]+$/.test(String(value || "").trim());
+}
+
+function isValidTokenId(value) {
+  return /^[0-9]+$/.test(String(value || "").trim());
+}
+
+function isValidNftImageRef(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return false;
+  return (
+    raw.startsWith("http://") ||
+    raw.startsWith("https://") ||
+    raw.startsWith("ipfs://") ||
+    raw.startsWith("data:image/")
+  );
+}
+
 function normalizeNftBoardSelection(raw) {
   if (!raw || typeof raw !== "object") return null;
   if (raw.mode === "none") {
@@ -581,15 +614,34 @@ function normalizeNftBoardSelection(raw) {
   }
   const contractAddress = String(raw.contractAddress || "").trim().toLowerCase();
   const tokenId = raw.tokenId == null ? "" : String(raw.tokenId).trim();
-  if (!contractAddress || !tokenId) return null;
+  const chainId = String(raw.chainId || NFT_EXHIBIT_TARGET.chainId || "").trim() || NFT_EXHIBIT_TARGET.chainId;
+  if (!isValidHexAddress(contractAddress) || !isValidTokenId(tokenId) || !isValidChainId(chainId)) {
+    return null;
+  }
+  const image = String(raw.image || "").trim();
   return {
-    chainId: String(raw.chainId || NFT_EXHIBIT_TARGET.chainId || "").trim() || NFT_EXHIBIT_TARGET.chainId,
+    chainId,
     contractAddress,
     tokenId,
     name: String(raw.name || "NFT 작품").trim() || "NFT 작품",
-    image: String(raw.image || "").trim(),
+    image: isValidNftImageRef(image) ? image : "",
     subtitle: String(raw.subtitle || "").trim(),
   };
+}
+
+function isSameNftBoardSelection(a, b) {
+  const left = normalizeNftBoardSelection(a);
+  const right = normalizeNftBoardSelection(b);
+  if (!left && !right) return true;
+  if (!left || !right) return false;
+  if (left.mode === "none" || right.mode === "none") {
+    return left.mode === right.mode;
+  }
+  return (
+    left.chainId === right.chainId &&
+    left.contractAddress === right.contractAddress &&
+    left.tokenId === right.tokenId
+  );
 }
 
 function getActiveNftBoardSelection() {
@@ -601,10 +653,47 @@ function getActiveNftBoardSelection() {
 function updateNftBoardSelectionUi() {
   nftBoardOverlay.style.display = nftExhibitSelectionOpen ? "flex" : "none";
   nftBoardStatus.textContent = nftExhibitSelectionStatus || "지갑 NFT 목록을 준비하는 중입니다.";
+  const palette = {
+    neutral: {
+      bg: "rgba(0,0,0,0.05)",
+      color: "#444",
+      border: "rgba(0,0,0,0.06)",
+    },
+    loading: {
+      bg: "rgba(246,165,58,0.12)",
+      color: "#8f5a00",
+      border: "rgba(246,165,58,0.22)",
+    },
+    success: {
+      bg: "rgba(54,179,126,0.12)",
+      color: "#1f6a4a",
+      border: "rgba(54,179,126,0.22)",
+    },
+    empty: {
+      bg: "rgba(100,116,139,0.1)",
+      color: "#475569",
+      border: "rgba(100,116,139,0.18)",
+    },
+    error: {
+      bg: "rgba(220,38,38,0.1)",
+      color: "#9f1239",
+      border: "rgba(220,38,38,0.2)",
+    },
+  };
+  const style = palette[nftExhibitSelectionTone] ?? palette.neutral;
+  nftBoardStatus.style.background = style.bg;
+  nftBoardStatus.style.color = style.color;
+  nftBoardStatus.style.border = `1px solid ${style.border}`;
 }
 
 function closeNftBoardSelectionOverlay() {
   nftExhibitSelectionOpen = false;
+  updateNftBoardSelectionUi();
+}
+
+function setNftBoardSelectionStatus(text, tone = "neutral") {
+  nftExhibitSelectionStatus = text;
+  nftExhibitSelectionTone = tone;
   updateNftBoardSelectionUi();
 }
 
@@ -617,12 +706,18 @@ function clearGameplayKeys() {
 }
 
 function setNftBoardSelection(nextSelection, { save = true } = {}) {
-  nftExhibitSelectedItem = normalizeNftBoardSelection(nextSelection);
+  const normalizedSelection = normalizeNftBoardSelection(nextSelection);
+  if (isSameNftBoardSelection(nftExhibitSelectedItem, normalizedSelection)) {
+    closeNftBoardSelectionOverlay();
+    return false;
+  }
+  nftExhibitSelectedItem = normalizedSelection;
   closeNftBoardSelectionOverlay();
   scheduleNftExhibitBoardRefresh();
   if (save && isServerBackedWalletSession()) {
     schedulePlayerSaveSync(true);
   }
+  return true;
 }
 
 function renderNftBoardTokenGrid() {
@@ -630,17 +725,149 @@ function renderNftBoardTokenGrid() {
 
   const selected = getActiveNftBoardSelection();
 
+  const renderStateCard = (title, desc, tone = "neutral", { showRetry = false } = {}) => {
+    const card = document.createElement("div");
+    card.style.gridColumn = "1 / -1";
+    card.style.minHeight = "220px";
+    card.style.display = "flex";
+    card.style.flexDirection = "column";
+    card.style.alignItems = "center";
+    card.style.justifyContent = "center";
+    card.style.padding = "28px 20px";
+    card.style.borderRadius = "18px";
+    card.style.border = "1px dashed rgba(0,0,0,0.14)";
+    card.style.background = "#fbfcfd";
+    card.style.textAlign = "center";
+
+    const icon = document.createElement("div");
+    icon.textContent =
+      tone === "loading" ? "..." :
+      tone === "error" ? "!" :
+      tone === "empty" ? "0" : "NFT";
+    icon.style.width = "54px";
+    icon.style.height = "54px";
+    icon.style.display = "flex";
+    icon.style.alignItems = "center";
+    icon.style.justifyContent = "center";
+    icon.style.borderRadius = "999px";
+    icon.style.background =
+      tone === "loading" ? "rgba(246,165,58,0.14)" :
+      tone === "error" ? "rgba(220,38,38,0.12)" :
+      tone === "empty" ? "rgba(100,116,139,0.12)" :
+      "rgba(59,130,246,0.12)";
+    icon.style.color =
+      tone === "loading" ? "#8f5a00" :
+      tone === "error" ? "#9f1239" :
+      tone === "empty" ? "#475569" :
+      "#1d4ed8";
+    icon.style.fontWeight = "900";
+    icon.style.fontSize = "22px";
+    card.appendChild(icon);
+
+    const titleEl = document.createElement("div");
+    titleEl.textContent = title;
+    titleEl.style.marginTop = "14px";
+    titleEl.style.fontSize = "16px";
+    titleEl.style.fontWeight = "900";
+    titleEl.style.color = "#1f2937";
+    card.appendChild(titleEl);
+
+    const descEl = document.createElement("div");
+    descEl.textContent = desc;
+    descEl.style.marginTop = "8px";
+    descEl.style.fontSize = "13px";
+    descEl.style.lineHeight = "1.6";
+    descEl.style.color = "#64748b";
+    descEl.style.maxWidth = "360px";
+    card.appendChild(descEl);
+
+    if (showRetry) {
+      const retryBtn = document.createElement("button");
+      retryBtn.type = "button";
+      retryBtn.textContent = "다시 시도";
+      retryBtn.style.marginTop = "16px";
+      retryBtn.style.padding = "10px 14px";
+      retryBtn.style.borderRadius = "12px";
+      retryBtn.style.border = "1px solid rgba(0,0,0,0.12)";
+      retryBtn.style.background = "#ffffff";
+      retryBtn.style.color = "#1f2937";
+      retryBtn.style.fontSize = "13px";
+      retryBtn.style.fontWeight = "800";
+      retryBtn.style.cursor = "pointer";
+      retryBtn.style.pointerEvents = "auto";
+      retryBtn.addEventListener("click", () => {
+        void reloadNftBoardSelectionList({ forceRefresh: true });
+      });
+      card.appendChild(retryBtn);
+    }
+
+    nftBoardGrid.appendChild(card);
+  };
+
   if (nftExhibitSelectionLoading) {
-    nftBoardStatus.textContent = nftExhibitSelectionStatus || "지갑 NFT 목록을 불러오는 중입니다...";
+    setNftBoardSelectionStatus(
+      nftExhibitSelectionStatus || "지갑 NFT 목록을 불러오는 중입니다...",
+      "loading"
+    );
+    renderStateCard(
+      "NFT 목록을 불러오는 중",
+      "지갑과 체인에서 전시 가능한 NFT를 확인하고 있어요. 잠시만 기다려주세요.",
+      "loading"
+    );
     return;
   }
 
   if (nftExhibitOwnedTokens.length === 0) {
-    nftBoardStatus.textContent = nftExhibitSelectionStatus || "전시 가능한 NFT가 없습니다.";
+    const isError = nftExhibitSelectionTone === "error";
+    setNftBoardSelectionStatus(
+      nftExhibitSelectionStatus || "전시 가능한 NFT가 없습니다.",
+      isError ? "error" : "empty"
+    );
+    renderStateCard(
+      isError ? "NFT를 불러오지 못했습니다" : "전시 가능한 NFT 없음",
+      isError
+        ? "네트워크 또는 메타데이터 오류가 발생했습니다. 잠시 후 다시 열어보세요."
+        : "현재 로그인한 지갑에서 전시 가능한 NFT를 찾지 못했습니다.",
+      isError ? "error" : "empty",
+      { showRetry: true }
+    );
     return;
   }
 
-  nftBoardStatus.textContent = nftExhibitSelectionStatus || "전시할 NFT를 하나 선택하세요.";
+  setNftBoardSelectionStatus(
+    nftExhibitSelectionOwnershipMismatch
+      ? nftExhibitSelectionOwnershipMessage || "현재 선택한 NFT를 더 이상 보유하고 있지 않습니다."
+      : (nftExhibitSelectionStatus || "전시할 NFT를 하나 선택하세요."),
+    nftExhibitSelectionOwnershipMismatch ? "error" : "success"
+  );
+
+  if (nftExhibitSelectionOwnershipMismatch) {
+    const warningCard = document.createElement("div");
+    warningCard.style.gridColumn = "1 / -1";
+    warningCard.style.display = "flex";
+    warningCard.style.flexDirection = "column";
+    warningCard.style.padding = "14px 16px";
+    warningCard.style.borderRadius = "14px";
+    warningCard.style.background = "rgba(220,38,38,0.08)";
+    warningCard.style.border = "1px solid rgba(220,38,38,0.18)";
+
+    const warningTitle = document.createElement("div");
+    warningTitle.textContent = "현재 전시 NFT를 더 이상 보유하지 않습니다";
+    warningTitle.style.fontSize = "14px";
+    warningTitle.style.fontWeight = "900";
+    warningTitle.style.color = "#9f1239";
+    warningCard.appendChild(warningTitle);
+
+    const warningDesc = document.createElement("div");
+    warningDesc.textContent = "아래 목록에서 다시 선택하거나, 전시 해제를 눌러 보드를 비울 수 있습니다.";
+    warningDesc.style.marginTop = "6px";
+    warningDesc.style.fontSize = "12px";
+    warningDesc.style.lineHeight = "1.6";
+    warningDesc.style.color = "#7f1d1d";
+    warningCard.appendChild(warningDesc);
+
+    nftBoardGrid.appendChild(warningCard);
+  }
 
   const clearCard = document.createElement("button");
   clearCard.type = "button";
@@ -713,9 +940,11 @@ function renderNftBoardTokenGrid() {
     clearCard.style.transform = "translateY(0)";
   });
   clearCard.addEventListener("click", () => {
-    setNftBoardSelection(createNftBoardClearedSelection());
-    showUI("NFT 전시 해제", 1000);
-    lastMessageUntil = performance.now() + 1000;
+    const changed = setNftBoardSelection(createNftBoardClearedSelection());
+    if (changed) {
+      showUI("NFT 전시 해제", 1000);
+      lastMessageUntil = performance.now() + 1000;
+    }
   });
 
   nftBoardGrid.appendChild(clearCard);
@@ -809,7 +1038,7 @@ function renderNftBoardTokenGrid() {
       card.style.transform = "translateY(0)";
     });
     card.addEventListener("click", () => {
-      setNftBoardSelection({
+      const changed = setNftBoardSelection({
         chainId: NFT_EXHIBIT_TARGET.chainId,
         contractAddress: token.contractAddress,
         tokenId: token.tokenId,
@@ -817,8 +1046,10 @@ function renderNftBoardTokenGrid() {
         image: token.image,
         subtitle: token.subtitle || "",
       });
-      showUI(`${token.name} 전시`, 1000);
-      lastMessageUntil = performance.now() + 1000;
+      if (changed) {
+        showUI(`${token.name} 전시`, 1000);
+        lastMessageUntil = performance.now() + 1000;
+      }
     });
 
     nftBoardGrid.appendChild(card);
@@ -1039,6 +1270,15 @@ async function fetchWalletOwnedExhibitTokens() {
   if (!walletAuth.address) return [];
 
   const contractAddress = NFT_EXHIBIT_TARGET.contractAddress.toLowerCase();
+  const cacheIsValid =
+    nftExhibitOwnedTokensCache.walletAddress === walletAuth.address.toLowerCase() &&
+    nftExhibitOwnedTokensCache.chainId === (walletAuth.chainId || "") &&
+    nftExhibitOwnedTokensCache.contractAddress === contractAddress &&
+    Date.now() - nftExhibitOwnedTokensCache.fetchedAt < 30_000;
+  if (cacheIsValid) {
+    return nftExhibitOwnedTokensCache.items.map((item) => ({ ...item }));
+  }
+
   const ownedTokens = [];
   const enumerableSupported = await fetchSupportsInterface(contractAddress, "0x780e9d63").catch(() => false);
 
@@ -1074,7 +1314,65 @@ async function fetchWalletOwnedExhibitTokens() {
     }
   }
 
+  nftExhibitOwnedTokensCache = {
+    walletAddress: walletAuth.address.toLowerCase(),
+    chainId: walletAuth.chainId || "",
+    contractAddress,
+    items: ownedTokens.map((item) => ({ ...item })),
+    fetchedAt: Date.now(),
+  };
+
   return ownedTokens;
+}
+
+async function reloadNftBoardSelectionList({ forceRefresh = false } = {}) {
+  if (!nftExhibitSelectionOpen) return;
+  nftExhibitSelectionLoading = true;
+  nftExhibitSelectionStatus = "지갑 NFT 목록을 불러오는 중입니다...";
+  nftExhibitSelectionTone = "loading";
+  nftExhibitOwnedTokens = [];
+  updateNftBoardSelectionUi();
+  renderNftBoardTokenGrid();
+
+  try {
+    if (forceRefresh) {
+      nftExhibitOwnedTokensCache.fetchedAt = 0;
+    }
+    const tokens = await fetchWalletOwnedExhibitTokens();
+    if (!nftExhibitSelectionOpen) return;
+    nftExhibitOwnedTokens = tokens;
+    const selected = getActiveNftBoardSelection();
+    if (selected?.mode !== "none" && selected?.contractAddress && selected?.tokenId) {
+      const stillOwned = tokens.some(
+        (token) =>
+          token.contractAddress.toLowerCase() === selected.contractAddress &&
+          token.tokenId === selected.tokenId
+      );
+      nftExhibitSelectionOwnershipMismatch = !stillOwned;
+      nftExhibitSelectionOwnershipMessage = stillOwned
+        ? ""
+        : "현재 선택한 NFT를 이 지갑이 보유하고 있지 않습니다.";
+    } else {
+      nftExhibitSelectionOwnershipMismatch = false;
+      nftExhibitSelectionOwnershipMessage = "";
+    }
+    nftExhibitSelectionStatus = tokens.length > 0
+      ? "전시할 NFT를 하나 선택하세요."
+      : "지갑에서 전시 가능한 NFT를 찾지 못했습니다.";
+    nftExhibitSelectionTone = nftExhibitSelectionOwnershipMismatch
+      ? "error"
+      : (tokens.length > 0 ? "success" : "empty");
+  } catch (error) {
+    if (!nftExhibitSelectionOpen) return;
+    nftExhibitOwnedTokens = [];
+    nftExhibitSelectionStatus = error?.message || "NFT 목록을 불러오지 못했습니다.";
+    nftExhibitSelectionTone = "error";
+  } finally {
+    if (!nftExhibitSelectionOpen) return;
+    nftExhibitSelectionLoading = false;
+    updateNftBoardSelectionUi();
+    renderNftBoardTokenGrid();
+  }
 }
 
 async function openNftBoardSelectionOverlay() {
@@ -1091,30 +1389,11 @@ async function openNftBoardSelectionOverlay() {
   }
 
   clearGameplayKeys();
+  setInvOpen(false);
+  setQuestOpen(false);
+  setForgeOpen(false);
   nftExhibitSelectionOpen = true;
-  nftExhibitSelectionLoading = true;
-  nftExhibitSelectionStatus = "지갑 NFT 목록을 불러오는 중입니다...";
-  nftExhibitOwnedTokens = [];
-  updateNftBoardSelectionUi();
-  renderNftBoardTokenGrid();
-
-  try {
-    const tokens = await fetchWalletOwnedExhibitTokens();
-    if (!nftExhibitSelectionOpen) return;
-    nftExhibitOwnedTokens = tokens;
-    nftExhibitSelectionStatus = tokens.length > 0
-      ? "전시할 NFT를 하나 선택하세요."
-      : "지갑에서 전시 가능한 NFT를 찾지 못했습니다.";
-  } catch (error) {
-    if (!nftExhibitSelectionOpen) return;
-    nftExhibitOwnedTokens = [];
-    nftExhibitSelectionStatus = error?.message || "NFT 목록을 불러오지 못했습니다.";
-  } finally {
-    if (!nftExhibitSelectionOpen) return;
-    nftExhibitSelectionLoading = false;
-    updateNftBoardSelectionUi();
-    renderNftBoardTokenGrid();
-  }
+  await reloadNftBoardSelectionList();
 }
 
 function scheduleNftExhibitBoardRefresh() {
@@ -1132,6 +1411,9 @@ async function refreshNftExhibitBoard() {
   if (!nftExhibitScreenMaterial) return;
   const refreshToken = ++nftExhibitRefreshToken;
   const selectedNft = getActiveNftBoardSelection();
+
+  nftExhibitSelectionOwnershipMismatch = false;
+  nftExhibitSelectionOwnershipMessage = "";
 
   if (selectedNft?.mode === "none") {
     setNftBoardMessage(
@@ -1175,9 +1457,11 @@ async function refreshNftExhibitBoard() {
     );
     if (refreshToken !== nftExhibitRefreshToken) return;
     if (owner.toLowerCase() !== walletAuth.address.toLowerCase()) {
+      nftExhibitSelectionOwnershipMismatch = true;
+      nftExhibitSelectionOwnershipMessage = "현재 선택한 NFT를 이 지갑이 보유하고 있지 않습니다.";
       setNftBoardMessage(
         "지갑 NFT 전시",
-        ["현재 로그인한 지갑에", "해당 작품이 없습니다."],
+        ["현재 선택한 NFT를", "이 지갑이 보유하고 있지 않습니다."],
         "#d97575"
       );
       return;
@@ -1435,6 +1719,13 @@ function clearWalletSession() {
   nftExhibitSelectionLoading = false;
   nftExhibitSelectionStatus = "";
   nftExhibitOwnedTokens = [];
+  nftExhibitOwnedTokensCache = {
+    walletAddress: "",
+    chainId: "",
+    contractAddress: "",
+    items: [],
+    fetchedAt: 0,
+  };
   updateNftBoardSelectionUi();
   updateWalletUi();
 }
