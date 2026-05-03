@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-const LAST_PATCHED_AT = "2026-05-03 15:45:36 KST";
+const LAST_PATCHED_AT = "2026-05-03 16:42:11 KST";
 
 const scene = new THREE.Scene();
 // ===== Atmosphere: Sky / Fog =====
@@ -125,6 +125,11 @@ let nftExhibitBoard = null;
 let nftExhibitScreenMaterial = null;
 let nftExhibitRefreshToken = 0;
 let nftExhibitRefreshTimer = null;
+let nftExhibitSelectionOpen = false;
+let nftExhibitSelectionLoading = false;
+let nftExhibitSelectionStatus = "";
+let nftExhibitOwnedTokens = [];
+let nftExhibitSelectedItem = null;
 
 const walletHud = document.createElement("div");
 walletHud.id = "walletHud";
@@ -391,6 +396,90 @@ walletNicknameSaveBtn.style.cursor = "pointer";
 walletNicknameSaveBtn.style.pointerEvents = "auto";
 walletNicknameCard.appendChild(walletNicknameSaveBtn);
 
+const nftBoardOverlay = document.createElement("div");
+nftBoardOverlay.id = "nftBoardOverlay";
+nftBoardOverlay.style.position = "fixed";
+nftBoardOverlay.style.inset = "0";
+nftBoardOverlay.style.display = "none";
+nftBoardOverlay.style.alignItems = "center";
+nftBoardOverlay.style.justifyContent = "center";
+nftBoardOverlay.style.background = "rgba(8,10,14,0.58)";
+nftBoardOverlay.style.backdropFilter = "blur(8px)";
+nftBoardOverlay.style.pointerEvents = "auto";
+nftBoardOverlay.style.zIndex = "1000004";
+uiLayer.appendChild(nftBoardOverlay);
+
+const nftBoardCard = document.createElement("div");
+nftBoardCard.style.width = "min(760px, calc(100vw - 40px))";
+nftBoardCard.style.maxHeight = "min(78vh, 840px)";
+nftBoardCard.style.display = "flex";
+nftBoardCard.style.flexDirection = "column";
+nftBoardCard.style.padding = "22px";
+nftBoardCard.style.background = "rgba(245,245,245,0.97)";
+nftBoardCard.style.border = "1px solid rgba(0,0,0,0.14)";
+nftBoardCard.style.borderRadius = "18px";
+nftBoardCard.style.boxShadow = "0 20px 48px rgba(0,0,0,0.28)";
+nftBoardCard.style.fontFamily = "system-ui, -apple-system, sans-serif";
+nftBoardCard.style.color = "#222";
+nftBoardOverlay.appendChild(nftBoardCard);
+
+const nftBoardTitleRow = document.createElement("div");
+nftBoardTitleRow.style.display = "flex";
+nftBoardTitleRow.style.alignItems = "center";
+nftBoardTitleRow.style.justifyContent = "space-between";
+nftBoardTitleRow.style.gap = "12px";
+nftBoardCard.appendChild(nftBoardTitleRow);
+
+const nftBoardTitle = document.createElement("div");
+nftBoardTitle.textContent = "내 NFT 전시 선택";
+nftBoardTitle.style.fontSize = "24px";
+nftBoardTitle.style.fontWeight = "900";
+nftBoardTitleRow.appendChild(nftBoardTitle);
+
+const nftBoardCloseBtn = document.createElement("button");
+nftBoardCloseBtn.type = "button";
+nftBoardCloseBtn.textContent = "닫기";
+nftBoardCloseBtn.style.padding = "10px 14px";
+nftBoardCloseBtn.style.borderRadius = "12px";
+nftBoardCloseBtn.style.border = "1px solid rgba(0,0,0,0.12)";
+nftBoardCloseBtn.style.background = "rgba(255,255,255,0.9)";
+nftBoardCloseBtn.style.color = "#333";
+nftBoardCloseBtn.style.fontSize = "14px";
+nftBoardCloseBtn.style.fontWeight = "800";
+nftBoardCloseBtn.style.cursor = "pointer";
+nftBoardCloseBtn.style.pointerEvents = "auto";
+nftBoardTitleRow.appendChild(nftBoardCloseBtn);
+
+const nftBoardDesc = document.createElement("div");
+nftBoardDesc.textContent = "현재 지갑이 보유한 전시 가능 NFT 중 하나를 골라 보드에 전시합니다.";
+nftBoardDesc.style.marginTop = "10px";
+nftBoardDesc.style.fontSize = "14px";
+nftBoardDesc.style.lineHeight = "1.65";
+nftBoardDesc.style.color = "#555";
+nftBoardCard.appendChild(nftBoardDesc);
+
+const nftBoardStatus = document.createElement("div");
+nftBoardStatus.textContent = "지갑 NFT 목록을 준비하는 중입니다.";
+nftBoardStatus.style.marginTop = "14px";
+nftBoardStatus.style.padding = "10px 12px";
+nftBoardStatus.style.background = "rgba(0,0,0,0.05)";
+nftBoardStatus.style.borderRadius = "12px";
+nftBoardStatus.style.fontSize = "13px";
+nftBoardStatus.style.lineHeight = "1.6";
+nftBoardStatus.style.color = "#444";
+nftBoardCard.appendChild(nftBoardStatus);
+
+const nftBoardGrid = document.createElement("div");
+nftBoardGrid.style.marginTop = "16px";
+nftBoardGrid.style.display = "grid";
+nftBoardGrid.style.gridTemplateColumns = "repeat(auto-fill, minmax(168px, 1fr))";
+nftBoardGrid.style.gap = "14px";
+nftBoardGrid.style.overflowY = "auto";
+nftBoardGrid.style.paddingRight = "4px";
+nftBoardGrid.style.maxHeight = "52vh";
+nftBoardGrid.style.pointerEvents = "auto";
+nftBoardCard.appendChild(nftBoardGrid);
+
 function shortenWalletAddress(address) {
   if (!address) return "";
   if (address === "dev-mode-local") return "DEV MODE";
@@ -466,6 +555,274 @@ function loadImageElement(src) {
     img.onerror = () => reject(new Error("NFT 이미지를 불러오지 못했습니다."));
     img.src = src;
   });
+}
+
+function createNftBoardDefaultSelection() {
+  return {
+    chainId: NFT_EXHIBIT_TARGET.chainId,
+    contractAddress: NFT_EXHIBIT_TARGET.contractAddress.toLowerCase(),
+    tokenId: NFT_EXHIBIT_TARGET.tokenId,
+    name: NFT_EXHIBIT_TARGET.title,
+    image: "",
+    subtitle: "",
+  };
+}
+
+function createNftBoardClearedSelection() {
+  return {
+    mode: "none",
+  };
+}
+
+function normalizeNftBoardSelection(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  if (raw.mode === "none") {
+    return { mode: "none" };
+  }
+  const contractAddress = String(raw.contractAddress || "").trim().toLowerCase();
+  const tokenId = raw.tokenId == null ? "" : String(raw.tokenId).trim();
+  if (!contractAddress || !tokenId) return null;
+  return {
+    chainId: String(raw.chainId || NFT_EXHIBIT_TARGET.chainId || "").trim() || NFT_EXHIBIT_TARGET.chainId,
+    contractAddress,
+    tokenId,
+    name: String(raw.name || "NFT 작품").trim() || "NFT 작품",
+    image: String(raw.image || "").trim(),
+    subtitle: String(raw.subtitle || "").trim(),
+  };
+}
+
+function getActiveNftBoardSelection() {
+  const normalized = normalizeNftBoardSelection(nftExhibitSelectedItem);
+  if (normalized?.mode === "none") return normalized;
+  return normalized ?? createNftBoardDefaultSelection();
+}
+
+function updateNftBoardSelectionUi() {
+  nftBoardOverlay.style.display = nftExhibitSelectionOpen ? "flex" : "none";
+  nftBoardStatus.textContent = nftExhibitSelectionStatus || "지갑 NFT 목록을 준비하는 중입니다.";
+}
+
+function closeNftBoardSelectionOverlay() {
+  nftExhibitSelectionOpen = false;
+  updateNftBoardSelectionUi();
+}
+
+function clearGameplayKeys() {
+  keys.w = false;
+  keys.a = false;
+  keys.s = false;
+  keys.d = false;
+  keys.shift = false;
+}
+
+function setNftBoardSelection(nextSelection, { save = true } = {}) {
+  nftExhibitSelectedItem = normalizeNftBoardSelection(nextSelection);
+  closeNftBoardSelectionOverlay();
+  scheduleNftExhibitBoardRefresh();
+  if (save && isServerBackedWalletSession()) {
+    schedulePlayerSaveSync(true);
+  }
+}
+
+function renderNftBoardTokenGrid() {
+  nftBoardGrid.innerHTML = "";
+
+  const selected = getActiveNftBoardSelection();
+
+  if (nftExhibitSelectionLoading) {
+    nftBoardStatus.textContent = nftExhibitSelectionStatus || "지갑 NFT 목록을 불러오는 중입니다...";
+    return;
+  }
+
+  if (nftExhibitOwnedTokens.length === 0) {
+    nftBoardStatus.textContent = nftExhibitSelectionStatus || "전시 가능한 NFT가 없습니다.";
+    return;
+  }
+
+  nftBoardStatus.textContent = nftExhibitSelectionStatus || "전시할 NFT를 하나 선택하세요.";
+
+  const clearCard = document.createElement("button");
+  clearCard.type = "button";
+  clearCard.style.display = "flex";
+  clearCard.style.flexDirection = "column";
+  clearCard.style.alignItems = "stretch";
+  clearCard.style.padding = "10px";
+  clearCard.style.borderRadius = "16px";
+  clearCard.style.border = "2px solid rgba(0,0,0,0.08)";
+  clearCard.style.background = "#ffffff";
+  clearCard.style.cursor = "pointer";
+  clearCard.style.textAlign = "left";
+  clearCard.style.pointerEvents = "auto";
+  clearCard.style.boxShadow = "0 8px 20px rgba(0,0,0,0.08)";
+  clearCard.style.transition = "transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease";
+
+  if (selected?.mode === "none") {
+    clearCard.style.borderColor = "#f6a53a";
+    clearCard.style.boxShadow = "0 10px 24px rgba(246,165,58,0.2)";
+  }
+
+  const clearThumb = document.createElement("div");
+  clearThumb.style.width = "100%";
+  clearThumb.style.aspectRatio = "1 / 1";
+  clearThumb.style.borderRadius = "12px";
+  clearThumb.style.background = "repeating-linear-gradient(135deg, #eef2f6 0 18px, #ffffff 18px 36px)";
+  clearThumb.style.border = "1px solid rgba(0,0,0,0.06)";
+  clearThumb.style.display = "flex";
+  clearThumb.style.alignItems = "center";
+  clearThumb.style.justifyContent = "center";
+  clearThumb.style.color = "#64748b";
+  clearThumb.style.fontSize = "14px";
+  clearThumb.style.fontWeight = "900";
+  clearThumb.textContent = "전시 해제";
+  clearCard.appendChild(clearThumb);
+
+  const clearName = document.createElement("div");
+  clearName.textContent = "NFT 전시 해제";
+  clearName.style.marginTop = "10px";
+  clearName.style.fontSize = "14px";
+  clearName.style.fontWeight = "800";
+  clearName.style.lineHeight = "1.4";
+  clearCard.appendChild(clearName);
+
+  const clearSub = document.createElement("div");
+  clearSub.textContent = "보드를 빈 상태로 둡니다";
+  clearSub.style.marginTop = "4px";
+  clearSub.style.fontSize = "12px";
+  clearSub.style.color = "#64748b";
+  clearCard.appendChild(clearSub);
+
+  if (selected?.mode === "none") {
+    const clearBadge = document.createElement("div");
+    clearBadge.textContent = "현재 적용됨";
+    clearBadge.style.marginTop = "8px";
+    clearBadge.style.alignSelf = "flex-start";
+    clearBadge.style.padding = "4px 8px";
+    clearBadge.style.borderRadius = "999px";
+    clearBadge.style.background = "rgba(246,165,58,0.16)";
+    clearBadge.style.color = "#c16b00";
+    clearBadge.style.fontSize = "11px";
+    clearBadge.style.fontWeight = "800";
+    clearCard.appendChild(clearBadge);
+  }
+
+  clearCard.addEventListener("mouseenter", () => {
+    clearCard.style.transform = "translateY(-2px)";
+  });
+  clearCard.addEventListener("mouseleave", () => {
+    clearCard.style.transform = "translateY(0)";
+  });
+  clearCard.addEventListener("click", () => {
+    setNftBoardSelection(createNftBoardClearedSelection());
+    showUI("NFT 전시 해제", 1000);
+    lastMessageUntil = performance.now() + 1000;
+  });
+
+  nftBoardGrid.appendChild(clearCard);
+
+  for (const token of nftExhibitOwnedTokens) {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.style.display = "flex";
+    card.style.flexDirection = "column";
+    card.style.alignItems = "stretch";
+    card.style.padding = "10px";
+    card.style.borderRadius = "16px";
+    card.style.border = "2px solid rgba(0,0,0,0.08)";
+    card.style.background = "#ffffff";
+    card.style.cursor = "pointer";
+    card.style.textAlign = "left";
+    card.style.pointerEvents = "auto";
+    card.style.boxShadow = "0 8px 20px rgba(0,0,0,0.08)";
+    card.style.transition = "transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease";
+
+    const isSelected =
+      selected.contractAddress === token.contractAddress.toLowerCase() &&
+      selected.tokenId === token.tokenId;
+
+    if (isSelected) {
+      card.style.borderColor = "#f6a53a";
+      card.style.boxShadow = "0 10px 24px rgba(246,165,58,0.2)";
+    }
+
+    const thumb = document.createElement("div");
+    thumb.style.width = "100%";
+    thumb.style.aspectRatio = "1 / 1";
+    thumb.style.borderRadius = "12px";
+    thumb.style.overflow = "hidden";
+    thumb.style.background = "#eef2f6";
+    thumb.style.display = "flex";
+    thumb.style.alignItems = "center";
+    thumb.style.justifyContent = "center";
+    thumb.style.border = "1px solid rgba(0,0,0,0.06)";
+    card.appendChild(thumb);
+
+    if (token.image) {
+      const img = document.createElement("img");
+      img.src = normalizeIpfsUrl(token.image);
+      img.alt = token.name;
+      img.style.width = "100%";
+      img.style.height = "100%";
+      img.style.objectFit = "cover";
+      thumb.appendChild(img);
+    } else {
+      const placeholder = document.createElement("div");
+      placeholder.textContent = "NFT";
+      placeholder.style.fontWeight = "900";
+      placeholder.style.color = "#475569";
+      thumb.appendChild(placeholder);
+    }
+
+    const name = document.createElement("div");
+    name.textContent = token.name;
+    name.style.marginTop = "10px";
+    name.style.fontSize = "14px";
+    name.style.fontWeight = "800";
+    name.style.lineHeight = "1.4";
+    card.appendChild(name);
+
+    const sub = document.createElement("div");
+    sub.textContent = `Token #${token.tokenId}`;
+    sub.style.marginTop = "4px";
+    sub.style.fontSize = "12px";
+    sub.style.color = "#64748b";
+    card.appendChild(sub);
+
+    if (isSelected) {
+      const badge = document.createElement("div");
+      badge.textContent = "현재 전시 중";
+      badge.style.marginTop = "8px";
+      badge.style.alignSelf = "flex-start";
+      badge.style.padding = "4px 8px";
+      badge.style.borderRadius = "999px";
+      badge.style.background = "rgba(246,165,58,0.16)";
+      badge.style.color = "#c16b00";
+      badge.style.fontSize = "11px";
+      badge.style.fontWeight = "800";
+      card.appendChild(badge);
+    }
+
+    card.addEventListener("mouseenter", () => {
+      card.style.transform = "translateY(-2px)";
+    });
+    card.addEventListener("mouseleave", () => {
+      card.style.transform = "translateY(0)";
+    });
+    card.addEventListener("click", () => {
+      setNftBoardSelection({
+        chainId: NFT_EXHIBIT_TARGET.chainId,
+        contractAddress: token.contractAddress,
+        tokenId: token.tokenId,
+        name: token.name,
+        image: token.image,
+        subtitle: token.subtitle || "",
+      });
+      showUI(`${token.name} 전시`, 1000);
+      lastMessageUntil = performance.now() + 1000;
+    });
+
+    nftBoardGrid.appendChild(card);
+  }
 }
 
 async function createBoardImageTexture(imageUrl, title, subtitle = "") {
@@ -552,10 +909,32 @@ function encodeUint256Call(selector, value) {
   return `${selector}${encodedValue}`;
 }
 
+function encodeAddressCall(selector, address) {
+  const encodedAddress = stripHexPrefix(String(address || "")).padStart(64, "0");
+  return `${selector}${encodedAddress}`;
+}
+
+function encodeAddressUintCall(selector, address, value) {
+  const encodedAddress = stripHexPrefix(String(address || "")).padStart(64, "0");
+  const encodedValue = BigInt(value).toString(16).padStart(64, "0");
+  return `${selector}${encodedAddress}${encodedValue}`;
+}
+
+function encodeSupportsInterfaceCall(interfaceIdHex) {
+  const encodedInterface = stripHexPrefix(interfaceIdHex).padStart(64, "0");
+  return `0x01ffc9a7${encodedInterface}`;
+}
+
 function decodeAbiAddress(resultHex) {
   const clean = stripHexPrefix(resultHex);
   if (clean.length < 64) return "";
   return `0x${clean.slice(clean.length - 40)}`.toLowerCase();
+}
+
+function decodeAbiUint256(resultHex) {
+  const clean = stripHexPrefix(resultHex);
+  if (clean.length < 64) return 0n;
+  return BigInt(`0x${clean.slice(clean.length - 64)}`);
 }
 
 function decodeAbiString(resultHex) {
@@ -582,6 +961,48 @@ async function fetchErc721Owner(contractAddress, tokenId) {
     ],
   });
   return decodeAbiAddress(result);
+}
+
+async function fetchErc721Balance(contractAddress, ownerAddress) {
+  const result = await window.ethereum.request({
+    method: "eth_call",
+    params: [
+      {
+        to: contractAddress,
+        data: encodeAddressCall("0x70a08231", ownerAddress),
+      },
+      "latest",
+    ],
+  });
+  return decodeAbiUint256(result);
+}
+
+async function fetchErc721TokenOfOwnerByIndex(contractAddress, ownerAddress, index) {
+  const result = await window.ethereum.request({
+    method: "eth_call",
+    params: [
+      {
+        to: contractAddress,
+        data: encodeAddressUintCall("0x2f745c59", ownerAddress, index),
+      },
+      "latest",
+    ],
+  });
+  return decodeAbiUint256(result).toString();
+}
+
+async function fetchSupportsInterface(contractAddress, interfaceIdHex) {
+  const result = await window.ethereum.request({
+    method: "eth_call",
+    params: [
+      {
+        to: contractAddress,
+        data: encodeSupportsInterfaceCall(interfaceIdHex),
+      },
+      "latest",
+    ],
+  });
+  return decodeAbiUint256(result) !== 0n;
 }
 
 async function fetchErc721TokenUri(contractAddress, tokenId) {
@@ -614,6 +1035,88 @@ async function fetchNftMetadata(tokenUri) {
   return response.json();
 }
 
+async function fetchWalletOwnedExhibitTokens() {
+  if (!walletAuth.address) return [];
+
+  const contractAddress = NFT_EXHIBIT_TARGET.contractAddress.toLowerCase();
+  const ownedTokens = [];
+  const enumerableSupported = await fetchSupportsInterface(contractAddress, "0x780e9d63").catch(() => false);
+
+  if (enumerableSupported) {
+    const balance = Number(await fetchErc721Balance(contractAddress, walletAuth.address));
+    const cappedBalance = Math.min(balance, 24);
+    for (let index = 0; index < cappedBalance; index++) {
+      const tokenId = await fetchErc721TokenOfOwnerByIndex(contractAddress, walletAuth.address, index);
+      const tokenUri = await fetchErc721TokenUri(contractAddress, tokenId);
+      const metadata = await fetchNftMetadata(tokenUri);
+      ownedTokens.push({
+        chainId: NFT_EXHIBIT_TARGET.chainId,
+        contractAddress,
+        tokenId,
+        name: String(metadata?.name || `NFT #${tokenId}`),
+        image: String(metadata?.image || metadata?.image_url || metadata?.imageUrl || ""),
+        subtitle: String(metadata?.description || ""),
+      });
+    }
+  } else {
+    const owner = await fetchErc721Owner(contractAddress, NFT_EXHIBIT_TARGET.tokenId);
+    if (owner.toLowerCase() === walletAuth.address.toLowerCase()) {
+      const tokenUri = await fetchErc721TokenUri(contractAddress, NFT_EXHIBIT_TARGET.tokenId);
+      const metadata = await fetchNftMetadata(tokenUri);
+      ownedTokens.push({
+        chainId: NFT_EXHIBIT_TARGET.chainId,
+        contractAddress,
+        tokenId: NFT_EXHIBIT_TARGET.tokenId,
+        name: String(metadata?.name || NFT_EXHIBIT_TARGET.title),
+        image: String(metadata?.image || metadata?.image_url || metadata?.imageUrl || ""),
+        subtitle: String(metadata?.description || ""),
+      });
+    }
+  }
+
+  return ownedTokens;
+}
+
+async function openNftBoardSelectionOverlay() {
+  if (!isServerBackedWalletSession()) {
+    showUI("메타마스크 로그인 후 사용 가능", 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return;
+  }
+
+  if ((walletAuth.chainId || "") !== NFT_EXHIBIT_TARGET.chainId) {
+    showUI("Ethereum 메인넷으로 전환 후 이용 가능", 1200);
+    lastMessageUntil = performance.now() + 1200;
+    return;
+  }
+
+  clearGameplayKeys();
+  nftExhibitSelectionOpen = true;
+  nftExhibitSelectionLoading = true;
+  nftExhibitSelectionStatus = "지갑 NFT 목록을 불러오는 중입니다...";
+  nftExhibitOwnedTokens = [];
+  updateNftBoardSelectionUi();
+  renderNftBoardTokenGrid();
+
+  try {
+    const tokens = await fetchWalletOwnedExhibitTokens();
+    if (!nftExhibitSelectionOpen) return;
+    nftExhibitOwnedTokens = tokens;
+    nftExhibitSelectionStatus = tokens.length > 0
+      ? "전시할 NFT를 하나 선택하세요."
+      : "지갑에서 전시 가능한 NFT를 찾지 못했습니다.";
+  } catch (error) {
+    if (!nftExhibitSelectionOpen) return;
+    nftExhibitOwnedTokens = [];
+    nftExhibitSelectionStatus = error?.message || "NFT 목록을 불러오지 못했습니다.";
+  } finally {
+    if (!nftExhibitSelectionOpen) return;
+    nftExhibitSelectionLoading = false;
+    updateNftBoardSelectionUi();
+    renderNftBoardTokenGrid();
+  }
+}
+
 function scheduleNftExhibitBoardRefresh() {
   if (nftExhibitRefreshTimer) {
     clearTimeout(nftExhibitRefreshTimer);
@@ -628,6 +1131,16 @@ function scheduleNftExhibitBoardRefresh() {
 async function refreshNftExhibitBoard() {
   if (!nftExhibitScreenMaterial) return;
   const refreshToken = ++nftExhibitRefreshToken;
+  const selectedNft = getActiveNftBoardSelection();
+
+  if (selectedNft?.mode === "none") {
+    setNftBoardMessage(
+      "지갑 NFT 전시",
+      ["현재 선택된 전시 작품이 없습니다.", "선택창에서 원하는 NFT를 골라주세요."],
+      "#9dbce0"
+    );
+    return;
+  }
 
   if (!walletAuth.authenticated || walletAuth.sessionType !== "wallet" || !walletAuth.address) {
     setNftBoardMessage(
@@ -640,7 +1153,7 @@ async function refreshNftExhibitBoard() {
 
   const chainId = walletAuth.chainId || (await window.ethereum?.request?.({ method: "eth_chainId" }).catch(() => ""));
   if (refreshToken !== nftExhibitRefreshToken) return;
-  if (chainId !== NFT_EXHIBIT_TARGET.chainId) {
+  if (chainId !== selectedNft.chainId) {
     setNftBoardMessage(
       "지갑 NFT 전시",
       ["Ethereum 메인넷으로", "전환하면 작품을 불러옵니다."],
@@ -657,8 +1170,8 @@ async function refreshNftExhibitBoard() {
 
   try {
     const owner = await fetchErc721Owner(
-      NFT_EXHIBIT_TARGET.contractAddress,
-      NFT_EXHIBIT_TARGET.tokenId
+      selectedNft.contractAddress,
+      selectedNft.tokenId
     );
     if (refreshToken !== nftExhibitRefreshToken) return;
     if (owner.toLowerCase() !== walletAuth.address.toLowerCase()) {
@@ -671,8 +1184,8 @@ async function refreshNftExhibitBoard() {
     }
 
     const tokenUri = await fetchErc721TokenUri(
-      NFT_EXHIBIT_TARGET.contractAddress,
-      NFT_EXHIBIT_TARGET.tokenId
+      selectedNft.contractAddress,
+      selectedNft.tokenId
     );
     if (refreshToken !== nftExhibitRefreshToken) return;
     const metadata = await fetchNftMetadata(tokenUri);
@@ -695,8 +1208,8 @@ async function refreshNftExhibitBoard() {
 
     const texture = await createBoardImageTexture(
       imageUrl,
-      metadata?.name || NFT_EXHIBIT_TARGET.title,
-      `#${NFT_EXHIBIT_TARGET.tokenId} · 소유자 확인 완료`
+      metadata?.name || selectedNft.name || NFT_EXHIBIT_TARGET.title,
+      `#${selectedNft.tokenId} · 소유자 확인 완료`
     );
     if (refreshToken !== nftExhibitRefreshToken || !texture) return;
     applyNftBoardTexture(texture);
@@ -863,6 +1376,10 @@ function updateWalletUi() {
     : "메타마스크 연결을 기다리는 중입니다.";
   walletDevBypassBtn.style.display = DEV_PRESET_ENABLED ? "inline-flex" : "none";
   walletNicknameOverlay.style.display = loggedIn && !hasNickname() ? "flex" : "none";
+  if (!isServerBackedWalletSession()) {
+    nftExhibitSelectionOpen = false;
+  }
+  updateNftBoardSelectionUi();
   playerSaveStatusBadge.style.opacity = isServerBackedWalletSession() ? playerSaveStatusBadge.style.opacity : "0";
   if (typeof controls !== "undefined" && controls) {
     controls.enabled = canPlayGame();
@@ -914,11 +1431,21 @@ function clearWalletSession() {
   }
   playerSaveStatusBadge.style.opacity = "0";
   playerSaveStatusBadge.style.transform = "translateY(4px)";
+  nftExhibitSelectionOpen = false;
+  nftExhibitSelectionLoading = false;
+  nftExhibitSelectionStatus = "";
+  nftExhibitOwnedTokens = [];
+  updateNftBoardSelectionUi();
   updateWalletUi();
 }
 
 function isWalletAuthenticated() {
   return walletAuth.authenticated;
+}
+
+function shouldResetAuthSessionOnLocalReload() {
+  const host = window.location.hostname;
+  return host === "localhost" || host === "127.0.0.1";
 }
 
 function restoreWalletSession() {
@@ -1169,6 +1696,23 @@ walletNicknameSaveBtn.addEventListener("click", () => {
 walletNicknameInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     commitNickname();
+  }
+});
+
+nftBoardCloseBtn.addEventListener("click", () => {
+  closeNftBoardSelectionOverlay();
+});
+
+nftBoardOverlay.addEventListener("click", (e) => {
+  if (e.target === nftBoardOverlay) {
+    closeNftBoardSelectionOverlay();
+  }
+});
+
+window.addEventListener("keydown", (e) => {
+  if (!nftExhibitSelectionOpen) return;
+  if (e.key === "Escape") {
+    closeNftBoardSelectionOverlay();
   }
 });
 
@@ -2105,6 +2649,7 @@ questArchiveToggleBtn.addEventListener("click", (e) => {
 
 window.addEventListener("keydown", (e) => {
   if (!canPlayGame()) return;
+  if (nftExhibitSelectionOpen) return;
   // 입력창 없으니 간단 처리
   const key = e.key.toLowerCase();
   if (key === "i") {
@@ -4569,6 +5114,9 @@ controls.maxPolarAngle = Math.PI * 0.49;
 controls.minPolarAngle = Math.PI * 0.1;
 controls.enablePan = false;
 
+if (shouldResetAuthSessionOnLocalReload()) {
+  localStorage.removeItem(WALLET_SESSION_KEY);
+}
 restoreWalletSession();
 bindWalletProviderEvents();
 updateWalletUi();
@@ -5257,6 +5805,7 @@ function applyDevPreset() {
 }
 
 function applyFreshPlayerStartState() {
+  nftExhibitSelectedItem = null;
   for (let i = 0; i < inventory.slots.length; i++) {
     inventory.slots[i] = null;
   }
@@ -5316,6 +5865,7 @@ function createDefaultPlayerSave() {
       completed: false,
       archivedSteps: [],
     },
+    displayBoard: null,
   };
 }
 
@@ -5348,6 +5898,7 @@ function serializePlayerSave() {
       completed: tutorialQuest.completed,
       archivedSteps: [...tutorialQuest.archivedSteps],
     },
+    displayBoard: nftExhibitSelectedItem ? structuredClone(nftExhibitSelectedItem) : null,
   };
 }
 
@@ -5368,6 +5919,7 @@ function applySerializedPlayerSave(rawSave) {
       ...createDefaultPlayerSave().tutorial,
       ...(save.tutorial ?? {}),
     },
+    displayBoard: save.displayBoard ?? null,
   };
 
   for (let i = 0; i < inventory.slots.length; i++) {
@@ -5393,6 +5945,7 @@ function applySerializedPlayerSave(rawSave) {
   tutorialQuest.archivedSteps = Array.isArray(source.tutorial.archivedSteps)
     ? [...source.tutorial.archivedSteps]
     : [];
+  nftExhibitSelectedItem = normalizeNftBoardSelection(source.displayBoard);
 
   if (inventory.abandonedMineUnlocked) {
     if (typeof abandonedMineGate.lockColliderIndex === "number") {
@@ -5417,6 +5970,7 @@ function applySerializedPlayerSave(rawSave) {
   latestMoveDir.set(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
   snapCameraToPlayer();
   updateInventoryUI();
+  scheduleNftExhibitBoardRefresh();
   refreshQuestProgress();
   if (questOpen) renderQuestWindow();
   lastPlayerSaveSnapshot = JSON.stringify(serializePlayerSave());
@@ -5678,21 +6232,21 @@ function buildNftExhibitBoard(x, z, rotationY = Math.PI * 0.5) {
     new THREE.BoxGeometry(0.12, 3.55, 0.12),
     frameMat
   );
-  leftPost.position.set(-boardHalfWidth - 0.12, 1.78, 0);
+  leftPost.position.set(-boardHalfWidth - 0.12, 1.78, -0.12);
   g.add(leftPost);
 
   const rightPost = new THREE.Mesh(
     new THREE.BoxGeometry(0.12, 3.55, 0.12),
     frameMat
   );
-  rightPost.position.set(boardHalfWidth + 0.12, 1.78, 0);
+  rightPost.position.set(boardHalfWidth + 0.12, 1.78, -0.12);
   g.add(rightPost);
 
   const bottomBeam = new THREE.Mesh(
     new THREE.BoxGeometry(boardWidth + 0.18, 0.1, 0.1),
     frameMat
   );
-  bottomBeam.position.set(0, 0.42, 0);
+  bottomBeam.position.set(0, 0.42, -0.12);
   g.add(bottomBeam);
 
   const frame = new THREE.Mesh(
@@ -5721,14 +6275,14 @@ function buildNftExhibitBoard(x, z, rotationY = Math.PI * 0.5) {
     new THREE.BoxGeometry(1.22, 0.08, 0.18),
     frameMat
   );
-  leftFoot.position.set(-boardHalfWidth + 0.42, 0.08, 0);
+  leftFoot.position.set(-boardHalfWidth + 0.42, 0.08, -0.12);
   g.add(leftFoot);
 
   const rightFoot = new THREE.Mesh(
     new THREE.BoxGeometry(1.22, 0.08, 0.18),
     frameMat
   );
-  rightFoot.position.set(boardHalfWidth - 0.42, 0.08, 0);
+  rightFoot.position.set(boardHalfWidth - 0.42, 0.08, -0.12);
   g.add(rightFoot);
 
   const wheelOffsets = [
@@ -5751,6 +6305,7 @@ function buildNftExhibitBoard(x, z, rotationY = Math.PI * 0.5) {
   g.rotation.y = rotationY;
   scene.add(g);
   addCollider(g, 0.88);
+  interactables.push({ obj: g, text: "E : NFT 전시", board: frame, type: "nftBoard" });
 
   nftExhibitBoard = g;
   nftExhibitScreenMaterial = screenMat;
@@ -6301,6 +6856,7 @@ const keys = { w: false, a: false, s: false, d: false, shift: false };
 
 window.addEventListener("keydown", (e) => {
   if (!canPlayGame()) return;
+  if (nftExhibitSelectionOpen) return;
   const k = e.key.toLowerCase();
   console.log("KEYDOWN:", k);
 
@@ -6339,6 +6895,11 @@ window.addEventListener("keydown", (e) => {
     setForgeOpen(!forgeOpen);
     return;
   }
+
+  if (activeInteractable?.type === "nftBoard") {
+    void openNftBoardSelectionOverlay();
+    return;
+  }
   }
 
   if (k === "t" && DEV_PRESET_ENABLED) {
@@ -6362,6 +6923,11 @@ window.addEventListener("keydown", (e) => {
 window.addEventListener("keyup", (e) => {
   const k = e.key.toLowerCase();
   if (!canPlayGame()) {
+    if (k in keys) keys[k] = false;
+    if (k === "shift") keys.shift = false;
+    return;
+  }
+  if (nftExhibitSelectionOpen) {
     if (k in keys) keys[k] = false;
     if (k === "shift") keys.shift = false;
     return;
@@ -6816,6 +7382,7 @@ function updateMovement(dt) {
 
 window.addEventListener("keydown", (e) => {
   if (!canPlayGame()) return;
+  if (nftExhibitSelectionOpen) return;
   if (e.code !== "Space") return;
   if (activeTutorialNpc) {
     const currentStep = getCurrentQuestStep();
