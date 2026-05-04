@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-const LAST_PATCHED_AT = "2026-05-03 17:08:41 KST";
+const LAST_PATCHED_AT = "2026-05-04 20:26:34 KST";
 
 const scene = new THREE.Scene();
 // ===== Atmosphere: Sky / Fog =====
@@ -10,7 +10,31 @@ const WORLD_FOG_COLOR = 0xd6d8db;
 const CAVE_FOG_COLOR = 0x120e0b;
 const WORLD_FOG_NEAR = 15;
 const WORLD_FOG_FAR = 60;
+const CAVE_DARKENING_ENABLED = false;
+const CAVE_FOG_EFFECT_ENABLED = false;
 scene.fog = new THREE.Fog(WORLD_FOG_COLOR, WORLD_FOG_NEAR, WORLD_FOG_FAR);
+
+const AIR_GAUGE_MAX = 100;
+const AIR_CANISTER_RESTORE_AMOUNT = 34;
+const MAP_POLLUTION_CONFIG = {
+  "폐광맵": {
+    displayName: "폐광",
+    drainPerSecondAtZeroPurify: 2.25,
+    purifierPowderCost: 1,
+    purifierGain: 12,
+  },
+};
+
+const REFINERY_RECIPES = {
+  purifyPowder: {
+    id: "purifyPowder",
+    label: "정화 가루",
+    inputItemId: "stoneDust",
+    inputCount: 3,
+    outputItemId: "purifyPowder",
+    outputCount: 1,
+  },
+};
 
 // ===== Lighting =====
 // 전체 밝기 (부드럽게)
@@ -197,6 +221,68 @@ walletHudLogoutBtn.style.cursor = "pointer";
 walletHudLogoutBtn.style.fontSize = "12px";
 walletHudLogoutBtn.style.fontWeight = "700";
 walletHud.appendChild(walletHudLogoutBtn);
+
+const airHudWrap = document.createElement("div");
+airHudWrap.id = "airHudWrap";
+airHudWrap.style.position = "fixed";
+airHudWrap.style.left = "16px";
+airHudWrap.style.top = "214px";
+airHudWrap.style.width = "214px";
+airHudWrap.style.padding = "12px 14px";
+airHudWrap.style.background = "rgba(20,20,20,0.56)";
+airHudWrap.style.border = "1px solid rgba(255,255,255,0.16)";
+airHudWrap.style.borderRadius = "14px";
+airHudWrap.style.backdropFilter = "blur(4px)";
+airHudWrap.style.color = "white";
+airHudWrap.style.fontFamily = "system-ui, -apple-system, sans-serif";
+airHudWrap.style.fontSize = "12px";
+airHudWrap.style.lineHeight = "1.45";
+airHudWrap.style.userSelect = "none";
+airHudWrap.style.pointerEvents = "none";
+airHudWrap.style.zIndex = "1000001";
+airHudWrap.style.display = "none";
+uiLayer.appendChild(airHudWrap);
+
+const airHudTitle = document.createElement("div");
+airHudTitle.textContent = "AIR SUPPORT";
+airHudTitle.style.fontWeight = "800";
+airHudTitle.style.letterSpacing = "0.06em";
+airHudTitle.style.opacity = "0.84";
+airHudTitle.style.marginBottom = "8px";
+airHudWrap.appendChild(airHudTitle);
+
+const airHudValue = document.createElement("div");
+airHudValue.style.fontWeight = "800";
+airHudValue.style.fontSize = "18px";
+airHudValue.style.color = "#f4fbff";
+airHudWrap.appendChild(airHudValue);
+
+const airHudBarTrack = document.createElement("div");
+airHudBarTrack.style.position = "relative";
+airHudBarTrack.style.height = "10px";
+airHudBarTrack.style.marginTop = "8px";
+airHudBarTrack.style.borderRadius = "999px";
+airHudBarTrack.style.background = "rgba(255,255,255,0.14)";
+airHudBarTrack.style.overflow = "hidden";
+airHudWrap.appendChild(airHudBarTrack);
+
+const airHudBarFill = document.createElement("div");
+airHudBarFill.style.width = "100%";
+airHudBarFill.style.height = "100%";
+airHudBarFill.style.background = "linear-gradient(90deg, #5be7ff 0%, #a2fff0 100%)";
+airHudBarFill.style.borderRadius = "inherit";
+airHudBarTrack.appendChild(airHudBarFill);
+
+const airHudStatus = document.createElement("div");
+airHudStatus.style.marginTop = "8px";
+airHudStatus.style.opacity = "0.8";
+airHudWrap.appendChild(airHudStatus);
+
+const airHudPurify = document.createElement("div");
+airHudPurify.style.marginTop = "6px";
+airHudPurify.style.fontWeight = "700";
+airHudPurify.style.color = "#fff2bf";
+airHudWrap.appendChild(airHudPurify);
 
 const playerSaveStatusBadge = document.createElement("div");
 playerSaveStatusBadge.id = "playerSaveStatus";
@@ -2812,14 +2898,9 @@ function renderInventoryWindow() {
       // ===== Equip toggle (double click) =====
         const isEquipTab = activeTab === "equip";
         const itemId = getSlotItemId(item);
-        const def = itemId ? ITEM_DEFS[itemId] : null;
         const equipSlot = getInventoryEntryEquipSlot(item);
         const isEquipped = equipSlot
-          ? isNftInventoryEntry(item)
-            ? inventory.equipped[equipSlot]?.kind === "nft" &&
-              inventory.equipped[equipSlot]?.contractAddress === item.contractAddress &&
-              String(inventory.equipped[equipSlot]?.tokenId) === String(item.tokenId)
-            : getEquippedItemForSlot(equipSlot) === itemId
+          ? isSameInventoryEntryAsEquipped(item, getEquippedItemRef(equipSlot))
           : false;
 
         // 장착된 아이템은 테두리 하이라이트
@@ -2833,9 +2914,16 @@ function renderInventoryWindow() {
         slot.style.cursor = "pointer";
 
         slot.addEventListener("dblclick", () => {
-        toggleEquipItem(itemId ?? item);
+        toggleEquipItem(item);
      });
         }   
+
+        if (activeTab === "cons" && itemId === "freshAirCanister") {
+        slot.style.cursor = "pointer";
+        slot.addEventListener("dblclick", () => {
+        useFreshAirCanister();
+     });
+        }
 
       if (isNftInventoryEntry(item)) {
         const nftBadge = document.createElement("div");
@@ -3097,6 +3185,7 @@ const HUD_MSG = {
   PICKAXE_GET: "⛏️ 곡괭이 획득!",
   HELMET_GET: "🪖 핼멧 획득!",
   MINE_KEY_GET: "🗝️ 폐광 열쇠 획득!",
+  AIR_CAN_GET: "🫧 신선한 공기 캔 획득!",
 };
 
 const npcDialog = document.createElement("div");
@@ -3870,6 +3959,20 @@ const ITEM_DEFS = {
     stackMax: 1,
     category: "misc",
   },
+  freshAirCanister: {
+    name: "신선한 공기 캔",
+    icon: "🫧",
+    stackMax: 99,
+    category: "cons",
+    makeInventoryModel: () => buildFreshAirCanisterModel(),
+  },
+  purifyPowder: {
+    name: "정화 가루",
+    icon: "✨",
+    stackMax: 999,
+    category: "misc",
+    makeInventoryModel: () => buildPurifyPowderModel(),
+  },
   stoneDust: { name: "돌가루", icon: "🪨", stackMax: 999, category: "misc" },
     };
 
@@ -3885,11 +3988,23 @@ const DEV_MOCK_NFT_ITEMS = [
   },
 ];
 
+let inventoryEntryInstanceSeq = 1;
+
+function createInventoryEntryInstanceId() {
+  const seq = inventoryEntryInstanceSeq++;
+  return `inv_${Date.now().toString(36)}_${seq.toString(36)}`;
+}
+
 function createInventorySlotEntry(itemId, count = 1, extra = {}) {
+  const instanceId =
+    typeof extra.instanceId === "string" && extra.instanceId.trim()
+      ? extra.instanceId
+      : createInventoryEntryInstanceId();
   return {
     kind: "item",
     itemId,
     count,
+    instanceId,
     ...extra,
   };
 }
@@ -3923,6 +4038,10 @@ function normalizeInventorySlotEntry(rawSlot) {
         kind: "item",
         itemId: rawSlot.itemId,
         count: Number.isFinite(rawSlot.count) ? rawSlot.count : 1,
+        instanceId:
+          typeof rawSlot.instanceId === "string" && rawSlot.instanceId.trim()
+            ? rawSlot.instanceId
+            : createInventoryEntryInstanceId(),
       };
     }
     if (rawSlot.id) {
@@ -3960,6 +4079,10 @@ function normalizeEquippedItemRef(rawRef) {
         ...rawRef,
         kind: "item",
         itemId: rawRef.itemId,
+        instanceId:
+          typeof rawRef.instanceId === "string" && rawRef.instanceId.trim()
+            ? rawRef.instanceId
+            : null,
       };
     }
     if (rawRef.itemId) {
@@ -3979,6 +4102,23 @@ function getSlotItemCount(slot) {
 
 function isNftInventoryEntry(entry) {
   return entry?.kind === "nft";
+}
+
+function isSameInventoryEntryAsEquipped(entry, equippedRef) {
+  if (!entry || !equippedRef) return false;
+  if (isNftInventoryEntry(entry)) {
+    return (
+      equippedRef.kind === "nft" &&
+      equippedRef.contractAddress === entry.contractAddress &&
+      String(equippedRef.tokenId) === String(entry.tokenId)
+    );
+  }
+
+  if (equippedRef.kind !== "item") return false;
+  if (entry.instanceId && equippedRef.instanceId) {
+    return entry.instanceId === equippedRef.instanceId;
+  }
+  return equippedRef.itemId === getSlotItemId(entry);
 }
 
 function getInventoryEntryCategory(entry) {
@@ -4058,6 +4198,9 @@ function getItemTooltipText(itemId, count = null) {
     const stats = getCurrentPickaxeStats();
     lines.push(`강화 단계: Lv.${stats.level}`);
     lines.push(`채굴력: ${stats.miningPowerMin.toFixed(1)} ~ ${stats.miningPowerMax.toFixed(1)}`);
+  } else if (itemId === "purifyPowder") {
+    lines.push("설명: 돌가루를 재련해 만든 정화용 가공 분말");
+    lines.push("용도: 공기 정화탑 가동");
   } else if (typeof def.miningPower === "number") {
     lines.push(`채굴력: ${def.miningPower}`);
   }
@@ -4269,11 +4412,7 @@ function getEquippedMiningPower() {
   if (!equipSlot) return;
 
   const equippedRef = getEquippedItemRef(equipSlot);
-  const alreadyEquipped = isNftInventoryEntry(normalizedEntry)
-    ? equippedRef?.kind === "nft" &&
-      equippedRef?.contractAddress === normalizedEntry.contractAddress &&
-      String(equippedRef?.tokenId) === String(normalizedEntry.tokenId)
-    : getEquippedItemForSlot(equipSlot) === getSlotItemId(normalizedEntry);
+  const alreadyEquipped = isSameInventoryEntryAsEquipped(normalizedEntry, equippedRef);
 
   if (alreadyEquipped) {
     setEquippedItem(equipSlot, null);
@@ -4288,7 +4427,12 @@ function getEquippedMiningPower() {
       icon: normalizedEntry.icon,
     });
   } else {
-    setEquippedItem(equipSlot, getSlotItemId(normalizedEntry));
+    setEquippedItem(
+      equipSlot,
+      createEquippedItemRef(getSlotItemId(normalizedEntry), {
+        instanceId: normalizedEntry.instanceId ?? null,
+      })
+    );
   }
 
   const itemName = getInventoryEntryDisplayName(normalizedEntry);
@@ -4302,13 +4446,7 @@ function getEquippedMiningPower() {
     function unequipSlot(slotId) {
   const equippedRef = getEquippedItemRef(slotId);
   if (!equippedRef) return;
-  if (equippedRef.kind === "nft") {
-    toggleEquipItem(equippedRef);
-    return;
-  }
-  const itemId = getEquippedItemForSlot(slotId);
-  if (!itemId) return;
-  toggleEquipItem(itemId);
+  toggleEquipItem(equippedRef);
     }
 
     const equipPreviewRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -4930,12 +5068,20 @@ let activePickupItem = null;
 const tutorialNpcs = [];
 let activeTutorialNpc = null;
 let forgeStation = null;
+let refineryStation = null;
+let airPurifierStation = null;
 let activeForgeStation = null;
 const mapGates = [];
 let activeMapGate = null;
 let currentMapId = "광산맵";
 let lastAnnouncedMapId = currentMapId;
 let torchEquipped = false;
+let playerAirCurrent = AIR_GAUGE_MAX;
+let playerAirMax = AIR_GAUGE_MAX;
+let airDepletedNoticeUntil = 0;
+const mapPurificationProgress = {
+  "폐광맵": 0,
+};
 
 function updateSceneFogForCurrentMap() {
   const mineDoorThresholdZ = mineGate.position.z - 0.35;
@@ -4955,20 +5101,211 @@ function updateSceneFogForCurrentMap() {
   sunLight.intensity = 0.4;
 
   for (const entry of caveDarkenableMaterials) {
-    const scalar = THREE.MathUtils.lerp(1, entry.minScalar, caveBlend);
+    const targetScalar = CAVE_DARKENING_ENABLED ? entry.minScalar : 1;
+    const scalar = THREE.MathUtils.lerp(1, targetScalar, caveBlend);
     entry.material.color.copy(entry.baseColor).multiplyScalar(scalar);
   }
 
+  const effectiveCaveBlend = CAVE_FOG_EFFECT_ENABLED ? caveBlend : 0;
   const caveFogNear = torchEquipped ? 5.6 : 1.8;
   const caveFogFar = torchEquipped ? 18.0 : 5.6;
-  scene.fog.color.copy(new THREE.Color(WORLD_FOG_COLOR)).lerp(new THREE.Color(CAVE_FOG_COLOR), caveBlend);
-  scene.fog.near = THREE.MathUtils.lerp(WORLD_FOG_NEAR, caveFogNear, caveBlend);
-  scene.fog.far = THREE.MathUtils.lerp(WORLD_FOG_FAR, caveFogFar, caveBlend);
+  scene.fog.color.copy(new THREE.Color(WORLD_FOG_COLOR)).lerp(new THREE.Color(CAVE_FOG_COLOR), effectiveCaveBlend);
+  scene.fog.near = THREE.MathUtils.lerp(WORLD_FOG_NEAR, caveFogNear, effectiveCaveBlend);
+  scene.fog.far = THREE.MathUtils.lerp(WORLD_FOG_FAR, caveFogFar, effectiveCaveBlend);
 
-  torchLight.visible = caveBlend > 0.02 && torchEquipped;
-  torchLight.intensity = THREE.MathUtils.lerp(0, 1.8, caveBlend);
-  torchLight.distance = THREE.MathUtils.lerp(14, 24, caveBlend);
+  torchLight.visible = effectiveCaveBlend > 0.02 && torchEquipped;
+  torchLight.intensity = THREE.MathUtils.lerp(0, 1.8, effectiveCaveBlend);
+  torchLight.distance = THREE.MathUtils.lerp(14, 24, effectiveCaveBlend);
   torchLight.position.copy(player.position).add(new THREE.Vector3(0, 1.55, 0));
+}
+
+function getMapPollutionConfig(mapId = currentMapId) {
+  return MAP_POLLUTION_CONFIG[mapId] ?? null;
+}
+
+function isPollutedMap(mapId = currentMapId) {
+  return Boolean(getMapPollutionConfig(mapId));
+}
+
+function getMapPurificationValue(mapId = currentMapId) {
+  return Math.max(0, Math.min(100, mapPurificationProgress[mapId] ?? 0));
+}
+
+function setMapPurificationValue(mapId, value) {
+  if (!getMapPollutionConfig(mapId)) return;
+  mapPurificationProgress[mapId] = Math.max(0, Math.min(100, value));
+}
+
+function getCurrentAirDrainPerSecond() {
+  const cfg = getMapPollutionConfig(currentMapId);
+  if (!cfg) return 0;
+  const purifyRatio = getMapPurificationValue(currentMapId) / 100;
+  return cfg.drainPerSecondAtZeroPurify * Math.pow(1 - purifyRatio, 1.1);
+}
+
+function updateAirHud() {
+  if (!canPlayGame()) {
+    airHudWrap.style.display = "none";
+    return;
+  }
+
+  airHudWrap.style.display = "block";
+  const airRatio = playerAirMax > 0 ? Math.max(0, Math.min(1, playerAirCurrent / playerAirMax)) : 0;
+  airHudValue.textContent = `${Math.round(playerAirCurrent)} / ${playerAirMax}`;
+  airHudBarFill.style.width = `${Math.round(airRatio * 100)}%`;
+  airHudBarFill.style.background =
+    airRatio <= 0.18
+      ? "linear-gradient(90deg, #ff6a6a 0%, #ffb066 100%)"
+      : airRatio <= 0.45
+        ? "linear-gradient(90deg, #ffcf5b 0%, #ffec8a 100%)"
+        : "linear-gradient(90deg, #5be7ff 0%, #a2fff0 100%)";
+
+  if (!isPollutedMap()) {
+    airHudStatus.textContent = "현재 맵은 호흡 가능한 구역입니다.";
+    airHudPurify.textContent = "";
+    return;
+  }
+
+  const purify = getMapPurificationValue(currentMapId);
+  const drain = getCurrentAirDrainPerSecond();
+  airHudStatus.textContent = purify >= 100
+    ? "정화 완료: 공기 소모 없음"
+    : `오염 구역: 초당 ${drain.toFixed(2)} 공기 소모`;
+  airHudPurify.textContent = `${getMapPollutionConfig(currentMapId)?.displayName ?? currentMapId} 정화율 ${purify}%`;
+}
+
+function useFreshAirCanister() {
+  if (!hasItem("freshAirCanister")) {
+    showUI("신선한 공기 캔이 없습니다.", 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return false;
+  }
+  if (playerAirCurrent >= playerAirMax) {
+    showUI("공기 게이지가 이미 가득 찼습니다.", 900);
+    lastMessageUntil = performance.now() + 900;
+    return false;
+  }
+  if (!consumeItem("freshAirCanister", 1)) {
+    showUI("신선한 공기 캔을 사용할 수 없습니다.", 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return false;
+  }
+  playerAirCurrent = Math.min(playerAirMax, playerAirCurrent + AIR_CANISTER_RESTORE_AMOUNT);
+  airDepletedNoticeUntil = 0;
+  updateInventoryUI();
+  updateAirHud();
+  schedulePlayerSaveSync(true);
+  showUI("신선한 공기를 보충했습니다.", 1000);
+  lastMessageUntil = performance.now() + 1000;
+  return true;
+}
+
+function getDefaultRefineryRecipe() {
+  return REFINERY_RECIPES.purifyPowder;
+}
+
+function getRefineryHintText() {
+  const recipe = getDefaultRefineryRecipe();
+  if (!recipe) return "E : 재련";
+  const inputName = ITEM_DEFS[recipe.inputItemId]?.name ?? recipe.inputItemId;
+  if (getItemCount(recipe.inputItemId) < recipe.inputCount) {
+    return `${inputName} ${recipe.inputCount}개 필요`;
+  }
+  return `E : ${recipe.label} 재련 (${inputName} ${recipe.inputCount}개)`;
+}
+
+function tryUseRefinery() {
+  const recipe = getDefaultRefineryRecipe();
+  if (!recipe) return false;
+
+  const inputName = ITEM_DEFS[recipe.inputItemId]?.name ?? recipe.inputItemId;
+  const outputName = ITEM_DEFS[recipe.outputItemId]?.name ?? recipe.outputItemId;
+
+  if (getItemCount(recipe.inputItemId) < recipe.inputCount) {
+    showUI(`${inputName} ${recipe.inputCount}개가 필요합니다.`, 1100);
+    lastMessageUntil = performance.now() + 1100;
+    return true;
+  }
+
+  if (!consumeItem(recipe.inputItemId, recipe.inputCount)) {
+    showUI("재련 재료를 소모하지 못했습니다.", 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return true;
+  }
+
+  if (!addItem(recipe.outputItemId, recipe.outputCount)) {
+    addItem(recipe.inputItemId, recipe.inputCount);
+    showUI("인벤토리가 가득 차 재련할 수 없습니다.", 1100);
+    lastMessageUntil = performance.now() + 1100;
+    return true;
+  }
+
+  updateInventoryUI();
+  schedulePlayerSaveSync(true);
+  showUI(`${outputName} ${recipe.outputCount}개 재련 완료`, 1000);
+  lastMessageUntil = performance.now() + 1000;
+  return true;
+}
+
+function getAirPurifierHintText() {
+  const cfg = getMapPollutionConfig("폐광맵");
+  const purify = getMapPurificationValue("폐광맵");
+  if (!cfg) return "E : 공기 정화탑 가동";
+  if (purify >= 100) return `${cfg.displayName} 정화 완료`;
+  if (currentMapId !== "폐광맵") return `${cfg.displayName} 정화율 ${purify}%`;
+  if (getItemCount("purifyPowder") < cfg.purifierPowderCost) {
+    return `정화 가루 ${cfg.purifierPowderCost}개 필요`;
+  }
+  return `E : 공기 정화탑 가동 (+${cfg.purifierGain}% / 정화 가루 ${cfg.purifierPowderCost})`;
+}
+
+function tryUseAirPurifier() {
+  const cfg = getMapPollutionConfig("폐광맵");
+  if (!cfg) return false;
+  const currentPurify = getMapPurificationValue("폐광맵");
+  if (currentPurify >= 100) {
+    showUI("폐광 공기 정화탑 가동이 이미 완료되었습니다.", 1100);
+    lastMessageUntil = performance.now() + 1100;
+    return true;
+  }
+  if (!consumeItem("purifyPowder", cfg.purifierPowderCost)) {
+    showUI(`정화 가루 ${cfg.purifierPowderCost}개가 필요합니다.`, 1100);
+    lastMessageUntil = performance.now() + 1100;
+    return true;
+  }
+  const nextPurify = Math.min(100, currentPurify + cfg.purifierGain);
+  setMapPurificationValue("폐광맵", nextPurify);
+  updateInventoryUI();
+  updateAirHud();
+  schedulePlayerSaveSync(true);
+  if (nextPurify >= 100) {
+    showUI("폐광 공기 정화탑 가동 완료! 이제 공기를 소모하지 않습니다.", 1400);
+    lastMessageUntil = performance.now() + 1400;
+  } else {
+    showUI(`폐광 정화율 ${nextPurify}%`, 1000);
+    lastMessageUntil = performance.now() + 1000;
+  }
+  return true;
+}
+
+function updateAirSystem(dt) {
+  if (!canPlayGame()) {
+    updateAirHud();
+    return;
+  }
+
+  if (isPollutedMap(currentMapId)) {
+    const purify = getMapPurificationValue(currentMapId);
+    if (purify < 100) {
+      playerAirCurrent = Math.max(0, playerAirCurrent - getCurrentAirDrainPerSecond() * dt);
+      if (playerAirCurrent <= 0 && performance.now() > airDepletedNoticeUntil) {
+        showUI("공기가 바닥났습니다. R로 신선한 공기 캔을 사용하세요.", 1200);
+        airDepletedNoticeUntil = performance.now() + 2200;
+      }
+    }
+  }
+
+  updateAirHud();
 }
 let mapTransitionLockUntil = 0;
 let mapTransitionPending = null;
@@ -5842,6 +6179,103 @@ function buildSafetyHelmetModel(theme = "default") {
   return g;
 }
 
+function buildFreshAirCanisterModel() {
+  const g = new THREE.Group();
+  const shellMat = new THREE.MeshStandardMaterial({
+    color: 0x8fd7e8,
+    roughness: 0.42,
+    metalness: 0.18,
+  });
+  const capMat = new THREE.MeshStandardMaterial({
+    color: 0xd9eef5,
+    roughness: 0.28,
+    metalness: 0.34,
+  });
+  const strapMat = new THREE.MeshStandardMaterial({
+    color: 0x3f6472,
+    roughness: 0.74,
+    metalness: 0.04,
+  });
+
+  const body = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.16, 0.16, 0.52, 18),
+    shellMat
+  );
+  body.position.y = 0.26;
+  g.add(body);
+
+  const top = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.12, 0.14, 0.08, 16),
+    capMat
+  );
+  top.position.y = 0.56;
+  g.add(top);
+
+  const valve = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.03, 0.03, 0.12, 10),
+    capMat
+  );
+  valve.rotation.z = Math.PI * 0.5;
+  valve.position.set(0.09, 0.58, 0);
+  g.add(valve);
+
+  const band = new THREE.Mesh(
+    new THREE.TorusGeometry(0.115, 0.018, 8, 18),
+    strapMat
+  );
+  band.rotation.x = Math.PI * 0.5;
+  band.position.y = 0.21;
+  g.add(band);
+
+  return g;
+}
+
+function buildPurifyPowderModel() {
+  const g = new THREE.Group();
+  const jarMat = new THREE.MeshStandardMaterial({
+    color: 0xe8ecf1,
+    roughness: 0.26,
+    metalness: 0.12,
+    transparent: true,
+    opacity: 0.9,
+  });
+  const powderMat = new THREE.MeshStandardMaterial({
+    color: 0xc7f2dd,
+    roughness: 0.78,
+    metalness: 0.02,
+    emissive: 0x3fa57b,
+    emissiveIntensity: 0.22,
+  });
+  const capMat = new THREE.MeshStandardMaterial({
+    color: 0x5c6773,
+    roughness: 0.56,
+    metalness: 0.35,
+  });
+
+  const jar = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.15, 0.17, 0.3, 18),
+    jarMat
+  );
+  jar.position.y = 0.16;
+  g.add(jar);
+
+  const powder = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.125, 0.138, 0.18, 16),
+    powderMat
+  );
+  powder.position.y = 0.11;
+  g.add(powder);
+
+  const cap = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.11, 0.13, 0.08, 16),
+    capMat
+  );
+  cap.position.y = 0.34;
+  g.add(cap);
+
+  return g;
+}
+
 function alignWearableOnHead(headMesh, wearable, options = {}) {
   if (!headMesh?.geometry || !wearable) return;
 
@@ -5970,6 +6404,30 @@ restPropOnSupport(safetyHelmet, startStall.top);
 enableDynamicProp(safetyHelmet, { sleeping: true });
 registerPickupItem(safetyHelmet, "safetyHelmet", "E : 안전모 줍기");
 
+const airCanLeft = buildFreshAirCanisterModel();
+airCanLeft.position.set(START_X - 0.18, START_FLAT_Y, START_Z - 2.88);
+airCanLeft.rotation.set(0, Math.PI * 0.12, 0.08);
+scene.add(airCanLeft);
+restPropOnSupport(airCanLeft, startStall.top);
+enableDynamicProp(airCanLeft, { sleeping: true });
+registerPickupItem(airCanLeft, "freshAirCanister", "E : 신선한 공기 캔 줍기");
+
+const airCanRight = buildFreshAirCanisterModel();
+airCanRight.position.set(START_X - 0.52, START_FLAT_Y, START_Z - 2.42);
+airCanRight.rotation.set(0, Math.PI * -0.08, -0.05);
+scene.add(airCanRight);
+restPropOnSupport(airCanRight, startStall.top);
+enableDynamicProp(airCanRight, { sleeping: true });
+registerPickupItem(airCanRight, "freshAirCanister", "E : 신선한 공기 캔 줍기");
+
+refineryStation = buildRefineryStation(
+  START_X + 2.18,
+  START_Z - 2.32,
+  START_FLAT_Y,
+  Math.PI * -0.5
+);
+restPropOnSupport(refineryStation, startStall.top);
+
 const tutorialNpc = makeTutorialNpc(
   START_X,
   START_Z - 5.15,
@@ -6053,9 +6511,15 @@ function applyDevPreset() {
     setEquippedItem("head", "safetyHelmet");
   }
 
+  addItem("freshAirCanister", 2);
+
   if (typeof DEV_PRESET.stoneDust === "number" && DEV_PRESET.stoneDust > 0) {
     addItem("stoneDust", DEV_PRESET.stoneDust);
   }
+
+  playerAirCurrent = AIR_GAUGE_MAX;
+  playerAirMax = AIR_GAUGE_MAX;
+  setMapPurificationValue("폐광맵", 0);
 
   for (const nftEntry of DEV_MOCK_NFT_ITEMS) {
     addInventoryEntry(nftEntry);
@@ -6114,6 +6578,9 @@ function applyFreshPlayerStartState() {
   tutorialQuest.upgradeCount = 0;
   tutorialQuest.completed = false;
   tutorialQuest.archivedSteps = [];
+  playerAirCurrent = AIR_GAUGE_MAX;
+  playerAirMax = AIR_GAUGE_MAX;
+  setMapPurificationValue("폐광맵", 0);
 
   restoreLockedMapGate(abandonedMineGate);
 
@@ -6156,6 +6623,13 @@ function createDefaultPlayerSave() {
       completed: false,
       archivedSteps: [],
     },
+    airSystem: {
+      current: AIR_GAUGE_MAX,
+      max: AIR_GAUGE_MAX,
+      mapPurification: {
+        "폐광맵": 0,
+      },
+    },
     displayBoard: null,
   };
 }
@@ -6189,6 +6663,13 @@ function serializePlayerSave() {
       completed: tutorialQuest.completed,
       archivedSteps: [...tutorialQuest.archivedSteps],
     },
+    airSystem: {
+      current: Number(playerAirCurrent.toFixed(2)),
+      max: playerAirMax,
+      mapPurification: {
+        "폐광맵": getMapPurificationValue("폐광맵"),
+      },
+    },
     displayBoard: nftExhibitSelectedItem ? structuredClone(nftExhibitSelectedItem) : null,
   };
 }
@@ -6209,6 +6690,14 @@ function applySerializedPlayerSave(rawSave) {
     tutorial: {
       ...createDefaultPlayerSave().tutorial,
       ...(save.tutorial ?? {}),
+    },
+    airSystem: {
+      ...createDefaultPlayerSave().airSystem,
+      ...(save.airSystem ?? {}),
+      mapPurification: {
+        ...createDefaultPlayerSave().airSystem.mapPurification,
+        ...(save.airSystem?.mapPurification ?? {}),
+      },
     },
     displayBoard: save.displayBoard ?? null,
   };
@@ -6236,6 +6725,9 @@ function applySerializedPlayerSave(rawSave) {
   tutorialQuest.archivedSteps = Array.isArray(source.tutorial.archivedSteps)
     ? [...source.tutorial.archivedSteps]
     : [];
+  playerAirMax = Math.max(1, Number(source.airSystem.max) || AIR_GAUGE_MAX);
+  playerAirCurrent = Math.max(0, Math.min(playerAirMax, Number(source.airSystem.current) || AIR_GAUGE_MAX));
+  setMapPurificationValue("폐광맵", Number(source.airSystem.mapPurification?.["폐광맵"]) || 0);
   nftExhibitSelectedItem = normalizeNftBoardSelection(source.displayBoard);
 
   if (inventory.abandonedMineUnlocked) {
@@ -6606,6 +7098,147 @@ function buildNftExhibitBoard(x, z, rotationY = Math.PI * 0.5) {
     "#9dbce0"
   );
   scheduleNftExhibitBoardRefresh();
+  return g;
+}
+
+function buildAirPurifierStation(x, z, rotationY = Math.PI) {
+  const g = new THREE.Group();
+
+  const bodyMat = registerCaveDarkMaterial(
+    new THREE.MeshStandardMaterial({
+      color: 0x45505b,
+      roughness: 0.8,
+      metalness: 0.18,
+    }),
+    0.2
+  );
+  const glowMat = new THREE.MeshStandardMaterial({
+    color: 0x7ae2cb,
+    emissive: 0x2ebf96,
+    roughness: 0.38,
+    metalness: 0.08,
+  });
+  const accentMat = new THREE.MeshStandardMaterial({
+    color: 0x8398aa,
+    roughness: 0.54,
+    metalness: 0.12,
+  });
+
+  const base = new THREE.Mesh(new THREE.BoxGeometry(1.28, 1.1, 1.08), bodyMat);
+  base.position.y = 0.56;
+  g.add(base);
+
+  const chamber = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 1.08, 18), glowMat);
+  chamber.position.set(0, 1.18, 0);
+  g.add(chamber);
+
+  const cap = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.12, 0.72), accentMat);
+  cap.position.set(0, 1.78, 0);
+  g.add(cap);
+
+  const pipeLeft = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.7, 12), accentMat);
+  pipeLeft.rotation.z = Math.PI * 0.5;
+  pipeLeft.position.set(-0.36, 1.16, 0);
+  g.add(pipeLeft);
+
+  const pipeRight = pipeLeft.clone();
+  pipeRight.position.x *= -1;
+  g.add(pipeRight);
+
+  const screen = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.3, 0.05), glowMat);
+  screen.position.set(0, 1.05, 0.57);
+  g.add(screen);
+
+  g.position.set(x, START_FLAT_Y, z);
+  g.rotation.y = rotationY;
+  scene.add(g);
+  addCollider(g, 0.92);
+  interactables.push({
+    obj: g,
+    text: "E : 공기 정화탑 가동",
+    board: chamber,
+    type: "airPurifier",
+  });
+  return g;
+}
+
+function buildRefineryStation(x, z, y = START_FLAT_Y, rotationY = 0) {
+  const g = new THREE.Group();
+  const frameMat = new THREE.MeshStandardMaterial({
+    color: 0x59636f,
+    roughness: 0.78,
+    metalness: 0.22,
+  });
+  const chamberMat = new THREE.MeshStandardMaterial({
+    color: 0x9fd6c3,
+    roughness: 0.48,
+    metalness: 0.08,
+    emissive: 0x3a8b6a,
+    emissiveIntensity: 0.18,
+  });
+  const accentMat = new THREE.MeshStandardMaterial({
+    color: 0xc6ccd6,
+    roughness: 0.32,
+    metalness: 0.36,
+  });
+
+  const base = new THREE.Mesh(
+    new THREE.BoxGeometry(0.92, 0.28, 0.64),
+    frameMat
+  );
+  base.position.y = 0.14;
+  g.add(base);
+
+  const chamber = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.16, 0.2, 0.52, 18),
+    chamberMat
+  );
+  chamber.position.set(-0.18, 0.48, 0);
+  g.add(chamber);
+
+  const funnel = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.08, 0.18, 0.24, 16),
+    accentMat
+  );
+  funnel.position.set(-0.18, 0.86, 0);
+  g.add(funnel);
+
+  const grinder = new THREE.Mesh(
+    new THREE.BoxGeometry(0.28, 0.36, 0.28),
+    accentMat
+  );
+  grinder.position.set(0.2, 0.4, 0);
+  g.add(grinder);
+
+  const pipe = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.04, 0.04, 0.48, 12),
+    accentMat
+  );
+  pipe.rotation.z = Math.PI * 0.5;
+  pipe.position.set(0.02, 0.57, 0);
+  g.add(pipe);
+
+  const tray = new THREE.Mesh(
+    new THREE.BoxGeometry(0.38, 0.05, 0.24),
+    frameMat
+  );
+  tray.position.set(0.22, 0.14, 0);
+  g.add(tray);
+
+  const powderJar = buildPurifyPowderModel();
+  powderJar.scale.setScalar(0.72);
+  powderJar.position.set(0.24, 0.28, 0.14);
+  g.add(powderJar);
+
+  g.position.set(x, y, z);
+  g.rotation.y = rotationY;
+  scene.add(g);
+  interactables.push({
+    obj: g,
+    text: "E : 재련소 사용",
+    board: chamber,
+    type: "refinery",
+  });
   return g;
 }
 
@@ -7011,6 +7644,18 @@ function buildCampTestArea() {
     connector.rotation.set(0, pillar.ry * 0.65, 0);
     scene.add(connector);
   }
+
+  airPurifierStation = buildAirPurifierStation(
+    CAMP_MAP_X + 15.5,
+    CAMP_MAP_Z + campHalf - 8.8,
+    Math.PI
+  );
+
+  const caveAirCan = buildFreshAirCanisterModel();
+  caveAirCan.position.set(CAMP_MAP_X + 11.8, START_FLAT_Y, CAMP_MAP_Z + campHalf - 10.2);
+  caveAirCan.rotation.set(0, Math.PI * 0.22, 0.04);
+  scene.add(caveAirCan);
+  registerPickupItem(caveAirCan, "freshAirCanister", "E : 신선한 공기 캔 줍기");
 }
 
 function buildMapConnectorTunnel(startGate, endGate) {
@@ -7164,6 +7809,7 @@ window.addEventListener("keydown", (e) => {
       const msg =
         pickup.itemId === "pickaxe" ? HUD_MSG.PICKAXE_GET :
         pickup.itemId === "safetyHelmet" ? HUD_MSG.HELMET_GET :
+        pickup.itemId === "freshAirCanister" ? HUD_MSG.AIR_CAN_GET :
         `${def?.name ?? pickup.itemId} 획득!`;
       showUI(msg);
       lastMessageUntil = performance.now() + 900;
@@ -7191,6 +7837,18 @@ window.addEventListener("keydown", (e) => {
     void openNftBoardSelectionOverlay();
     return;
   }
+
+  if (activeInteractable?.type === "refinery") {
+    if (tryUseRefinery()) {
+      return;
+    }
+  }
+
+  if (activeInteractable?.type === "airPurifier") {
+    if (tryUseAirPurifier()) {
+      return;
+    }
+  }
   }
 
   if (k === "t" && DEV_PRESET_ENABLED) {
@@ -7198,6 +7856,12 @@ window.addEventListener("keydown", (e) => {
     showUI(torchEquipped ? "횃불 점화" : "횃불 소등", 900);
     lastMessageUntil = performance.now() + 900;
     return;
+  }
+
+  if (k === "r") {
+    if (useFreshAirCanister()) {
+      return;
+    }
   }
 
    // if (k === "p") {
@@ -7490,7 +8154,11 @@ function updateMovement(dt) {
     move.normalize();
     latestMoveDir.copy(move);
     const devSpeedMultiplier = DEV_PRESET_ENABLED ? 3 : 1;
-    const speed = (keys.shift ? 7.0 : 4.0) * devSpeedMultiplier;
+    const airMoveScalar =
+      isPollutedMap(currentMapId) && getMapPurificationValue(currentMapId) < 100 && playerAirCurrent <= 0
+        ? 0.12
+        : 1;
+    const speed = (keys.shift ? 7.0 : 4.0) * devSpeedMultiplier * airMoveScalar;
      
     const prevPos = player.position.clone();
     const delta = move.clone().multiplyScalar(speed * dt);
@@ -7790,6 +8458,7 @@ function animate() {
     lastAnnouncedMapId = currentMapId;
   }
   updateDynamicProps(dt);
+  updateAirSystem(rawDt);
   updateParticles(dt);
   updateRockHitReactions(rawDt);
   updateRockFadeIns(dt);
@@ -7875,7 +8544,11 @@ if (!hintText) {
 
 // 5) 표지판 근접 문구 (위 힌트가 없을 때만)
 if (!hintText && activeInteractable) {
-  hintText = activeInteractable.text;
+  hintText = activeInteractable.type === "airPurifier"
+    ? getAirPurifierHintText()
+    : activeInteractable.type === "refinery"
+      ? getRefineryHintText()
+      : activeInteractable.text;
 }
 
 if (!hintText && activeMapGate && !mapTransitionPending) {
@@ -7886,6 +8559,10 @@ if (!hintText && activeMapGate && !mapTransitionPending) {
   } else {
     hintText = activeMapGate.hint ?? "";
   }
+}
+
+if (!hintText && isPollutedMap(currentMapId) && hasItem("freshAirCanister") && playerAirCurrent < playerAirMax) {
+  hintText = "R : 신선한 공기 캔 사용";
 }
 
 // 6) 최종 출력

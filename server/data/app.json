@@ -4,7 +4,7 @@
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
       "nickname": "XC",
       "createdAt": "2026-04-30T08:26:16.091Z",
-      "lastLoginAt": "2026-05-03T09:03:17.285Z"
+      "lastLoginAt": "2026-05-04T10:31:25.779Z"
     }
   ],
   "nonces": [],
@@ -236,6 +236,66 @@
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
       "createdAt": "2026-05-03T09:03:17.285Z",
       "expiresAt": "2026-06-02T09:03:17.285Z"
+    },
+    {
+      "token": "0801bf7e-a0c1-4d0c-80d8-3b3766b2284c",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-03T10:44:32.352Z",
+      "expiresAt": "2026-06-02T10:44:32.352Z"
+    },
+    {
+      "token": "696a34a1-ef50-486b-bc1f-964290777fc9",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-03T10:54:13.235Z",
+      "expiresAt": "2026-06-02T10:54:13.235Z"
+    },
+    {
+      "token": "ecd3c84c-3583-431d-9999-c3cf844b268d",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-03T10:55:59.429Z",
+      "expiresAt": "2026-06-02T10:55:59.429Z"
+    },
+    {
+      "token": "655e11aa-58fe-4597-a8c8-55150ae53ef7",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-03T10:56:09.436Z",
+      "expiresAt": "2026-06-02T10:56:09.436Z"
+    },
+    {
+      "token": "1bab72b8-78eb-46b9-8e5f-fe0c75daf1c8",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-03T17:49:01.702Z",
+      "expiresAt": "2026-06-02T17:49:01.702Z"
+    },
+    {
+      "token": "d72306ad-9cbb-49bf-9faf-97f112b26693",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-03T17:49:23.761Z",
+      "expiresAt": "2026-06-02T17:49:23.761Z"
+    },
+    {
+      "token": "f5cafe87-15db-4fcf-9c68-452a242e62ff",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-04T10:03:47.749Z",
+      "expiresAt": "2026-06-03T10:03:47.749Z"
+    },
+    {
+      "token": "8a834ad3-dc42-40e3-9acb-55fe0545ea54",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-04T10:26:16.572Z",
+      "expiresAt": "2026-06-03T10:26:16.572Z"
+    },
+    {
+      "token": "58dc5dd5-9af1-42fb-864f-d9c32ba29875",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-04T10:28:42.520Z",
+      "expiresAt": "2026-06-03T10:28:42.520Z"
+    },
+    {
+      "token": "d230e4fb-36ac-4837-938a-40ef290d6b5c",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-04T10:31:25.779Z",
+      "expiresAt": "2026-06-03T10:31:25.779Z"
     }
   ],
   "playerSaves": [
@@ -245,26 +305,43 @@
         "version": 1,
         "mapId": "광산맵",
         "position": {
-          "x": 1.113,
-          "y": 0,
-          "z": 2.986
+          "x": -8.511,
+          "y": 0.168,
+          "z": 0.276
         },
-        "rotationY": 0.3013,
+        "rotationY": -0.2264,
         "inventory": {
           "slots": [
             {
               "kind": "item",
               "itemId": "pickaxe",
-              "count": 1
+              "count": 1,
+              "instanceId": "inv_mor20yaq_5"
             },
             {
               "kind": "item",
               "itemId": "safetyHelmet",
-              "count": 1
+              "count": 1,
+              "instanceId": "inv_mor20yaq_6"
             },
-            null,
-            null,
-            null,
+            {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "count": 1,
+              "instanceId": "inv_mor20yaq_7"
+            },
+            {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "count": 1,
+              "instanceId": "inv_mor20yaq_8"
+            },
+            {
+              "kind": "item",
+              "itemId": "stoneDust",
+              "count": 14,
+              "instanceId": "inv_mor20yaq_9"
+            },
             null,
             null,
             null,
@@ -297,19 +374,21 @@
           "equipped": {
             "head": {
               "kind": "item",
-              "itemId": "safetyHelmet"
+              "itemId": "safetyHelmet",
+              "instanceId": "inv_mor20yaq_6"
             },
             "body": null,
             "shoes": null,
             "tool": {
               "kind": "item",
-              "itemId": "pickaxe"
+              "itemId": "pickaxe",
+              "instanceId": "inv_mor20yaq_5"
             }
           }
         },
         "tutorial": {
           "currentStep": 5,
-          "minedRockCount": 29,
+          "minedRockCount": 41,
           "upgradeCount": 3,
           "completed": false,
           "archivedSteps": []
@@ -323,7 +402,7 @@
           "subtitle": "I call myself as a Digitalian, because I spend most of my daytime in digital world. My artwork captures my gaze in the digital world I live in as a landscape painting.\n\nArtwork 'DLP #00 concept' is a concept image of the DLP collection. DLP will show 12 artworks. The selling price of all artworks is 121% of the selling price of the previous works."
         }
       },
-      "updatedAt": "2026-05-03T09:04:03.748Z"
+      "updatedAt": "2026-05-04T10:31:41.859Z"
     }
   ]
 }
