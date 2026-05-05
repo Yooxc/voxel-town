@@ -4,7 +4,7 @@
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
       "nickname": "XC",
       "createdAt": "2026-04-30T08:26:16.091Z",
-      "lastLoginAt": "2026-05-04T10:31:25.779Z"
+      "lastLoginAt": "2026-05-05T02:44:12.022Z"
     }
   ],
   "nonces": [],
@@ -296,6 +296,24 @@
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
       "createdAt": "2026-05-04T10:31:25.779Z",
       "expiresAt": "2026-06-03T10:31:25.779Z"
+    },
+    {
+      "token": "32da1e4e-1b04-4750-8ae8-3e46cd6f2058",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-05T01:56:01.618Z",
+      "expiresAt": "2026-06-04T01:56:01.618Z"
+    },
+    {
+      "token": "8ee54a9b-c5a0-473a-9975-964e35ff0546",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-05T02:04:23.223Z",
+      "expiresAt": "2026-06-04T02:04:23.223Z"
+    },
+    {
+      "token": "2fca3723-991a-495f-8445-7b3b774f3477",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-05T02:44:12.022Z",
+      "expiresAt": "2026-06-04T02:44:12.022Z"
     }
   ],
   "playerSaves": [
@@ -305,43 +323,18 @@
         "version": 1,
         "mapId": "광산맵",
         "position": {
-          "x": -8.511,
-          "y": 0.168,
-          "z": 0.276
+          "x": 0,
+          "y": 0,
+          "z": 0
         },
-        "rotationY": -0.2264,
+        "rotationY": 0,
         "inventory": {
           "slots": [
-            {
-              "kind": "item",
-              "itemId": "pickaxe",
-              "count": 1,
-              "instanceId": "inv_mor20yaq_5"
-            },
-            {
-              "kind": "item",
-              "itemId": "safetyHelmet",
-              "count": 1,
-              "instanceId": "inv_mor20yaq_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "pickaxe",
-              "count": 1,
-              "instanceId": "inv_mor20yaq_7"
-            },
-            {
-              "kind": "item",
-              "itemId": "safetyHelmet",
-              "count": 1,
-              "instanceId": "inv_mor20yaq_8"
-            },
-            {
-              "kind": "item",
-              "itemId": "stoneDust",
-              "count": 14,
-              "instanceId": "inv_mor20yaq_9"
-            },
+            null,
+            null,
+            null,
+            null,
+            null,
             null,
             null,
             null,
@@ -368,41 +361,40 @@
             null,
             null
           ],
-          "pickaxeLevel": 3,
+          "pickaxeLevel": 0,
           "mineKeyIssued": false,
           "abandonedMineUnlocked": false,
+          "quickUse": {
+            "1": null,
+            "2": null,
+            "3": null,
+            "4": null,
+            "5": null
+          },
           "equipped": {
-            "head": {
-              "kind": "item",
-              "itemId": "safetyHelmet",
-              "instanceId": "inv_mor20yaq_6"
-            },
+            "head": null,
             "body": null,
             "shoes": null,
-            "tool": {
-              "kind": "item",
-              "itemId": "pickaxe",
-              "instanceId": "inv_mor20yaq_5"
-            }
+            "tool": null
           }
         },
         "tutorial": {
-          "currentStep": 5,
-          "minedRockCount": 41,
-          "upgradeCount": 3,
+          "currentStep": 0,
+          "minedRockCount": 0,
+          "upgradeCount": 0,
           "completed": false,
           "archivedSteps": []
         },
-        "displayBoard": {
-          "chainId": "0x1",
-          "contractAddress": "0x3aaa87fbe562ac659f9e657a8efe00b411a56273",
-          "tokenId": "1",
-          "name": "DLP#00_concept",
-          "image": "ipfs://Qmb3pSfANoA1qGzZXyshGPvadxLKBxjoWjxboUoYzGmt9Y/nft.png",
-          "subtitle": "I call myself as a Digitalian, because I spend most of my daytime in digital world. My artwork captures my gaze in the digital world I live in as a landscape painting.\n\nArtwork 'DLP #00 concept' is a concept image of the DLP collection. DLP will show 12 artworks. The selling price of all artworks is 121% of the selling price of the previous works."
-        }
+        "airSystem": {
+          "current": 100,
+          "max": 100,
+          "mapPurification": {
+            "폐광맵": 0
+          }
+        },
+        "displayBoard": null
       },
-      "updatedAt": "2026-05-04T10:31:41.859Z"
+      "updatedAt": "2026-05-05T02:44:46.411Z"
     }
   ]
 }

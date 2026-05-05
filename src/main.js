@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-const LAST_PATCHED_AT = "2026-05-04 20:26:34 KST";
+const LAST_PATCHED_AT = "2026-05-05 11:15:59 KST";
 
 const scene = new THREE.Scene();
 // ===== Atmosphere: Sky / Fog =====
@@ -16,6 +16,9 @@ scene.fog = new THREE.Fog(WORLD_FOG_COLOR, WORLD_FOG_NEAR, WORLD_FOG_FAR);
 
 const AIR_GAUGE_MAX = 100;
 const AIR_CANISTER_RESTORE_AMOUNT = 34;
+const AIR_RECOVERY_PER_SECOND = 1.1;
+const AIR_HUD_POSITION_KEY = "excit_air_hud_position_v1";
+const QUICK_USE_ALLOWED_KEYS = ["1", "2", "3", "4", "5"];
 const MAP_POLLUTION_CONFIG = {
   "폐광맵": {
     displayName: "폐광",
@@ -164,6 +167,7 @@ let nftExhibitOwnedTokensCache = {
   items: [],
   fetchedAt: 0,
 };
+let quickUseAssignState = null;
 
 const walletHud = document.createElement("div");
 walletHud.id = "walletHud";
@@ -238,7 +242,7 @@ airHudWrap.style.fontFamily = "system-ui, -apple-system, sans-serif";
 airHudWrap.style.fontSize = "12px";
 airHudWrap.style.lineHeight = "1.45";
 airHudWrap.style.userSelect = "none";
-airHudWrap.style.pointerEvents = "none";
+airHudWrap.style.pointerEvents = "auto";
 airHudWrap.style.zIndex = "1000001";
 airHudWrap.style.display = "none";
 uiLayer.appendChild(airHudWrap);
@@ -249,6 +253,7 @@ airHudTitle.style.fontWeight = "800";
 airHudTitle.style.letterSpacing = "0.06em";
 airHudTitle.style.opacity = "0.84";
 airHudTitle.style.marginBottom = "8px";
+airHudTitle.style.cursor = "grab";
 airHudWrap.appendChild(airHudTitle);
 
 const airHudValue = document.createElement("div");
@@ -307,6 +312,87 @@ playerSaveStatusBadge.style.transform = "translateY(4px)";
 playerSaveStatusBadge.style.transition = "opacity 180ms ease, transform 180ms ease, border-color 180ms ease";
 playerSaveStatusBadge.textContent = "";
 uiLayer.appendChild(playerSaveStatusBadge);
+
+let airHudDragState = null;
+
+function getAirHudStoredPosition() {
+  try {
+    const raw = localStorage.getItem(AIR_HUD_POSITION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!Number.isFinite(parsed?.left) || !Number.isFinite(parsed?.top)) return null;
+    return {
+      left: parsed.left,
+      top: parsed.top,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function clampAirHudPosition(left, top) {
+  const width = airHudWrap.offsetWidth || 214;
+  const height = airHudWrap.offsetHeight || 120;
+  return {
+    left: Math.min(Math.max(12, left), Math.max(12, window.innerWidth - width - 12)),
+    top: Math.min(Math.max(12, top), Math.max(12, window.innerHeight - height - 12)),
+  };
+}
+
+function applyAirHudPosition(left, top, { persist = true } = {}) {
+  const clamped = clampAirHudPosition(left, top);
+  airHudWrap.style.left = `${Math.round(clamped.left)}px`;
+  airHudWrap.style.top = `${Math.round(clamped.top)}px`;
+  airHudWrap.style.right = "auto";
+  airHudWrap.style.bottom = "auto";
+  if (!persist) return;
+  try {
+    localStorage.setItem(AIR_HUD_POSITION_KEY, JSON.stringify(clamped));
+  } catch {}
+}
+
+function restoreAirHudPosition() {
+  const saved = getAirHudStoredPosition();
+  if (!saved) return;
+  applyAirHudPosition(saved.left, saved.top, { persist: false });
+}
+
+function handleAirHudPointerMove(event) {
+  if (!airHudDragState) return;
+  applyAirHudPosition(
+    event.clientX - airHudDragState.offsetX,
+    event.clientY - airHudDragState.offsetY
+  );
+}
+
+function endAirHudDrag() {
+  if (!airHudDragState) return;
+  airHudDragState = null;
+  airHudTitle.style.cursor = "grab";
+  window.removeEventListener("pointermove", handleAirHudPointerMove);
+  window.removeEventListener("pointerup", endAirHudDrag);
+}
+
+airHudTitle.addEventListener("pointerdown", (event) => {
+  if (event.button !== 0) return;
+  const rect = airHudWrap.getBoundingClientRect();
+  airHudDragState = {
+    offsetX: event.clientX - rect.left,
+    offsetY: event.clientY - rect.top,
+  };
+  airHudTitle.style.cursor = "grabbing";
+  window.addEventListener("pointermove", handleAirHudPointerMove);
+  window.addEventListener("pointerup", endAirHudDrag);
+  event.preventDefault();
+});
+
+window.addEventListener("resize", () => {
+  const currentLeft = parseFloat(airHudWrap.style.left) || 16;
+  const currentTop = parseFloat(airHudWrap.style.top) || 214;
+  applyAirHudPosition(currentLeft, currentTop);
+});
+
+restoreAirHudPosition();
 
 const walletLoginOverlay = document.createElement("div");
 walletLoginOverlay.id = "walletLoginOverlay";
@@ -2093,6 +2179,18 @@ window.addEventListener("keydown", (e) => {
   }
 });
 
+window.addEventListener("keydown", (e) => {
+  if (!quickUseAssignState) return;
+  const key = e.key.toLowerCase();
+  if (key === "escape") {
+    cancelQuickUseAssignment();
+    return;
+  }
+  if (!QUICK_USE_ALLOWED_KEYS.includes(key)) return;
+  e.preventDefault();
+  commitQuickUseAssignment(key);
+});
+
 walletHudLogoutBtn.addEventListener("click", async () => {
   if (isServerBackedWalletSession()) {
     try {
@@ -2468,6 +2566,19 @@ forgeHeaderNote.style.fontWeight = "700";
 forgeHeaderNote.style.color = "rgba(70,70,70,0.78)";
 forgeHeader.appendChild(forgeHeaderNote);
 
+const forgeCloseBtn = document.createElement("button");
+forgeCloseBtn.textContent = "닫기";
+forgeCloseBtn.style.minWidth = "74px";
+forgeCloseBtn.style.border = "1px solid rgba(0,0,0,0.18)";
+forgeCloseBtn.style.borderRadius = "10px";
+forgeCloseBtn.style.padding = "8px 10px";
+forgeCloseBtn.style.fontSize = "13px";
+forgeCloseBtn.style.fontWeight = "700";
+forgeCloseBtn.style.cursor = "pointer";
+forgeCloseBtn.style.background = "rgba(255,255,255,0.92)";
+forgeCloseBtn.style.color = "#333";
+forgeHeader.appendChild(forgeCloseBtn);
+
 const forgeBody = document.createElement("div");
 forgeBody.style.padding = "18px";
 forgeBody.style.display = "grid";
@@ -2560,23 +2671,190 @@ forgeNotice.style.lineHeight = "1.5";
 forgeNotice.style.color = "#444";
 forgeBody.appendChild(forgeNotice);
 
-const forgeActions = document.createElement("div");
-forgeActions.style.display = "flex";
-forgeActions.style.justifyContent = "flex-end";
-forgeActions.style.gap = "8px";
-forgeBody.appendChild(forgeActions);
+const refineryOverlay = document.createElement("div");
+refineryOverlay.id = "refineryOverlay";
+refineryOverlay.style.position = "fixed";
+refineryOverlay.style.inset = "0";
+refineryOverlay.style.background = "rgba(20, 24, 30, 0.3)";
+refineryOverlay.style.backdropFilter = "blur(3px)";
+refineryOverlay.style.display = "none";
+refineryOverlay.style.pointerEvents = "auto";
+refineryOverlay.style.zIndex = "1000001";
+uiLayer.appendChild(refineryOverlay);
 
-const forgeCloseBtn = document.createElement("button");
-forgeCloseBtn.textContent = "닫기";
-forgeCloseBtn.style.minWidth = "96px";
-forgeCloseBtn.style.border = "1px solid rgba(0,0,0,0.18)";
-forgeCloseBtn.style.borderRadius = "10px";
-forgeCloseBtn.style.padding = "10px 12px";
-forgeCloseBtn.style.fontSize = "14px";
-forgeCloseBtn.style.cursor = "pointer";
-forgeCloseBtn.style.background = "rgba(255,255,255,0.9)";
-forgeCloseBtn.style.color = "#333";
-forgeActions.appendChild(forgeCloseBtn);
+const refineryWin = document.createElement("div");
+refineryWin.id = "refineryWindow";
+refineryWin.style.position = "fixed";
+refineryWin.style.left = "50%";
+refineryWin.style.top = "50%";
+refineryWin.style.transform = "translate(-50%, -50%)";
+refineryWin.style.width = "min(700px, calc(100vw - 36px))";
+refineryWin.style.minHeight = "420px";
+refineryWin.style.background = "rgba(235, 235, 235, 0.96)";
+refineryWin.style.border = "1px solid rgba(0,0,0,0.25)";
+refineryWin.style.borderRadius = "14px";
+refineryWin.style.boxShadow = "0 18px 42px rgba(0,0,0,0.28)";
+refineryWin.style.backdropFilter = "blur(6px)";
+refineryWin.style.boxSizing = "border-box";
+refineryWin.style.display = "none";
+refineryWin.style.pointerEvents = "auto";
+refineryWin.style.userSelect = "none";
+refineryWin.style.zIndex = "1000002";
+refineryWin.style.overflow = "hidden";
+uiLayer.appendChild(refineryWin);
+
+const refineryHeader = document.createElement("div");
+refineryHeader.style.display = "flex";
+refineryHeader.style.alignItems = "center";
+refineryHeader.style.justifyContent = "flex-start";
+refineryHeader.style.gap = "12px";
+refineryHeader.style.padding = "12px 14px";
+refineryHeader.style.borderBottom = "1px solid rgba(0,0,0,0.15)";
+refineryHeader.style.background = "rgba(255,255,255,0.7)";
+refineryWin.appendChild(refineryHeader);
+
+const refineryTitle = document.createElement("div");
+refineryTitle.textContent = "재련소";
+refineryTitle.style.fontFamily = "system-ui, -apple-system, sans-serif";
+refineryTitle.style.fontSize = "18px";
+refineryTitle.style.fontWeight = "800";
+refineryTitle.style.color = "#222";
+refineryTitle.style.marginRight = "auto";
+refineryHeader.appendChild(refineryTitle);
+
+const refineryHeaderNote = document.createElement("div");
+refineryHeaderNote.textContent = "재료를 가공해 새로운 아이템을 만듭니다";
+refineryHeaderNote.style.fontFamily = "system-ui, -apple-system, sans-serif";
+refineryHeaderNote.style.fontSize = "12px";
+refineryHeaderNote.style.fontWeight = "700";
+refineryHeaderNote.style.color = "rgba(70,70,70,0.78)";
+refineryHeader.appendChild(refineryHeaderNote);
+
+const refineryCloseBtn = document.createElement("button");
+refineryCloseBtn.textContent = "닫기";
+refineryCloseBtn.style.minWidth = "74px";
+refineryCloseBtn.style.border = "1px solid rgba(0,0,0,0.18)";
+refineryCloseBtn.style.borderRadius = "10px";
+refineryCloseBtn.style.padding = "8px 10px";
+refineryCloseBtn.style.fontSize = "13px";
+refineryCloseBtn.style.fontWeight = "700";
+refineryCloseBtn.style.cursor = "pointer";
+refineryCloseBtn.style.background = "rgba(255,255,255,0.92)";
+refineryCloseBtn.style.color = "#333";
+refineryHeader.appendChild(refineryCloseBtn);
+
+const refineryBody = document.createElement("div");
+refineryBody.style.padding = "18px";
+refineryBody.style.display = "grid";
+refineryBody.style.gridTemplateColumns = "220px minmax(0, 1fr)";
+refineryBody.style.gap = "16px";
+refineryWin.appendChild(refineryBody);
+
+const refineryListPanel = document.createElement("div");
+refineryListPanel.style.display = "flex";
+refineryListPanel.style.flexDirection = "column";
+refineryListPanel.style.gap = "10px";
+refineryBody.appendChild(refineryListPanel);
+
+const refineryListTitle = document.createElement("div");
+refineryListTitle.textContent = "재련 목록";
+refineryListTitle.style.fontFamily = "system-ui, -apple-system, sans-serif";
+refineryListTitle.style.fontSize = "12px";
+refineryListTitle.style.fontWeight = "800";
+refineryListTitle.style.color = "rgba(70,70,70,0.76)";
+refineryListPanel.appendChild(refineryListTitle);
+
+const refineryRecipeList = document.createElement("div");
+refineryRecipeList.style.display = "flex";
+refineryRecipeList.style.flexDirection = "column";
+refineryRecipeList.style.gap = "8px";
+refineryListPanel.appendChild(refineryRecipeList);
+
+const refineryDetailPanel = document.createElement("div");
+refineryDetailPanel.style.display = "grid";
+refineryDetailPanel.style.gridTemplateRows = "auto auto 1fr auto";
+refineryDetailPanel.style.gap = "14px";
+refineryBody.appendChild(refineryDetailPanel);
+
+const refineryHero = document.createElement("div");
+refineryHero.style.display = "grid";
+refineryHero.style.gridTemplateColumns = "1fr 120px 1fr";
+refineryHero.style.alignItems = "center";
+refineryHero.style.gap = "14px";
+refineryDetailPanel.appendChild(refineryHero);
+
+const refineryInputCard = document.createElement("div");
+const refineryOutputCard = document.createElement("div");
+for (const card of [refineryInputCard, refineryOutputCard]) {
+  card.style.minHeight = "156px";
+  card.style.borderRadius = "12px";
+  card.style.background = "rgba(255,255,255,0.95)";
+  card.style.border = "1px solid rgba(0,0,0,0.18)";
+  card.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.8)";
+  card.style.padding = "14px";
+  card.style.boxSizing = "border-box";
+  card.style.fontFamily = "system-ui, -apple-system, sans-serif";
+}
+refineryHero.appendChild(refineryInputCard);
+
+const refineryArrowCard = document.createElement("div");
+refineryArrowCard.style.minHeight = "156px";
+refineryArrowCard.style.borderRadius = "14px";
+refineryArrowCard.style.background = "linear-gradient(180deg, rgba(255,194,105,0.22), rgba(255,156,64,0.12))";
+refineryArrowCard.style.border = "1px solid rgba(255,162,68,0.38)";
+refineryArrowCard.style.boxShadow = "0 0 0 3px rgba(255,186,90,0.14), inset 0 1px 0 rgba(255,255,255,0.7)";
+refineryArrowCard.style.display = "flex";
+refineryArrowCard.style.flexDirection = "column";
+refineryArrowCard.style.alignItems = "center";
+refineryArrowCard.style.justifyContent = "center";
+refineryArrowCard.style.padding = "10px";
+refineryHero.appendChild(refineryArrowCard);
+
+const refineryArrowLabel = document.createElement("div");
+refineryArrowLabel.textContent = "재련 결과";
+refineryArrowLabel.style.fontFamily = "system-ui, -apple-system, sans-serif";
+refineryArrowLabel.style.fontSize = "12px";
+refineryArrowLabel.style.fontWeight = "700";
+refineryArrowLabel.style.color = "rgba(88,66,34,0.76)";
+refineryArrowCard.appendChild(refineryArrowLabel);
+
+const refineryArrowValue = document.createElement("button");
+refineryArrowValue.type = "button";
+refineryArrowValue.textContent = "재련하기";
+refineryArrowValue.style.marginTop = "12px";
+refineryArrowValue.style.minWidth = "100px";
+refineryArrowValue.style.border = "1px solid rgba(150,90,20,0.35)";
+refineryArrowValue.style.borderRadius = "12px";
+refineryArrowValue.style.padding = "14px 12px";
+refineryArrowValue.style.fontFamily = "system-ui, -apple-system, sans-serif";
+refineryArrowValue.style.fontSize = "20px";
+refineryArrowValue.style.fontWeight = "900";
+refineryArrowValue.style.color = "#7a4a12";
+refineryArrowValue.style.background = "rgba(255,255,255,0.82)";
+refineryArrowValue.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.8)";
+refineryArrowValue.style.cursor = "pointer";
+refineryArrowValue.style.transition = "transform 90ms ease, box-shadow 90ms ease, background 90ms ease";
+refineryArrowCard.appendChild(refineryArrowValue);
+
+refineryHero.appendChild(refineryOutputCard);
+
+const refineryInfo = document.createElement("div");
+refineryInfo.style.display = "grid";
+refineryInfo.style.gridTemplateColumns = "repeat(2, minmax(0, 1fr))";
+refineryInfo.style.gap = "10px";
+refineryDetailPanel.appendChild(refineryInfo);
+
+const refineryNotice = document.createElement("div");
+refineryNotice.style.padding = "12px 14px";
+refineryNotice.style.borderRadius = "10px";
+refineryNotice.style.background = "rgba(255,255,255,0.9)";
+refineryNotice.style.border = "1px solid rgba(0,0,0,0.12)";
+refineryNotice.style.fontFamily = "system-ui, -apple-system, sans-serif";
+refineryNotice.style.fontSize = "13px";
+refineryNotice.style.lineHeight = "1.5";
+refineryNotice.style.color = "#444";
+refineryDetailPanel.appendChild(refineryNotice);
+
 
 // 상단 탭 바
 const tabBar = document.createElement("div");
@@ -2925,6 +3203,46 @@ function renderInventoryWindow() {
      });
         }
 
+      if (activeTab === "cons" && isQuickUseAssignableEntry(item)) {
+        const assignedKey = getAssignedQuickUseKeyForEntry(item);
+        const isAssignPending = isQuickUseAssignPendingForEntry(item);
+        const quickBtn = document.createElement("button");
+        quickBtn.type = "button";
+        quickBtn.textContent = assignedKey || "";
+        quickBtn.style.position = "absolute";
+        quickBtn.style.left = "4px";
+        quickBtn.style.top = "4px";
+        quickBtn.style.width = "18px";
+        quickBtn.style.height = "18px";
+        quickBtn.style.padding = "0";
+        quickBtn.style.borderRadius = "999px";
+        quickBtn.style.border = isAssignPending || assignedKey
+          ? "1px solid rgba(255,160,60,0.95)"
+          : "1px solid rgba(0,0,0,0.16)";
+        quickBtn.style.background = isAssignPending || assignedKey
+          ? "rgba(255,160,60,0.92)"
+          : "rgba(255,255,255,0.88)";
+        quickBtn.style.color = isAssignPending || assignedKey ? "#2f1700" : "#3f4650";
+        quickBtn.style.fontSize = "10px";
+        quickBtn.style.fontWeight = "800";
+        quickBtn.style.cursor = "pointer";
+        quickBtn.style.zIndex = "2";
+        quickBtn.title = isAssignPending
+          ? "1~5 중 원하는 키를 누르세요"
+          : assignedKey
+            ? `${assignedKey} 단축 해제`
+            : "단축키 지정";
+        quickBtn.addEventListener("click", (event) => {
+          event.stopPropagation();
+          if (assignedKey && !isAssignPending) {
+            clearQuickUseAssignmentForEntry(item);
+            return;
+          }
+          beginQuickUseAssignment(item);
+        });
+        slot.appendChild(quickBtn);
+      }
+
       if (isNftInventoryEntry(item)) {
         const nftBadge = document.createElement("div");
         nftBadge.textContent = "NFT";
@@ -3029,6 +3347,7 @@ questArchiveToggleBtn.addEventListener("click", (e) => {
 window.addEventListener("keydown", (e) => {
   if (!canPlayGame()) return;
   if (nftExhibitSelectionOpen) return;
+  if (quickUseAssignState) return;
   // 입력창 없으니 간단 처리
   const key = e.key.toLowerCase();
   if (key === "i") {
@@ -4174,6 +4493,94 @@ function getInventoryEntryTooltipText(entry) {
   return getItemTooltipText(getSlotItemId(entry), getSlotItemCount(entry));
 }
 
+function createQuickUseBinding(itemId, extra = {}) {
+  return itemId
+    ? {
+        kind: "item",
+        itemId,
+        ...extra,
+      }
+    : null;
+}
+
+function normalizeQuickUseBinding(rawBinding) {
+  if (!rawBinding) return null;
+  if (typeof rawBinding === "string") {
+    return createQuickUseBinding(rawBinding);
+  }
+  if (typeof rawBinding === "object" && rawBinding.itemId) {
+    return createQuickUseBinding(rawBinding.itemId, rawBinding);
+  }
+  return null;
+}
+
+function getQuickUseBinding(key) {
+  return inventory.quickUse[key] ?? null;
+}
+
+function getQuickUseItemId(key) {
+  return getQuickUseBinding(key)?.itemId ?? null;
+}
+
+function isQuickUseAssignableItemId(itemId) {
+  return itemId === "freshAirCanister";
+}
+
+function isQuickUseAssignableEntry(entry) {
+  const itemId = getSlotItemId(entry);
+  return getInventoryEntryCategory(entry) === "cons" && isQuickUseAssignableItemId(itemId);
+}
+
+function isEntryAssignedToQuickUse(entry, key) {
+  return getQuickUseItemId(key) === getSlotItemId(entry);
+}
+
+function getAssignedQuickUseKeyForEntry(entry) {
+  const itemId = getSlotItemId(entry);
+  for (const key of QUICK_USE_ALLOWED_KEYS) {
+    if (getQuickUseItemId(key) === itemId) return key;
+  }
+  return "";
+}
+
+function clearQuickUseBindingForItemId(itemId) {
+  for (const key of QUICK_USE_ALLOWED_KEYS) {
+    if (getQuickUseItemId(key) === itemId) {
+      inventory.quickUse[key] = null;
+    }
+  }
+}
+
+function assignQuickUseKeyToItem(itemId, key) {
+  if (!itemId || !QUICK_USE_ALLOWED_KEYS.includes(key)) return false;
+  clearQuickUseBindingForItemId(itemId);
+  inventory.quickUse[key] = createQuickUseBinding(itemId);
+  return true;
+}
+
+function getQuickUseKeyForItemId(itemId) {
+  for (const key of QUICK_USE_ALLOWED_KEYS) {
+    if (getQuickUseItemId(key) === itemId) return key;
+  }
+  return "";
+}
+
+function isQuickUseAssignPendingForEntry(entry) {
+  return quickUseAssignState?.itemId === getSlotItemId(entry);
+}
+
+function pruneQuickUseBindings() {
+  for (const key of Object.keys(inventory.quickUse)) {
+    const itemId = getQuickUseItemId(key);
+    if (itemId && !hasItem(itemId)) {
+      inventory.quickUse[key] = null;
+    }
+  }
+  if (quickUseAssignState && !hasItem(quickUseAssignState.itemId)) {
+    quickUseAssignState = null;
+  }
+}
+
 const PICKAXE_UPGRADE_LEVELS = [
   { level: 0, miningPowerMin: 0.9, miningPowerMax: 1.1, bonusDropChance: 0.0, swingDuration: 0.28, cost: 0, successChance: 1.0 },
   { level: 1, miningPowerMin: 1.0, miningPowerMax: 1.15, bonusDropChance: 0.0, swingDuration: 0.265, cost: 3, successChance: 1.0 },
@@ -4263,6 +4670,13 @@ function getEquippedMiningPower() {
   pickaxeLevel: 0,
   mineKeyIssued: false,
   abandonedMineUnlocked: false,
+  quickUse: {
+    "1": null,
+    "2": null,
+    "3": null,
+    "4": null,
+    "5": null,
+  },
   equipped: {
     head: null,
     body: null,
@@ -4321,6 +4735,7 @@ function getEquippedMiningPower() {
 
   slot.count -= count;
   if (slot.count <= 0) inventory.slots[idx] = null;
+  pruneQuickUseBindings();
   return true;
     }
 
@@ -4442,6 +4857,52 @@ function getEquippedMiningPower() {
   updateInventoryUI();
   refreshQuestProgress();
     }
+
+function beginQuickUseAssignment(entry) {
+  if (!isQuickUseAssignableEntry(entry)) return;
+  quickUseAssignState = {
+    itemId: getSlotItemId(entry),
+  };
+  showUI("단축키를 눌러 지정하세요 (1~5, ESC 취소)", 1200);
+  lastMessageUntil = performance.now() + 1200;
+  updateInventoryUI();
+}
+
+function cancelQuickUseAssignment() {
+  if (!quickUseAssignState) return;
+  quickUseAssignState = null;
+  updateInventoryUI();
+}
+
+function clearQuickUseAssignmentForEntry(entry) {
+  if (!isQuickUseAssignableEntry(entry)) return;
+  const itemId = getSlotItemId(entry);
+  const assignedKey = getQuickUseKeyForItemId(itemId);
+  if (!assignedKey) return;
+  inventory.quickUse[assignedKey] = null;
+  if (quickUseAssignState?.itemId === itemId) {
+    quickUseAssignState = null;
+  }
+  showUI(`${ITEM_DEFS[itemId]?.name ?? itemId} 단축 해제`, 900);
+  lastMessageUntil = performance.now() + 900;
+  updateInventoryUI();
+}
+
+function commitQuickUseAssignment(key) {
+  if (!quickUseAssignState) return false;
+  const itemId = quickUseAssignState.itemId;
+  if (!QUICK_USE_ALLOWED_KEYS.includes(key) || !hasItem(itemId)) {
+    quickUseAssignState = null;
+    updateInventoryUI();
+    return false;
+  }
+  assignQuickUseKeyToItem(itemId, key);
+  quickUseAssignState = null;
+  showUI(`${ITEM_DEFS[itemId]?.name ?? itemId} ${key} 단축 지정`, 900);
+  lastMessageUntil = performance.now() + 900;
+  updateInventoryUI();
+  return true;
+}
 
     function unequipSlot(slotId) {
   const equippedRef = getEquippedItemRef(slotId);
@@ -4597,12 +5058,14 @@ function getEquippedMiningPower() {
   invEl.style.zIndex = "9999";
   uiLayer.appendChild(invEl);
   invEl.style.display = "none";
-  function updateInventoryUI() {
+function updateInventoryUI() {
+  pruneQuickUseBindings();
   // (기존 작은 HUD는 숨겼으니 여기서 invEl 텍스트는 안 만듦)
   refreshEquippedPickaxeModel();
   updateEquippedVisual();
   renderEquipmentWindow();
   if (forgeWin.style.display !== "none") renderForgeWindow();
+  if (refineryWin.style.display !== "none") renderRefineryWindow();
 
   // 인벤 창이 열려있으면 슬롯 표시 갱신
   if (typeof invOpen !== "undefined" && invOpen) renderInventoryWindow();
@@ -5143,6 +5606,11 @@ function getCurrentAirDrainPerSecond() {
   return cfg.drainPerSecondAtZeroPurify * Math.pow(1 - purifyRatio, 1.1);
 }
 
+function canRecoverAirInMap(mapId = currentMapId) {
+  if (!isPollutedMap(mapId)) return true;
+  return getMapPurificationValue(mapId) >= 100;
+}
+
 function updateAirHud() {
   if (!canPlayGame()) {
     airHudWrap.style.display = "none";
@@ -5161,7 +5629,7 @@ function updateAirHud() {
         : "linear-gradient(90deg, #5be7ff 0%, #a2fff0 100%)";
 
   if (!isPollutedMap()) {
-    airHudStatus.textContent = "현재 맵은 호흡 가능한 구역입니다.";
+    airHudStatus.textContent = `현재 맵은 호흡 가능한 구역입니다. 초당 ${AIR_RECOVERY_PER_SECOND.toFixed(1)} 공기 회복`;
     airHudPurify.textContent = "";
     return;
   }
@@ -5169,7 +5637,7 @@ function updateAirHud() {
   const purify = getMapPurificationValue(currentMapId);
   const drain = getCurrentAirDrainPerSecond();
   airHudStatus.textContent = purify >= 100
-    ? "정화 완료: 공기 소모 없음"
+    ? `정화 완료: 초당 ${AIR_RECOVERY_PER_SECOND.toFixed(1)} 공기 회복`
     : `오염 구역: 초당 ${drain.toFixed(2)} 공기 소모`;
   airHudPurify.textContent = `${getMapPollutionConfig(currentMapId)?.displayName ?? currentMapId} 정화율 ${purify}%`;
 }
@@ -5200,22 +5668,35 @@ function useFreshAirCanister() {
   return true;
 }
 
+function useQuickUseItem(key) {
+  const itemId = getQuickUseItemId(key);
+  if (!itemId) return false;
+
+  if (itemId === "freshAirCanister") {
+    return useFreshAirCanister();
+  }
+
+  return false;
+}
+
 function getDefaultRefineryRecipe() {
   return REFINERY_RECIPES.purifyPowder;
 }
 
-function getRefineryHintText() {
-  const recipe = getDefaultRefineryRecipe();
-  if (!recipe) return "E : 재련";
-  const inputName = ITEM_DEFS[recipe.inputItemId]?.name ?? recipe.inputItemId;
-  if (getItemCount(recipe.inputItemId) < recipe.inputCount) {
-    return `${inputName} ${recipe.inputCount}개 필요`;
-  }
-  return `E : ${recipe.label} 재련 (${inputName} ${recipe.inputCount}개)`;
+function getRefineryRecipeEntries() {
+  return Object.values(REFINERY_RECIPES);
 }
 
-function tryUseRefinery() {
-  const recipe = getDefaultRefineryRecipe();
+function getSelectedRefineryRecipe() {
+  return REFINERY_RECIPES[refinerySelectedRecipeId] ?? getDefaultRefineryRecipe();
+}
+
+function getRefineryHintText() {
+  if (refineryOpen) return "재련대 이용 중";
+  return "E : 재련대 사용";
+}
+
+function tryUseRefineryRecipe(recipe = getSelectedRefineryRecipe()) {
   if (!recipe) return false;
 
   const inputName = ITEM_DEFS[recipe.inputItemId]?.name ?? recipe.inputItemId;
@@ -5240,11 +5721,24 @@ function tryUseRefinery() {
     return true;
   }
 
+  refinerySuccessMessage = `${outputName} ${recipe.outputCount}개 재련 완료`;
+  refinerySuccessUntil = performance.now() + 1000;
   updateInventoryUI();
   schedulePlayerSaveSync(true);
-  showUI(`${outputName} ${recipe.outputCount}개 재련 완료`, 1000);
+  showUI(refinerySuccessMessage, 1000);
   lastMessageUntil = performance.now() + 1000;
+  if (refineryOpen) {
+    renderRefineryWindow();
+    setTimeout(() => {
+      if (refineryOpen) renderRefineryWindow();
+    }, 1020);
+  }
   return true;
+}
+
+function getRefineryDistance() {
+  if (!refineryStation?.parent) return Infinity;
+  return refineryStation.position.distanceTo(player.position);
 }
 
 function getAirPurifierHintText() {
@@ -5294,7 +5788,9 @@ function updateAirSystem(dt) {
     return;
   }
 
-  if (isPollutedMap(currentMapId)) {
+  if (canRecoverAirInMap(currentMapId)) {
+    playerAirCurrent = Math.min(playerAirMax, playerAirCurrent + AIR_RECOVERY_PER_SECOND * dt);
+  } else if (isPollutedMap(currentMapId)) {
     const purify = getMapPurificationValue(currentMapId);
     if (purify < 100) {
       playerAirCurrent = Math.max(0, playerAirCurrent - getCurrentAirDrainPerSecond() * dt);
@@ -5310,6 +5806,10 @@ function updateAirSystem(dt) {
 let mapTransitionLockUntil = 0;
 let mapTransitionPending = null;
 let forgeOpen = false;
+let refineryOpen = false;
+let refinerySelectedRecipeId = "purifyPowder";
+let refinerySuccessUntil = 0;
+let refinerySuccessMessage = "";
 const FORGE_UPGRADE_DELAY_MS = 1050;
 let forgePendingUpgrade = null;
 let forgeLastResult = null;
@@ -5462,10 +5962,208 @@ function getForgeDistance() {
 }
 
 function setForgeOpen(v) {
+  if (v && refineryOpen) {
+    setRefineryOpen(false);
+  }
   forgeOpen = v;
   forgeOverlay.style.display = forgeOpen ? "block" : "none";
   forgeWin.style.display = forgeOpen ? "block" : "none";
   if (forgeOpen) renderForgeWindow();
+}
+
+function renderRefineryItemCard(card, heading, itemId, count, description, accentColor = "#2f1700") {
+  card.innerHTML = "";
+
+  const title = document.createElement("div");
+  title.textContent = heading;
+  title.style.fontSize = "12px";
+  title.style.fontWeight = "700";
+  title.style.color = "rgba(70,70,70,0.76)";
+  title.style.marginBottom = "8px";
+  card.appendChild(title);
+
+  const hero = document.createElement("div");
+  hero.style.display = "flex";
+  hero.style.alignItems = "center";
+  hero.style.gap = "12px";
+  card.appendChild(hero);
+
+  const visualWrap = document.createElement("div");
+  visualWrap.style.width = "64px";
+  visualWrap.style.height = "64px";
+  visualWrap.style.borderRadius = "12px";
+  visualWrap.style.background = "linear-gradient(180deg, rgba(246,246,246,0.96), rgba(224,224,224,0.9))";
+  visualWrap.style.border = "1px solid rgba(0,0,0,0.12)";
+  visualWrap.style.display = "flex";
+  visualWrap.style.alignItems = "center";
+  visualWrap.style.justifyContent = "center";
+  visualWrap.style.flex = "0 0 auto";
+  visualWrap.appendChild(createItemVisualElement(itemId, { size: 50 }));
+  hero.appendChild(visualWrap);
+
+  const textWrap = document.createElement("div");
+  textWrap.style.minWidth = "0";
+  hero.appendChild(textWrap);
+
+  const name = document.createElement("div");
+  name.textContent = ITEM_DEFS[itemId]?.name ?? itemId;
+  name.style.fontSize = "19px";
+  name.style.fontWeight = "900";
+  name.style.color = "#222";
+  textWrap.appendChild(name);
+
+  const countLabel = document.createElement("div");
+  countLabel.textContent = `수량 x${count}`;
+  countLabel.style.marginTop = "6px";
+  countLabel.style.fontSize = "13px";
+  countLabel.style.fontWeight = "800";
+  countLabel.style.color = accentColor;
+  textWrap.appendChild(countLabel);
+
+  const detail = document.createElement("div");
+  detail.style.marginTop = "12px";
+  detail.style.fontSize = "13px";
+  detail.style.lineHeight = "1.6";
+  detail.style.color = "#333";
+  detail.textContent = description;
+  card.appendChild(detail);
+}
+
+function setRefineryOpen(v) {
+  if (v && forgeOpen) {
+    setForgeOpen(false);
+  }
+  refineryOpen = v;
+  refineryOverlay.style.display = refineryOpen ? "block" : "none";
+  refineryWin.style.display = refineryOpen ? "block" : "none";
+  if (!refineryOpen) {
+    refinerySuccessUntil = 0;
+    refinerySuccessMessage = "";
+  }
+  if (refineryOpen) {
+    setInvOpen(false);
+    setQuestOpen(false);
+    renderRefineryWindow();
+  }
+}
+
+function renderRefineryWindow() {
+  const recipes = getRefineryRecipeEntries();
+  const selectedRecipe = getSelectedRefineryRecipe();
+  const hasRecipe = Boolean(selectedRecipe);
+
+  refineryRecipeList.innerHTML = "";
+  for (const recipe of recipes) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    const isActive = recipe.id === selectedRecipe?.id;
+    const inputName = ITEM_DEFS[recipe.inputItemId]?.name ?? recipe.inputItemId;
+    btn.style.width = "100%";
+    btn.style.textAlign = "left";
+    btn.style.border = isActive ? "1px solid rgba(255,140,0,0.78)" : "1px solid rgba(0,0,0,0.14)";
+    btn.style.borderRadius = "12px";
+    btn.style.padding = "12px";
+    btn.style.background = isActive
+      ? "linear-gradient(180deg, rgba(255,222,182,0.92), rgba(255,240,220,0.92))"
+      : "rgba(255,255,255,0.94)";
+    btn.style.cursor = "pointer";
+    btn.innerHTML = `
+      <div style="font-size:14px;font-weight:800;color:#222;">${recipe.label}</div>
+      <div style="margin-top:6px;font-size:12px;line-height:1.5;color:#555;">${inputName} ${recipe.inputCount}개 → ${ITEM_DEFS[recipe.outputItemId]?.name ?? recipe.outputItemId} ${recipe.outputCount}개</div>
+    `;
+    btn.addEventListener("click", () => {
+      refinerySelectedRecipeId = recipe.id;
+      renderRefineryWindow();
+    });
+    refineryRecipeList.appendChild(btn);
+  }
+
+  refineryTitle.textContent = hasRecipe ? `${selectedRecipe.label} 재련` : "재련소";
+
+  if (!hasRecipe) {
+    refineryInputCard.textContent = "";
+    refineryOutputCard.textContent = "";
+    refineryInfo.innerHTML = "";
+    refineryNotice.textContent = "아직 사용할 수 있는 재련 레시피가 없습니다.";
+    refineryArrowValue.disabled = true;
+    refineryArrowValue.style.opacity = "0.55";
+    refineryArrowValue.style.cursor = "default";
+    refineryArrowValue.style.background = "rgba(235,235,235,0.78)";
+    refineryArrowValue.textContent = "재련하기";
+    return;
+  }
+
+  const inputName = ITEM_DEFS[selectedRecipe.inputItemId]?.name ?? selectedRecipe.inputItemId;
+  const outputName = ITEM_DEFS[selectedRecipe.outputItemId]?.name ?? selectedRecipe.outputItemId;
+  const inputOwned = getItemCount(selectedRecipe.inputItemId);
+  const outputOwned = getItemCount(selectedRecipe.outputItemId);
+  const canCraft = inputOwned >= selectedRecipe.inputCount;
+  const successActive = refinerySuccessUntil > performance.now();
+
+  renderRefineryItemCard(
+    refineryInputCard,
+    "넣을 재료",
+    selectedRecipe.inputItemId,
+    selectedRecipe.inputCount,
+    `보유량 ${inputOwned}개 / 필요량 ${selectedRecipe.inputCount}개`,
+    canCraft ? "#2f6a1e" : "#8b2f2f"
+  );
+  renderRefineryItemCard(
+    refineryOutputCard,
+    "재련 결과",
+    selectedRecipe.outputItemId,
+    selectedRecipe.outputCount,
+    `${outputName}은 공기 정화탑에 사용할 수 있는 정화용 가공 분말입니다. 현재 보유량 ${outputOwned}개`,
+    "#7a4a12"
+  );
+
+  refineryInfo.innerHTML = "";
+  const infoCards = [
+    { label: "보유 재료", value: `${inputName} ${inputOwned}개` },
+    { label: "필요 재료", value: `${inputName} ${selectedRecipe.inputCount}개` },
+    { label: "결과물", value: `${outputName} ${selectedRecipe.outputCount}개` },
+    { label: "현재 보유", value: `${outputName} ${outputOwned}개` },
+    { label: "재련 가능", value: canCraft ? "가능" : "재료 부족" },
+  ];
+  for (const entry of infoCards) {
+    const card = document.createElement("div");
+    card.style.padding = "12px";
+    card.style.borderRadius = "10px";
+    card.style.background = "rgba(255,255,255,0.92)";
+    card.style.border = "1px solid rgba(0,0,0,0.12)";
+    card.innerHTML = `
+      <div style="font-size:12px;font-weight:700;color:rgba(70,70,70,0.74);margin-bottom:6px;">${entry.label}</div>
+      <div style="font-size:18px;font-weight:800;color:#242424;">${entry.value}</div>
+    `;
+    refineryInfo.appendChild(card);
+  }
+
+  if (successActive) {
+    refineryNotice.textContent = refinerySuccessMessage;
+    refineryNotice.style.background = "rgba(231, 255, 229, 0.92)";
+    refineryNotice.style.border = "1px solid rgba(71, 164, 72, 0.34)";
+    refineryNotice.style.color = "#24622c";
+  } else {
+    refineryNotice.textContent = canCraft
+      ? `${inputName}을 정제해 ${outputName}로 바꿉니다. 나중에 더 많은 재련 레시피가 추가될 수 있습니다.`
+      : `${inputName} ${selectedRecipe.inputCount}개가 있어야 ${outputName}를 만들 수 있습니다.`;
+    refineryNotice.style.background = "rgba(255,255,255,0.9)";
+    refineryNotice.style.border = "1px solid rgba(0,0,0,0.12)";
+    refineryNotice.style.color = "#444";
+  }
+  refineryArrowValue.disabled = !canCraft;
+  refineryArrowValue.style.opacity = canCraft ? "1" : "0.55";
+  refineryArrowValue.style.cursor = canCraft ? "pointer" : "default";
+  refineryArrowValue.style.background = canCraft
+    ? "rgba(255,255,255,0.88)"
+    : "rgba(235,235,235,0.78)";
+  refineryArrowValue.textContent = successActive ? "완료!" : "재련하기";
+}
+
+function tryCraftSelectedRefineryRecipe() {
+  const recipe = getSelectedRefineryRecipe();
+  if (!recipe) return;
+  tryUseRefineryRecipe(recipe);
 }
 
 function renderForgeItemCard(card, heading, itemId, level, stats, emptyText = "") {
@@ -5728,6 +6426,18 @@ forgeCloseBtn.addEventListener("click", () => {
 
 forgeOverlay.addEventListener("click", () => {
   setForgeOpen(false);
+});
+
+refineryArrowValue.addEventListener("click", () => {
+  tryCraftSelectedRefineryRecipe();
+});
+
+refineryCloseBtn.addEventListener("click", () => {
+  setRefineryOpen(false);
+});
+
+refineryOverlay.addEventListener("click", () => {
+  setRefineryOpen(false);
 });
 
 
@@ -6420,14 +7130,6 @@ restPropOnSupport(airCanRight, startStall.top);
 enableDynamicProp(airCanRight, { sleeping: true });
 registerPickupItem(airCanRight, "freshAirCanister", "E : 신선한 공기 캔 줍기");
 
-refineryStation = buildRefineryStation(
-  START_X + 2.18,
-  START_Z - 2.32,
-  START_FLAT_Y,
-  Math.PI * -0.5
-);
-restPropOnSupport(refineryStation, startStall.top);
-
 const tutorialNpc = makeTutorialNpc(
   START_X,
   START_Z - 5.15,
@@ -6435,6 +7137,12 @@ const tutorialNpc = makeTutorialNpc(
 );
 
 forgeStation = buildForgeAnvil(START_X - 3.0, START_Z + 1.55);
+refineryStation = buildRefineryStation(
+  forgeStation.position.x + 0.35,
+  forgeStation.position.z + 3.65,
+  START_FLAT_Y,
+  Math.PI
+);
 buildNftExhibitBoard(forgeStation.position.x - 2.85, forgeStation.position.z - 2.45, Math.PI * 0.5);
 
 const signStartX = START_X + 3.9;
@@ -6493,6 +7201,7 @@ function applyDevPreset() {
   inventory.pickaxeLevel = Math.max(0, Math.min(DEV_PRESET.pickaxeLevel ?? 0, PICKAXE_UPGRADE_LEVELS.length - 1));
   inventory.mineKeyIssued = Boolean(DEV_PRESET.unlockAbandonedMine);
   inventory.abandonedMineUnlocked = Boolean(DEV_PRESET.unlockAbandonedMine);
+  for (const key of QUICK_USE_ALLOWED_KEYS) inventory.quickUse[key] = null;
   inventory.equipped.head = null;
   inventory.equipped.body = null;
   inventory.equipped.shoes = null;
@@ -6568,6 +7277,7 @@ function applyFreshPlayerStartState() {
   inventory.pickaxeLevel = 0;
   inventory.mineKeyIssued = false;
   inventory.abandonedMineUnlocked = false;
+  for (const key of QUICK_USE_ALLOWED_KEYS) inventory.quickUse[key] = null;
   inventory.equipped.head = null;
   inventory.equipped.body = null;
   inventory.equipped.shoes = null;
@@ -6609,6 +7319,13 @@ function createDefaultPlayerSave() {
       pickaxeLevel: 0,
       mineKeyIssued: false,
       abandonedMineUnlocked: false,
+      quickUse: {
+        "1": null,
+        "2": null,
+        "3": null,
+        "4": null,
+        "5": null,
+      },
       equipped: {
         head: null,
         body: null,
@@ -6649,6 +7366,12 @@ function serializePlayerSave() {
       pickaxeLevel: inventory.pickaxeLevel,
       mineKeyIssued: inventory.mineKeyIssued,
       abandonedMineUnlocked: inventory.abandonedMineUnlocked,
+      quickUse: Object.fromEntries(
+        QUICK_USE_ALLOWED_KEYS.map((key) => [
+          key,
+          inventory.quickUse[key] ? structuredClone(inventory.quickUse[key]) : null,
+        ])
+      ),
       equipped: {
         head: inventory.equipped.head ? structuredClone(inventory.equipped.head) : null,
         body: inventory.equipped.body ? structuredClone(inventory.equipped.body) : null,
@@ -6682,6 +7405,10 @@ function applySerializedPlayerSave(rawSave) {
     inventory: {
       ...createDefaultPlayerSave().inventory,
       ...(save.inventory ?? {}),
+      quickUse: {
+        ...createDefaultPlayerSave().inventory.quickUse,
+        ...(save.inventory?.quickUse ?? {}),
+      },
       equipped: {
         ...createDefaultPlayerSave().inventory.equipped,
         ...(save.inventory?.equipped ?? {}),
@@ -6713,10 +7440,14 @@ function applySerializedPlayerSave(rawSave) {
   );
   inventory.mineKeyIssued = Boolean(source.inventory.mineKeyIssued);
   inventory.abandonedMineUnlocked = Boolean(source.inventory.abandonedMineUnlocked);
+  for (const key of QUICK_USE_ALLOWED_KEYS) {
+    inventory.quickUse[key] = normalizeQuickUseBinding(source.inventory.quickUse[key]);
+  }
   inventory.equipped.head = normalizeEquippedItemRef(source.inventory.equipped.head);
   inventory.equipped.body = normalizeEquippedItemRef(source.inventory.equipped.body);
   inventory.equipped.shoes = normalizeEquippedItemRef(source.inventory.equipped.shoes);
   inventory.equipped.tool = normalizeEquippedItemRef(source.inventory.equipped.tool);
+  pruneQuickUseBindings();
 
   tutorialQuest.currentStep = Math.max(0, Math.min(source.tutorial.currentStep ?? 0, tutorialQuest.steps.length));
   tutorialQuest.minedRockCount = Math.max(0, source.tutorial.minedRockCount ?? 0);
@@ -7165,78 +7896,191 @@ function buildAirPurifierStation(x, z, rotationY = Math.PI) {
 function buildRefineryStation(x, z, y = START_FLAT_Y, rotationY = 0) {
   const g = new THREE.Group();
   const frameMat = new THREE.MeshStandardMaterial({
-    color: 0x59636f,
-    roughness: 0.78,
-    metalness: 0.22,
+    color: 0x48515c,
+    roughness: 0.72,
+    metalness: 0.28,
   });
   const chamberMat = new THREE.MeshStandardMaterial({
-    color: 0x9fd6c3,
-    roughness: 0.48,
-    metalness: 0.08,
-    emissive: 0x3a8b6a,
-    emissiveIntensity: 0.18,
+    color: 0xa6ddc8,
+    roughness: 0.38,
+    metalness: 0.1,
+    emissive: 0x3f9372,
+    emissiveIntensity: 0.16,
   });
   const accentMat = new THREE.MeshStandardMaterial({
-    color: 0xc6ccd6,
-    roughness: 0.32,
-    metalness: 0.36,
+    color: 0xc7ced8,
+    roughness: 0.28,
+    metalness: 0.44,
+  });
+  const trayMat = new THREE.MeshStandardMaterial({
+    color: 0x72543c,
+    roughness: 0.84,
+    metalness: 0.08,
+  });
+  const gaugeMat = new THREE.MeshStandardMaterial({
+    color: 0xf0f2f5,
+    roughness: 0.22,
+    metalness: 0.06,
+  });
+  const darkMat = new THREE.MeshStandardMaterial({
+    color: 0x2d3238,
+    roughness: 0.88,
+    metalness: 0.18,
   });
 
-  const base = new THREE.Mesh(
-    new THREE.BoxGeometry(0.92, 0.28, 0.64),
+  const platform = new THREE.Mesh(
+    new THREE.BoxGeometry(1.9, 0.16, 1.16),
     frameMat
   );
-  base.position.y = 0.14;
-  g.add(base);
+  platform.position.y = 0.08;
+  g.add(platform);
+
+  const legOffsets = [
+    [-0.76, 0.56, -0.42],
+    [0.76, 0.56, -0.42],
+    [-0.76, 0.56, 0.42],
+    [0.76, 0.56, 0.42],
+  ];
+  for (const [lx, ly, lz] of legOffsets) {
+    const leg = new THREE.Mesh(
+      new THREE.BoxGeometry(0.12, 0.96, 0.12),
+      darkMat
+    );
+    leg.position.set(lx, ly, lz);
+    g.add(leg);
+  }
+
+  const supportDeck = new THREE.Mesh(
+    new THREE.BoxGeometry(1.58, 0.12, 0.88),
+    frameMat
+  );
+  supportDeck.position.y = 0.64;
+  g.add(supportDeck);
+
+  const grinderCore = new THREE.Mesh(
+    new THREE.BoxGeometry(0.78, 0.68, 0.6),
+    frameMat
+  );
+  grinderCore.position.set(-0.22, 1.06, 0);
+  g.add(grinderCore);
+
+  const grinderHead = new THREE.Mesh(
+    new THREE.BoxGeometry(0.48, 0.3, 0.4),
+    accentMat
+  );
+  grinderHead.position.set(-0.22, 1.5, 0);
+  g.add(grinderHead);
+
+  const hopper = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.18, 0.34, 0.42, 22),
+    accentMat
+  );
+  hopper.position.set(-0.22, 1.86, 0);
+  g.add(hopper);
 
   const chamber = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.16, 0.2, 0.52, 18),
+    new THREE.CylinderGeometry(0.22, 0.24, 0.84, 20),
     chamberMat
   );
-  chamber.position.set(-0.18, 0.48, 0);
+  chamber.position.set(0.56, 1.18, 0);
   g.add(chamber);
 
-  const funnel = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.08, 0.18, 0.24, 16),
+  const chamberCapTop = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.16, 0.18, 0.14, 18),
     accentMat
   );
-  funnel.position.set(-0.18, 0.86, 0);
-  g.add(funnel);
+  chamberCapTop.position.set(0.56, 1.66, 0);
+  g.add(chamberCapTop);
 
-  const grinder = new THREE.Mesh(
-    new THREE.BoxGeometry(0.28, 0.36, 0.28),
+  const chamberCapBottom = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.17, 0.19, 0.14, 18),
     accentMat
   );
-  grinder.position.set(0.2, 0.4, 0);
-  g.add(grinder);
+  chamberCapBottom.position.set(0.56, 0.7, 0);
+  g.add(chamberCapBottom);
 
-  const pipe = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.04, 0.04, 0.48, 12),
+  const conduit = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.055, 0.055, 0.96, 14),
     accentMat
   );
-  pipe.rotation.z = Math.PI * 0.5;
-  pipe.position.set(0.02, 0.57, 0);
-  g.add(pipe);
+  conduit.rotation.z = Math.PI * 0.5;
+  conduit.position.set(0.17, 1.26, 0);
+  g.add(conduit);
 
-  const tray = new THREE.Mesh(
-    new THREE.BoxGeometry(0.38, 0.05, 0.24),
-    frameMat
+  const dischargeTube = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.05, 0.065, 0.54, 14),
+    accentMat
   );
-  tray.position.set(0.22, 0.14, 0);
-  g.add(tray);
+  dischargeTube.rotation.z = Math.PI * 0.34;
+  dischargeTube.position.set(0.84, 0.82, 0);
+  g.add(dischargeTube);
+
+  const dischargeTray = new THREE.Mesh(
+    new THREE.BoxGeometry(0.56, 0.08, 0.34),
+    trayMat
+  );
+  dischargeTray.position.set(0.98, 0.5, 0);
+  g.add(dischargeTray);
 
   const powderJar = buildPurifyPowderModel();
-  powderJar.scale.setScalar(0.72);
-  powderJar.position.set(0.24, 0.28, 0.14);
+  powderJar.scale.setScalar(0.9);
+  powderJar.position.set(0.95, 0.62, 0.12);
   g.add(powderJar);
+
+  const gaugeBody = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.12, 0.12, 0.04, 20),
+    gaugeMat
+  );
+  gaugeBody.rotation.x = Math.PI * 0.5;
+  gaugeBody.position.set(-0.63, 1.08, 0.34);
+  g.add(gaugeBody);
+
+  const gaugeNeedle = new THREE.Mesh(
+    new THREE.BoxGeometry(0.09, 0.01, 0.018),
+    darkMat
+  );
+  gaugeNeedle.rotation.z = -0.58;
+  gaugeNeedle.position.set(-0.61, 1.08, 0.37);
+  g.add(gaugeNeedle);
+
+  const leverBase = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.045, 0.05, 0.08, 16),
+    darkMat
+  );
+  leverBase.position.set(-0.72, 0.82, -0.32);
+  g.add(leverBase);
+
+  const leverHandle = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.022, 0.022, 0.34, 12),
+    accentMat
+  );
+  leverHandle.rotation.z = Math.PI * -0.22;
+  leverHandle.position.set(-0.78, 1.02, -0.32);
+  g.add(leverHandle);
+
+  const intakeLabel = new THREE.Mesh(
+    new THREE.BoxGeometry(0.34, 0.08, 0.02),
+    gaugeMat
+  );
+  intakeLabel.position.set(-0.22, 2.12, 0);
+  g.add(intakeLabel);
+
+  const collider = new THREE.Mesh(
+    new THREE.BoxGeometry(1.72, 2.26, 1.1),
+    new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 })
+  );
+  collider.position.set(0.1, 1.13, 0);
+  g.add(collider);
 
   g.position.set(x, y, z);
   g.rotation.y = rotationY;
   scene.add(g);
+  addCollider(collider, 1.0);
   interactables.push({
     obj: g,
     text: "E : 재련소 사용",
-    board: chamber,
+    board: grinderCore,
+    highlightKind: "none",
     type: "refinery",
   });
   return g;
@@ -7793,6 +8637,7 @@ const keys = { w: false, a: false, s: false, d: false, shift: false };
 window.addEventListener("keydown", (e) => {
   if (!canPlayGame()) return;
   if (nftExhibitSelectionOpen) return;
+  if (quickUseAssignState) return;
   const k = e.key.toLowerCase();
   console.log("KEYDOWN:", k);
 
@@ -7839,9 +8684,8 @@ window.addEventListener("keydown", (e) => {
   }
 
   if (activeInteractable?.type === "refinery") {
-    if (tryUseRefinery()) {
-      return;
-    }
+    setRefineryOpen(!refineryOpen);
+    return;
   }
 
   if (activeInteractable?.type === "airPurifier") {
@@ -7858,8 +8702,8 @@ window.addEventListener("keydown", (e) => {
     return;
   }
 
-  if (k === "r") {
-    if (useFreshAirCanister()) {
+  if (QUICK_USE_ALLOWED_KEYS.includes(k)) {
+    if (useQuickUseItem(k)) {
       return;
     }
   }
@@ -7883,6 +8727,11 @@ window.addEventListener("keyup", (e) => {
     return;
   }
   if (nftExhibitSelectionOpen) {
+    if (k in keys) keys[k] = false;
+    if (k === "shift") keys.shift = false;
+    return;
+  }
+  if (quickUseAssignState) {
     if (k in keys) keys[k] = false;
     if (k === "shift") keys.shift = false;
     return;
@@ -8342,6 +9191,7 @@ function updateMovement(dt) {
 window.addEventListener("keydown", (e) => {
   if (!canPlayGame()) return;
   if (nftExhibitSelectionOpen) return;
+  if (quickUseAssignState) return;
   if (e.code !== "Space") return;
   if (activeTutorialNpc) {
     const currentStep = getCurrentQuestStep();
@@ -8490,11 +9340,27 @@ function animate() {
 
     // ===== 하이라이트 처리 =====
     for (const it of interactables) {
-  it.board.material.emissive.set(0x000000); // 기본: 발광 끔
+  if (it.highlightKind === "line") {
+    for (const child of it.board.children) {
+      child.material.opacity = 0;
+    }
+  } else if (it.highlightKind === "none") {
+    // no-op
+  } else {
+    it.board.material.emissive.set(0x000000); // 기본: 발광 끔
+  }
     }
 
     if (activeInteractable) {
-  activeInteractable.board.material.emissive.set(0xffaa00); // 하이라이트 ON
+  if (activeInteractable.highlightKind === "line") {
+    for (const child of activeInteractable.board.children) {
+      child.material.opacity = 0.9;
+    }
+  } else if (activeInteractable.highlightKind === "none") {
+    // no-op
+  } else {
+    activeInteractable.board.material.emissive.set(0xffaa00); // 하이라이트 ON
+  }
     }
 
   framePlayerDelta.copy(player.position).sub(lastFollowPlayerPosition);
@@ -8511,6 +9377,11 @@ function animate() {
   if (forgeOpen) {
     if (getForgeDistance() >= 2.8) {
       setForgeOpen(false);
+    }
+  }
+  if (refineryOpen) {
+    if (getRefineryDistance() >= 2.8) {
+      setRefineryOpen(false);
     }
   }
 
@@ -8561,8 +9432,13 @@ if (!hintText && activeMapGate && !mapTransitionPending) {
   }
 }
 
-if (!hintText && isPollutedMap(currentMapId) && hasItem("freshAirCanister") && playerAirCurrent < playerAirMax) {
-  hintText = "R : 신선한 공기 캔 사용";
+if (
+  !hintText &&
+  getQuickUseKeyForItemId("freshAirCanister") &&
+  hasItem("freshAirCanister") &&
+  playerAirCurrent < playerAirMax
+) {
+  hintText = `${getQuickUseKeyForItemId("freshAirCanister")} : 신선한 공기 캔 사용`;
 }
 
 // 6) 최종 출력
