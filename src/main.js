@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-const LAST_PATCHED_AT = "2026-05-05 11:15:59 KST";
+const LAST_PATCHED_AT = "2026-05-05 17:20:25 KST";
 
 const scene = new THREE.Scene();
 // ===== Atmosphere: Sky / Fog =====
@@ -17,6 +17,10 @@ scene.fog = new THREE.Fog(WORLD_FOG_COLOR, WORLD_FOG_NEAR, WORLD_FOG_FAR);
 const AIR_GAUGE_MAX = 100;
 const AIR_CANISTER_RESTORE_AMOUNT = 34;
 const AIR_RECOVERY_PER_SECOND = 1.1;
+const CAVE_POLLUTION_PARTICLE_COUNT = 360;
+const CAVE_POLLUTION_PARTICLE_SWAY = 0.12;
+const CAVE_POLLUTION_OVERLAY_MAX_OPACITY = 0.96;
+const LOW_AIR_EDGE_BLUR_MAX_PX = 26;
 const AIR_HUD_POSITION_KEY = "excit_air_hud_position_v1";
 const QUICK_USE_ALLOWED_KEYS = ["1", "2", "3", "4", "5"];
 const MAP_POLLUTION_CONFIG = {
@@ -148,6 +152,7 @@ let lastPlayerSaveAttemptAt = 0;
 let playerSaveSyncPaused = false;
 let playerSaveStatusTimer = null;
 let lastKnownPlayerSaveUpdatedAt = "";
+let playerSaveBaselineState = "unknown";
 let nftExhibitBoard = null;
 let nftExhibitScreenMaterial = null;
 let nftExhibitRefreshToken = 0;
@@ -225,6 +230,12 @@ walletHudLogoutBtn.style.cursor = "pointer";
 walletHudLogoutBtn.style.fontSize = "12px";
 walletHudLogoutBtn.style.fontWeight = "700";
 walletHud.appendChild(walletHudLogoutBtn);
+
+let equipProfileAddress = null;
+let equipProfileChain = null;
+let equipProfileNickname = null;
+let equipProfileLogoutBtn = null;
+let equipProfileCopyBtn = null;
 
 const airHudWrap = document.createElement("div");
 airHudWrap.id = "airHudWrap";
@@ -1770,6 +1781,34 @@ function isServerBackedWalletSession() {
   return walletAuth.authenticated && walletAuth.sessionType === "wallet" && Boolean(walletAuth.token);
 }
 
+function resetPlayerSaveProtectionState() {
+  lastPlayerSaveSnapshot = "";
+  lastKnownPlayerSaveUpdatedAt = "";
+  playerSaveBaselineState = "unknown";
+}
+
+function beginPlayerSaveHydration() {
+  playerSaveSyncPaused = true;
+  playerSaveBaselineState = "pending";
+  lastPlayerSaveSnapshot = "";
+}
+
+function markPlayerSaveBaselineReady(mode = "hydrated") {
+  playerSaveBaselineState = mode;
+}
+
+function blockPlayerSaveBaseline(message = "") {
+  playerSaveBaselineState = "blocked";
+  if (message) {
+    walletLoginStatus.textContent = message;
+    setPlayerSaveStatus("저장 보호 모드", "error", { persist: true });
+  }
+}
+
+function hasConfirmedPlayerSaveBaseline() {
+  return playerSaveBaselineState === "hydrated" || playerSaveBaselineState === "fresh";
+}
+
 function hidePlayerSaveStatus(delay = 1400) {
   if (playerSaveStatusTimer) {
     clearTimeout(playerSaveStatusTimer);
@@ -1814,16 +1853,35 @@ function setPlayerSaveStatus(text, tone = "neutral", { persist = false } = {}) {
 function updateWalletUi() {
   const loggedIn = walletAuth.authenticated;
   walletLoginOverlay.style.display = loggedIn ? "none" : "flex";
-  walletHud.style.display = loggedIn ? "block" : "none";
+  walletHud.style.display = "none";
   walletHudAddress.textContent = loggedIn
     ? `${shortenWalletAddress(walletAuth.address)}`
     : "";
-  walletHudChain.textContent = walletAuth.chainId
-    ? `체인: ${walletAuth.chainId}`
-    : "체인: 확인 전";
+  walletHudChain.textContent = formatWalletChainLabel(walletAuth.chainId);
   walletHudNickname.textContent = hasNickname()
     ? `닉네임: ${walletProfile.nickname}`
     : "닉네임: 설정 필요";
+  if (equipProfileAddress) {
+    equipProfileAddress.textContent = loggedIn
+      ? shortenWalletAddress(walletAuth.address)
+      : "로그인 필요";
+  }
+  if (equipProfileChain) {
+    equipProfileChain.textContent = formatWalletChainLabel(walletAuth.chainId);
+  }
+  if (equipProfileNickname) {
+    equipProfileNickname.textContent = hasNickname()
+      ? `닉네임: ${walletProfile.nickname}`
+      : "닉네임: 설정 필요";
+  }
+  if (equipProfileLogoutBtn) {
+    equipProfileLogoutBtn.style.display = loggedIn ? "inline-flex" : "none";
+  }
+  if (equipProfileCopyBtn) {
+    equipProfileCopyBtn.style.display = loggedIn ? "inline-flex" : "none";
+    equipProfileCopyBtn.disabled = !loggedIn;
+    if (!loggedIn) equipProfileCopyBtn.textContent = "복사";
+  }
   walletNicknameInput.value = walletProfile.nickname;
   walletLoginStatus.textContent = loggedIn
     ? isGuestSession()
@@ -1841,6 +1899,48 @@ function updateWalletUi() {
     controls.enabled = canPlayGame();
   }
   scheduleNftExhibitBoardRefresh();
+}
+
+function getChainDisplayName(chainId) {
+  const normalized = typeof chainId === "string" ? chainId.toLowerCase() : "";
+  switch (normalized) {
+    case "0x1":
+      return "Ethereum Mainnet";
+    case "0x89":
+      return "Polygon Mainnet";
+    case "0x2105":
+      return "Base";
+    case "0x38":
+      return "BNB Smart Chain";
+    case "0xa":
+      return "Optimism";
+    case "0xa4b1":
+      return "Arbitrum One";
+    default:
+      return null;
+  }
+}
+
+function formatWalletChainLabel(chainId) {
+  if (!chainId) return "체인: 확인 전";
+  const displayName = getChainDisplayName(chainId);
+  return displayName ? `체인: ${displayName} (${chainId})` : `체인: ${chainId}`;
+}
+
+async function copyWalletAddressToClipboard() {
+  if (!walletAuth.address) return;
+  try {
+    await navigator.clipboard.writeText(walletAuth.address);
+    if (equipProfileCopyBtn) {
+      equipProfileCopyBtn.textContent = "복사됨";
+      window.setTimeout(() => {
+        if (equipProfileCopyBtn) equipProfileCopyBtn.textContent = "복사";
+      }, 1000);
+    }
+  } catch {
+    showUI("지갑 주소 복사에 실패했습니다.", 1200);
+    lastMessageUntil = performance.now() + 1200;
+  }
 }
 
 function setWalletAuthState(nextState, { persist = true } = {}) {
@@ -1878,9 +1978,8 @@ function clearWalletSession() {
     { persist: true }
   );
   walletProfile.nickname = "";
-  lastPlayerSaveSnapshot = "";
   playerSaveSyncPaused = false;
-  lastKnownPlayerSaveUpdatedAt = "";
+  resetPlayerSaveProtectionState();
   if (playerSaveStatusTimer) {
     clearTimeout(playerSaveStatusTimer);
     playerSaveStatusTimer = null;
@@ -1920,7 +2019,7 @@ function restoreWalletSession() {
     if (!saved?.authenticated || !saved?.address || (!saved?.token && !isGuestSaved)) return;
     setWalletAuthState(saved, { persist: false });
     if (saved?.sessionType === "wallet") {
-      playerSaveSyncPaused = true;
+      beginPlayerSaveHydration();
       applyFreshPlayerStartState();
     } else if (isGuestSaved) {
       applyFreshPlayerStartState();
@@ -1941,14 +2040,14 @@ async function hydrateWalletSessionFromServer() {
   }
 
   walletLoginStatus.textContent = "로그인 세션을 확인하는 중입니다...";
-  playerSaveSyncPaused = true;
+  beginPlayerSaveHydration();
   const meResponse = await apiFetchJson("/auth/me", {
     method: "GET",
     headers: getAuthHeaders(),
   });
 
   if (!meResponse.ok) {
-    playerSaveSyncPaused = false;
+    blockPlayerSaveBaseline("저장된 세션을 확인하지 못했습니다. 다시 로그인해주세요.");
     clearWalletSession();
     walletLoginStatus.textContent = "저장된 세션이 만료되었습니다. 다시 로그인해주세요.";
     return;
@@ -1969,7 +2068,7 @@ async function hydrateWalletSessionFromServer() {
   );
   applyFreshPlayerStartState();
   await hydratePlayerSaveFromServer();
-  playerSaveSyncPaused = false;
+  playerSaveSyncPaused = !hasConfirmedPlayerSaveBaseline();
 }
 
 function bindWalletProviderEvents() {
@@ -2055,12 +2154,13 @@ async function connectWalletLogin() {
       sessionType: "wallet",
       nickname: verifyResponse.data.user?.nickname ?? "",
     });
-    playerSaveSyncPaused = true;
+    beginPlayerSaveHydration();
     applyFreshPlayerStartState();
     await hydratePlayerSaveFromServer();
-    playerSaveSyncPaused = false;
+    playerSaveSyncPaused = !hasConfirmedPlayerSaveBaseline();
     walletLoginStatus.textContent = `${shortenWalletAddress(address)} 주소로 서명이 완료되었습니다.`;
   } catch (error) {
+    blockPlayerSaveBaseline();
     playerSaveSyncPaused = false;
     walletLoginStatus.textContent = `로그인 실패: ${error?.message ?? "사용자 취소 또는 지갑 오류"}`;
   } finally {
@@ -2191,7 +2291,7 @@ window.addEventListener("keydown", (e) => {
   commitQuickUseAssignment(key);
 });
 
-walletHudLogoutBtn.addEventListener("click", async () => {
+async function handleWalletLogout() {
   if (isServerBackedWalletSession()) {
     try {
       await pushPlayerSaveToServer();
@@ -2199,7 +2299,9 @@ walletHudLogoutBtn.addEventListener("click", async () => {
   }
   clearWalletSession();
   walletLoginStatus.textContent = "로그아웃되었습니다. 다시 메타마스크로 로그인해주세요.";
-});
+}
+
+walletHudLogoutBtn.addEventListener("click", handleWalletLogout);
 
 // ===== Compass UI =====
 const compassWrap = document.createElement("div");
@@ -2284,7 +2386,7 @@ equipWin.style.position = "fixed";
 equipWin.style.left = "348px";
 equipWin.style.top = "12px";
 equipWin.style.width = "288px";
-equipWin.style.height = "420px";
+equipWin.style.height = "520px";
 equipWin.style.background = "rgba(235, 235, 235, 0.92)";
 equipWin.style.border = "1px solid rgba(0,0,0,0.25)";
 equipWin.style.borderRadius = "10px";
@@ -2410,6 +2512,24 @@ mapFade.style.transition = "background 260ms ease";
 mapFade.style.zIndex = "1000003";
 uiLayer.appendChild(mapFade);
 
+const pollutionOverlay = document.createElement("div");
+pollutionOverlay.id = "pollutionOverlay";
+pollutionOverlay.style.position = "fixed";
+pollutionOverlay.style.inset = "0";
+pollutionOverlay.style.background =
+  "radial-gradient(circle at 50% 42%, rgba(255,255,255,0) 18%, rgba(244,246,248,0.22) 46%, rgba(229,234,239,0.58) 70%, rgba(214,220,226,0.94) 100%)";
+pollutionOverlay.style.opacity = "0";
+pollutionOverlay.style.pointerEvents = "none";
+pollutionOverlay.style.transition = "opacity 220ms ease";
+pollutionOverlay.style.backdropFilter = "blur(0px)";
+pollutionOverlay.style.webkitBackdropFilter = "blur(0px)";
+pollutionOverlay.style.maskImage =
+  "radial-gradient(circle at 50% 42%, rgba(0,0,0,0) 16%, rgba(0,0,0,0.28) 40%, rgba(0,0,0,0.88) 70%, rgba(0,0,0,1) 100%)";
+pollutionOverlay.style.webkitMaskImage =
+  "radial-gradient(circle at 50% 42%, rgba(0,0,0,0) 16%, rgba(0,0,0,0.28) 40%, rgba(0,0,0,0.88) 70%, rgba(0,0,0,1) 100%)";
+pollutionOverlay.style.zIndex = "999998";
+uiLayer.appendChild(pollutionOverlay);
+
 const equipHeader = document.createElement("div");
 equipHeader.textContent = "EQUIPMENT";
 equipHeader.style.padding = "10px";
@@ -2431,7 +2551,10 @@ equipWin.appendChild(equipBody);
 
 const equipmentGrid = document.createElement("div");
 equipmentGrid.style.position = "absolute";
-equipmentGrid.style.inset = "12px";
+equipmentGrid.style.left = "12px";
+equipmentGrid.style.right = "12px";
+equipmentGrid.style.top = "12px";
+equipmentGrid.style.bottom = "154px";
 equipmentGrid.style.display = "grid";
 equipmentGrid.style.gridTemplateColumns = "64px minmax(0, 1.45fr) 64px";
 equipmentGrid.style.gridTemplateRows = "76px 1fr 76px";
@@ -2508,6 +2631,96 @@ createEquipmentSlot("head", "모자", 1, 1);
 createEquipmentSlot("body", "상의", 1, 2);
 createEquipmentSlot("shoes", "신발", 1, 3);
 createEquipmentSlot("tool", "무기", 3, 2);
+
+const equipProfileCard = document.createElement("div");
+equipProfileCard.style.position = "absolute";
+equipProfileCard.style.left = "12px";
+equipProfileCard.style.right = "12px";
+equipProfileCard.style.bottom = "12px";
+equipProfileCard.style.minHeight = "118px";
+equipProfileCard.style.borderRadius = "10px";
+equipProfileCard.style.background = "rgba(255,255,255,0.92)";
+equipProfileCard.style.border = "1px solid rgba(0,0,0,0.14)";
+equipProfileCard.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.8)";
+equipProfileCard.style.padding = "10px 12px";
+equipProfileCard.style.boxSizing = "border-box";
+equipProfileCard.style.fontFamily = "system-ui, -apple-system, sans-serif";
+equipProfileCard.style.display = "grid";
+equipProfileCard.style.gridTemplateColumns = "1fr auto";
+equipProfileCard.style.gap = "8px 12px";
+equipProfileCard.style.alignItems = "center";
+equipBody.appendChild(equipProfileCard);
+
+const equipProfileTitle = document.createElement("div");
+equipProfileTitle.textContent = "WALLET";
+equipProfileTitle.style.fontSize = "11px";
+equipProfileTitle.style.fontWeight = "800";
+equipProfileTitle.style.letterSpacing = "0.06em";
+equipProfileTitle.style.color = "rgba(70,70,70,0.88)";
+equipProfileCard.appendChild(equipProfileTitle);
+
+equipProfileLogoutBtn = document.createElement("button");
+equipProfileLogoutBtn.type = "button";
+equipProfileLogoutBtn.textContent = "로그아웃";
+equipProfileLogoutBtn.style.justifySelf = "end";
+equipProfileLogoutBtn.style.padding = "6px 10px";
+equipProfileLogoutBtn.style.borderRadius = "999px";
+equipProfileLogoutBtn.style.border = "1px solid rgba(0,0,0,0.14)";
+equipProfileLogoutBtn.style.background = "rgba(255,255,255,0.95)";
+equipProfileLogoutBtn.style.color = "#333";
+equipProfileLogoutBtn.style.cursor = "pointer";
+equipProfileLogoutBtn.style.fontSize = "12px";
+equipProfileLogoutBtn.style.fontWeight = "700";
+equipProfileCard.appendChild(equipProfileLogoutBtn);
+equipProfileLogoutBtn.addEventListener("click", handleWalletLogout);
+
+const equipProfileInfo = document.createElement("div");
+equipProfileInfo.style.gridColumn = "1 / span 2";
+equipProfileInfo.style.display = "grid";
+equipProfileInfo.style.gap = "4px";
+equipProfileCard.appendChild(equipProfileInfo);
+
+const equipProfileAddressRow = document.createElement("div");
+equipProfileAddressRow.style.display = "flex";
+equipProfileAddressRow.style.alignItems = "center";
+equipProfileAddressRow.style.justifyContent = "space-between";
+equipProfileAddressRow.style.gap = "8px";
+equipProfileInfo.appendChild(equipProfileAddressRow);
+
+equipProfileAddress = document.createElement("div");
+equipProfileAddress.style.fontSize = "14px";
+equipProfileAddress.style.fontWeight = "800";
+equipProfileAddress.style.color = "#222";
+equipProfileAddress.style.minWidth = "0";
+equipProfileAddressRow.appendChild(equipProfileAddress);
+
+equipProfileCopyBtn = document.createElement("button");
+equipProfileCopyBtn.type = "button";
+equipProfileCopyBtn.textContent = "복사";
+equipProfileCopyBtn.style.flex = "0 0 auto";
+equipProfileCopyBtn.style.padding = "5px 9px";
+equipProfileCopyBtn.style.borderRadius = "999px";
+equipProfileCopyBtn.style.border = "1px solid rgba(0,0,0,0.14)";
+equipProfileCopyBtn.style.background = "rgba(255,255,255,0.95)";
+equipProfileCopyBtn.style.color = "#333";
+equipProfileCopyBtn.style.cursor = "pointer";
+equipProfileCopyBtn.style.fontSize = "11px";
+equipProfileCopyBtn.style.fontWeight = "700";
+equipProfileAddressRow.appendChild(equipProfileCopyBtn);
+equipProfileCopyBtn.addEventListener("click", () => {
+  void copyWalletAddressToClipboard();
+});
+
+equipProfileChain = document.createElement("div");
+equipProfileChain.style.fontSize = "12px";
+equipProfileChain.style.color = "rgba(70,70,70,0.82)";
+equipProfileInfo.appendChild(equipProfileChain);
+
+equipProfileNickname = document.createElement("div");
+equipProfileNickname.style.fontSize = "12px";
+equipProfileNickname.style.fontWeight = "700";
+equipProfileNickname.style.color = "#8b6b1b";
+equipProfileInfo.appendChild(equipProfileNickname);
 
 const forgeOverlay = document.createElement("div");
 forgeOverlay.id = "forgeOverlay";
@@ -5268,16 +5481,19 @@ function findNearestMineRock(radius = 2.2) {
 }
 
 function removeColliderAt(idx) {
+  const removed = colliders[idx];
   colliders.splice(idx, 1);
   colliderBoxes.splice(idx, 1);
 
-  // 콜라이더 인덱스가 뒤로 밀리니까, 돌들의 인덱스를 보정
-  for (const rock of mineRocks) {
-    if (!rock || !rock.userData) continue;
-    const ci = rock.userData.colliderIndex;
-    if (typeof ci === "number" && ci > idx) {
-      rock.userData.colliderIndex = ci - 1;
-    }
+  if (removed?.userData) {
+    removed.userData.colliderIndex = null;
+  }
+
+  // 콜라이더 인덱스가 뒤로 밀리니까, 모든 오브젝트의 인덱스를 다시 맞춘다.
+  for (let i = 0; i < colliders.length; i++) {
+    const colliderObj = colliders[i];
+    if (!colliderObj?.userData) continue;
+    colliderObj.userData.colliderIndex = i;
   }
 }
 
@@ -5298,8 +5514,15 @@ function addCollider(obj, shrink = 1.0) {
   const idx = colliders.length;
   colliders.push(obj);
   colliderBoxes.push(box);
+  obj.userData.colliderIndex = idx;
   return idx;
 
+}
+
+function getTrackedColliderIndex(obj, fallback = null) {
+  const tracked = obj?.userData?.colliderIndex;
+  if (typeof tracked === "number") return tracked;
+  return typeof fallback === "number" ? fallback : null;
 }
 
 // ===== Starting Zone collision wall (optional) =====
@@ -5542,6 +5765,11 @@ let torchEquipped = false;
 let playerAirCurrent = AIR_GAUGE_MAX;
 let playerAirMax = AIR_GAUGE_MAX;
 let airDepletedNoticeUntil = 0;
+let cavePollutionField = null;
+let cavePollutionFieldMaterial = null;
+let cavePollutionFieldBase = null;
+let cavePollutionFieldPhase = null;
+let cavePollutionFieldStrength = 0;
 const mapPurificationProgress = {
   "폐광맵": 0,
 };
@@ -5600,13 +5828,15 @@ function setMapPurificationValue(mapId, value) {
 }
 
 function getCurrentAirDrainPerSecond() {
-  const cfg = getMapPollutionConfig(currentMapId);
+  const effectiveMapId = getEffectiveAirMapId();
+  const cfg = getMapPollutionConfig(effectiveMapId);
   if (!cfg) return 0;
-  const purifyRatio = getMapPurificationValue(currentMapId) / 100;
+  const purifyRatio = getMapPurificationValue(effectiveMapId) / 100;
   return cfg.drainPerSecondAtZeroPurify * Math.pow(1 - purifyRatio, 1.1);
 }
 
 function canRecoverAirInMap(mapId = currentMapId) {
+  if (mapId == null) return true;
   if (!isPollutedMap(mapId)) return true;
   return getMapPurificationValue(mapId) >= 100;
 }
@@ -5628,18 +5858,144 @@ function updateAirHud() {
         ? "linear-gradient(90deg, #ffcf5b 0%, #ffec8a 100%)"
         : "linear-gradient(90deg, #5be7ff 0%, #a2fff0 100%)";
 
-  if (!isPollutedMap()) {
+  const effectiveMapId = getEffectiveAirMapId();
+  if (effectiveMapId == null) {
+    airHudStatus.textContent = `연결통로는 호흡 가능한 구역입니다. 초당 ${AIR_RECOVERY_PER_SECOND.toFixed(1)} 공기 회복`;
+    airHudPurify.textContent = "";
+    return;
+  }
+
+  if (!isPollutedMap(effectiveMapId)) {
     airHudStatus.textContent = `현재 맵은 호흡 가능한 구역입니다. 초당 ${AIR_RECOVERY_PER_SECOND.toFixed(1)} 공기 회복`;
     airHudPurify.textContent = "";
     return;
   }
 
-  const purify = getMapPurificationValue(currentMapId);
+  const purify = getMapPurificationValue(effectiveMapId);
   const drain = getCurrentAirDrainPerSecond();
   airHudStatus.textContent = purify >= 100
     ? `정화 완료: 초당 ${AIR_RECOVERY_PER_SECOND.toFixed(1)} 공기 회복`
     : `오염 구역: 초당 ${drain.toFixed(2)} 공기 소모`;
-  airHudPurify.textContent = `${getMapPollutionConfig(currentMapId)?.displayName ?? currentMapId} 정화율 ${purify}%`;
+  airHudPurify.textContent = `${getMapPollutionConfig(effectiveMapId)?.displayName ?? effectiveMapId} 정화율 ${purify}%`;
+}
+
+function buildCavePollutionField() {
+  const geometry = new THREE.BufferGeometry();
+  const positions = new Float32Array(CAVE_POLLUTION_PARTICLE_COUNT * 3);
+  const phases = new Float32Array(CAVE_POLLUTION_PARTICLE_COUNT);
+  const base = new Float32Array(CAVE_POLLUTION_PARTICLE_COUNT * 3);
+
+  const campHalf = GROUND_SIZE * 0.5 - 6;
+  for (let i = 0; i < CAVE_POLLUTION_PARTICLE_COUNT; i += 1) {
+    const x = CAMP_MAP_X + randRange(-campHalf, campHalf);
+    const y = randRange(0.55, 6.35);
+    const z = CAMP_MAP_Z + randRange(-campHalf, campHalf);
+    const j = i * 3;
+    positions[j] = x;
+    positions[j + 1] = y;
+    positions[j + 2] = z;
+    base[j] = x;
+    base[j + 1] = y;
+    base[j + 2] = z;
+    phases[i] = randRange(0, Math.PI * 2);
+  }
+
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  const particleTextureCanvas = document.createElement("canvas");
+  particleTextureCanvas.width = 64;
+  particleTextureCanvas.height = 64;
+  const particleTextureCtx = particleTextureCanvas.getContext("2d");
+  const particleGradient = particleTextureCtx.createRadialGradient(32, 32, 6, 32, 32, 32);
+  particleGradient.addColorStop(0, "rgba(255, 227, 173, 0.95)");
+  particleGradient.addColorStop(0.35, "rgba(230, 197, 131, 0.78)");
+  particleGradient.addColorStop(0.72, "rgba(160, 122, 74, 0.32)");
+  particleGradient.addColorStop(1, "rgba(0, 0, 0, 0)");
+  particleTextureCtx.fillStyle = particleGradient;
+  particleTextureCtx.fillRect(0, 0, 64, 64);
+  const particleTexture = new THREE.CanvasTexture(particleTextureCanvas);
+  particleTexture.colorSpace = THREE.SRGBColorSpace;
+
+  cavePollutionFieldMaterial = new THREE.PointsMaterial({
+    color: 0xd8bb86,
+    size: 0.9,
+    map: particleTexture,
+    alphaMap: particleTexture,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    depthTest: true,
+    sizeAttenuation: true,
+    blending: THREE.AdditiveBlending,
+  });
+
+  cavePollutionField = new THREE.Points(geometry, cavePollutionFieldMaterial);
+  cavePollutionField.frustumCulled = false;
+  cavePollutionField.renderOrder = 4;
+  scene.add(cavePollutionField);
+  cavePollutionFieldBase = base;
+  cavePollutionFieldPhase = phases;
+}
+
+function getMapPollutionVisualStrength(mapId = currentMapId) {
+  if (!isPollutedMap(mapId)) return 0;
+  const purifyRatio = getMapPurificationValue(mapId) / 100;
+  return Math.pow(1 - purifyRatio, 1.08);
+}
+
+function updateCavePollutionVisuals(dt) {
+  const fieldPollutionStrength = getMapPollutionVisualStrength("폐광맵");
+  const localPollutionStrength = getMapPollutionVisualStrength(getEffectiveAirMapId());
+  cavePollutionFieldStrength = THREE.MathUtils.lerp(
+    cavePollutionFieldStrength,
+    fieldPollutionStrength,
+    Math.min(1, dt * 2.4)
+  );
+
+  if (cavePollutionField && cavePollutionFieldMaterial && cavePollutionFieldBase && cavePollutionFieldPhase) {
+    cavePollutionField.visible = cavePollutionFieldStrength > 0.02;
+    cavePollutionFieldMaterial.opacity = cavePollutionFieldStrength * 0.82;
+
+    if (cavePollutionField.visible) {
+      const positions = cavePollutionField.geometry.attributes.position.array;
+      const time = performance.now() * 0.001;
+      for (let i = 0; i < CAVE_POLLUTION_PARTICLE_COUNT; i += 1) {
+        const j = i * 3;
+        const phase = cavePollutionFieldPhase[i];
+        positions[j] =
+          cavePollutionFieldBase[j] +
+          Math.sin(time * 0.31 + phase) * CAVE_POLLUTION_PARTICLE_SWAY * cavePollutionFieldStrength;
+        positions[j + 1] =
+          cavePollutionFieldBase[j + 1] +
+          Math.sin(time * 0.48 + phase * 1.7) * 0.08 * cavePollutionFieldStrength;
+        positions[j + 2] =
+          cavePollutionFieldBase[j + 2] +
+          Math.cos(time * 0.27 + phase * 1.3) * CAVE_POLLUTION_PARTICLE_SWAY * cavePollutionFieldStrength;
+      }
+      cavePollutionField.geometry.attributes.position.needsUpdate = true;
+    }
+  }
+
+  const airRatio = playerAirMax > 0 ? Math.max(0, Math.min(1, playerAirCurrent / playerAirMax)) : 1;
+  let lowAirBlurStrength = 0;
+  if (airRatio < 0.5) {
+    if (airRatio >= 0.2) {
+      lowAirBlurStrength = ((0.5 - airRatio) / 0.3) * 0.6;
+    } else {
+      const severeFactor = Math.max(0, (0.2 - airRatio) / 0.2);
+      lowAirBlurStrength = 0.6 + Math.pow(severeFactor, 1.16) * 1.3;
+    }
+  }
+  const overlayOpacity = Math.min(
+    CAVE_POLLUTION_OVERLAY_MAX_OPACITY,
+    localPollutionStrength * 0.12 + lowAirBlurStrength * 0.96
+  );
+  pollutionOverlay.style.opacity = overlayOpacity.toFixed(3);
+  const blurPx = Math.min(
+    LOW_AIR_EDGE_BLUR_MAX_PX,
+    localPollutionStrength * 2.4 + lowAirBlurStrength * LOW_AIR_EDGE_BLUR_MAX_PX
+  );
+  pollutionOverlay.style.backdropFilter = `blur(${blurPx.toFixed(2)}px)`;
+  pollutionOverlay.style.webkitBackdropFilter = `blur(${blurPx.toFixed(2)}px)`;
 }
 
 function useFreshAirCanister() {
@@ -5788,10 +6144,11 @@ function updateAirSystem(dt) {
     return;
   }
 
-  if (canRecoverAirInMap(currentMapId)) {
+  const effectiveMapId = getEffectiveAirMapId();
+  if (canRecoverAirInMap(effectiveMapId)) {
     playerAirCurrent = Math.min(playerAirMax, playerAirCurrent + AIR_RECOVERY_PER_SECOND * dt);
-  } else if (isPollutedMap(currentMapId)) {
-    const purify = getMapPurificationValue(currentMapId);
+  } else if (isPollutedMap(effectiveMapId)) {
+    const purify = getMapPurificationValue(effectiveMapId);
     if (purify < 100) {
       playerAirCurrent = Math.max(0, playerAirCurrent - getCurrentAirDrainPerSecond() * dt);
       if (playerAirCurrent <= 0 && performance.now() > airDepletedNoticeUntil) {
@@ -5919,6 +6276,19 @@ function updateCurrentMapFromPlayerPosition() {
   }
 }
 
+function isPlayerInConnectorTunnel() {
+  if (!mineGate || !campGate) return false;
+  const mineDoorThresholdZ = mineGate.position.z - 0.35;
+  const campDoorThresholdZ = campGate.position.z + 0.35;
+  if (player.position.z >= mineDoorThresholdZ || player.position.z <= campDoorThresholdZ) return false;
+  return Math.abs(player.position.x - mineGate.position.x) <= 7.2;
+}
+
+function getEffectiveAirMapId() {
+  if (isPlayerInConnectorTunnel()) return null;
+  return currentMapId;
+}
+
 function tryUnlockMapGate(gate) {
   if (!gate?.unlockWithItem || !gate.unlockFlag) return false;
   if (inventory[gate.unlockFlag]) return true;
@@ -5932,8 +6302,9 @@ function tryUnlockMapGate(gate) {
   }
 
   inventory[gate.unlockFlag] = true;
-  if (typeof gate.lockColliderIndex === "number") {
-    removeColliderAt(gate.lockColliderIndex);
+  const gateColliderIndex = getTrackedColliderIndex(gate.lockBlocker, gate.lockColliderIndex);
+  if (typeof gateColliderIndex === "number") {
+    removeColliderAt(gateColliderIndex);
     gate.lockColliderIndex = null;
   }
   if (gate.lockBlocker?.parent) {
@@ -5951,7 +6322,8 @@ function restoreLockedMapGate(gate) {
   if (!gate.lockBlocker.parent) {
     scene.add(gate.lockBlocker);
   }
-  if (typeof gate.lockColliderIndex !== "number") {
+  const gateColliderIndex = getTrackedColliderIndex(gate.lockBlocker, gate.lockColliderIndex);
+  if (typeof gateColliderIndex !== "number") {
     gate.lockColliderIndex = addCollider(gate.lockBlocker, 1.0);
   }
 }
@@ -7161,6 +7533,7 @@ for (let i = 0; i < signTexts.length; i++) {
 const mineGate = buildTravelGate(START_X, START_Z - 51.2, Math.PI, "폐광 입구");
 registerWalkableSurface("광산맵", mineGate.userData.walkSurface, 0.45);
 buildCampTestArea();
+buildCavePollutionField();
 const campGate = buildTravelGate(CAMP_MAP_X, CAMP_MAP_Z + GROUND_SIZE * 0.5 + 1.25, 0, "광산 복귀");
 registerWalkableSurface("폐광맵", campGate.userData.walkSurface, 0.45);
 buildMapConnectorTunnel(mineGate, campGate);
@@ -7238,8 +7611,12 @@ function applyDevPreset() {
     addItem("abandonedMineKey", 1);
   }
   if (inventory.abandonedMineUnlocked) {
-    if (typeof abandonedMineGate.lockColliderIndex === "number") {
-      removeColliderAt(abandonedMineGate.lockColliderIndex);
+    const gateColliderIndex = getTrackedColliderIndex(
+      abandonedMineGate.lockBlocker,
+      abandonedMineGate.lockColliderIndex
+    );
+    if (typeof gateColliderIndex === "number") {
+      removeColliderAt(gateColliderIndex);
       abandonedMineGate.lockColliderIndex = null;
     }
     if (abandonedMineGate.lockBlocker?.parent) {
@@ -7462,8 +7839,12 @@ function applySerializedPlayerSave(rawSave) {
   nftExhibitSelectedItem = normalizeNftBoardSelection(source.displayBoard);
 
   if (inventory.abandonedMineUnlocked) {
-    if (typeof abandonedMineGate.lockColliderIndex === "number") {
-      removeColliderAt(abandonedMineGate.lockColliderIndex);
+    const gateColliderIndex = getTrackedColliderIndex(
+      abandonedMineGate.lockBlocker,
+      abandonedMineGate.lockColliderIndex
+    );
+    if (typeof gateColliderIndex === "number") {
+      removeColliderAt(gateColliderIndex);
       abandonedMineGate.lockColliderIndex = null;
     }
     if (abandonedMineGate.lockBlocker?.parent) {
@@ -7499,8 +7880,7 @@ async function hydratePlayerSaveFromServer() {
     headers: getAuthHeaders(),
   });
   if (!saveResponse.ok) {
-    walletLoginStatus.textContent = `저장 데이터 확인 실패: ${saveResponse.error}`;
-    setPlayerSaveStatus("저장 불러오기 실패", "error");
+    blockPlayerSaveBaseline(`저장 데이터 확인 실패: ${saveResponse.error}`);
     return false;
   }
 
@@ -7509,12 +7889,14 @@ async function hydratePlayerSaveFromServer() {
   if (!serverSave) {
     lastKnownPlayerSaveUpdatedAt = "";
     lastPlayerSaveSnapshot = JSON.stringify(serializePlayerSave());
+    markPlayerSaveBaselineReady("fresh");
     setPlayerSaveStatus("새로운 저장 데이터", "success");
     return false;
   }
 
   applySerializedPlayerSave(serverSave);
   lastKnownPlayerSaveUpdatedAt = serverSaveEntry.updatedAt ?? "";
+  markPlayerSaveBaselineReady("hydrated");
   walletLoginStatus.textContent = "이전 플레이 기록을 불러왔습니다.";
   setPlayerSaveStatus("저장 불러오기 완료", "success");
   return true;
@@ -7522,6 +7904,10 @@ async function hydratePlayerSaveFromServer() {
 
 async function pushPlayerSaveToServer() {
   if (!isServerBackedWalletSession()) return false;
+  if (!hasConfirmedPlayerSaveBaseline()) {
+    setPlayerSaveStatus("세이브 기준선 확인 전이라 저장 대기 중", "error");
+    return false;
+  }
   const snapshot = JSON.stringify(serializePlayerSave());
   if (snapshot === lastPlayerSaveSnapshot) return true;
 
@@ -7554,7 +7940,7 @@ async function pushPlayerSaveToServer() {
 
 function flushPlayerSaveOnExit() {
   if (!isServerBackedWalletSession()) return;
-  if (playerSaveSyncPaused) return;
+  if (playerSaveSyncPaused || !hasConfirmedPlayerSaveBaseline()) return;
 
   const snapshot = JSON.stringify(serializePlayerSave());
   if (snapshot === lastPlayerSaveSnapshot) return;
@@ -7578,7 +7964,7 @@ function flushPlayerSaveOnExit() {
 
 function schedulePlayerSaveSync(force = false) {
   if (!isServerBackedWalletSession()) return;
-  if (playerSaveSyncPaused) return;
+  if (playerSaveSyncPaused || !hasConfirmedPlayerSaveBaseline()) return;
   const now = performance.now();
   if (!force && now - lastPlayerSaveAttemptAt < PLAYER_SAVE_INTERVAL_MS) return;
   if (playerSaveSyncInFlight) return;
@@ -9309,6 +9695,7 @@ function animate() {
   }
   updateDynamicProps(dt);
   updateAirSystem(rawDt);
+  updateCavePollutionVisuals(rawDt);
   updateParticles(dt);
   updateRockHitReactions(rawDt);
   updateRockFadeIns(dt);

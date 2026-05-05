@@ -229,6 +229,61 @@ export function getPlayerSave(token) {
   };
 }
 
+function isObjectLike(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function isDefaultLikePlayerSave(saveData) {
+  if (!isObjectLike(saveData)) return false;
+
+  const inventory = isObjectLike(saveData.inventory) ? saveData.inventory : {};
+  const tutorial = isObjectLike(saveData.tutorial) ? saveData.tutorial : {};
+  const airSystem = isObjectLike(saveData.airSystem) ? saveData.airSystem : {};
+  const quickUse = isObjectLike(inventory.quickUse) ? inventory.quickUse : {};
+  const equipped = isObjectLike(inventory.equipped) ? inventory.equipped : {};
+  const slots = Array.isArray(inventory.slots) ? inventory.slots : [];
+
+  const emptySlots = slots.every((slot) => slot == null);
+  const emptyQuickUse = Object.values(quickUse).every((binding) => binding == null);
+  const emptyEquipped = Object.values(equipped).every((item) => item == null);
+  const pickaxeLevel = Number(inventory.pickaxeLevel ?? 0) || 0;
+  const currentStep = Number(tutorial.currentStep ?? 0) || 0;
+  const minedRockCount = Number(tutorial.minedRockCount ?? 0) || 0;
+  const upgradeCount = Number(tutorial.upgradeCount ?? 0) || 0;
+  const cavePurification = Number(airSystem.mapPurification?.["폐광맵"] ?? 0) || 0;
+
+  return (
+    (saveData.mapId === "광산맵" || !saveData.mapId) &&
+    pickaxeLevel === 0 &&
+    !inventory.mineKeyIssued &&
+    !inventory.abandonedMineUnlocked &&
+    emptySlots &&
+    emptyQuickUse &&
+    emptyEquipped &&
+    currentStep === 0 &&
+    minedRockCount === 0 &&
+    upgradeCount === 0 &&
+    !tutorial.completed &&
+    cavePurification === 0
+  );
+}
+
+function pushPlayerSaveBackup(draft, existingEntry) {
+  if (!existingEntry) return;
+  const walletAddress = existingEntry.walletAddress;
+  const nextBackup = {
+    walletAddress,
+    updatedAt: existingEntry.updatedAt,
+    backedUpAt: nowIso(),
+    data: structuredClone(existingEntry.data),
+  };
+  const existingBackups = Array.isArray(draft.playerSaveBackups) ? draft.playerSaveBackups : [];
+  const sameWalletBackups = existingBackups.filter((entry) => entry.walletAddress === walletAddress);
+  const otherBackups = existingBackups.filter((entry) => entry.walletAddress !== walletAddress);
+  sameWalletBackups.push(nextBackup);
+  draft.playerSaveBackups = otherBackups.concat(sameWalletBackups.slice(-10));
+}
+
 export function updatePlayerSave(token, saveData, knownUpdatedAt = "") {
   if (!saveData || typeof saveData !== "object") {
     return { ok: false, status: 400, error: "저장할 데이터가 올바르지 않습니다." };
@@ -254,6 +309,19 @@ export function updatePlayerSave(token, saveData, knownUpdatedAt = "") {
       return draft;
     }
 
+    if (
+      existingEntry &&
+      !isDefaultLikePlayerSave(existingEntry.data) &&
+      isDefaultLikePlayerSave(saveData)
+    ) {
+      conflictEntry = structuredClone(existingEntry);
+      draft.__error = {
+        status: 409,
+        error: "기본 초기 상태로 보이는 저장이 기존 진행도를 덮어쓰지 않도록 차단되었습니다.",
+      };
+      return draft;
+    }
+
     const now = nowIso();
     const nextSave = {
       walletAddress: session.walletAddress,
@@ -266,6 +334,7 @@ export function updatePlayerSave(token, saveData, knownUpdatedAt = "") {
     if (existingIndex === -1) {
       draft.playerSaves.push(nextSave);
     } else {
+      pushPlayerSaveBackup(draft, draft.playerSaves[existingIndex]);
       draft.playerSaves[existingIndex] = nextSave;
     }
     savedEntry = nextSave;

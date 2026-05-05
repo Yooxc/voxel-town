@@ -4,7 +4,7 @@
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
       "nickname": "XC",
       "createdAt": "2026-04-30T08:26:16.091Z",
-      "lastLoginAt": "2026-05-05T02:44:12.022Z"
+      "lastLoginAt": "2026-05-05T07:14:07.124Z"
     }
   ],
   "nonces": [],
@@ -314,6 +314,78 @@
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
       "createdAt": "2026-05-05T02:44:12.022Z",
       "expiresAt": "2026-06-04T02:44:12.022Z"
+    },
+    {
+      "token": "7f25db31-e6a9-44a7-877a-be832fe9d307",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-05T05:55:50.785Z",
+      "expiresAt": "2026-06-04T05:55:50.785Z"
+    },
+    {
+      "token": "59a533d7-a6c7-444e-8022-e78dbfe563da",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-05T05:56:39.793Z",
+      "expiresAt": "2026-06-04T05:56:39.793Z"
+    },
+    {
+      "token": "37391005-faf5-450d-a91f-f0d1c0ec35f1",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-05T06:09:47.459Z",
+      "expiresAt": "2026-06-04T06:09:47.459Z"
+    },
+    {
+      "token": "19e545c5-5005-467d-b2bb-b6130cfc749e",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-05T06:10:26.947Z",
+      "expiresAt": "2026-06-04T06:10:26.947Z"
+    },
+    {
+      "token": "2e2dadcd-cd09-4899-a34b-d4d8bbe6b709",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-05T06:12:26.707Z",
+      "expiresAt": "2026-06-04T06:12:26.707Z"
+    },
+    {
+      "token": "9bb1c274-9f07-4933-b67f-d528cc48da16",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-05T06:25:50.521Z",
+      "expiresAt": "2026-06-04T06:25:50.521Z"
+    },
+    {
+      "token": "c37640af-4694-45c5-84bd-b2b1b1653ec3",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-05T06:34:05.820Z",
+      "expiresAt": "2026-06-04T06:34:05.820Z"
+    },
+    {
+      "token": "607737f9-16e2-4716-a6a2-9a385688dea4",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-05T06:35:19.483Z",
+      "expiresAt": "2026-06-04T06:35:19.483Z"
+    },
+    {
+      "token": "e6e3d62b-3878-45b6-897a-4cdc928574a6",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-05T06:35:39.313Z",
+      "expiresAt": "2026-06-04T06:35:39.313Z"
+    },
+    {
+      "token": "36c66339-073a-4a8e-9940-28fca7719e0e",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-05T06:41:19.433Z",
+      "expiresAt": "2026-06-04T06:41:19.433Z"
+    },
+    {
+      "token": "c18ca3d6-fa05-4703-af06-4772928143c5",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-05T07:02:29.900Z",
+      "expiresAt": "2026-06-04T07:02:29.900Z"
+    },
+    {
+      "token": "52793677-f8c4-4fd7-a108-7ebdab05570d",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-05T07:14:07.124Z",
+      "expiresAt": "2026-06-04T07:14:07.124Z"
     }
   ],
   "playerSaves": [
@@ -323,16 +395,31 @@
         "version": 1,
         "mapId": "광산맵",
         "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
+          "x": 0.417,
+          "y": -0.028,
+          "z": -45.52
         },
-        "rotationY": 0,
+        "rotationY": -3.0403,
         "inventory": {
           "slots": [
-            null,
-            null,
-            null,
+            {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "count": 1,
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "count": 1,
+              "instanceId": "inv_mos7tasd_7"
+            },
+            {
+              "kind": "item",
+              "itemId": "stoneDust",
+              "count": 13,
+              "instanceId": "inv_mos80voc_6"
+            },
             null,
             null,
             null,
@@ -361,9 +448,9 @@
             null,
             null
           ],
-          "pickaxeLevel": 0,
-          "mineKeyIssued": false,
-          "abandonedMineUnlocked": false,
+          "pickaxeLevel": 3,
+          "mineKeyIssued": true,
+          "abandonedMineUnlocked": true,
           "quickUse": {
             "1": null,
             "2": null,
@@ -372,18 +459,32 @@
             "5": null
           },
           "equipped": {
-            "head": null,
+            "head": {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "instanceId": "inv_mos7ta4k_6"
+            },
             "body": null,
             "shoes": null,
-            "tool": null
+            "tool": {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "instanceId": "inv_mos7tasd_7"
+            }
           }
         },
         "tutorial": {
-          "currentStep": 0,
-          "minedRockCount": 0,
-          "upgradeCount": 0,
-          "completed": false,
-          "archivedSteps": []
+          "currentStep": 6,
+          "minedRockCount": 32,
+          "upgradeCount": 3,
+          "completed": true,
+          "archivedSteps": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
         },
         "airSystem": {
           "current": 100,
@@ -394,7 +495,1099 @@
         },
         "displayBoard": null
       },
-      "updatedAt": "2026-05-05T02:44:46.411Z"
+      "updatedAt": "2026-05-05T07:15:23.412Z"
+    }
+  ],
+  "playerSaveBackups": [
+    {
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "updatedAt": "2026-05-05T07:14:43.278Z",
+      "backedUpAt": "2026-05-05T07:14:47.297Z",
+      "data": {
+        "version": 1,
+        "mapId": "광산맵",
+        "position": {
+          "x": 0.355,
+          "y": 0.14,
+          "z": -57.41
+        },
+        "rotationY": 3.1094,
+        "inventory": {
+          "slots": [
+            {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "count": 1,
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "count": 1,
+              "instanceId": "inv_mos7tasd_7"
+            },
+            {
+              "kind": "item",
+              "itemId": "stoneDust",
+              "count": 13,
+              "instanceId": "inv_mos80voc_6"
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "pickaxeLevel": 3,
+          "mineKeyIssued": true,
+          "abandonedMineUnlocked": true,
+          "quickUse": {
+            "1": null,
+            "2": null,
+            "3": null,
+            "4": null,
+            "5": null
+          },
+          "equipped": {
+            "head": {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            "body": null,
+            "shoes": null,
+            "tool": {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "instanceId": "inv_mos7tasd_7"
+            }
+          }
+        },
+        "tutorial": {
+          "currentStep": 6,
+          "minedRockCount": 32,
+          "upgradeCount": 3,
+          "completed": true,
+          "archivedSteps": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "airSystem": {
+          "current": 58.97,
+          "max": 100,
+          "mapPurification": {
+            "폐광맵": 0
+          }
+        },
+        "displayBoard": null
+      }
+    },
+    {
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "updatedAt": "2026-05-05T07:14:47.297Z",
+      "backedUpAt": "2026-05-05T07:14:51.296Z",
+      "data": {
+        "version": 1,
+        "mapId": "광산맵",
+        "position": {
+          "x": 0.355,
+          "y": 0.14,
+          "z": -57.41
+        },
+        "rotationY": 3.1094,
+        "inventory": {
+          "slots": [
+            {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "count": 1,
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "count": 1,
+              "instanceId": "inv_mos7tasd_7"
+            },
+            {
+              "kind": "item",
+              "itemId": "stoneDust",
+              "count": 13,
+              "instanceId": "inv_mos80voc_6"
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "pickaxeLevel": 3,
+          "mineKeyIssued": true,
+          "abandonedMineUnlocked": true,
+          "quickUse": {
+            "1": null,
+            "2": null,
+            "3": null,
+            "4": null,
+            "5": null
+          },
+          "equipped": {
+            "head": {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            "body": null,
+            "shoes": null,
+            "tool": {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "instanceId": "inv_mos7tasd_7"
+            }
+          }
+        },
+        "tutorial": {
+          "currentStep": 6,
+          "minedRockCount": 32,
+          "upgradeCount": 3,
+          "completed": true,
+          "archivedSteps": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "airSystem": {
+          "current": 63.39,
+          "max": 100,
+          "mapPurification": {
+            "폐광맵": 0
+          }
+        },
+        "displayBoard": null
+      }
+    },
+    {
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "updatedAt": "2026-05-05T07:14:51.296Z",
+      "backedUpAt": "2026-05-05T07:14:55.314Z",
+      "data": {
+        "version": 1,
+        "mapId": "광산맵",
+        "position": {
+          "x": 0.355,
+          "y": 0.14,
+          "z": -57.41
+        },
+        "rotationY": 3.1094,
+        "inventory": {
+          "slots": [
+            {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "count": 1,
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "count": 1,
+              "instanceId": "inv_mos7tasd_7"
+            },
+            {
+              "kind": "item",
+              "itemId": "stoneDust",
+              "count": 13,
+              "instanceId": "inv_mos80voc_6"
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "pickaxeLevel": 3,
+          "mineKeyIssued": true,
+          "abandonedMineUnlocked": true,
+          "quickUse": {
+            "1": null,
+            "2": null,
+            "3": null,
+            "4": null,
+            "5": null
+          },
+          "equipped": {
+            "head": {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            "body": null,
+            "shoes": null,
+            "tool": {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "instanceId": "inv_mos7tasd_7"
+            }
+          }
+        },
+        "tutorial": {
+          "currentStep": 6,
+          "minedRockCount": 32,
+          "upgradeCount": 3,
+          "completed": true,
+          "archivedSteps": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "airSystem": {
+          "current": 67.79,
+          "max": 100,
+          "mapPurification": {
+            "폐광맵": 0
+          }
+        },
+        "displayBoard": null
+      }
+    },
+    {
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "updatedAt": "2026-05-05T07:14:55.314Z",
+      "backedUpAt": "2026-05-05T07:14:59.327Z",
+      "data": {
+        "version": 1,
+        "mapId": "광산맵",
+        "position": {
+          "x": 0.355,
+          "y": 0.14,
+          "z": -57.41
+        },
+        "rotationY": 3.1094,
+        "inventory": {
+          "slots": [
+            {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "count": 1,
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "count": 1,
+              "instanceId": "inv_mos7tasd_7"
+            },
+            {
+              "kind": "item",
+              "itemId": "stoneDust",
+              "count": 13,
+              "instanceId": "inv_mos80voc_6"
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "pickaxeLevel": 3,
+          "mineKeyIssued": true,
+          "abandonedMineUnlocked": true,
+          "quickUse": {
+            "1": null,
+            "2": null,
+            "3": null,
+            "4": null,
+            "5": null
+          },
+          "equipped": {
+            "head": {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            "body": null,
+            "shoes": null,
+            "tool": {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "instanceId": "inv_mos7tasd_7"
+            }
+          }
+        },
+        "tutorial": {
+          "currentStep": 6,
+          "minedRockCount": 32,
+          "upgradeCount": 3,
+          "completed": true,
+          "archivedSteps": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "airSystem": {
+          "current": 72.21,
+          "max": 100,
+          "mapPurification": {
+            "폐광맵": 0
+          }
+        },
+        "displayBoard": null
+      }
+    },
+    {
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "updatedAt": "2026-05-05T07:14:59.327Z",
+      "backedUpAt": "2026-05-05T07:15:03.332Z",
+      "data": {
+        "version": 1,
+        "mapId": "광산맵",
+        "position": {
+          "x": 0.355,
+          "y": 0.14,
+          "z": -57.41
+        },
+        "rotationY": 3.1094,
+        "inventory": {
+          "slots": [
+            {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "count": 1,
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "count": 1,
+              "instanceId": "inv_mos7tasd_7"
+            },
+            {
+              "kind": "item",
+              "itemId": "stoneDust",
+              "count": 13,
+              "instanceId": "inv_mos80voc_6"
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "pickaxeLevel": 3,
+          "mineKeyIssued": true,
+          "abandonedMineUnlocked": true,
+          "quickUse": {
+            "1": null,
+            "2": null,
+            "3": null,
+            "4": null,
+            "5": null
+          },
+          "equipped": {
+            "head": {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            "body": null,
+            "shoes": null,
+            "tool": {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "instanceId": "inv_mos7tasd_7"
+            }
+          }
+        },
+        "tutorial": {
+          "currentStep": 6,
+          "minedRockCount": 32,
+          "upgradeCount": 3,
+          "completed": true,
+          "archivedSteps": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "airSystem": {
+          "current": 76.63,
+          "max": 100,
+          "mapPurification": {
+            "폐광맵": 0
+          }
+        },
+        "displayBoard": null
+      }
+    },
+    {
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "updatedAt": "2026-05-05T07:15:03.331Z",
+      "backedUpAt": "2026-05-05T07:15:07.346Z",
+      "data": {
+        "version": 1,
+        "mapId": "광산맵",
+        "position": {
+          "x": 0.355,
+          "y": 0.14,
+          "z": -57.41
+        },
+        "rotationY": 3.1094,
+        "inventory": {
+          "slots": [
+            {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "count": 1,
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "count": 1,
+              "instanceId": "inv_mos7tasd_7"
+            },
+            {
+              "kind": "item",
+              "itemId": "stoneDust",
+              "count": 13,
+              "instanceId": "inv_mos80voc_6"
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "pickaxeLevel": 3,
+          "mineKeyIssued": true,
+          "abandonedMineUnlocked": true,
+          "quickUse": {
+            "1": null,
+            "2": null,
+            "3": null,
+            "4": null,
+            "5": null
+          },
+          "equipped": {
+            "head": {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            "body": null,
+            "shoes": null,
+            "tool": {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "instanceId": "inv_mos7tasd_7"
+            }
+          }
+        },
+        "tutorial": {
+          "currentStep": 6,
+          "minedRockCount": 32,
+          "upgradeCount": 3,
+          "completed": true,
+          "archivedSteps": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "airSystem": {
+          "current": 81.03,
+          "max": 100,
+          "mapPurification": {
+            "폐광맵": 0
+          }
+        },
+        "displayBoard": null
+      }
+    },
+    {
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "updatedAt": "2026-05-05T07:15:07.346Z",
+      "backedUpAt": "2026-05-05T07:15:11.347Z",
+      "data": {
+        "version": 1,
+        "mapId": "광산맵",
+        "position": {
+          "x": 0.355,
+          "y": 0.14,
+          "z": -57.41
+        },
+        "rotationY": 3.1094,
+        "inventory": {
+          "slots": [
+            {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "count": 1,
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "count": 1,
+              "instanceId": "inv_mos7tasd_7"
+            },
+            {
+              "kind": "item",
+              "itemId": "stoneDust",
+              "count": 13,
+              "instanceId": "inv_mos80voc_6"
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "pickaxeLevel": 3,
+          "mineKeyIssued": true,
+          "abandonedMineUnlocked": true,
+          "quickUse": {
+            "1": null,
+            "2": null,
+            "3": null,
+            "4": null,
+            "5": null
+          },
+          "equipped": {
+            "head": {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            "body": null,
+            "shoes": null,
+            "tool": {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "instanceId": "inv_mos7tasd_7"
+            }
+          }
+        },
+        "tutorial": {
+          "currentStep": 6,
+          "minedRockCount": 32,
+          "upgradeCount": 3,
+          "completed": true,
+          "archivedSteps": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "airSystem": {
+          "current": 85.44,
+          "max": 100,
+          "mapPurification": {
+            "폐광맵": 0
+          }
+        },
+        "displayBoard": null
+      }
+    },
+    {
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "updatedAt": "2026-05-05T07:15:11.347Z",
+      "backedUpAt": "2026-05-05T07:15:15.346Z",
+      "data": {
+        "version": 1,
+        "mapId": "광산맵",
+        "position": {
+          "x": -1.193,
+          "y": 0.14,
+          "z": -51.315
+        },
+        "rotationY": 0.4881,
+        "inventory": {
+          "slots": [
+            {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "count": 1,
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "count": 1,
+              "instanceId": "inv_mos7tasd_7"
+            },
+            {
+              "kind": "item",
+              "itemId": "stoneDust",
+              "count": 13,
+              "instanceId": "inv_mos80voc_6"
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "pickaxeLevel": 3,
+          "mineKeyIssued": true,
+          "abandonedMineUnlocked": true,
+          "quickUse": {
+            "1": null,
+            "2": null,
+            "3": null,
+            "4": null,
+            "5": null
+          },
+          "equipped": {
+            "head": {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            "body": null,
+            "shoes": null,
+            "tool": {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "instanceId": "inv_mos7tasd_7"
+            }
+          }
+        },
+        "tutorial": {
+          "currentStep": 6,
+          "minedRockCount": 32,
+          "upgradeCount": 3,
+          "completed": true,
+          "archivedSteps": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "airSystem": {
+          "current": 89.84,
+          "max": 100,
+          "mapPurification": {
+            "폐광맵": 0
+          }
+        },
+        "displayBoard": null
+      }
+    },
+    {
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "updatedAt": "2026-05-05T07:15:15.346Z",
+      "backedUpAt": "2026-05-05T07:15:19.348Z",
+      "data": {
+        "version": 1,
+        "mapId": "광산맵",
+        "position": {
+          "x": 14.029,
+          "y": 0.037,
+          "z": -9.439
+        },
+        "rotationY": -0.0511,
+        "inventory": {
+          "slots": [
+            {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "count": 1,
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "count": 1,
+              "instanceId": "inv_mos7tasd_7"
+            },
+            {
+              "kind": "item",
+              "itemId": "stoneDust",
+              "count": 13,
+              "instanceId": "inv_mos80voc_6"
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "pickaxeLevel": 3,
+          "mineKeyIssued": true,
+          "abandonedMineUnlocked": true,
+          "quickUse": {
+            "1": null,
+            "2": null,
+            "3": null,
+            "4": null,
+            "5": null
+          },
+          "equipped": {
+            "head": {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            "body": null,
+            "shoes": null,
+            "tool": {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "instanceId": "inv_mos7tasd_7"
+            }
+          }
+        },
+        "tutorial": {
+          "currentStep": 6,
+          "minedRockCount": 32,
+          "upgradeCount": 3,
+          "completed": true,
+          "archivedSteps": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "airSystem": {
+          "current": 94.24,
+          "max": 100,
+          "mapPurification": {
+            "폐광맵": 0
+          }
+        },
+        "displayBoard": null
+      }
+    },
+    {
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "updatedAt": "2026-05-05T07:15:19.348Z",
+      "backedUpAt": "2026-05-05T07:15:23.413Z",
+      "data": {
+        "version": 1,
+        "mapId": "광산맵",
+        "position": {
+          "x": 0.753,
+          "y": 0.152,
+          "z": -24.603
+        },
+        "rotationY": -3.0272,
+        "inventory": {
+          "slots": [
+            {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "count": 1,
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "count": 1,
+              "instanceId": "inv_mos7tasd_7"
+            },
+            {
+              "kind": "item",
+              "itemId": "stoneDust",
+              "count": 13,
+              "instanceId": "inv_mos80voc_6"
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "pickaxeLevel": 3,
+          "mineKeyIssued": true,
+          "abandonedMineUnlocked": true,
+          "quickUse": {
+            "1": null,
+            "2": null,
+            "3": null,
+            "4": null,
+            "5": null
+          },
+          "equipped": {
+            "head": {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            "body": null,
+            "shoes": null,
+            "tool": {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "instanceId": "inv_mos7tasd_7"
+            }
+          }
+        },
+        "tutorial": {
+          "currentStep": 6,
+          "minedRockCount": 32,
+          "upgradeCount": 3,
+          "completed": true,
+          "archivedSteps": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "airSystem": {
+          "current": 98.64,
+          "max": 100,
+          "mapPurification": {
+            "폐광맵": 0
+          }
+        },
+        "displayBoard": null
+      }
     }
   ]
 }
