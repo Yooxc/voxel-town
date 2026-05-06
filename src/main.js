@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-const LAST_PATCHED_AT = "2026-05-05 17:20:25 KST";
+const LAST_PATCHED_AT = "2026-05-06 18:42:54 KST";
 
 const scene = new THREE.Scene();
 // ===== Atmosphere: Sky / Fog =====
@@ -2368,7 +2368,7 @@ invWin.style.position = "fixed";
 invWin.style.left = "12px";
 invWin.style.top = "12px";
 invWin.style.width = "320px";
-invWin.style.height = "420px";
+invWin.style.height = "500px";
 invWin.style.background = "rgba(235, 235, 235, 0.92)";
 invWin.style.border = "1px solid rgba(0,0,0,0.25)";
 invWin.style.borderRadius = "10px";
@@ -3117,11 +3117,15 @@ const invBody = document.createElement("div");
 invBody.style.padding = "12px";
 invBody.style.height = "calc(100% - 52px)";
 invBody.style.boxSizing = "border-box";
+invBody.style.display = "flex";
+invBody.style.flexDirection = "column";
+invBody.style.gap = "10px";
 invWin.appendChild(invBody);
 
 // 스크롤 영역(슬롯 그리드)
 const gridWrap = document.createElement("div");
-gridWrap.style.height = "100%";
+gridWrap.style.flex = "1";
+gridWrap.style.minHeight = "0";
 gridWrap.style.overflowY = "auto";
 gridWrap.style.paddingRight = "6px";
 invBody.appendChild(gridWrap);
@@ -3131,6 +3135,186 @@ invgrid.style.display = "grid";
 invgrid.style.gridTemplateColumns = "repeat(5, 1fr)"; // 5칸 x 여러줄
 invgrid.style.gap = "10px";
 gridWrap.appendChild(invgrid);
+
+const inventoryTrashRow = document.createElement("div");
+inventoryTrashRow.style.display = "flex";
+inventoryTrashRow.style.alignItems = "center";
+inventoryTrashRow.style.justifyContent = "center";
+inventoryTrashRow.style.minHeight = "64px";
+inventoryTrashRow.style.paddingTop = "4px";
+invBody.appendChild(inventoryTrashRow);
+
+const inventoryTrashDropZone = document.createElement("div");
+inventoryTrashDropZone.style.width = "100%";
+inventoryTrashDropZone.style.minHeight = "52px";
+inventoryTrashDropZone.style.borderRadius = "12px";
+inventoryTrashDropZone.style.border = "2px dashed rgba(120,120,120,0.38)";
+inventoryTrashDropZone.style.background = "rgba(255,255,255,0.72)";
+inventoryTrashDropZone.style.display = "flex";
+inventoryTrashDropZone.style.alignItems = "center";
+inventoryTrashDropZone.style.justifyContent = "center";
+inventoryTrashDropZone.style.gap = "10px";
+inventoryTrashDropZone.style.fontFamily = "system-ui, -apple-system, sans-serif";
+inventoryTrashDropZone.style.fontSize = "13px";
+inventoryTrashDropZone.style.fontWeight = "800";
+inventoryTrashDropZone.style.color = "#555";
+inventoryTrashDropZone.style.transition = "background 120ms ease, border-color 120ms ease, transform 120ms ease";
+inventoryTrashDropZone.textContent = "🗑️ 아이템을 여기로 드래그해 버리기";
+inventoryTrashRow.appendChild(inventoryTrashDropZone);
+
+const discardOverlay = document.createElement("div");
+discardOverlay.style.position = "fixed";
+discardOverlay.style.inset = "0";
+discardOverlay.style.background = "rgba(16,18,22,0.28)";
+discardOverlay.style.backdropFilter = "blur(3px)";
+discardOverlay.style.display = "none";
+discardOverlay.style.pointerEvents = "auto";
+discardOverlay.style.zIndex = "1000003";
+uiLayer.appendChild(discardOverlay);
+
+const discardDialog = document.createElement("div");
+discardDialog.style.position = "fixed";
+discardDialog.style.left = "50%";
+discardDialog.style.top = "50%";
+discardDialog.style.transform = "translate(-50%, -50%)";
+discardDialog.style.width = "min(340px, calc(100vw - 36px))";
+discardDialog.style.background = "rgba(245,245,245,0.98)";
+discardDialog.style.border = "1px solid rgba(0,0,0,0.18)";
+discardDialog.style.borderRadius = "14px";
+discardDialog.style.boxShadow = "0 18px 42px rgba(0,0,0,0.28)";
+discardDialog.style.padding = "16px";
+discardDialog.style.display = "none";
+discardDialog.style.pointerEvents = "auto";
+discardDialog.style.zIndex = "1000004";
+discardDialog.style.boxSizing = "border-box";
+uiLayer.appendChild(discardDialog);
+
+const discardTitle = document.createElement("div");
+discardTitle.textContent = "아이템 버리기";
+discardTitle.style.fontFamily = "system-ui, -apple-system, sans-serif";
+discardTitle.style.fontSize = "18px";
+discardTitle.style.fontWeight = "800";
+discardTitle.style.color = "#222";
+discardDialog.appendChild(discardTitle);
+
+const discardItemLabel = document.createElement("div");
+discardItemLabel.style.marginTop = "10px";
+discardItemLabel.style.fontFamily = "system-ui, -apple-system, sans-serif";
+discardItemLabel.style.fontSize = "15px";
+discardItemLabel.style.fontWeight = "700";
+discardItemLabel.style.color = "#333";
+discardDialog.appendChild(discardItemLabel);
+
+const discardOwnedCount = document.createElement("div");
+discardOwnedCount.style.marginTop = "6px";
+discardOwnedCount.style.fontFamily = "system-ui, -apple-system, sans-serif";
+discardOwnedCount.style.fontSize = "13px";
+discardOwnedCount.style.color = "#666";
+discardDialog.appendChild(discardOwnedCount);
+
+const discardInputLabel = document.createElement("label");
+discardInputLabel.textContent = "버릴 개수";
+discardInputLabel.style.display = "block";
+discardInputLabel.style.marginTop = "14px";
+discardInputLabel.style.fontFamily = "system-ui, -apple-system, sans-serif";
+discardInputLabel.style.fontSize = "13px";
+discardInputLabel.style.fontWeight = "700";
+discardInputLabel.style.color = "#444";
+discardDialog.appendChild(discardInputLabel);
+
+const discardCountInput = document.createElement("input");
+discardCountInput.type = "number";
+discardCountInput.min = "1";
+discardCountInput.step = "1";
+discardCountInput.style.marginTop = "8px";
+discardCountInput.style.width = "100%";
+discardCountInput.style.boxSizing = "border-box";
+discardCountInput.style.padding = "10px 12px";
+discardCountInput.style.borderRadius = "10px";
+discardCountInput.style.border = "1px solid rgba(0,0,0,0.18)";
+discardCountInput.style.fontFamily = "system-ui, -apple-system, sans-serif";
+discardCountInput.style.fontSize = "15px";
+discardCountInput.style.background = "rgba(255,255,255,0.96)";
+discardDialog.appendChild(discardCountInput);
+
+const discardError = document.createElement("div");
+discardError.style.marginTop = "8px";
+discardError.style.minHeight = "18px";
+discardError.style.fontFamily = "system-ui, -apple-system, sans-serif";
+discardError.style.fontSize = "12px";
+discardError.style.fontWeight = "700";
+discardError.style.color = "#c24c24";
+discardDialog.appendChild(discardError);
+
+const discardButtonRow = document.createElement("div");
+discardButtonRow.style.display = "flex";
+discardButtonRow.style.justifyContent = "flex-end";
+discardButtonRow.style.gap = "10px";
+discardButtonRow.style.marginTop = "16px";
+discardDialog.appendChild(discardButtonRow);
+
+const discardCancelBtn = document.createElement("button");
+discardCancelBtn.type = "button";
+discardCancelBtn.textContent = "취소";
+discardCancelBtn.style.minWidth = "78px";
+discardCancelBtn.style.padding = "9px 12px";
+discardCancelBtn.style.borderRadius = "10px";
+discardCancelBtn.style.border = "1px solid rgba(0,0,0,0.18)";
+discardCancelBtn.style.background = "rgba(255,255,255,0.92)";
+discardCancelBtn.style.cursor = "pointer";
+discardCancelBtn.style.fontWeight = "700";
+discardButtonRow.appendChild(discardCancelBtn);
+
+const discardConfirmBtn = document.createElement("button");
+discardConfirmBtn.type = "button";
+discardConfirmBtn.textContent = "버리기";
+discardConfirmBtn.style.minWidth = "86px";
+discardConfirmBtn.style.padding = "9px 12px";
+discardConfirmBtn.style.borderRadius = "10px";
+discardConfirmBtn.style.border = "1px solid rgba(155,58,26,0.28)";
+discardConfirmBtn.style.background = "linear-gradient(180deg, rgba(255,161,115,0.95), rgba(240,118,72,0.95))";
+discardConfirmBtn.style.color = "white";
+discardConfirmBtn.style.cursor = "pointer";
+discardConfirmBtn.style.fontWeight = "800";
+discardButtonRow.appendChild(discardConfirmBtn);
+
+inventoryTrashDropZone.addEventListener("dragover", (event) => {
+  if (!inventoryDraggedEntry) return;
+  event.preventDefault();
+  inventoryTrashDropZone.style.background = "rgba(255,231,214,0.96)";
+  inventoryTrashDropZone.style.borderColor = "rgba(232,120,66,0.9)";
+  inventoryTrashDropZone.style.transform = "scale(1.01)";
+});
+
+inventoryTrashDropZone.addEventListener("dragleave", () => {
+  inventoryTrashDropZone.style.background = "rgba(255,255,255,0.72)";
+  inventoryTrashDropZone.style.borderColor = "rgba(120,120,120,0.38)";
+  inventoryTrashDropZone.style.transform = "scale(1)";
+});
+
+inventoryTrashDropZone.addEventListener("drop", (event) => {
+  event.preventDefault();
+  inventoryTrashDropZone.style.background = "rgba(255,255,255,0.72)";
+  inventoryTrashDropZone.style.borderColor = "rgba(120,120,120,0.38)";
+  inventoryTrashDropZone.style.transform = "scale(1)";
+  const entry = inventoryDraggedEntry;
+  inventoryDraggedEntry = null;
+  if (!entry) return;
+  openDiscardDialog(entry);
+});
+
+discardOverlay.addEventListener("click", closeDiscardDialog);
+discardCancelBtn.addEventListener("click", closeDiscardDialog);
+discardConfirmBtn.addEventListener("click", commitDiscardDialog);
+discardCountInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    commitDiscardDialog();
+  } else if (event.key === "Escape") {
+    event.preventDefault();
+    closeDiscardDialog();
+  }
+});
 
 // 슬롯 크기/스타일
 function makeSlot() {
@@ -3368,6 +3552,24 @@ function renderInventoryWindow() {
     const item = slots[i];
 
     if (item) {
+      slot.draggable = true;
+      slot.style.cursor = "grab";
+      slot.addEventListener("dragstart", (event) => {
+        inventoryDraggedEntry = item;
+        if (event.dataTransfer) {
+          event.dataTransfer.effectAllowed = "move";
+          event.dataTransfer.setData("text/plain", getInventoryEntryDisplayName(item));
+        }
+        slot.style.opacity = "0.5";
+      });
+      slot.addEventListener("dragend", () => {
+        inventoryDraggedEntry = null;
+        slot.style.opacity = "1";
+        inventoryTrashDropZone.style.background = "rgba(255,255,255,0.72)";
+        inventoryTrashDropZone.style.borderColor = "rgba(120,120,120,0.38)";
+        inventoryTrashDropZone.style.transform = "scale(1)";
+      });
+
       const icon = createInventoryEntryVisualElement(item, { size: 38 });
       slot.appendChild(icon);
 
@@ -3402,7 +3604,7 @@ function renderInventoryWindow() {
 
         // 장비 탭에서만 클릭 가능하도록 커서/효과
         if (isEquipTab && equipSlot) {
-        slot.style.cursor = "pointer";
+        slot.style.cursor = "grab";
 
         slot.addEventListener("dblclick", () => {
         toggleEquipItem(item);
@@ -3496,7 +3698,11 @@ function setInvOpen(v) {
   invOpen = v;
   invWin.style.display = invOpen ? "block" : "none";
   equipWin.style.display = invOpen ? "block" : "none";
-  if (!invOpen) hideItemTooltip();
+  if (!invOpen) {
+    hideItemTooltip();
+    inventoryDraggedEntry = null;
+    closeDiscardDialog();
+  }
   if (invOpen) renderInventoryWindow();
 }
 
@@ -4703,7 +4909,11 @@ function getInventoryEntryTooltipText(entry) {
     lines.push(`Token ID: ${entry.tokenId}`);
     return lines.join("\n");
   }
-  return getItemTooltipText(getSlotItemId(entry), getSlotItemCount(entry));
+  const lines = [getItemTooltipText(getSlotItemId(entry), getSlotItemCount(entry))];
+  if (isQuestCriticalItemBlockedFromDiscard(entry)) {
+    lines.push("퀘스트 아이템");
+  }
+  return lines.join("\n");
 }
 
 function createQuickUseBinding(itemId, extra = {}) {
@@ -4898,6 +5108,136 @@ function getEquippedMiningPower() {
   },
     };
 
+let inventoryDraggedEntry = null;
+let inventoryDiscardTargetEntry = null;
+
+const ALWAYS_DROP_BLOCKED_ITEM_IDS = new Set(["abandonedMineKey"]);
+const TUTORIAL_DROP_BLOCKED_ITEM_IDS = new Set(["pickaxe", "safetyHelmet"]);
+
+function findInventorySlotIndexByEntry(entry) {
+  if (!entry) return -1;
+  if (isNftInventoryEntry(entry)) {
+    return inventory.slots.findIndex((slot) =>
+      slot &&
+      slot.kind === "nft" &&
+      slot.contractAddress === entry.contractAddress &&
+      String(slot.tokenId) === String(entry.tokenId)
+    );
+  }
+  if (entry.instanceId) {
+    return inventory.slots.findIndex((slot) => slot?.instanceId === entry.instanceId);
+  }
+  const itemId = getSlotItemId(entry);
+  return inventory.slots.findIndex((slot) => slot && getSlotItemId(slot) === itemId);
+}
+
+function getInventorySlotEntryByEntry(entry) {
+  const idx = findInventorySlotIndexByEntry(entry);
+  return idx >= 0 ? inventory.slots[idx] : null;
+}
+
+function isQuestCriticalItemBlockedFromDiscard(entry) {
+  const itemId = getSlotItemId(entry);
+  if (!itemId) return false;
+  if (ALWAYS_DROP_BLOCKED_ITEM_IDS.has(itemId)) return true;
+  if (!tutorialQuest.completed && TUTORIAL_DROP_BLOCKED_ITEM_IDS.has(itemId)) return true;
+  return false;
+}
+
+function canDiscardInventoryEntry(entry) {
+  if (!entry) {
+    return { ok: false, reason: "아이템 정보가 없습니다." };
+  }
+  if (isNftInventoryEntry(entry)) {
+    return { ok: false, reason: "NFT 아이템은 버릴 수 없습니다." };
+  }
+  const equipSlot = getInventoryEntryEquipSlot(entry);
+  if (equipSlot && isSameInventoryEntryAsEquipped(entry, getEquippedItemRef(equipSlot))) {
+    return { ok: false, reason: "장착 중인 아이템은 먼저 해제해야 합니다." };
+  }
+  if (isQuestCriticalItemBlockedFromDiscard(entry)) {
+    return { ok: false, reason: "핵심 퀘스트 아이템은 버릴 수 없습니다." };
+  }
+  const count = getSlotItemCount(entry);
+  if (count <= 0) {
+    return { ok: false, reason: "버릴 수량이 없습니다." };
+  }
+  return { ok: true };
+}
+
+function closeDiscardDialog() {
+  inventoryDiscardTargetEntry = null;
+  discardOverlay.style.display = "none";
+  discardDialog.style.display = "none";
+  discardError.textContent = "";
+}
+
+function openDiscardDialog(entry) {
+  const liveEntry = getInventorySlotEntryByEntry(entry);
+  const check = canDiscardInventoryEntry(liveEntry ?? entry);
+  if (!check.ok) {
+    showUI(check.reason, 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return false;
+  }
+
+  inventoryDiscardTargetEntry = liveEntry ?? entry;
+  const itemName = getInventoryEntryDisplayName(inventoryDiscardTargetEntry);
+  const ownedCount = Math.max(1, getSlotItemCount(inventoryDiscardTargetEntry));
+  discardItemLabel.textContent = itemName;
+  discardOwnedCount.textContent = `현재 보유 개수: ${ownedCount}`;
+  discardCountInput.value = String(ownedCount);
+  discardCountInput.max = String(ownedCount);
+  discardCountInput.disabled = ownedCount <= 1;
+  discardInputLabel.style.opacity = ownedCount <= 1 ? "0.55" : "1";
+  discardError.textContent = "";
+  discardOverlay.style.display = "block";
+  discardDialog.style.display = "block";
+  setTimeout(() => {
+    discardCountInput.focus();
+    discardCountInput.select();
+  }, 0);
+  return true;
+}
+
+function commitDiscardDialog() {
+  if (!inventoryDiscardTargetEntry) return false;
+  const slotIndex = findInventorySlotIndexByEntry(inventoryDiscardTargetEntry);
+  if (slotIndex < 0) {
+    discardError.textContent = "아이템을 다시 찾을 수 없습니다.";
+    return false;
+  }
+
+  const liveEntry = inventory.slots[slotIndex];
+  const check = canDiscardInventoryEntry(liveEntry);
+  if (!check.ok) {
+    discardError.textContent = check.reason;
+    return false;
+  }
+
+  const ownedCount = Math.max(1, getSlotItemCount(liveEntry));
+  const rawCount = Number.parseInt(discardCountInput.value, 10);
+  const discardCount = Math.max(1, Math.min(ownedCount, Number.isFinite(rawCount) ? rawCount : ownedCount));
+  if (!Number.isFinite(rawCount) || rawCount < 1 || rawCount > ownedCount) {
+    discardError.textContent = `1 ~ ${ownedCount} 사이의 숫자를 입력하세요.`;
+    return false;
+  }
+
+  if (ownedCount <= discardCount) {
+    inventory.slots[slotIndex] = null;
+  } else {
+    liveEntry.count -= discardCount;
+  }
+
+  pruneQuickUseBindings();
+  const itemName = getInventoryEntryDisplayName(liveEntry);
+  closeDiscardDialog();
+  updateInventoryUI();
+  showUI(`${itemName} ${discardCount}개 버렸습니다.`, 1000);
+  lastMessageUntil = performance.now() + 1000;
+  return true;
+}
+
 	    function findFirstSlotWithItem(id) {
   for (let i = 0; i < inventory.slots.length; i++) {
     const s = inventory.slots[i];
@@ -5027,6 +5367,26 @@ function getEquippedMiningPower() {
 
     function setEquippedItem(slotId, itemOrRef) {
   inventory.equipped[slotId] = normalizeEquippedItemRef(itemOrRef);
+    }
+
+    function equipFirstOwnedInventoryItem(slotId, itemId) {
+  const slotIndex = findFirstSlotWithItem(itemId);
+  if (slotIndex === -1) {
+    setEquippedItem(slotId, itemId);
+    return false;
+  }
+  const entry = normalizeInventorySlotEntry(inventory.slots[slotIndex]);
+  if (!entry) {
+    setEquippedItem(slotId, itemId);
+    return false;
+  }
+  setEquippedItem(
+    slotId,
+    createEquippedItemRef(itemId, {
+      instanceId: entry.instanceId ?? null,
+    })
+  );
+  return true;
     }
 
     function toggleEquipItem(itemOrId) {
@@ -7589,8 +7949,8 @@ function applyDevPreset() {
   if (DEV_PRESET.giveStarterGear) {
     addItem("pickaxe", 1);
     addItem("safetyHelmet", 1);
-    setEquippedItem("tool", "pickaxe");
-    setEquippedItem("head", "safetyHelmet");
+    equipFirstOwnedInventoryItem("tool", "pickaxe");
+    equipFirstOwnedInventoryItem("head", "safetyHelmet");
   }
 
   addItem("freshAirCanister", 2);

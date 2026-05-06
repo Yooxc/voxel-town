@@ -4,7 +4,7 @@
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
       "nickname": "XC",
       "createdAt": "2026-04-30T08:26:16.091Z",
-      "lastLoginAt": "2026-05-05T07:14:07.124Z"
+      "lastLoginAt": "2026-05-06T09:24:00.629Z"
     }
   ],
   "nonces": [],
@@ -386,6 +386,30 @@
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
       "createdAt": "2026-05-05T07:14:07.124Z",
       "expiresAt": "2026-06-04T07:14:07.124Z"
+    },
+    {
+      "token": "11f2fc10-7192-4d75-85fa-0644d0b95ea8",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-05T11:52:39.999Z",
+      "expiresAt": "2026-06-04T11:52:39.999Z"
+    },
+    {
+      "token": "e3f68740-fcc3-457e-8e07-f482c0ecffd6",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-05T11:53:44.728Z",
+      "expiresAt": "2026-06-04T11:53:44.728Z"
+    },
+    {
+      "token": "5b13b078-4870-485e-889b-db62d72ab7a7",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-06T09:06:46.168Z",
+      "expiresAt": "2026-06-05T09:06:46.168Z"
+    },
+    {
+      "token": "04b2329f-bc73-405e-9eeb-715a8dac540f",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-06T09:24:00.629Z",
+      "expiresAt": "2026-06-05T09:24:00.629Z"
     }
   ],
   "playerSaves": [
@@ -395,11 +419,11 @@
         "version": 1,
         "mapId": "광산맵",
         "position": {
-          "x": 0.417,
-          "y": -0.028,
-          "z": -45.52
+          "x": 0.946,
+          "y": 0.001,
+          "z": 4.271
         },
-        "rotationY": -3.0403,
+        "rotationY": 0.5274,
         "inventory": {
           "slots": [
             {
@@ -417,12 +441,27 @@
             {
               "kind": "item",
               "itemId": "stoneDust",
-              "count": 13,
+              "count": 19,
               "instanceId": "inv_mos80voc_6"
             },
-            null,
-            null,
-            null,
+            {
+              "kind": "item",
+              "itemId": "freshAirCanister",
+              "count": 2,
+              "instanceId": "inv_motu5uok_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "count": 1,
+              "instanceId": "inv_motu5uzb_7"
+            },
+            {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "count": 1,
+              "instanceId": "inv_motu5vg4_8"
+            },
             null,
             null,
             null,
@@ -475,7 +514,7 @@
         },
         "tutorial": {
           "currentStep": 6,
-          "minedRockCount": 32,
+          "minedRockCount": 37,
           "upgradeCount": 3,
           "completed": true,
           "archivedSteps": [
@@ -495,23 +534,23 @@
         },
         "displayBoard": null
       },
-      "updatedAt": "2026-05-05T07:15:23.412Z"
+      "updatedAt": "2026-05-06T09:24:04.776Z"
     }
   ],
   "playerSaveBackups": [
     {
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
-      "updatedAt": "2026-05-05T07:14:43.278Z",
-      "backedUpAt": "2026-05-05T07:14:47.297Z",
+      "updatedAt": "2026-05-06T09:09:19.563Z",
+      "backedUpAt": "2026-05-06T09:09:23.574Z",
       "data": {
         "version": 1,
         "mapId": "광산맵",
         "position": {
-          "x": 0.355,
-          "y": 0.14,
-          "z": -57.41
+          "x": -0.011,
+          "y": 0,
+          "z": 2.896
         },
-        "rotationY": 3.1094,
+        "rotationY": -3.0812,
         "inventory": {
           "slots": [
             {
@@ -529,7 +568,7 @@
             {
               "kind": "item",
               "itemId": "stoneDust",
-              "count": 13,
+              "count": 19,
               "instanceId": "inv_mos80voc_6"
             },
             null,
@@ -587,7 +626,7 @@
         },
         "tutorial": {
           "currentStep": 6,
-          "minedRockCount": 32,
+          "minedRockCount": 37,
           "upgradeCount": 3,
           "completed": true,
           "archivedSteps": [
@@ -599,7 +638,7 @@
           ]
         },
         "airSystem": {
-          "current": 58.97,
+          "current": 100,
           "max": 100,
           "mapPurification": {
             "폐광맵": 0
@@ -610,17 +649,17 @@
     },
     {
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
-      "updatedAt": "2026-05-05T07:14:47.297Z",
-      "backedUpAt": "2026-05-05T07:14:51.296Z",
+      "updatedAt": "2026-05-06T09:09:23.574Z",
+      "backedUpAt": "2026-05-06T09:09:26.812Z",
       "data": {
         "version": 1,
         "mapId": "광산맵",
         "position": {
-          "x": 0.355,
-          "y": 0.14,
-          "z": -57.41
+          "x": 0.402,
+          "y": 0,
+          "z": -0.914
         },
-        "rotationY": 3.1094,
+        "rotationY": 2.0982,
         "inventory": {
           "slots": [
             {
@@ -638,7 +677,7 @@
             {
               "kind": "item",
               "itemId": "stoneDust",
-              "count": 13,
+              "count": 19,
               "instanceId": "inv_mos80voc_6"
             },
             null,
@@ -696,7 +735,7 @@
         },
         "tutorial": {
           "currentStep": 6,
-          "minedRockCount": 32,
+          "minedRockCount": 37,
           "upgradeCount": 3,
           "completed": true,
           "archivedSteps": [
@@ -708,7 +747,7 @@
           ]
         },
         "airSystem": {
-          "current": 63.39,
+          "current": 100,
           "max": 100,
           "mapPurification": {
             "폐광맵": 0
@@ -719,17 +758,17 @@
     },
     {
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
-      "updatedAt": "2026-05-05T07:14:51.296Z",
-      "backedUpAt": "2026-05-05T07:14:55.314Z",
+      "updatedAt": "2026-05-06T09:09:26.812Z",
+      "backedUpAt": "2026-05-06T09:09:27.016Z",
       "data": {
         "version": 1,
         "mapId": "광산맵",
         "position": {
-          "x": 0.355,
-          "y": 0.14,
-          "z": -57.41
+          "x": -0.359,
+          "y": 0,
+          "z": -3.634
         },
-        "rotationY": 3.1094,
+        "rotationY": 0.2327,
         "inventory": {
           "slots": [
             {
@@ -747,10 +786,15 @@
             {
               "kind": "item",
               "itemId": "stoneDust",
-              "count": 13,
+              "count": 19,
               "instanceId": "inv_mos80voc_6"
             },
-            null,
+            {
+              "kind": "item",
+              "itemId": "freshAirCanister",
+              "count": 1,
+              "instanceId": "inv_motu5uok_6"
+            },
             null,
             null,
             null,
@@ -805,7 +849,7 @@
         },
         "tutorial": {
           "currentStep": 6,
-          "minedRockCount": 32,
+          "minedRockCount": 37,
           "upgradeCount": 3,
           "completed": true,
           "archivedSteps": [
@@ -817,7 +861,7 @@
           ]
         },
         "airSystem": {
-          "current": 67.79,
+          "current": 100,
           "max": 100,
           "mapPurification": {
             "폐광맵": 0
@@ -828,17 +872,17 @@
     },
     {
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
-      "updatedAt": "2026-05-05T07:14:55.314Z",
-      "backedUpAt": "2026-05-05T07:14:59.327Z",
+      "updatedAt": "2026-05-06T09:09:27.016Z",
+      "backedUpAt": "2026-05-06T09:09:27.196Z",
       "data": {
         "version": 1,
         "mapId": "광산맵",
         "position": {
-          "x": 0.355,
-          "y": 0.14,
-          "z": -57.41
+          "x": -0.359,
+          "y": 0,
+          "z": -3.634
         },
-        "rotationY": 3.1094,
+        "rotationY": -0.1323,
         "inventory": {
           "slots": [
             {
@@ -856,10 +900,15 @@
             {
               "kind": "item",
               "itemId": "stoneDust",
-              "count": 13,
+              "count": 19,
               "instanceId": "inv_mos80voc_6"
             },
-            null,
+            {
+              "kind": "item",
+              "itemId": "freshAirCanister",
+              "count": 2,
+              "instanceId": "inv_motu5uok_6"
+            },
             null,
             null,
             null,
@@ -914,7 +963,7 @@
         },
         "tutorial": {
           "currentStep": 6,
-          "minedRockCount": 32,
+          "minedRockCount": 37,
           "upgradeCount": 3,
           "completed": true,
           "archivedSteps": [
@@ -926,7 +975,7 @@
           ]
         },
         "airSystem": {
-          "current": 72.21,
+          "current": 100,
           "max": 100,
           "mapPurification": {
             "폐광맵": 0
@@ -937,17 +986,17 @@
     },
     {
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
-      "updatedAt": "2026-05-05T07:14:59.327Z",
-      "backedUpAt": "2026-05-05T07:15:03.332Z",
+      "updatedAt": "2026-05-06T09:09:27.196Z",
+      "backedUpAt": "2026-05-06T09:09:27.801Z",
       "data": {
         "version": 1,
         "mapId": "광산맵",
         "position": {
-          "x": 0.355,
-          "y": 0.14,
-          "z": -57.41
+          "x": -0.359,
+          "y": 0,
+          "z": -3.634
         },
-        "rotationY": 3.1094,
+        "rotationY": -0.663,
         "inventory": {
           "slots": [
             {
@@ -965,11 +1014,21 @@
             {
               "kind": "item",
               "itemId": "stoneDust",
-              "count": 13,
+              "count": 19,
               "instanceId": "inv_mos80voc_6"
             },
-            null,
-            null,
+            {
+              "kind": "item",
+              "itemId": "freshAirCanister",
+              "count": 2,
+              "instanceId": "inv_motu5uok_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "count": 1,
+              "instanceId": "inv_motu5uzb_7"
+            },
             null,
             null,
             null,
@@ -1023,7 +1082,7 @@
         },
         "tutorial": {
           "currentStep": 6,
-          "minedRockCount": 32,
+          "minedRockCount": 37,
           "upgradeCount": 3,
           "completed": true,
           "archivedSteps": [
@@ -1035,7 +1094,7 @@
           ]
         },
         "airSystem": {
-          "current": 76.63,
+          "current": 100,
           "max": 100,
           "mapPurification": {
             "폐광맵": 0
@@ -1046,17 +1105,17 @@
     },
     {
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
-      "updatedAt": "2026-05-05T07:15:03.331Z",
-      "backedUpAt": "2026-05-05T07:15:07.346Z",
+      "updatedAt": "2026-05-06T09:09:27.801Z",
+      "backedUpAt": "2026-05-06T09:09:31.809Z",
       "data": {
         "version": 1,
         "mapId": "광산맵",
         "position": {
-          "x": 0.355,
-          "y": 0.14,
-          "z": -57.41
+          "x": -0.359,
+          "y": 0,
+          "z": -3.634
         },
-        "rotationY": 3.1094,
+        "rotationY": 0.9472,
         "inventory": {
           "slots": [
             {
@@ -1074,12 +1133,27 @@
             {
               "kind": "item",
               "itemId": "stoneDust",
-              "count": 13,
+              "count": 19,
               "instanceId": "inv_mos80voc_6"
             },
-            null,
-            null,
-            null,
+            {
+              "kind": "item",
+              "itemId": "freshAirCanister",
+              "count": 2,
+              "instanceId": "inv_motu5uok_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "count": 1,
+              "instanceId": "inv_motu5uzb_7"
+            },
+            {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "count": 1,
+              "instanceId": "inv_motu5vg4_8"
+            },
             null,
             null,
             null,
@@ -1132,7 +1206,7 @@
         },
         "tutorial": {
           "currentStep": 6,
-          "minedRockCount": 32,
+          "minedRockCount": 37,
           "upgradeCount": 3,
           "completed": true,
           "archivedSteps": [
@@ -1144,7 +1218,7 @@
           ]
         },
         "airSystem": {
-          "current": 81.03,
+          "current": 100,
           "max": 100,
           "mapPurification": {
             "폐광맵": 0
@@ -1155,17 +1229,17 @@
     },
     {
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
-      "updatedAt": "2026-05-05T07:15:07.346Z",
-      "backedUpAt": "2026-05-05T07:15:11.347Z",
+      "updatedAt": "2026-05-06T09:09:31.809Z",
+      "backedUpAt": "2026-05-06T09:09:32.546Z",
       "data": {
         "version": 1,
         "mapId": "광산맵",
         "position": {
-          "x": 0.355,
-          "y": 0.14,
-          "z": -57.41
+          "x": 0.003,
+          "y": 0,
+          "z": 3.731
         },
-        "rotationY": 3.1094,
+        "rotationY": -1.0434,
         "inventory": {
           "slots": [
             {
@@ -1183,12 +1257,27 @@
             {
               "kind": "item",
               "itemId": "stoneDust",
-              "count": 13,
+              "count": 19,
               "instanceId": "inv_mos80voc_6"
             },
-            null,
-            null,
-            null,
+            {
+              "kind": "item",
+              "itemId": "freshAirCanister",
+              "count": 2,
+              "instanceId": "inv_motu5uok_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "count": 1,
+              "instanceId": "inv_motu5uzb_7"
+            },
+            {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "count": 1,
+              "instanceId": "inv_motu5vg4_8"
+            },
             null,
             null,
             null,
@@ -1241,7 +1330,7 @@
         },
         "tutorial": {
           "currentStep": 6,
-          "minedRockCount": 32,
+          "minedRockCount": 37,
           "upgradeCount": 3,
           "completed": true,
           "archivedSteps": [
@@ -1253,7 +1342,7 @@
           ]
         },
         "airSystem": {
-          "current": 85.44,
+          "current": 100,
           "max": 100,
           "mapPurification": {
             "폐광맵": 0
@@ -1264,17 +1353,17 @@
     },
     {
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
-      "updatedAt": "2026-05-05T07:15:11.347Z",
-      "backedUpAt": "2026-05-05T07:15:15.346Z",
+      "updatedAt": "2026-05-06T09:09:32.546Z",
+      "backedUpAt": "2026-05-06T09:09:33.738Z",
       "data": {
         "version": 1,
         "mapId": "광산맵",
         "position": {
-          "x": -1.193,
-          "y": 0.14,
-          "z": -51.315
+          "x": 0.003,
+          "y": 0,
+          "z": 3.731
         },
-        "rotationY": 0.4881,
+        "rotationY": -1.0434,
         "inventory": {
           "slots": [
             {
@@ -1292,12 +1381,27 @@
             {
               "kind": "item",
               "itemId": "stoneDust",
-              "count": 13,
+              "count": 19,
               "instanceId": "inv_mos80voc_6"
             },
-            null,
-            null,
-            null,
+            {
+              "kind": "item",
+              "itemId": "freshAirCanister",
+              "count": 2,
+              "instanceId": "inv_motu5uok_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "count": 1,
+              "instanceId": "inv_motu5uzb_7"
+            },
+            {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "count": 1,
+              "instanceId": "inv_motu5vg4_8"
+            },
             null,
             null,
             null,
@@ -1337,7 +1441,7 @@
             "head": {
               "kind": "item",
               "itemId": "safetyHelmet",
-              "instanceId": "inv_mos7ta4k_6"
+              "instanceId": "inv_motu5uzb_7"
             },
             "body": null,
             "shoes": null,
@@ -1350,7 +1454,7 @@
         },
         "tutorial": {
           "currentStep": 6,
-          "minedRockCount": 32,
+          "minedRockCount": 37,
           "upgradeCount": 3,
           "completed": true,
           "archivedSteps": [
@@ -1362,7 +1466,7 @@
           ]
         },
         "airSystem": {
-          "current": 89.84,
+          "current": 100,
           "max": 100,
           "mapPurification": {
             "폐광맵": 0
@@ -1373,17 +1477,17 @@
     },
     {
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
-      "updatedAt": "2026-05-05T07:15:15.346Z",
-      "backedUpAt": "2026-05-05T07:15:19.348Z",
+      "updatedAt": "2026-05-06T09:09:33.738Z",
+      "backedUpAt": "2026-05-06T09:09:37.744Z",
       "data": {
         "version": 1,
         "mapId": "광산맵",
         "position": {
-          "x": 14.029,
-          "y": 0.037,
-          "z": -9.439
+          "x": 0.003,
+          "y": 0,
+          "z": 3.731
         },
-        "rotationY": -0.0511,
+        "rotationY": -1.0434,
         "inventory": {
           "slots": [
             {
@@ -1401,12 +1505,27 @@
             {
               "kind": "item",
               "itemId": "stoneDust",
-              "count": 13,
+              "count": 19,
               "instanceId": "inv_mos80voc_6"
             },
-            null,
-            null,
-            null,
+            {
+              "kind": "item",
+              "itemId": "freshAirCanister",
+              "count": 2,
+              "instanceId": "inv_motu5uok_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "count": 1,
+              "instanceId": "inv_motu5uzb_7"
+            },
+            {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "count": 1,
+              "instanceId": "inv_motu5vg4_8"
+            },
             null,
             null,
             null,
@@ -1459,7 +1578,7 @@
         },
         "tutorial": {
           "currentStep": 6,
-          "minedRockCount": 32,
+          "minedRockCount": 37,
           "upgradeCount": 3,
           "completed": true,
           "archivedSteps": [
@@ -1471,7 +1590,7 @@
           ]
         },
         "airSystem": {
-          "current": 94.24,
+          "current": 100,
           "max": 100,
           "mapPurification": {
             "폐광맵": 0
@@ -1482,17 +1601,17 @@
     },
     {
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
-      "updatedAt": "2026-05-05T07:15:19.348Z",
-      "backedUpAt": "2026-05-05T07:15:23.413Z",
+      "updatedAt": "2026-05-06T09:09:37.744Z",
+      "backedUpAt": "2026-05-06T09:24:04.777Z",
       "data": {
         "version": 1,
         "mapId": "광산맵",
         "position": {
-          "x": 0.753,
-          "y": 0.152,
-          "z": -24.603
+          "x": 0.946,
+          "y": 0,
+          "z": 4.271
         },
-        "rotationY": -3.0272,
+        "rotationY": 0.5274,
         "inventory": {
           "slots": [
             {
@@ -1510,12 +1629,27 @@
             {
               "kind": "item",
               "itemId": "stoneDust",
-              "count": 13,
+              "count": 19,
               "instanceId": "inv_mos80voc_6"
             },
-            null,
-            null,
-            null,
+            {
+              "kind": "item",
+              "itemId": "freshAirCanister",
+              "count": 2,
+              "instanceId": "inv_motu5uok_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "count": 1,
+              "instanceId": "inv_motu5uzb_7"
+            },
+            {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "count": 1,
+              "instanceId": "inv_motu5vg4_8"
+            },
             null,
             null,
             null,
@@ -1568,7 +1702,7 @@
         },
         "tutorial": {
           "currentStep": 6,
-          "minedRockCount": 32,
+          "minedRockCount": 37,
           "upgradeCount": 3,
           "completed": true,
           "archivedSteps": [
@@ -1580,7 +1714,7 @@
           ]
         },
         "airSystem": {
-          "current": 98.64,
+          "current": 100,
           "max": 100,
           "mapPurification": {
             "폐광맵": 0
