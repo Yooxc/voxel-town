@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-const LAST_PATCHED_AT = "2026-05-06 18:42:54 KST";
+const LAST_PATCHED_AT = "2026-05-06 19:02:41 KST";
 
 const scene = new THREE.Scene();
 // ===== Atmosphere: Sky / Fog =====
@@ -173,6 +173,7 @@ let nftExhibitOwnedTokensCache = {
   fetchedAt: 0,
 };
 let quickUseAssignState = null;
+let quickUseAssignmentConsumedUntil = 0;
 
 const walletHud = document.createElement("div");
 walletHud.id = "walletHud";
@@ -678,6 +679,64 @@ function shortenWalletAddress(address) {
   if (address === "dev-mode-local") return "DEV MODE";
   if (address === "guest-local") return "GUEST";
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
+function getKeyInputCode(event) {
+  return String(event?.code || "");
+}
+
+function getLogicalInputKey(event) {
+  const code = getKeyInputCode(event);
+  const codeMap = {
+    KeyE: "e",
+    KeyI: "i",
+    KeyQ: "q",
+    KeyR: "r",
+    KeyT: "t",
+    KeyW: "w",
+    KeyA: "a",
+    KeyS: "s",
+    KeyD: "d",
+    ShiftLeft: "shift",
+    ShiftRight: "shift",
+    Escape: "escape",
+    Tab: "tab",
+    Digit1: "1",
+    Digit2: "2",
+    Digit3: "3",
+    Digit4: "4",
+    Digit5: "5",
+  };
+  if (codeMap[code]) return codeMap[code];
+  return String(event?.key || "").toLowerCase();
+}
+
+function isUiEscapeCloseHandled() {
+  if (nftExhibitSelectionOpen) {
+    closeNftBoardSelectionOverlay();
+    return true;
+  }
+  if (refineryOpen) {
+    setRefineryOpen(false);
+    return true;
+  }
+  if (forgeOpen) {
+    setForgeOpen(false);
+    return true;
+  }
+  if (discardDialog.style.display !== "none") {
+    closeDiscardDialog();
+    return true;
+  }
+  if (invOpen) {
+    setInvOpen(false);
+    return true;
+  }
+  if (questOpen) {
+    setQuestOpen(false);
+    return true;
+  }
+  return false;
 }
 
 function getWalletLoginMessage(address, nonce, issuedAt) {
@@ -1282,19 +1341,25 @@ async function createBoardImageTexture(imageUrl, title, subtitle = "") {
   ctx.restore();
 
   ctx.fillStyle = "#eef2f6";
-  ctx.fillRect(42, canvas.height - 114, canvas.width - 84, 54);
+  ctx.fillRect(42, canvas.height - 130, canvas.width - 84, 40);
   ctx.strokeStyle = "#2a2f37";
   ctx.lineWidth = 4;
-  ctx.strokeRect(42, canvas.height - 114, canvas.width - 84, 54);
+  ctx.strokeRect(42, canvas.height - 130, canvas.width - 84, 40);
+
+  ctx.fillStyle = "#f7f9fb";
+  ctx.fillRect(42, canvas.height - 82, canvas.width - 84, 28);
+  ctx.strokeStyle = "rgba(42,47,55,0.42)";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(42, canvas.height - 82, canvas.width - 84, 28);
 
   ctx.fillStyle = "#1f2730";
   ctx.textAlign = "center";
-  ctx.font = "700 28px system-ui";
-  ctx.fillText(title, canvas.width * 0.5, canvas.height - 78);
+  ctx.font = "700 24px system-ui";
+  ctx.fillText(title, canvas.width * 0.5, canvas.height - 102);
   if (subtitle) {
     ctx.fillStyle = "#5d6a78";
-    ctx.font = "600 14px system-ui";
-    ctx.fillText(subtitle, canvas.width * 0.5, canvas.height - 58);
+    ctx.font = "600 15px system-ui";
+    ctx.fillText(subtitle, canvas.width * 0.5, canvas.height - 62);
   }
 
   const texture = new THREE.CanvasTexture(canvas);
@@ -1673,10 +1738,13 @@ async function refreshNftExhibitBoard() {
       return;
     }
 
+    const ownerDisplayName = walletProfile.nickname?.trim()
+      ? walletProfile.nickname.trim()
+      : shortenWalletAddress(walletAuth.address);
     const texture = await createBoardImageTexture(
       imageUrl,
       metadata?.name || selectedNft.name || NFT_EXHIBIT_TARGET.title,
-      `#${selectedNft.tokenId} · 소유자 확인 완료`
+      `소유자: ${ownerDisplayName}`
     );
     if (refreshToken !== nftExhibitRefreshToken || !texture) return;
     applyNftBoardTexture(texture);
@@ -2274,20 +2342,23 @@ nftBoardOverlay.addEventListener("click", (e) => {
 
 window.addEventListener("keydown", (e) => {
   if (!nftExhibitSelectionOpen) return;
-  if (e.key === "Escape") {
+  if (getLogicalInputKey(e) === "escape") {
+    e.preventDefault();
     closeNftBoardSelectionOverlay();
   }
 });
 
 window.addEventListener("keydown", (e) => {
   if (!quickUseAssignState) return;
-  const key = e.key.toLowerCase();
+  const key = getLogicalInputKey(e);
   if (key === "escape") {
+    e.preventDefault();
     cancelQuickUseAssignment();
     return;
   }
   if (!QUICK_USE_ALLOWED_KEYS.includes(key)) return;
   e.preventDefault();
+  quickUseAssignmentConsumedUntil = performance.now() + 120;
   commitQuickUseAssignment(key);
 });
 
@@ -3765,14 +3836,29 @@ questArchiveToggleBtn.addEventListener("click", (e) => {
 
 window.addEventListener("keydown", (e) => {
   if (!canPlayGame()) return;
+  const logicalKey = getLogicalInputKey(e);
+  if (logicalKey === "escape" && isUiEscapeCloseHandled()) {
+    e.preventDefault();
+    return;
+  }
+  if (invOpen && logicalKey === "tab") {
+    e.preventDefault();
+    const order = ["equip", "cons", "misc"];
+    const currentIndex = Math.max(0, order.indexOf(activeTab));
+    activeTab = order[(currentIndex + 1) % order.length];
+    renderInventoryWindow();
+    return;
+  }
   if (nftExhibitSelectionOpen) return;
   if (quickUseAssignState) return;
   // 입력창 없으니 간단 처리
-  const key = e.key.toLowerCase();
+  const key = logicalKey;
   if (key === "i") {
+    e.preventDefault();
     setInvOpen(!invOpen);
   }
   if (key === "q") {
+    e.preventDefault();
     setQuestOpen(!questOpen);
   }
 });
@@ -9384,7 +9470,11 @@ window.addEventListener("keydown", (e) => {
   if (!canPlayGame()) return;
   if (nftExhibitSelectionOpen) return;
   if (quickUseAssignState) return;
-  const k = e.key.toLowerCase();
+  const k = getLogicalInputKey(e);
+  if (performance.now() < quickUseAssignmentConsumedUntil && QUICK_USE_ALLOWED_KEYS.includes(k)) {
+    e.preventDefault();
+    return;
+  }
   console.log("KEYDOWN:", k);
 
   // ===== E : 월드 아이템 줍기 =====
@@ -9466,7 +9556,7 @@ window.addEventListener("keydown", (e) => {
 });
 
 window.addEventListener("keyup", (e) => {
-  const k = e.key.toLowerCase();
+  const k = getLogicalInputKey(e);
   if (!canPlayGame()) {
     if (k in keys) keys[k] = false;
     if (k === "shift") keys.shift = false;
