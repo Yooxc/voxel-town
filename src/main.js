@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-const LAST_PATCHED_AT = "2026-05-06 19:02:41 KST";
+const LAST_PATCHED_AT = "2026-05-08 18:59:53 KST";
 
 const scene = new THREE.Scene();
 // ===== Atmosphere: Sky / Fog =====
@@ -23,10 +23,21 @@ const CAVE_POLLUTION_OVERLAY_MAX_OPACITY = 0.96;
 const LOW_AIR_EDGE_BLUR_MAX_PX = 26;
 const AIR_HUD_POSITION_KEY = "excit_air_hud_position_v1";
 const QUICK_USE_ALLOWED_KEYS = ["1", "2", "3", "4", "5"];
+const INVENTORY_STACK_LIMIT = 200;
+const SHIFT_CAMERA_ROTATE_SENSITIVITY = 0.0062;
+const FRONTIER_PARCEL_BORDER_COLOR = 0xf3b24e;
+const FRONTIER_BUILDING_HEIGHT = 3.3;
+const FRONTIER_BUILDING_SIGN_MAX_CHARS = 20;
 const MAP_POLLUTION_CONFIG = {
   "폐광맵": {
     displayName: "폐광",
     drainPerSecondAtZeroPurify: 2.25,
+    purifierPowderCost: 1,
+    purifierGain: 12,
+  },
+  "개척지": {
+    displayName: "개척지",
+    drainPerSecondAtZeroPurify: 2.5,
     purifierPowderCost: 1,
     purifierGain: 12,
   },
@@ -41,7 +52,21 @@ const REFINERY_RECIPES = {
     outputItemId: "purifyPowder",
     outputCount: 1,
   },
+  woodPlank: {
+    id: "woodPlank",
+    label: "목재",
+    inputItemId: "woodChip",
+    inputCount: 2,
+    outputItemId: "woodPlank",
+    outputCount: 1,
+  },
 };
+
+const FRONTIER_BUILD_STAGE_CONFIG = [
+  { from: 0, to: 25, wood: 10, stone: 6, label: "기둥 설치" },
+  { from: 25, to: 50, wood: 16, stone: 10, label: "벽면 시공" },
+  { from: 50, to: 100, wood: 24, stone: 16, label: "천장 완성" },
+];
 
 // ===== Lighting =====
 // 전체 밝기 (부드럽게)
@@ -693,6 +718,7 @@ function getLogicalInputKey(event) {
     KeyQ: "q",
     KeyR: "r",
     KeyT: "t",
+    KeyB: "b",
     KeyW: "w",
     KeyA: "a",
     KeyS: "s",
@@ -716,6 +742,10 @@ function isUiEscapeCloseHandled() {
     closeNftBoardSelectionOverlay();
     return true;
   }
+  if (frontierBuildOpen) {
+    setFrontierBuildOpen(false);
+    return true;
+  }
   if (refineryOpen) {
     setRefineryOpen(false);
     return true;
@@ -737,6 +767,12 @@ function isUiEscapeCloseHandled() {
     return true;
   }
   return false;
+}
+
+function isTextInputActive() {
+  const el = document.activeElement;
+  if (!el) return false;
+  return (el.tagName === "INPUT" || el.tagName === "TEXTAREA") && !el.readOnly && !el.disabled;
 }
 
 function getWalletLoginMessage(address, nonce, issuedAt) {
@@ -3766,6 +3802,9 @@ function renderInventoryWindow() {
 // I 키로 인벤 열고닫기
 let invOpen = false;
 function setInvOpen(v) {
+  if (v && frontierBuildOpen) {
+    setFrontierBuildOpen(false);
+  }
   invOpen = v;
   invWin.style.display = invOpen ? "block" : "none";
   equipWin.style.display = invOpen ? "block" : "none";
@@ -3780,6 +3819,9 @@ function setInvOpen(v) {
 let questOpen = false;
 let questDragState = null;
 function setQuestOpen(v) {
+  if (v && frontierBuildOpen) {
+    setFrontierBuildOpen(false);
+  }
   questOpen = v;
   questWin.style.display = questOpen ? "block" : "none";
   if (questOpen) renderQuestWindow();
@@ -3841,6 +3883,7 @@ window.addEventListener("keydown", (e) => {
     e.preventDefault();
     return;
   }
+  if (isTextInputActive()) return;
   if (invOpen && logicalKey === "tab") {
     e.preventDefault();
     const order = ["equip", "cons", "misc"];
@@ -4403,6 +4446,7 @@ scene.add(dir);
 
 // ===== Ground (mine-like bumpy terrain) =====
 const GROUND_SIZE = 100;      // 맵 크기(100 x 100)
+const FRONTIER_GROUND_SIZE = 50;
 const GROUND_SEG = 80;       // 세그먼트가 많을수록 울퉁불퉁이 자연스러움
 const HEIGHT = 0.8;          // 울퉁불퉁 강도 (너무 크면 걸을 때 어색해짐)
 
@@ -4422,6 +4466,8 @@ const START_RING_HEIGHT = 1.1; // 허리춤 정도
 const START_RING_THICKNESS = 1.275; // 기존 대비 50% 두껍게
 const CAMP_MAP_X = 0;
 const CAMP_MAP_Z = -126;
+const FRONTIER_MAP_X = 0;
+const FRONTIER_MAP_Z = -218;
 const MAP_GATE_RADIUS = 1.15;
 const DEV_PRESET_ENABLED = true;
 patchInfoWrap.style.display = DEV_PRESET_ENABLED ? "block" : "none";
@@ -4589,8 +4635,12 @@ const colliders = [];
 const colliderBoxes = []; // 콜라이더 박스 캐시(정적 오브젝트용)
 
 const mineRocks = []; // 채집 가능한 돌 목록
+const harvestTrees = [];
+const connectorTunnelZones = [];
 const ROCK_RESPAWN_MS = 10000;
+const TREE_HARVEST_RESPAWN_MS = 10000;
 const ROCK_COUNT = 50;
+const CAVE_STONE_COUNT = 16;
 const ROCK_SPAWN_MARGIN = 6;
 const ROCK_SAFE_RADIUS = 8;
 const ROCK_MIN_GAP = 0.55; // 돌끼리 화면상 붙어 보이지 않게 여유
@@ -4638,6 +4688,32 @@ function findRockSpawnPosition(s, tries = 80) {
     const x = randRange(b.minX, b.maxX);
     const z = randRange(b.minZ, b.maxZ);
     if (isRockSpawnValid(x, z, s)) return { x, z };
+  }
+  return null;
+}
+
+function findCampStoneSpawnPosition(s, tries = 120) {
+  const half = GROUND_SIZE * 0.5 - 8;
+  for (let i = 0; i < tries; i += 1) {
+    const x = CAMP_MAP_X + randRange(-half, half);
+    const z = CAMP_MAP_Z + randRange(-half, half);
+
+    if (Math.abs(x - airPurifierStation?.position?.x ?? x) < 8 && Math.abs(z - (airPurifierStation?.position?.z ?? z)) < 8) continue;
+    if (Math.abs(x - campGate?.position?.x ?? x) < 7 && Math.abs(z - (campGate?.position?.z ?? z)) < 8) continue;
+
+    let blocked = false;
+    for (const rock of mineRocks) {
+      if (!rock || !rock.parent) continue;
+      const otherS = rock.userData?.spawnScale ?? 1;
+      const minDist = (0.9 * s) + (0.9 * otherS) + 0.8;
+      const dx = x - rock.position.x;
+      const dz = z - rock.position.z;
+      if ((dx * dx + dz * dz) < (minDist * minDist)) {
+        blocked = true;
+        break;
+      }
+    }
+    if (!blocked) return { x, z };
   }
   return null;
 }
@@ -4786,19 +4862,35 @@ const ITEM_DEFS = {
   freshAirCanister: {
     name: "신선한 공기 캔",
     icon: "🫧",
-    stackMax: 99,
+    stackMax: 200,
     category: "cons",
     makeInventoryModel: () => buildFreshAirCanisterModel(),
+  },
+  woodChip: {
+    name: "나무조각",
+    icon: "🪹",
+    stackMax: 200,
+    category: "misc",
+    isMaterial: true,
+  },
+  woodPlank: {
+    name: "목재",
+    icon: "🟫",
+    stackMax: 200,
+    category: "misc",
+    isMaterial: true,
   },
   purifyPowder: {
     name: "정화 가루",
     icon: "✨",
-    stackMax: 999,
+    stackMax: 200,
     category: "misc",
+    isMaterial: true,
     makeInventoryModel: () => buildPurifyPowderModel(),
   },
-  stoneDust: { name: "돌가루", icon: "🪨", stackMax: 999, category: "misc" },
-    };
+  stoneDust: { name: "돌가루", icon: "🪨", stackMax: 200, category: "misc", isMaterial: true },
+  masonryStone: { name: "석재", icon: "🧱", stackMax: 200, category: "misc", isMaterial: true },
+};
 
 const DEV_MOCK_NFT_ITEMS = [
   {
@@ -4812,6 +4904,12 @@ const DEV_MOCK_NFT_ITEMS = [
   },
 ];
 
+function getDevMaterialItemIds() {
+  return Object.entries(ITEM_DEFS)
+    .filter(([, def]) => def?.isMaterial)
+    .map(([itemId]) => itemId);
+}
+
 let inventoryEntryInstanceSeq = 1;
 
 function createInventoryEntryInstanceId() {
@@ -4819,7 +4917,18 @@ function createInventoryEntryInstanceId() {
   return `inv_${Date.now().toString(36)}_${seq.toString(36)}`;
 }
 
+function getInventoryStackMax(itemId) {
+  const def = ITEM_DEFS[itemId];
+  if (!def) return 1;
+  const rawStackMax = Math.max(1, def.stackMax ?? 1);
+  if (def.category === "cons" || def.category === "misc") {
+    return Math.min(rawStackMax, INVENTORY_STACK_LIMIT);
+  }
+  return rawStackMax;
+}
+
 function createInventorySlotEntry(itemId, count = 1, extra = {}) {
+  const stackMax = getInventoryStackMax(itemId);
   const instanceId =
     typeof extra.instanceId === "string" && extra.instanceId.trim()
       ? extra.instanceId
@@ -4827,7 +4936,7 @@ function createInventorySlotEntry(itemId, count = 1, extra = {}) {
   return {
     kind: "item",
     itemId,
-    count,
+    count: Math.max(1, Math.min(count, stackMax)),
     instanceId,
     ...extra,
   };
@@ -4857,11 +4966,12 @@ function normalizeInventorySlotEntry(rawSlot) {
       };
     }
     if (rawSlot.kind === "item" && rawSlot.itemId) {
+      const stackMax = getInventoryStackMax(rawSlot.itemId);
       return {
         ...rawSlot,
         kind: "item",
         itemId: rawSlot.itemId,
-        count: Number.isFinite(rawSlot.count) ? rawSlot.count : 1,
+        count: Math.max(1, Math.min(Number.isFinite(rawSlot.count) ? rawSlot.count : 1, stackMax)),
         instanceId:
           typeof rawSlot.instanceId === "string" && rawSlot.instanceId.trim()
             ? rawSlot.instanceId
@@ -5100,9 +5210,9 @@ const PICKAXE_UPGRADE_LEVELS = [
 ];
 
 const ROCK_SIZE_DEFS = [
-  { id: "small", label: "작은 돌", scale: 0.8, maxHp: 1 },
-  { id: "medium", label: "중간 돌", scale: 1.05, maxHp: 2 },
-  { id: "large", label: "큰 돌", scale: 1.3, maxHp: 3 },
+  { id: "small", label: "작은 돌", scale: 0.8, maxHp: 1, stoneDustDropCount: 1 },
+  { id: "medium", label: "중간 돌", scale: 1.05, maxHp: 2, stoneDustDropCount: 2 },
+  { id: "large", label: "큰 돌", scale: 1.3, maxHp: 3, stoneDustDropCount: 3 },
 ];
 
 function getItemTooltipText(itemId, count = null) {
@@ -5176,7 +5286,7 @@ function getEquippedMiningPower() {
     // 인벤토리 데이터: 슬롯 + 장착 상태
 	    const inventory = {
   slots: Array.from({ length: 30 }, () => null), // 30칸(원하면 늘림)
-  pickaxeLevel: 0,
+  pickaxeLevel: 1,
   mineKeyIssued: false,
   abandonedMineUnlocked: false,
   quickUse: {
@@ -5333,9 +5443,12 @@ function commitDiscardDialog() {
 	    }
 
     function getItemCount(id) {
-  const idx = findFirstSlotWithItem(id);
-  if (idx === -1) return 0;
-  return getSlotItemCount(inventory.slots[idx]);
+  let total = 0;
+  for (const slot of inventory.slots) {
+    if (!slot || getSlotItemId(slot) !== id) continue;
+    total += getSlotItemCount(slot);
+  }
+  return total;
     }
 
 	    function findFirstEmptySlot() {
@@ -5348,32 +5461,45 @@ function commitDiscardDialog() {
     function addItem(id, count = 1) {
   const def = ITEM_DEFS[id];
   if (!def) return false;
+  let remaining = Math.max(0, Math.floor(count));
+  if (remaining <= 0) return false;
+  const stackMax = getInventoryStackMax(id);
 
-  // 1) 스택 가능한 경우: 기존 스택에 더하기
-  if (def.stackMax > 1) {
-    const idx = findFirstSlotWithItem(id);
-    if (idx !== -1) {
-      inventory.slots[idx].count += count;
-      return true;
+  if (stackMax > 1) {
+    for (let i = 0; i < inventory.slots.length && remaining > 0; i += 1) {
+      const slot = inventory.slots[i];
+      if (!slot || getSlotItemId(slot) !== id || isNftInventoryEntry(slot)) continue;
+      const currentCount = getSlotItemCount(slot);
+      if (currentCount >= stackMax) continue;
+      const addedCount = Math.min(stackMax - currentCount, remaining);
+      slot.count += addedCount;
+      remaining -= addedCount;
     }
   }
 
-  // 2) 빈 슬롯에 넣기
-  const empty = findFirstEmptySlot();
-  if (empty === -1) return false;
+  while (remaining > 0) {
+    const empty = findFirstEmptySlot();
+    if (empty === -1) return false;
 
-	  inventory.slots[empty] = createInventorySlotEntry(id, Math.min(count, def.stackMax));
+	    inventory.slots[empty] = createInventorySlotEntry(id, Math.min(remaining, stackMax));
+    remaining -= Math.min(remaining, stackMax);
+  }
 	  return true;
 	    }
 
     function consumeItem(id, count = 1) {
-  const idx = findFirstSlotWithItem(id);
-  if (idx === -1) return false;
-  const slot = inventory.slots[idx];
-  if (!slot || slot.count < count) return false;
+  let remaining = Math.max(0, Math.floor(count));
+  if (remaining <= 0) return false;
+  if (getItemCount(id) < remaining) return false;
 
-  slot.count -= count;
-  if (slot.count <= 0) inventory.slots[idx] = null;
+  for (let i = 0; i < inventory.slots.length && remaining > 0; i += 1) {
+    const slot = inventory.slots[i];
+    if (!slot || getSlotItemId(slot) !== id || isNftInventoryEntry(slot)) continue;
+    const consumeCount = Math.min(getSlotItemCount(slot), remaining);
+    slot.count -= consumeCount;
+    remaining -= consumeCount;
+    if (slot.count <= 0) inventory.slots[i] = null;
+  }
   pruneQuickUseBindings();
   return true;
     }
@@ -5383,7 +5509,7 @@ function commitDiscardDialog() {
     }
 
     function hasItem(id) {
-  return findFirstSlotWithItem(id) !== -1;
+  return getItemCount(id) > 0;
     }
 
     const equippedPickaxe = new THREE.Group();
@@ -5725,6 +5851,7 @@ function updateInventoryUI() {
   renderEquipmentWindow();
   if (forgeWin.style.display !== "none") renderForgeWindow();
   if (refineryWin.style.display !== "none") renderRefineryWindow();
+  if (frontierBuildWin && frontierBuildWin.style.display !== "none") renderFrontierBuildWindow();
 
   // 인벤 창이 열려있으면 슬롯 표시 갱신
   if (typeof invOpen !== "undefined" && invOpen) renderInventoryWindow();
@@ -5886,10 +6013,11 @@ function updateRockHpBar(rock) {
   rockHpWrap.style.left = `${x}px`;
   rockHpWrap.style.top = `${y}px`;
   rockHpFill.style.width = `${Math.max(0, Math.min(1, ratio)) * 100}%`;
-  rockHpLabel.textContent = `돌 체력 ${formatStatNumber(hp)}/${formatStatNumber(maxHp)}`;
+  rockHpLabel.textContent = `${rock.userData.hpLabelPrefix ?? "돌 체력"} ${formatStatNumber(hp)}/${formatStatNumber(maxHp)}`;
 }
 
 let activeMineRock = null;
+let activeHarvestTree = null;
 const latestMoveDir = new THREE.Vector3(0, 0, -1); // 월드 기준: -Z = 북, +X = 동
 
 function updateCompassFromDirection(dir) {
@@ -5923,6 +6051,25 @@ function findNearestMineRock(radius = 2.2) {
       best = rock;
     }
   }
+  return best;
+}
+
+function findNearestHarvestTree(radius = 2.2) {
+  const r2 = radius * radius;
+  let best = null;
+  let bestD2 = Infinity;
+
+  for (const tree of harvestTrees) {
+    if (!tree || !tree.parent || tree.userData.harvestDisabled) continue;
+    const dx = tree.position.x - player.position.x;
+    const dz = tree.position.z - player.position.z;
+    const d2 = dx * dx + dz * dz;
+    if (d2 < r2 && d2 < bestD2) {
+      best = tree;
+      bestD2 = d2;
+    }
+  }
+
   return best;
 }
 
@@ -6202,6 +6349,17 @@ let activeTutorialNpc = null;
 let forgeStation = null;
 let refineryStation = null;
 let airPurifierStation = null;
+let frontierAirPurifierStation = null;
+let frontierBuildOverlay = null;
+let frontierBuildWin = null;
+let frontierBuildOpen = false;
+let frontierP6ConstructionGroup = null;
+let frontierP6ConstructionRoot = null;
+let frontierParcelDefs = [];
+let mineGate = null;
+let campGate = null;
+let frontierCampGate = null;
+let frontierGate = null;
 let activeForgeStation = null;
 const mapGates = [];
 let activeMapGate = null;
@@ -6211,14 +6369,21 @@ let torchEquipped = false;
 let playerAirCurrent = AIR_GAUGE_MAX;
 let playerAirMax = AIR_GAUGE_MAX;
 let airDepletedNoticeUntil = 0;
-let cavePollutionField = null;
-let cavePollutionFieldMaterial = null;
-let cavePollutionFieldBase = null;
-let cavePollutionFieldPhase = null;
-let cavePollutionFieldStrength = 0;
+const mapPollutionFields = {};
 const mapPurificationProgress = {
   "폐광맵": 0,
+  "개척지": 0,
 };
+let frontierBuildState = createDefaultFrontierBuildState();
+
+function createDefaultFrontierBuildState() {
+  return {
+    p6: {
+      stage: 0,
+      signText: "P6",
+    },
+  };
+}
 
 function updateSceneFogForCurrentMap() {
   const mineDoorThresholdZ = mineGate.position.z - 0.35;
@@ -6325,17 +6490,16 @@ function updateAirHud() {
   airHudPurify.textContent = `${getMapPollutionConfig(effectiveMapId)?.displayName ?? effectiveMapId} 정화율 ${purify}%`;
 }
 
-function buildCavePollutionField() {
+function buildPollutionFieldForMap(mapId, centerX, centerZ, halfSize) {
   const geometry = new THREE.BufferGeometry();
   const positions = new Float32Array(CAVE_POLLUTION_PARTICLE_COUNT * 3);
   const phases = new Float32Array(CAVE_POLLUTION_PARTICLE_COUNT);
   const base = new Float32Array(CAVE_POLLUTION_PARTICLE_COUNT * 3);
 
-  const campHalf = GROUND_SIZE * 0.5 - 6;
   for (let i = 0; i < CAVE_POLLUTION_PARTICLE_COUNT; i += 1) {
-    const x = CAMP_MAP_X + randRange(-campHalf, campHalf);
+    const x = centerX + randRange(-halfSize, halfSize);
     const y = randRange(0.55, 6.35);
-    const z = CAMP_MAP_Z + randRange(-campHalf, campHalf);
+    const z = centerZ + randRange(-halfSize, halfSize);
     const j = i * 3;
     positions[j] = x;
     positions[j + 1] = y;
@@ -6361,7 +6525,7 @@ function buildCavePollutionField() {
   const particleTexture = new THREE.CanvasTexture(particleTextureCanvas);
   particleTexture.colorSpace = THREE.SRGBColorSpace;
 
-  cavePollutionFieldMaterial = new THREE.PointsMaterial({
+  const material = new THREE.PointsMaterial({
     color: 0xd8bb86,
     size: 0.9,
     map: particleTexture,
@@ -6374,12 +6538,22 @@ function buildCavePollutionField() {
     blending: THREE.AdditiveBlending,
   });
 
-  cavePollutionField = new THREE.Points(geometry, cavePollutionFieldMaterial);
-  cavePollutionField.frustumCulled = false;
-  cavePollutionField.renderOrder = 4;
-  scene.add(cavePollutionField);
-  cavePollutionFieldBase = base;
-  cavePollutionFieldPhase = phases;
+  const field = new THREE.Points(geometry, material);
+  field.frustumCulled = false;
+  field.renderOrder = 4;
+  scene.add(field);
+  mapPollutionFields[mapId] = {
+    field,
+    material,
+    base,
+    phase: phases,
+    strength: 0,
+  };
+}
+
+function buildCavePollutionField() {
+  buildPollutionFieldForMap("폐광맵", CAMP_MAP_X, CAMP_MAP_Z, GROUND_SIZE * 0.5 - 6);
+  buildPollutionFieldForMap("개척지", FRONTIER_MAP_X, FRONTIER_MAP_Z, FRONTIER_GROUND_SIZE * 0.5 - 4);
 }
 
 function getMapPollutionVisualStrength(mapId = currentMapId) {
@@ -6389,35 +6563,37 @@ function getMapPollutionVisualStrength(mapId = currentMapId) {
 }
 
 function updateCavePollutionVisuals(dt) {
-  const fieldPollutionStrength = getMapPollutionVisualStrength("폐광맵");
   const localPollutionStrength = getMapPollutionVisualStrength(getEffectiveAirMapId());
-  cavePollutionFieldStrength = THREE.MathUtils.lerp(
-    cavePollutionFieldStrength,
-    fieldPollutionStrength,
-    Math.min(1, dt * 2.4)
-  );
+  const time = performance.now() * 0.001;
 
-  if (cavePollutionField && cavePollutionFieldMaterial && cavePollutionFieldBase && cavePollutionFieldPhase) {
-    cavePollutionField.visible = cavePollutionFieldStrength > 0.02;
-    cavePollutionFieldMaterial.opacity = cavePollutionFieldStrength * 0.82;
+  for (const [mapId, pollutionField] of Object.entries(mapPollutionFields)) {
+    if (!pollutionField?.field || !pollutionField.material || !pollutionField.base || !pollutionField.phase) continue;
+    const targetStrength = getMapPollutionVisualStrength(mapId);
+    pollutionField.strength = THREE.MathUtils.lerp(
+      pollutionField.strength,
+      targetStrength,
+      Math.min(1, dt * 2.4)
+    );
 
-    if (cavePollutionField.visible) {
-      const positions = cavePollutionField.geometry.attributes.position.array;
-      const time = performance.now() * 0.001;
+    pollutionField.field.visible = pollutionField.strength > 0.02;
+    pollutionField.material.opacity = pollutionField.strength * 0.82;
+
+    if (pollutionField.field.visible) {
+      const positions = pollutionField.field.geometry.attributes.position.array;
       for (let i = 0; i < CAVE_POLLUTION_PARTICLE_COUNT; i += 1) {
         const j = i * 3;
-        const phase = cavePollutionFieldPhase[i];
+        const phase = pollutionField.phase[i];
         positions[j] =
-          cavePollutionFieldBase[j] +
-          Math.sin(time * 0.31 + phase) * CAVE_POLLUTION_PARTICLE_SWAY * cavePollutionFieldStrength;
+          pollutionField.base[j] +
+          Math.sin(time * 0.31 + phase) * CAVE_POLLUTION_PARTICLE_SWAY * pollutionField.strength;
         positions[j + 1] =
-          cavePollutionFieldBase[j + 1] +
-          Math.sin(time * 0.48 + phase * 1.7) * 0.08 * cavePollutionFieldStrength;
+          pollutionField.base[j + 1] +
+          Math.sin(time * 0.48 + phase * 1.7) * 0.08 * pollutionField.strength;
         positions[j + 2] =
-          cavePollutionFieldBase[j + 2] +
-          Math.cos(time * 0.27 + phase * 1.3) * CAVE_POLLUTION_PARTICLE_SWAY * cavePollutionFieldStrength;
+          pollutionField.base[j + 2] +
+          Math.cos(time * 0.27 + phase * 1.3) * CAVE_POLLUTION_PARTICLE_SWAY * pollutionField.strength;
       }
-      cavePollutionField.geometry.attributes.position.needsUpdate = true;
+      pollutionField.field.geometry.attributes.position.needsUpdate = true;
     }
   }
 
@@ -6493,6 +6669,17 @@ function getSelectedRefineryRecipe() {
   return REFINERY_RECIPES[refinerySelectedRecipeId] ?? getDefaultRefineryRecipe();
 }
 
+function getRefineryRecipeDescription(recipe) {
+  if (!recipe) return "";
+  if (recipe.outputItemId === "purifyPowder") {
+    return "정화 가루는 공기 정화탑에 사용할 수 있는 정화용 가공 분말입니다.";
+  }
+  if (recipe.outputItemId === "woodPlank") {
+    return "목재는 앞으로 빈 땅에 건축물을 세울 때 사용할 기본 건축 재료입니다.";
+  }
+  return `${ITEM_DEFS[recipe.outputItemId]?.name ?? recipe.outputItemId} 제작 결과물`;
+}
+
 function getRefineryHintText() {
   if (refineryOpen) return "재련대 이용 중";
   return "E : 재련대 사용";
@@ -6543,24 +6730,24 @@ function getRefineryDistance() {
   return refineryStation.position.distanceTo(player.position);
 }
 
-function getAirPurifierHintText() {
-  const cfg = getMapPollutionConfig("폐광맵");
-  const purify = getMapPurificationValue("폐광맵");
+function getAirPurifierHintText(mapId = "폐광맵") {
+  const cfg = getMapPollutionConfig(mapId);
+  const purify = getMapPurificationValue(mapId);
   if (!cfg) return "E : 공기 정화탑 가동";
   if (purify >= 100) return `${cfg.displayName} 정화 완료`;
-  if (currentMapId !== "폐광맵") return `${cfg.displayName} 정화율 ${purify}%`;
+  if (currentMapId !== mapId) return `${cfg.displayName} 정화율 ${purify}%`;
   if (getItemCount("purifyPowder") < cfg.purifierPowderCost) {
     return `정화 가루 ${cfg.purifierPowderCost}개 필요`;
   }
   return `E : 공기 정화탑 가동 (+${cfg.purifierGain}% / 정화 가루 ${cfg.purifierPowderCost})`;
 }
 
-function tryUseAirPurifier() {
-  const cfg = getMapPollutionConfig("폐광맵");
+function tryUseAirPurifier(mapId = "폐광맵") {
+  const cfg = getMapPollutionConfig(mapId);
   if (!cfg) return false;
-  const currentPurify = getMapPurificationValue("폐광맵");
+  const currentPurify = getMapPurificationValue(mapId);
   if (currentPurify >= 100) {
-    showUI("폐광 공기 정화탑 가동이 이미 완료되었습니다.", 1100);
+    showUI(`${cfg.displayName} 공기 정화탑 가동이 이미 완료되었습니다.`, 1100);
     lastMessageUntil = performance.now() + 1100;
     return true;
   }
@@ -6570,15 +6757,15 @@ function tryUseAirPurifier() {
     return true;
   }
   const nextPurify = Math.min(100, currentPurify + cfg.purifierGain);
-  setMapPurificationValue("폐광맵", nextPurify);
+  setMapPurificationValue(mapId, nextPurify);
   updateInventoryUI();
   updateAirHud();
   schedulePlayerSaveSync(true);
   if (nextPurify >= 100) {
-    showUI("폐광 공기 정화탑 가동 완료! 이제 공기를 소모하지 않습니다.", 1400);
+    showUI(`${cfg.displayName} 공기 정화탑 가동 완료! 이제 공기를 소모하지 않습니다.`, 1400);
     lastMessageUntil = performance.now() + 1400;
   } else {
-    showUI(`폐광 정화율 ${nextPurify}%`, 1000);
+    showUI(`${cfg.displayName} 정화율 ${nextPurify}%`, 1000);
     lastMessageUntil = performance.now() + 1000;
   }
   return true;
@@ -6680,6 +6867,15 @@ function registerMapGate(entry) {
   return entry;
 }
 
+function registerConnectorTunnelZone(centerX, minZ, maxZ, halfWidth = 7.2) {
+  connectorTunnelZones.push({
+    centerX,
+    minZ: Math.min(minZ, maxZ),
+    maxZ: Math.max(minZ, maxZ),
+    halfWidth,
+  });
+}
+
 function findTriggeredMapGate() {
   if (performance.now() < mapTransitionLockUntil) return null;
   for (const gate of mapGates) {
@@ -6711,8 +6907,15 @@ function canUseMapGate(gate) {
 function updateCurrentMapFromPlayerPosition() {
   const mineDoorThresholdZ = mineGate.position.z - 0.35;
   const campDoorThresholdZ = campGate.position.z + 0.35;
+  const campNorthDoorThresholdZ = frontierCampGate.position.z - 0.35;
+  const frontierDoorThresholdZ = frontierGate.position.z + 0.35;
 
-  if (player.position.z <= campDoorThresholdZ) {
+  if (player.position.z <= frontierDoorThresholdZ) {
+    currentMapId = "개척지";
+    return;
+  }
+
+  if (player.position.z <= campDoorThresholdZ && player.position.z > campNorthDoorThresholdZ) {
     currentMapId = "폐광맵";
     return;
   }
@@ -6723,16 +6926,327 @@ function updateCurrentMapFromPlayerPosition() {
 }
 
 function isPlayerInConnectorTunnel() {
-  if (!mineGate || !campGate) return false;
-  const mineDoorThresholdZ = mineGate.position.z - 0.35;
-  const campDoorThresholdZ = campGate.position.z + 0.35;
-  if (player.position.z >= mineDoorThresholdZ || player.position.z <= campDoorThresholdZ) return false;
-  return Math.abs(player.position.x - mineGate.position.x) <= 7.2;
+  for (const zone of connectorTunnelZones) {
+    if (
+      player.position.z < zone.maxZ &&
+      player.position.z > zone.minZ &&
+      Math.abs(player.position.x - zone.centerX) <= zone.halfWidth
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function getEffectiveAirMapId() {
   if (isPlayerInConnectorTunnel()) return null;
   return currentMapId;
+}
+
+function normalizeFrontierBuildState(rawState) {
+  const source = rawState && typeof rawState === "object" ? rawState : {};
+  const rawP6 = source.p6 && typeof source.p6 === "object" ? source.p6 : {};
+  const stage = Number(rawP6.stage);
+  const normalizedStage = [0, 25, 50, 100].includes(stage) ? stage : 0;
+  const signText = String(rawP6.signText ?? "P6").trim().slice(0, FRONTIER_BUILDING_SIGN_MAX_CHARS) || "P6";
+  return {
+    p6: {
+      stage: normalizedStage,
+      signText,
+    },
+  };
+}
+
+function getFrontierP6BuildState() {
+  return frontierBuildState.p6;
+}
+
+function getFrontierNextStageConfig(stage = getFrontierP6BuildState().stage) {
+  return FRONTIER_BUILD_STAGE_CONFIG.find((entry) => entry.from === stage) ?? null;
+}
+
+function isPlayerInsideFrontierParcel(parcelLabel) {
+  const parcel = frontierParcelDefs.find((entry) => entry.label === parcelLabel);
+  if (!parcel || currentMapId !== "개척지") return false;
+  return (
+    Math.abs(player.position.x - parcel.x) <= parcel.width * 0.5 &&
+    Math.abs(player.position.z - parcel.z) <= parcel.height * 0.5
+  );
+}
+
+function buildFrontierBuildingSign(text) {
+  const wrap = new THREE.Group();
+
+  const board = new THREE.Mesh(
+    new THREE.BoxGeometry(1.8, 0.75, 0.12),
+    new THREE.MeshStandardMaterial({ color: 0x3a2b1f, roughness: 0.9 })
+  );
+  wrap.add(board);
+
+  const faceCanvas = document.createElement("canvas");
+  faceCanvas.width = 512;
+  faceCanvas.height = 192;
+  const faceCtx = faceCanvas.getContext("2d");
+  faceCtx.fillStyle = "#f4dfa4";
+  faceCtx.fillRect(0, 0, faceCanvas.width, faceCanvas.height);
+  faceCtx.fillStyle = "#3b2a1e";
+  faceCtx.fillRect(14, 14, faceCanvas.width - 28, faceCanvas.height - 28);
+  faceCtx.fillStyle = "#f8e6b8";
+  faceCtx.fillRect(24, 24, faceCanvas.width - 48, faceCanvas.height - 48);
+  const safeText = String(text || "P6").trim() || "P6";
+  let fontSize = 56;
+  do {
+    faceCtx.font = `900 ${fontSize}px Apple SD Gothic Neo, Malgun Gothic, system-ui, sans-serif`;
+    if (faceCtx.measureText(safeText).width <= 400 || fontSize <= 26) break;
+    fontSize -= 2;
+  } while (fontSize > 26);
+  faceCtx.fillStyle = "#2c1b0f";
+  faceCtx.textAlign = "center";
+  faceCtx.textBaseline = "middle";
+  faceCtx.fillText(safeText, faceCanvas.width * 0.5, faceCanvas.height * 0.52);
+
+  const faceTex = new THREE.CanvasTexture(faceCanvas);
+  faceTex.colorSpace = THREE.SRGBColorSpace;
+  const signFace = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.55, 0.56),
+    new THREE.MeshBasicMaterial({ map: faceTex, transparent: false })
+  );
+  signFace.position.z = 0.067;
+  wrap.add(signFace);
+
+  return wrap;
+}
+
+function rebuildFrontierP6ConstructionVisual() {
+  if (!frontierP6ConstructionRoot?.parent) return;
+  if (frontierP6ConstructionGroup?.parent) {
+    frontierP6ConstructionGroup.removeFromParent();
+  }
+
+  const parcel = frontierParcelDefs.find((entry) => entry.label === "P6");
+  if (!parcel) return;
+  const buildState = getFrontierP6BuildState();
+  const stage = buildState.stage;
+  const buildGroup = new THREE.Group();
+
+  const buildingWidth = Math.max(5.8, parcel.width - 2.6);
+  const buildingDepth = Math.max(5.2, parcel.height - 2.4);
+  const columnY = FRONTIER_BUILDING_HEIGHT * 0.5;
+  const halfW = buildingWidth * 0.5;
+  const halfD = buildingDepth * 0.5;
+  const bodyMat = new THREE.MeshStandardMaterial({ color: 0x7e6b56, roughness: 0.96 });
+  const frameMat = new THREE.MeshStandardMaterial({ color: 0x5a493b, roughness: 0.88 });
+  const roofMat = new THREE.MeshStandardMaterial({ color: 0x766553, roughness: 0.92 });
+  const markerMat = new THREE.MeshStandardMaterial({
+    color: 0xd7ab56,
+    roughness: 0.72,
+    transparent: true,
+    opacity: stage <= 0 ? 0.92 : 0.38,
+  });
+
+  const marker = new THREE.Mesh(
+    new THREE.BoxGeometry(buildingWidth, 0.05, buildingDepth),
+    markerMat
+  );
+  marker.position.y = 0.03;
+  buildGroup.add(marker);
+
+  if (stage >= 25) {
+    const columnGeo = new THREE.BoxGeometry(0.34, FRONTIER_BUILDING_HEIGHT, 0.34);
+    const columnOffsets = [
+      [-halfW + 0.22, columnY, -halfD + 0.22],
+      [halfW - 0.22, columnY, -halfD + 0.22],
+      [-halfW + 0.22, columnY, halfD - 0.22],
+      [halfW - 0.22, columnY, halfD - 0.22],
+    ];
+    for (const [x, y, z] of columnOffsets) {
+      const column = new THREE.Mesh(columnGeo, frameMat);
+      column.position.set(x, y, z);
+      buildGroup.add(column);
+    }
+
+    const signPost = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.15, 0.2), frameMat);
+    signPost.position.set(-halfW + 0.82, 0.58, 0);
+    buildGroup.add(signPost);
+
+    const signWrap = buildFrontierBuildingSign(buildState.signText);
+    signWrap.position.set(-halfW + 0.82, 1.32, 0);
+    signWrap.rotation.y = -Math.PI * 0.5;
+    buildGroup.add(signWrap);
+  }
+
+  if (stage >= 50) {
+    const sideWallGeo = new THREE.BoxGeometry(buildingWidth, FRONTIER_BUILDING_HEIGHT * 0.58, 0.26);
+    const sideNorth = new THREE.Mesh(sideWallGeo, bodyMat);
+    sideNorth.position.set(0, FRONTIER_BUILDING_HEIGHT * 0.29, -halfD + 0.13);
+    buildGroup.add(sideNorth);
+
+    const sideSouth = new THREE.Mesh(sideWallGeo, bodyMat);
+    sideSouth.position.set(0, FRONTIER_BUILDING_HEIGHT * 0.29, halfD - 0.13);
+    buildGroup.add(sideSouth);
+
+    const backWall = new THREE.Mesh(
+      new THREE.BoxGeometry(0.26, FRONTIER_BUILDING_HEIGHT * 0.72, buildingDepth),
+      bodyMat
+    );
+    backWall.position.set(halfW - 0.13, FRONTIER_BUILDING_HEIGHT * 0.36, 0);
+    buildGroup.add(backWall);
+
+    const roofFrame = new THREE.Mesh(
+      new THREE.BoxGeometry(buildingWidth, 0.16, buildingDepth),
+      frameMat
+    );
+    roofFrame.position.set(0, FRONTIER_BUILDING_HEIGHT - 0.08, 0);
+    buildGroup.add(roofFrame);
+  }
+
+  if (stage >= 100) {
+    const roof = new THREE.Mesh(
+      new THREE.BoxGeometry(buildingWidth, 0.22, buildingDepth),
+      roofMat
+    );
+    roof.position.set(0, FRONTIER_BUILDING_HEIGHT + 0.05, 0);
+    buildGroup.add(roof);
+
+    const rearTrim = new THREE.Mesh(
+      new THREE.BoxGeometry(0.14, FRONTIER_BUILDING_HEIGHT * 0.52, buildingDepth - 0.6),
+      frameMat
+    );
+    rearTrim.position.set(halfW - 0.42, FRONTIER_BUILDING_HEIGHT * 0.42, 0);
+    buildGroup.add(rearTrim);
+  }
+
+  frontierP6ConstructionGroup = buildGroup;
+  frontierP6ConstructionRoot.add(buildGroup);
+}
+
+function renderFrontierBuildWindow() {
+  const buildState = getFrontierP6BuildState();
+  const nextStage = getFrontierNextStageConfig(buildState.stage);
+  const woodOwned = getItemCount("woodPlank");
+  const stoneOwned = getItemCount("masonryStone");
+
+  frontierBuildTitle.textContent = "P6 건축 진행";
+  frontierBuildStageCard.innerHTML = "";
+  frontierBuildRequirementCard.innerHTML = "";
+  frontierBuildOwnedCard.innerHTML = "";
+
+  const stageTitle = document.createElement("div");
+  stageTitle.textContent = `현재 진척도 ${buildState.stage}%`;
+  stageTitle.style.fontSize = "24px";
+  stageTitle.style.fontWeight = "900";
+  stageTitle.style.color = "#222";
+  frontierBuildStageCard.appendChild(stageTitle);
+
+  const stageDesc = document.createElement("div");
+  stageDesc.style.marginTop = "10px";
+  stageDesc.style.fontSize = "13px";
+  stageDesc.style.lineHeight = "1.65";
+  stageDesc.style.color = "#555";
+  stageDesc.textContent =
+    buildState.stage >= 100
+      ? "건축이 완료되었습니다. 간판 텍스트를 수정해 이 필지의 용도를 표시할 수 있습니다."
+      : nextStage
+        ? `${nextStage.label} 단계로 올리려면 목재 ${nextStage.wood}개와 석재 ${nextStage.stone}개가 필요합니다.`
+        : "건축 대기 중";
+  frontierBuildStageCard.appendChild(stageDesc);
+
+  frontierBuildRequirementCard.innerHTML = `
+    <div style="font-size:13px;font-weight:800;color:#222;">다음 단계 필요 재료</div>
+    <div style="margin-top:10px;font-size:14px;line-height:1.8;color:#444;">
+      <div>목재: <strong>${nextStage ? nextStage.wood : 0}</strong></div>
+      <div>석재: <strong>${nextStage ? nextStage.stone : 0}</strong></div>
+    </div>
+  `;
+
+  frontierBuildOwnedCard.innerHTML = `
+    <div style="font-size:13px;font-weight:800;color:#222;">현재 보유 재료</div>
+    <div style="margin-top:10px;font-size:14px;line-height:1.8;color:#444;">
+      <div>목재: <strong>${woodOwned}</strong></div>
+      <div>석재: <strong>${stoneOwned}</strong></div>
+    </div>
+  `;
+
+  const canAdvance = Boolean(
+    nextStage &&
+    woodOwned >= nextStage.wood &&
+    stoneOwned >= nextStage.stone
+  );
+  frontierBuildActionBtn.disabled = !nextStage || !canAdvance;
+  frontierBuildActionBtn.textContent = nextStage ? "건축 진행" : "완공";
+  frontierBuildActionBtn.style.opacity = frontierBuildActionBtn.disabled ? "0.58" : "1";
+  frontierBuildActionBtn.style.cursor = frontierBuildActionBtn.disabled ? "default" : "pointer";
+
+  frontierBuildNotice.textContent =
+    buildState.stage >= 100
+      ? "건물 완공: 정면은 메인 통로 쪽으로 열려 있고, 간판을 수정할 수 있습니다."
+      : canAdvance
+        ? "재료가 충분합니다. 건축 진행을 누르면 다음 단계로 즉시 상승합니다."
+        : "다음 단계를 올리려면 필요한 목재와 석재를 먼저 준비해야 합니다.";
+
+  frontierBuildSignCard.style.display = buildState.stage >= 100 ? "block" : "none";
+  frontierBuildSignInput.value = buildState.signText;
+  frontierBuildSignInput.disabled = buildState.stage < 100;
+  frontierBuildSignSaveBtn.disabled = buildState.stage < 100;
+}
+
+function setFrontierBuildOpen(v) {
+  frontierBuildOpen = v;
+  frontierBuildOverlay.style.display = frontierBuildOpen ? "block" : "none";
+  frontierBuildWin.style.display = frontierBuildOpen ? "block" : "none";
+  if (frontierBuildOpen) {
+    setInvOpen(false);
+    setQuestOpen(false);
+    setForgeOpen(false);
+    setRefineryOpen(false);
+    renderFrontierBuildWindow();
+  }
+}
+
+function tryAdvanceFrontierBuildStage() {
+  const buildState = getFrontierP6BuildState();
+  const nextStage = getFrontierNextStageConfig(buildState.stage);
+  if (!nextStage) {
+    showUI("P6 건축은 이미 완료되었습니다.", 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return true;
+  }
+  if (getItemCount("woodPlank") < nextStage.wood || getItemCount("masonryStone") < nextStage.stone) {
+    showUI("건축 재료가 부족합니다.", 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return true;
+  }
+  if (!consumeItem("woodPlank", nextStage.wood)) {
+    showUI("목재를 차감하지 못했습니다.", 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return true;
+  }
+  if (!consumeItem("masonryStone", nextStage.stone)) {
+    addItem("woodPlank", nextStage.wood);
+    showUI("석재를 차감하지 못했습니다.", 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return true;
+  }
+  buildState.stage = nextStage.to;
+  rebuildFrontierP6ConstructionVisual();
+  updateInventoryUI();
+  schedulePlayerSaveSync(true);
+  renderFrontierBuildWindow();
+  showUI(`P6 건축 진척도 ${buildState.stage}%`, 1100);
+  lastMessageUntil = performance.now() + 1100;
+  return true;
+}
+
+function saveFrontierBuildSignText() {
+  if (getFrontierP6BuildState().stage < 100) return false;
+  const text = String(frontierBuildSignInput.value || "").trim().slice(0, FRONTIER_BUILDING_SIGN_MAX_CHARS) || "P6";
+  frontierBuildState.p6.signText = text;
+  rebuildFrontierP6ConstructionVisual();
+  schedulePlayerSaveSync(true);
+  renderFrontierBuildWindow();
+  showUI("간판 문구를 저장했습니다.", 900);
+  lastMessageUntil = performance.now() + 900;
+  return true;
 }
 
 function tryUnlockMapGate(gate) {
@@ -6780,6 +7294,9 @@ function getForgeDistance() {
 }
 
 function setForgeOpen(v) {
+  if (v && frontierBuildOpen) {
+    setFrontierBuildOpen(false);
+  }
   if (v && refineryOpen) {
     setRefineryOpen(false);
   }
@@ -6848,6 +7365,9 @@ function renderRefineryItemCard(card, heading, itemId, count, description, accen
 }
 
 function setRefineryOpen(v) {
+  if (v && frontierBuildOpen) {
+    setFrontierBuildOpen(false);
+  }
   if (v && forgeOpen) {
     setForgeOpen(false);
   }
@@ -6931,7 +7451,7 @@ function renderRefineryWindow() {
     "재련 결과",
     selectedRecipe.outputItemId,
     selectedRecipe.outputCount,
-    `${outputName}은 공기 정화탑에 사용할 수 있는 정화용 가공 분말입니다. 현재 보유량 ${outputOwned}개`,
+    `${getRefineryRecipeDescription(selectedRecipe)} 현재 보유량 ${outputOwned}개`,
     "#7a4a12"
   );
 
@@ -6963,7 +7483,7 @@ function renderRefineryWindow() {
     refineryNotice.style.color = "#24622c";
   } else {
     refineryNotice.textContent = canCraft
-      ? `${inputName}을 정제해 ${outputName}로 바꿉니다. 나중에 더 많은 재련 레시피가 추가될 수 있습니다.`
+      ? `${inputName}을 정제해 ${outputName}로 바꿉니다. ${getRefineryRecipeDescription(selectedRecipe)}`
       : `${inputName} ${selectedRecipe.inputCount}개가 있어야 ${outputName}를 만들 수 있습니다.`;
     refineryNotice.style.background = "rgba(255,255,255,0.9)";
     refineryNotice.style.border = "1px solid rgba(0,0,0,0.12)";
@@ -7258,6 +7778,233 @@ refineryOverlay.addEventListener("click", () => {
   setRefineryOpen(false);
 });
 
+frontierBuildOverlay = document.createElement("div");
+frontierBuildOverlay.id = "frontierBuildOverlay";
+frontierBuildOverlay.style.position = "fixed";
+frontierBuildOverlay.style.inset = "0";
+frontierBuildOverlay.style.background = "rgba(20, 24, 30, 0.3)";
+frontierBuildOverlay.style.backdropFilter = "blur(3px)";
+frontierBuildOverlay.style.display = "none";
+frontierBuildOverlay.style.pointerEvents = "auto";
+frontierBuildOverlay.style.zIndex = "1000001";
+uiLayer.appendChild(frontierBuildOverlay);
+
+frontierBuildWin = document.createElement("div");
+frontierBuildWin.id = "frontierBuildWindow";
+frontierBuildWin.style.position = "fixed";
+frontierBuildWin.style.left = "50%";
+frontierBuildWin.style.top = "50%";
+frontierBuildWin.style.transform = "translate(-50%, -50%)";
+frontierBuildWin.style.width = "min(640px, calc(100vw - 36px))";
+frontierBuildWin.style.minHeight = "430px";
+frontierBuildWin.style.background = "rgba(235, 235, 235, 0.96)";
+frontierBuildWin.style.border = "1px solid rgba(0,0,0,0.25)";
+frontierBuildWin.style.borderRadius = "14px";
+frontierBuildWin.style.boxShadow = "0 18px 42px rgba(0,0,0,0.28)";
+frontierBuildWin.style.backdropFilter = "blur(6px)";
+frontierBuildWin.style.boxSizing = "border-box";
+frontierBuildWin.style.display = "none";
+frontierBuildWin.style.pointerEvents = "auto";
+frontierBuildWin.style.userSelect = "none";
+frontierBuildWin.style.zIndex = "1000002";
+frontierBuildWin.style.overflow = "hidden";
+uiLayer.appendChild(frontierBuildWin);
+
+const frontierBuildHeader = document.createElement("div");
+frontierBuildHeader.style.display = "flex";
+frontierBuildHeader.style.alignItems = "center";
+frontierBuildHeader.style.gap = "12px";
+frontierBuildHeader.style.padding = "12px 14px";
+frontierBuildHeader.style.borderBottom = "1px solid rgba(0,0,0,0.15)";
+frontierBuildHeader.style.background = "rgba(255,255,255,0.7)";
+frontierBuildWin.appendChild(frontierBuildHeader);
+
+const frontierBuildTitle = document.createElement("div");
+frontierBuildTitle.textContent = "P6 건축 진행";
+frontierBuildTitle.style.fontFamily = "system-ui, -apple-system, sans-serif";
+frontierBuildTitle.style.fontSize = "18px";
+frontierBuildTitle.style.fontWeight = "800";
+frontierBuildTitle.style.color = "#222";
+frontierBuildTitle.style.marginRight = "auto";
+frontierBuildHeader.appendChild(frontierBuildTitle);
+
+const frontierBuildHeaderNote = document.createElement("div");
+frontierBuildHeaderNote.textContent = "개척지 건축 예정지";
+frontierBuildHeaderNote.style.fontFamily = "system-ui, -apple-system, sans-serif";
+frontierBuildHeaderNote.style.fontSize = "12px";
+frontierBuildHeaderNote.style.fontWeight = "700";
+frontierBuildHeaderNote.style.color = "rgba(70,70,70,0.78)";
+frontierBuildHeader.appendChild(frontierBuildHeaderNote);
+
+const frontierBuildCloseBtn = document.createElement("button");
+frontierBuildCloseBtn.textContent = "닫기";
+frontierBuildCloseBtn.style.minWidth = "74px";
+frontierBuildCloseBtn.style.border = "1px solid rgba(0,0,0,0.18)";
+frontierBuildCloseBtn.style.borderRadius = "10px";
+frontierBuildCloseBtn.style.padding = "8px 10px";
+frontierBuildCloseBtn.style.fontSize = "13px";
+frontierBuildCloseBtn.style.fontWeight = "700";
+frontierBuildCloseBtn.style.cursor = "pointer";
+frontierBuildCloseBtn.style.background = "rgba(255,255,255,0.92)";
+frontierBuildCloseBtn.style.color = "#333";
+frontierBuildHeader.appendChild(frontierBuildCloseBtn);
+
+const frontierBuildBody = document.createElement("div");
+frontierBuildBody.style.padding = "18px";
+frontierBuildBody.style.display = "grid";
+frontierBuildBody.style.gridTemplateRows = "auto auto auto auto auto";
+frontierBuildBody.style.gap = "14px";
+frontierBuildWin.appendChild(frontierBuildBody);
+
+const frontierBuildStageHero = document.createElement("div");
+frontierBuildStageHero.style.display = "grid";
+frontierBuildStageHero.style.gridTemplateColumns = "1fr 160px";
+frontierBuildStageHero.style.gap = "14px";
+frontierBuildBody.appendChild(frontierBuildStageHero);
+
+const frontierBuildStageCard = document.createElement("div");
+frontierBuildStageCard.style.minHeight = "120px";
+frontierBuildStageCard.style.borderRadius = "12px";
+frontierBuildStageCard.style.background = "rgba(255,255,255,0.95)";
+frontierBuildStageCard.style.border = "1px solid rgba(0,0,0,0.18)";
+frontierBuildStageCard.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.8)";
+frontierBuildStageCard.style.padding = "14px";
+frontierBuildStageCard.style.boxSizing = "border-box";
+frontierBuildStageCard.style.fontFamily = "system-ui, -apple-system, sans-serif";
+frontierBuildStageHero.appendChild(frontierBuildStageCard);
+
+const frontierBuildActionCard = document.createElement("div");
+frontierBuildActionCard.style.minHeight = "120px";
+frontierBuildActionCard.style.borderRadius = "14px";
+frontierBuildActionCard.style.background = "linear-gradient(180deg, rgba(255,194,105,0.22), rgba(255,156,64,0.12))";
+frontierBuildActionCard.style.border = "1px solid rgba(255,162,68,0.38)";
+frontierBuildActionCard.style.boxShadow = "0 0 0 3px rgba(255,186,90,0.14), inset 0 1px 0 rgba(255,255,255,0.7)";
+frontierBuildActionCard.style.display = "flex";
+frontierBuildActionCard.style.flexDirection = "column";
+frontierBuildActionCard.style.alignItems = "center";
+frontierBuildActionCard.style.justifyContent = "center";
+frontierBuildActionCard.style.padding = "10px";
+frontierBuildStageHero.appendChild(frontierBuildActionCard);
+
+const frontierBuildActionLabel = document.createElement("div");
+frontierBuildActionLabel.textContent = "다음 단계";
+frontierBuildActionLabel.style.fontFamily = "system-ui, -apple-system, sans-serif";
+frontierBuildActionLabel.style.fontSize = "12px";
+frontierBuildActionLabel.style.fontWeight = "700";
+frontierBuildActionLabel.style.color = "rgba(88,66,34,0.76)";
+frontierBuildActionCard.appendChild(frontierBuildActionLabel);
+
+const frontierBuildActionBtn = document.createElement("button");
+frontierBuildActionBtn.type = "button";
+frontierBuildActionBtn.textContent = "건축 진행";
+frontierBuildActionBtn.style.marginTop = "10px";
+frontierBuildActionBtn.style.minWidth = "112px";
+frontierBuildActionBtn.style.border = "1px solid rgba(150,90,20,0.35)";
+frontierBuildActionBtn.style.borderRadius = "12px";
+frontierBuildActionBtn.style.padding = "14px 12px";
+frontierBuildActionBtn.style.fontFamily = "system-ui, -apple-system, sans-serif";
+frontierBuildActionBtn.style.fontSize = "18px";
+frontierBuildActionBtn.style.fontWeight = "900";
+frontierBuildActionBtn.style.color = "#7a4a12";
+frontierBuildActionBtn.style.background = "rgba(255,255,255,0.82)";
+frontierBuildActionBtn.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.8)";
+frontierBuildActionBtn.style.cursor = "pointer";
+frontierBuildActionCard.appendChild(frontierBuildActionBtn);
+
+const frontierBuildResourceGrid = document.createElement("div");
+frontierBuildResourceGrid.style.display = "grid";
+frontierBuildResourceGrid.style.gridTemplateColumns = "repeat(2, minmax(0, 1fr))";
+frontierBuildResourceGrid.style.gap = "12px";
+frontierBuildBody.appendChild(frontierBuildResourceGrid);
+
+const frontierBuildRequirementCard = document.createElement("div");
+frontierBuildRequirementCard.style.padding = "14px";
+frontierBuildRequirementCard.style.borderRadius = "12px";
+frontierBuildRequirementCard.style.background = "rgba(255,255,255,0.94)";
+frontierBuildRequirementCard.style.border = "1px solid rgba(0,0,0,0.14)";
+frontierBuildRequirementCard.style.fontFamily = "system-ui, -apple-system, sans-serif";
+frontierBuildResourceGrid.appendChild(frontierBuildRequirementCard);
+
+const frontierBuildOwnedCard = document.createElement("div");
+frontierBuildOwnedCard.style.padding = "14px";
+frontierBuildOwnedCard.style.borderRadius = "12px";
+frontierBuildOwnedCard.style.background = "rgba(255,255,255,0.94)";
+frontierBuildOwnedCard.style.border = "1px solid rgba(0,0,0,0.14)";
+frontierBuildOwnedCard.style.fontFamily = "system-ui, -apple-system, sans-serif";
+frontierBuildResourceGrid.appendChild(frontierBuildOwnedCard);
+
+const frontierBuildNotice = document.createElement("div");
+frontierBuildNotice.style.padding = "12px 14px";
+frontierBuildNotice.style.borderRadius = "10px";
+frontierBuildNotice.style.background = "rgba(255,255,255,0.9)";
+frontierBuildNotice.style.border = "1px solid rgba(0,0,0,0.12)";
+frontierBuildNotice.style.fontFamily = "system-ui, -apple-system, sans-serif";
+frontierBuildNotice.style.fontSize = "13px";
+frontierBuildNotice.style.lineHeight = "1.5";
+frontierBuildNotice.style.color = "#444";
+frontierBuildBody.appendChild(frontierBuildNotice);
+
+const frontierBuildSignCard = document.createElement("div");
+frontierBuildSignCard.style.padding = "14px";
+frontierBuildSignCard.style.borderRadius = "12px";
+frontierBuildSignCard.style.background = "rgba(255,255,255,0.94)";
+frontierBuildSignCard.style.border = "1px solid rgba(0,0,0,0.14)";
+frontierBuildSignCard.style.fontFamily = "system-ui, -apple-system, sans-serif";
+frontierBuildSignCard.style.display = "none";
+frontierBuildBody.appendChild(frontierBuildSignCard);
+
+const frontierBuildSignTitle = document.createElement("div");
+frontierBuildSignTitle.textContent = "간판 텍스트";
+frontierBuildSignTitle.style.fontSize = "13px";
+frontierBuildSignTitle.style.fontWeight = "800";
+frontierBuildSignTitle.style.color = "#222";
+frontierBuildSignCard.appendChild(frontierBuildSignTitle);
+
+const frontierBuildSignInput = document.createElement("input");
+frontierBuildSignInput.type = "text";
+frontierBuildSignInput.maxLength = FRONTIER_BUILDING_SIGN_MAX_CHARS;
+frontierBuildSignInput.placeholder = "간판 문구를 입력하세요";
+frontierBuildSignInput.style.marginTop = "10px";
+frontierBuildSignInput.style.width = "100%";
+frontierBuildSignInput.style.boxSizing = "border-box";
+frontierBuildSignInput.style.border = "1px solid rgba(0,0,0,0.18)";
+frontierBuildSignInput.style.borderRadius = "10px";
+frontierBuildSignInput.style.padding = "11px 12px";
+frontierBuildSignInput.style.fontFamily = "system-ui, -apple-system, sans-serif";
+frontierBuildSignInput.style.fontSize = "14px";
+frontierBuildSignInput.style.background = "rgba(255,255,255,0.96)";
+frontierBuildSignCard.appendChild(frontierBuildSignInput);
+
+const frontierBuildSignSaveBtn = document.createElement("button");
+frontierBuildSignSaveBtn.textContent = "간판 저장";
+frontierBuildSignSaveBtn.style.marginTop = "10px";
+frontierBuildSignSaveBtn.style.minWidth = "90px";
+frontierBuildSignSaveBtn.style.border = "1px solid rgba(0,0,0,0.18)";
+frontierBuildSignSaveBtn.style.borderRadius = "10px";
+frontierBuildSignSaveBtn.style.padding = "9px 12px";
+frontierBuildSignSaveBtn.style.fontSize = "13px";
+frontierBuildSignSaveBtn.style.fontWeight = "700";
+frontierBuildSignSaveBtn.style.cursor = "pointer";
+frontierBuildSignSaveBtn.style.background = "rgba(255,255,255,0.92)";
+frontierBuildSignSaveBtn.style.color = "#333";
+frontierBuildSignCard.appendChild(frontierBuildSignSaveBtn);
+
+frontierBuildCloseBtn.addEventListener("click", () => {
+  setFrontierBuildOpen(false);
+});
+
+frontierBuildOverlay.addEventListener("click", () => {
+  setFrontierBuildOpen(false);
+});
+
+frontierBuildActionBtn.addEventListener("click", () => {
+  tryAdvanceFrontierBuildStage();
+});
+
+frontierBuildSignSaveBtn.addEventListener("click", () => {
+  saveFrontierBuildSignText();
+});
+
 
 // Camera controls
 camera.position.set(0, 4, 8);
@@ -7269,6 +8016,10 @@ controls.maxDistance = 20;
 controls.maxPolarAngle = Math.PI * 0.49;
 controls.minPolarAngle = Math.PI * 0.1;
 controls.enablePan = false;
+
+let shiftRotatePointerActive = false;
+let shiftRotateLastX = 0;
+let shiftRotateLastY = 0;
 
 if (shouldResetAuthSessionOnLocalReload()) {
   localStorage.removeItem(WALLET_SESSION_KEY);
@@ -7348,19 +8099,34 @@ function makeTree(x, z) {
   trunk.updateWorldMatrix(true, true);
   addCollider(trunk, 0.75);
 
+  g.userData.isHarvestTree = true;
+  g.userData.harvestItemId = "woodChip";
+  g.userData.harvestCount = 1;
+  g.userData.harvestCooldownUntil = 0;
+  g.userData.harvestDisabled = false;
+  g.userData.trunk = trunk;
+  g.userData.leaves = leaves;
+  harvestTrees.push(g);
+
+  return g;
 }
 
 // 캐릭터급 바위 (충돌 포함)
-function makeRock(x, z, rockSizeDef = ROCK_SIZE_DEFS[1], fadeIn = false) {
+function makeRock(x, z, rockSizeDef = ROCK_SIZE_DEFS[1], fadeIn = false, options = {}) {
   const scale = rockSizeDef.scale;
+  const rockColor = options.color ?? 0x6f6f72;
+  const defaultResourceCount =
+    options.resourceItemId === "stoneDust" || (!options.resourceItemId && !options.resourceCount)
+      ? rockSizeDef.stoneDustDropCount ?? 1
+      : 1;
   const rockMat = new THREE.MeshStandardMaterial({
-    color: 0x6f6f72,
+    color: rockColor,
     roughness: 1.0,
     transparent: fadeIn,
     opacity: fadeIn ? 0 : 1,
   });
   const rock = new THREE.Mesh(
-    new THREE.DodecahedronGeometry(0.9 * scale, 0),
+    new THREE.DodecahedronGeometry(0.9 * scale, options.detail ?? 0),
     rockMat
   );
   rock.position.set(x, 0.9 * scale, z);
@@ -7378,9 +8144,26 @@ function makeRock(x, z, rockSizeDef = ROCK_SIZE_DEFS[1], fadeIn = false) {
   rock.userData.colliderIndex = colliderIndex;
   rock.userData.rockSize = rockSizeDef.id;
   rock.userData.spawnScale = scale;
-  rock.userData.hp = rockSizeDef.maxHp;
-  rock.userData.maxHp = rockSizeDef.maxHp;
-  rock.userData.spawn = { x, z, rockSize: rockSizeDef.id };
+  rock.userData.hp = options.maxHp ?? rockSizeDef.maxHp;
+  rock.userData.maxHp = options.maxHp ?? rockSizeDef.maxHp;
+  rock.userData.spawn = {
+    x,
+    z,
+    rockSize: rockSizeDef.id,
+    mapId: options.mapId ?? "광산맵",
+    resourceItemId: options.resourceItemId ?? "stoneDust",
+    resourceCount: options.resourceCount ?? defaultResourceCount,
+    requiredPickaxeLevel: options.requiredPickaxeLevel ?? 0,
+    color: rockColor,
+    detail: options.detail ?? 0,
+    maxHp: options.maxHp ?? rockSizeDef.maxHp,
+  };
+  rock.userData.resourceItemId = options.resourceItemId ?? "stoneDust";
+  rock.userData.resourceCount = options.resourceCount ?? defaultResourceCount;
+  rock.userData.requiredPickaxeLevel = options.requiredPickaxeLevel ?? 0;
+  rock.userData.resourceHint = options.hint ?? "Space : 채굴";
+  rock.userData.hpLabelPrefix = options.hpLabelPrefix ?? "돌 체력";
+  rock.userData.bonusDropEnabled = options.bonusDropEnabled ?? rock.userData.resourceItemId === "stoneDust";
   if (fadeIn) {
     rock.userData.fadeInElapsed = 0;
     rock.userData.fadeInDuration = 1.0;
@@ -7394,9 +8177,20 @@ function scheduleRockRespawn(spawn) {
     const rockSizeDef =
       ROCK_SIZE_DEFS.find((entry) => entry.id === spawn?.rockSize) ??
       ROCK_SIZE_DEFS[Math.floor(Math.random() * ROCK_SIZE_DEFS.length)];
-    const next = findRockSpawnPosition(rockSizeDef.scale, 120);
+    const next = spawn?.mapId === "폐광맵"
+      ? findCampStoneSpawnPosition(rockSizeDef.scale, 120)
+      : findRockSpawnPosition(rockSizeDef.scale, 120);
     if (!next) return;
-    makeRock(next.x, next.z, rockSizeDef, true);
+    makeRock(next.x, next.z, rockSizeDef, true, {
+      mapId: spawn?.mapId,
+      resourceItemId: spawn?.resourceItemId,
+      requiredPickaxeLevel: spawn?.requiredPickaxeLevel,
+      color: spawn?.color,
+      detail: spawn?.detail,
+      maxHp: spawn?.maxHp,
+      bonusDropEnabled: spawn?.resourceItemId === "stoneDust",
+      hpLabelPrefix: spawn?.resourceItemId === "masonryStone" ? "석재 돌 체력" : "돌 체력",
+    });
   }, ROCK_RESPAWN_MS);
 }
 
@@ -7404,6 +8198,29 @@ function unregisterMineRock(rock) {
   const idx = mineRocks.indexOf(rock);
   if (idx !== -1) mineRocks.splice(idx, 1);
 
+}
+
+function setHarvestTreeActive(tree, active) {
+  if (!tree?.userData) return;
+  tree.userData.harvestDisabled = !active;
+  tree.userData.harvestCooldownUntil = active ? 0 : performance.now() + TREE_HARVEST_RESPAWN_MS;
+  const trunk = tree.userData.trunk;
+  const leaves = tree.userData.leaves;
+  for (const mesh of [trunk, leaves]) {
+    if (!mesh?.material) continue;
+    mesh.material.transparent = !active;
+    mesh.material.opacity = active ? 1 : 0.26;
+  }
+}
+
+function updateHarvestTrees() {
+  const now = performance.now();
+  for (const tree of harvestTrees) {
+    if (!tree?.parent || !tree.userData.harvestDisabled) continue;
+    if (now >= (tree.userData.harvestCooldownUntil ?? 0)) {
+      setHarvestTreeActive(tree, true);
+    }
+  }
 }
 
 function updateRockFadeIns(dt) {
@@ -7896,6 +8713,25 @@ function spawnTreesAndRocks() {
   }
 }
 
+function spawnCaveMasonryRocks() {
+  for (let i = 0; i < CAVE_STONE_COUNT; i += 1) {
+    const rockSizeDef = ROCK_SIZE_DEFS[Math.floor(Math.random() * ROCK_SIZE_DEFS.length)];
+    const spawnPos = findCampStoneSpawnPosition(rockSizeDef.scale, 140);
+    if (!spawnPos) continue;
+    makeRock(spawnPos.x, spawnPos.z, rockSizeDef, false, {
+      mapId: "폐광맵",
+      resourceItemId: "masonryStone",
+      requiredPickaxeLevel: 4,
+      hint: "Space : 석재 채굴",
+      color: 0x3f372f,
+      detail: 1,
+      maxHp: rockSizeDef.maxHp + 0.6,
+      bonusDropEnabled: false,
+      hpLabelPrefix: "석재 돌 체력",
+    });
+  }
+}
+
 spawnTreesAndRocks();
 buildMinePerimeterCliffs();
 buildStartZoneWall();
@@ -7976,13 +8812,34 @@ for (let i = 0; i < signTexts.length; i++) {
   makeSign(signStartX, signStartZ + signGap * i, signTexts[i], -Math.PI / 2);
 }
 
-const mineGate = buildTravelGate(START_X, START_Z - 51.2, Math.PI, "폐광 입구");
+mineGate = buildTravelGate(START_X, START_Z - 51.2, Math.PI, "폐광 입구");
+mineGate.userData.mapId = "광산맵";
 registerWalkableSurface("광산맵", mineGate.userData.walkSurface, 0.45);
 buildCampTestArea();
 buildCavePollutionField();
-const campGate = buildTravelGate(CAMP_MAP_X, CAMP_MAP_Z + GROUND_SIZE * 0.5 + 1.25, 0, "광산 복귀");
+spawnCaveMasonryRocks();
+campGate = buildTravelGate(CAMP_MAP_X, CAMP_MAP_Z + GROUND_SIZE * 0.5 + 1.25, 0, "광산 복귀");
+campGate.userData.mapId = "폐광맵";
 registerWalkableSurface("폐광맵", campGate.userData.walkSurface, 0.45);
 buildMapConnectorTunnel(mineGate, campGate);
+buildFrontierArea();
+frontierCampGate = buildTravelGate(
+  CAMP_MAP_X,
+  CAMP_MAP_Z - GROUND_SIZE * 0.5 - 1.25,
+  Math.PI,
+  "개척지 입구"
+);
+frontierCampGate.userData.mapId = "폐광맵";
+registerWalkableSurface("폐광맵", frontierCampGate.userData.walkSurface, 0.45);
+frontierGate = buildTravelGate(
+  FRONTIER_MAP_X,
+  FRONTIER_MAP_Z + FRONTIER_GROUND_SIZE * 0.5 + 1.25,
+  0,
+  "폐광 복귀"
+);
+frontierGate.userData.mapId = "개척지";
+registerWalkableSurface("개척지", frontierGate.userData.walkSurface, 0.45);
+buildMapConnectorTunnel(frontierCampGate, frontierGate);
 
 const abandonedMineGate = registerMapGate({
   mapId: "광산맵",
@@ -8009,6 +8866,30 @@ const mineGateFence = buildTunnelFence(
 );
 abandonedMineGate.lockBlocker = mineGateFence;
 abandonedMineGate.lockColliderIndex = addCollider(mineGateFence, 1.0);
+
+registerMapGate({
+  mapId: "폐광맵",
+  targetMapId: "개척지",
+  trigger: {
+    x: frontierCampGate.position.x,
+    z: frontierCampGate.position.z - 1.2,
+    width: 10.6,
+    depth: 2.6,
+  },
+  hint: "북쪽 통로를 지나면 개척지로 이어집니다",
+});
+
+registerMapGate({
+  mapId: "개척지",
+  targetMapId: "폐광맵",
+  trigger: {
+    x: frontierGate.position.x,
+    z: frontierGate.position.z + 1.2,
+    width: 10.6,
+    depth: 2.6,
+  },
+  hint: "남쪽 통로를 지나면 폐광으로 돌아갑니다",
+});
 
 function applyDevPreset() {
   if (!DEV_PRESET_ENABLED) return;
@@ -8040,9 +8921,8 @@ function applyDevPreset() {
   }
 
   addItem("freshAirCanister", 2);
-
-  if (typeof DEV_PRESET.stoneDust === "number" && DEV_PRESET.stoneDust > 0) {
-    addItem("stoneDust", DEV_PRESET.stoneDust);
+  for (const itemId of getDevMaterialItemIds()) {
+    addItem(itemId, INVENTORY_STACK_LIMIT);
   }
 
   playerAirCurrent = AIR_GAUGE_MAX;
@@ -8097,7 +8977,7 @@ function applyFreshPlayerStartState() {
     inventory.slots[i] = null;
   }
 
-  inventory.pickaxeLevel = 0;
+  inventory.pickaxeLevel = 1;
   inventory.mineKeyIssued = false;
   inventory.abandonedMineUnlocked = false;
   for (const key of QUICK_USE_ALLOWED_KEYS) inventory.quickUse[key] = null;
@@ -8139,7 +9019,7 @@ function createDefaultPlayerSave() {
     rotationY: 0,
     inventory: {
       slots: Array.from({ length: inventory.slots.length }, () => null),
-      pickaxeLevel: 0,
+      pickaxeLevel: 1,
       mineKeyIssued: false,
       abandonedMineUnlocked: false,
       quickUse: {
@@ -8168,8 +9048,10 @@ function createDefaultPlayerSave() {
       max: AIR_GAUGE_MAX,
       mapPurification: {
         "폐광맵": 0,
+        "개척지": 0,
       },
     },
+    frontierBuild: createDefaultFrontierBuildState(),
     displayBoard: null,
   };
 }
@@ -8214,8 +9096,10 @@ function serializePlayerSave() {
       max: playerAirMax,
       mapPurification: {
         "폐광맵": getMapPurificationValue("폐광맵"),
+        "개척지": getMapPurificationValue("개척지"),
       },
     },
+    frontierBuild: structuredClone(frontierBuildState),
     displayBoard: nftExhibitSelectedItem ? structuredClone(nftExhibitSelectedItem) : null,
   };
 }
@@ -8249,6 +9133,7 @@ function applySerializedPlayerSave(rawSave) {
         ...(save.airSystem?.mapPurification ?? {}),
       },
     },
+    frontierBuild: normalizeFrontierBuildState(save.frontierBuild),
     displayBoard: save.displayBoard ?? null,
   };
 
@@ -8282,6 +9167,8 @@ function applySerializedPlayerSave(rawSave) {
   playerAirMax = Math.max(1, Number(source.airSystem.max) || AIR_GAUGE_MAX);
   playerAirCurrent = Math.max(0, Math.min(playerAirMax, Number(source.airSystem.current) || AIR_GAUGE_MAX));
   setMapPurificationValue("폐광맵", Number(source.airSystem.mapPurification?.["폐광맵"]) || 0);
+  setMapPurificationValue("개척지", Number(source.airSystem.mapPurification?.["개척지"]) || 0);
+  frontierBuildState = normalizeFrontierBuildState(source.frontierBuild);
   nftExhibitSelectedItem = normalizeNftBoardSelection(source.displayBoard);
 
   if (inventory.abandonedMineUnlocked) {
@@ -8300,7 +9187,7 @@ function applySerializedPlayerSave(rawSave) {
     restoreLockedMapGate(abandonedMineGate);
   }
 
-  currentMapId = source.mapId === "폐광맵" ? "폐광맵" : "광산맵";
+  currentMapId = ["광산맵", "폐광맵", "개척지"].includes(source.mapId) ? source.mapId : "광산맵";
   updateSceneFogForCurrentMap();
   player.position.set(
     Number.isFinite(source.position?.x) ? source.position.x : START_X,
@@ -8311,6 +9198,7 @@ function applySerializedPlayerSave(rawSave) {
   latestMoveDir.set(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
   snapCameraToPlayer();
   updateInventoryUI();
+  rebuildFrontierP6ConstructionVisual();
   scheduleNftExhibitBoardRefresh();
   refreshQuestProgress();
   if (questOpen) renderQuestWindow();
@@ -8664,7 +9552,7 @@ function buildNftExhibitBoard(x, z, rotationY = Math.PI * 0.5) {
   return g;
 }
 
-function buildAirPurifierStation(x, z, rotationY = Math.PI) {
+function buildAirPurifierStation(x, z, rotationY = Math.PI, mapId = "폐광맵") {
   const g = new THREE.Group();
 
   const bodyMat = registerCaveDarkMaterial(
@@ -8721,6 +9609,7 @@ function buildAirPurifierStation(x, z, rotationY = Math.PI) {
     text: "E : 공기 정화탑 가동",
     board: chamber,
     type: "airPurifier",
+    purifierMapId: mapId,
   });
   return g;
 }
@@ -9154,10 +10043,12 @@ function buildCampTestArea() {
   const wallThickness = 4.8;
   const wallHeight = 13.44;
   const southOpeningWidth = 18;
+  const northOpeningWidth = 14;
   const wallBaseY = wallHeight * 0.5 - 0.55;
 
   const wallDefs = [
-    { x: 0, z: -campHalf - wallThickness * 0.22, sx: campSize + 6, sy: wallHeight, sz: wallThickness, ry: 0.02 }, // north
+    { x: -(campSize - northOpeningWidth) * 0.25 - northOpeningWidth * 0.5, z: -campHalf - wallThickness * 0.22, sx: (campSize - northOpeningWidth) * 0.5 + 4, sy: wallHeight, sz: wallThickness, ry: 0.02 }, // north-west
+    { x: (campSize - northOpeningWidth) * 0.25 + northOpeningWidth * 0.5, z: -campHalf - wallThickness * 0.22, sx: (campSize - northOpeningWidth) * 0.5 + 4, sy: wallHeight, sz: wallThickness, ry: 0.02 }, // north-east
     { x: -campHalf - wallThickness * 0.28, z: 0, sx: wallThickness, sy: wallHeight + 0.4, sz: campSize + 5, ry: -0.03 }, // west
     { x: campHalf + wallThickness * 0.28, z: 0, sx: wallThickness, sy: wallHeight - 0.2, sz: campSize + 7, ry: 0.025 }, // east
     { x: -(campSize - southOpeningWidth) * 0.25 - southOpeningWidth * 0.5, z: campHalf + wallThickness * 0.24, sx: (campSize - southOpeningWidth) * 0.5 + 4, sy: wallHeight - 0.3, sz: wallThickness, ry: -0.01 }, // south-west
@@ -9334,6 +10225,128 @@ function buildCampTestArea() {
   registerPickupItem(caveAirCan, "freshAirCanister", "E : 신선한 공기 캔 줍기");
 }
 
+function buildFrontierArea() {
+  const pad = new THREE.Mesh(
+    new THREE.BoxGeometry(FRONTIER_GROUND_SIZE, 0.18, FRONTIER_GROUND_SIZE),
+    new THREE.MeshStandardMaterial({
+      color: 0x8a775f,
+      roughness: 0.98,
+    })
+  );
+  pad.position.set(FRONTIER_MAP_X, 0.09, FRONTIER_MAP_Z);
+  scene.add(pad);
+  groundSurfaces.push(pad);
+  registerWalkableSurface("개척지", pad, 0.45);
+
+  const bermMat = new THREE.MeshStandardMaterial({
+    color: 0x6f624f,
+    roughness: 1.0,
+  });
+  const parcelBorderMat = new THREE.MeshStandardMaterial({
+    color: FRONTIER_PARCEL_BORDER_COLOR,
+    roughness: 0.64,
+    metalness: 0.08,
+    emissive: 0x7a3b00,
+    emissiveIntensity: 0.12,
+  });
+  const half = FRONTIER_GROUND_SIZE * 0.5;
+  const wallThickness = 3.4;
+  const wallHeight = 5.8;
+  const southOpeningWidth = 12.5;
+  const wallDefs = [
+    { x: 0, z: -half - wallThickness * 0.2, sx: FRONTIER_GROUND_SIZE + 4, sz: wallThickness },
+    { x: -half - wallThickness * 0.2, z: 0, sx: wallThickness, sz: FRONTIER_GROUND_SIZE + 4 },
+    { x: half + wallThickness * 0.2, z: 0, sx: wallThickness, sz: FRONTIER_GROUND_SIZE + 4 },
+    { x: -(FRONTIER_GROUND_SIZE - southOpeningWidth) * 0.25 - southOpeningWidth * 0.5, z: half + wallThickness * 0.2, sx: (FRONTIER_GROUND_SIZE - southOpeningWidth) * 0.5 + 2.2, sz: wallThickness },
+    { x: (FRONTIER_GROUND_SIZE - southOpeningWidth) * 0.25 + southOpeningWidth * 0.5, z: half + wallThickness * 0.2, sx: (FRONTIER_GROUND_SIZE - southOpeningWidth) * 0.5 + 2.2, sz: wallThickness },
+  ];
+
+  for (const wall of wallDefs) {
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(wall.sx, wallHeight, wall.sz),
+      bermMat
+    );
+    mesh.position.set(FRONTIER_MAP_X + wall.x, wallHeight * 0.5 - 0.3, FRONTIER_MAP_Z + wall.z);
+    scene.add(mesh);
+    addCollider(mesh, 1.0);
+  }
+
+  const parcelInset = 5.5;
+  const parcelInnerWidth = FRONTIER_GROUND_SIZE - parcelInset * 2;
+  const parcelInnerHeight = FRONTIER_GROUND_SIZE - parcelInset * 2;
+  const centerLaneWidth = 4.8;
+  const crossLaneWidth = 4.8;
+  const parcelWidth = (parcelInnerWidth - centerLaneWidth) * 0.5;
+  const parcelHeight = (parcelInnerHeight - crossLaneWidth * 2) / 3;
+  const borderThickness = 0.34;
+  const borderHeight = 0.06;
+  const topY = 0.19;
+
+  function addParcelBorder(x, z, sx, sz) {
+    const north = new THREE.Mesh(
+      new THREE.BoxGeometry(sx, borderHeight, borderThickness),
+      parcelBorderMat
+    );
+    north.position.set(x, topY, z - sz * 0.5);
+    scene.add(north);
+
+    const south = new THREE.Mesh(
+      new THREE.BoxGeometry(sx, borderHeight, borderThickness),
+      parcelBorderMat
+    );
+    south.position.set(x, topY, z + sz * 0.5);
+    scene.add(south);
+
+    const west = new THREE.Mesh(
+      new THREE.BoxGeometry(borderThickness, borderHeight, sz),
+      parcelBorderMat
+    );
+    west.position.set(x - sx * 0.5, topY, z);
+    scene.add(west);
+
+    const east = new THREE.Mesh(
+      new THREE.BoxGeometry(borderThickness, borderHeight, sz),
+      parcelBorderMat
+    );
+    east.position.set(x + sx * 0.5, topY, z);
+    scene.add(east);
+  }
+
+  const leftCenterX = FRONTIER_MAP_X - (centerLaneWidth * 0.5 + parcelWidth * 0.5);
+  const rightCenterX = FRONTIER_MAP_X + (centerLaneWidth * 0.5 + parcelWidth * 0.5);
+  const topCenterZ = FRONTIER_MAP_Z - (crossLaneWidth + parcelHeight);
+  const midCenterZ = FRONTIER_MAP_Z;
+  const bottomCenterZ = FRONTIER_MAP_Z + (crossLaneWidth + parcelHeight);
+  frontierParcelDefs = [
+    { label: "P1", x: leftCenterX, z: topCenterZ, signZ: topCenterZ + parcelHeight * 0.5 - 1.1, width: parcelWidth, height: parcelHeight },
+    { label: "P2", x: rightCenterX, z: topCenterZ, signZ: topCenterZ + parcelHeight * 0.5 - 1.1, width: parcelWidth, height: parcelHeight },
+    { label: "P3", x: leftCenterX, z: midCenterZ, signZ: midCenterZ + parcelHeight * 0.5 - 1.1, width: parcelWidth, height: parcelHeight },
+    { label: "P4", x: rightCenterX, z: midCenterZ, signZ: midCenterZ + parcelHeight * 0.5 - 1.1, width: parcelWidth, height: parcelHeight },
+    { label: "P5", x: leftCenterX, z: bottomCenterZ, signZ: bottomCenterZ - parcelHeight * 0.5 + 1.1, width: parcelWidth, height: parcelHeight },
+    { label: "P6", x: rightCenterX, z: bottomCenterZ, signZ: bottomCenterZ - parcelHeight * 0.5 + 1.1, width: parcelWidth, height: parcelHeight },
+  ];
+
+  for (const parcel of frontierParcelDefs) {
+    addParcelBorder(parcel.x, parcel.z, parcelWidth, parcelHeight);
+    makeSign(parcel.x, parcel.signZ, parcel.label, 0);
+  }
+
+  const p6Parcel = frontierParcelDefs.find((entry) => entry.label === "P6");
+  if (p6Parcel) {
+    frontierP6ConstructionRoot = new THREE.Group();
+    frontierP6ConstructionRoot.position.set(p6Parcel.x, 0, p6Parcel.z);
+    scene.add(frontierP6ConstructionRoot);
+    rebuildFrontierP6ConstructionVisual();
+  }
+
+  frontierAirPurifierStation = buildAirPurifierStation(
+    FRONTIER_MAP_X,
+    FRONTIER_MAP_Z + half - 5.6,
+    Math.PI,
+    "개척지"
+  );
+}
+
 function buildMapConnectorTunnel(startGate, endGate) {
   const centerX = (startGate.position.x + endGate.position.x) * 0.5;
   const minZ = Math.min(startGate.position.z, endGate.position.z) - 1.2;
@@ -9359,8 +10372,8 @@ function buildMapConnectorTunnel(startGate, endGate) {
   floor.position.set(centerX, 0.07, centerZ);
   scene.add(floor);
   groundSurfaces.push(floor);
-  registerWalkableSurface("광산맵", floor, 0.38);
-  registerWalkableSurface("폐광맵", floor, 0.38);
+  registerWalkableSurface(startGate.userData.mapId, floor, 0.38);
+  registerWalkableSurface(endGate.userData.mapId, floor, 0.38);
 
   const mineTransition = new THREE.Mesh(
     new THREE.BoxGeometry(tunnelWidth + 0.9, 0.12, 3.2),
@@ -9372,7 +10385,7 @@ function buildMapConnectorTunnel(startGate, endGate) {
   mineTransition.position.set(startGate.position.x, 0.06, startGate.position.z + 1.55);
   scene.add(mineTransition);
   groundSurfaces.push(mineTransition);
-  registerWalkableSurface("광산맵", mineTransition, 0.4);
+  registerWalkableSurface(startGate.userData.mapId, mineTransition, 0.4);
 
   const campTransition = new THREE.Mesh(
     new THREE.BoxGeometry(tunnelWidth + 0.9, 0.12, 3.4),
@@ -9384,7 +10397,7 @@ function buildMapConnectorTunnel(startGate, endGate) {
   campTransition.position.set(endGate.position.x, 0.06, endGate.position.z - 1.6);
   scene.add(campTransition);
   groundSurfaces.push(campTransition);
-  registerWalkableSurface("폐광맵", campTransition, 0.4);
+  registerWalkableSurface(endGate.userData.mapId, campTransition, 0.4);
 
   const curbMat = new THREE.MeshStandardMaterial({
     color: 0x4e4032,
@@ -9452,6 +10465,8 @@ function buildMapConnectorTunnel(startGate, endGate) {
   scene.add(rightBerm);
   addCollider(rightBerm, 1.0);
 
+  registerConnectorTunnelZone(centerX, minZ, maxZ, 7.2);
+
 }
 
 
@@ -9466,8 +10481,49 @@ road.position.set(0, 0.05, 0);
 // Input
 const keys = { w: false, a: false, s: false, d: false, shift: false };
 
+renderer.domElement.addEventListener("pointerdown", (e) => {
+  if (e.button !== 0) return;
+  if (!canPlayGame() || !keys.shift) return;
+  shiftRotatePointerActive = true;
+  shiftRotateLastX = e.clientX;
+  shiftRotateLastY = e.clientY;
+  controls.enabled = false;
+});
+
+window.addEventListener("pointerup", () => {
+  shiftRotatePointerActive = false;
+  controls.enabled = canPlayGame();
+});
+
+window.addEventListener("pointercancel", () => {
+  shiftRotatePointerActive = false;
+  controls.enabled = canPlayGame();
+});
+
+window.addEventListener("pointermove", (e) => {
+  if (!shiftRotatePointerActive || !keys.shift || !canPlayGame()) return;
+
+  const deltaX = e.clientX - shiftRotateLastX;
+  const deltaY = e.clientY - shiftRotateLastY;
+  shiftRotateLastX = e.clientX;
+  shiftRotateLastY = e.clientY;
+
+  const offset = new THREE.Vector3().copy(camera.position).sub(controls.target);
+  const spherical = new THREE.Spherical().setFromVector3(offset);
+  spherical.theta -= deltaX * SHIFT_CAMERA_ROTATE_SENSITIVITY;
+  spherical.phi = THREE.MathUtils.clamp(
+    spherical.phi + deltaY * SHIFT_CAMERA_ROTATE_SENSITIVITY,
+    controls.minPolarAngle + 0.02,
+    controls.maxPolarAngle - 0.02
+  );
+  offset.setFromSpherical(spherical);
+  camera.position.copy(controls.target).add(offset);
+  controls.update();
+});
+
 window.addEventListener("keydown", (e) => {
   if (!canPlayGame()) return;
+  if (getLogicalInputKey(e) !== "escape" && isTextInputActive()) return;
   if (nftExhibitSelectionOpen) return;
   if (quickUseAssignState) return;
   const k = getLogicalInputKey(e);
@@ -9525,7 +10581,7 @@ window.addEventListener("keydown", (e) => {
   }
 
   if (activeInteractable?.type === "airPurifier") {
-    if (tryUseAirPurifier()) {
+    if (tryUseAirPurifier(activeInteractable.purifierMapId ?? "폐광맵")) {
       return;
     }
   }
@@ -9540,6 +10596,14 @@ window.addEventListener("keydown", (e) => {
 
   if (QUICK_USE_ALLOWED_KEYS.includes(k)) {
     if (useQuickUseItem(k)) {
+      return;
+    }
+  }
+
+  if (k === "b") {
+    if (isPlayerInsideFrontierParcel("P6")) {
+      e.preventDefault();
+      setFrontierBuildOpen(!frontierBuildOpen);
       return;
     }
   }
@@ -9559,21 +10623,37 @@ window.addEventListener("keyup", (e) => {
   const k = getLogicalInputKey(e);
   if (!canPlayGame()) {
     if (k in keys) keys[k] = false;
-    if (k === "shift") keys.shift = false;
+    if (k === "shift") {
+      keys.shift = false;
+      shiftRotatePointerActive = false;
+      controls.enabled = canPlayGame();
+    }
     return;
   }
   if (nftExhibitSelectionOpen) {
     if (k in keys) keys[k] = false;
-    if (k === "shift") keys.shift = false;
+    if (k === "shift") {
+      keys.shift = false;
+      shiftRotatePointerActive = false;
+      controls.enabled = canPlayGame();
+    }
     return;
   }
   if (quickUseAssignState) {
     if (k in keys) keys[k] = false;
-    if (k === "shift") keys.shift = false;
+    if (k === "shift") {
+      keys.shift = false;
+      shiftRotatePointerActive = false;
+      controls.enabled = canPlayGame();
+    }
     return;
   }
   if (k in keys) keys[k] = false;
-  if (k === "shift") keys.shift = false;
+  if (k === "shift") {
+    keys.shift = false;
+    shiftRotatePointerActive = false;
+    controls.enabled = canPlayGame();
+  }
 });
 
 // Collision helpers
@@ -10047,6 +11127,15 @@ window.addEventListener("keydown", (e) => {
     if (questOpen) renderQuestWindow();
     return;
   }
+  if (activeHarvestTree) {
+    if (addItem(activeHarvestTree.userData.harvestItemId, activeHarvestTree.userData.harvestCount ?? 1)) {
+      setHarvestTreeActive(activeHarvestTree, false);
+      updateInventoryUI();
+      showUI(`${ITEM_DEFS[activeHarvestTree.userData.harvestItemId]?.name ?? "자원"} 획득!`, 900);
+      lastMessageUntil = performance.now() + 900;
+    }
+    return;
+  }
   if (!activeMineRock) return;
   triggerMiningSwing(activeMineRock);
   if (!hasEquippedTool("pickaxe")) {
@@ -10061,6 +11150,12 @@ window.addEventListener("keydown", (e) => {
 }
 
   const minedRock = activeMineRock;
+  const requiredPickaxeLevel = minedRock.userData.requiredPickaxeLevel ?? 0;
+  if (inventory.pickaxeLevel < requiredPickaxeLevel) {
+    showUI(`곡괭이 Lv.${requiredPickaxeLevel} 이상 필요`, 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return;
+  }
   const miningPower = getEquippedMiningPower();
   if (miningPower <= 0) return;
 
@@ -10091,12 +11186,19 @@ window.addEventListener("keydown", (e) => {
     : { x: minedRock.position.x, z: minedRock.position.z, rockSize: "small" };
 
   spawnRockBreakBurst(minedRock);
-  tutorialQuest.minedRockCount += 1;
-  addItem("stoneDust", 1);
-  const pickaxeStats = getCurrentPickaxeStats();
-  if (Math.random() < pickaxeStats.bonusDropChance) {
-    addItem("stoneDust", 1);
-    showUI("보너스 돌가루 획득!");
+  if (minedRock.userData.resourceItemId === "stoneDust") {
+    tutorialQuest.minedRockCount += 1;
+  }
+  addItem(minedRock.userData.resourceItemId ?? "stoneDust", minedRock.userData.resourceCount ?? 1);
+  if (minedRock.userData.bonusDropEnabled) {
+    const pickaxeStats = getCurrentPickaxeStats();
+    if (Math.random() < pickaxeStats.bonusDropChance) {
+      addItem("stoneDust", 1);
+      showUI("보너스 돌가루 획득!");
+      lastMessageUntil = performance.now() + 800;
+    }
+  } else {
+    showUI(`${ITEM_DEFS[minedRock.userData.resourceItemId]?.name ?? "자원"} 획득!`, 800);
     lastMessageUntil = performance.now() + 800;
   }
   updateInventoryUI();
@@ -10147,6 +11249,7 @@ function animate() {
   updateAirSystem(rawDt);
   updateCavePollutionVisuals(rawDt);
   updateParticles(dt);
+  updateHarvestTrees();
   updateRockHitReactions(rawDt);
   updateRockFadeIns(dt);
   if (invOpen) renderEquipmentPreview();
@@ -10159,6 +11262,7 @@ function animate() {
   // ===== 상호작용 대상 탐색 =====
     activeInteractable = null;
     activeForgeStation = null;
+    activeHarvestTree = null;
     activeTutorialNpc = findNearestTutorialNpc(2.2);
     activeMapGate = findTriggeredMapGate();
 
@@ -10238,22 +11342,32 @@ if (!hintText && activeTutorialNpc) {
 }
 
 // 3) 모루 강화 힌트
-if (!hintText && activeForgeStation) {
-  hintText = forgeOpen ? "대장간 이용 중" : "E : 장비 강화";
+  if (!hintText && activeForgeStation) {
+    hintText = forgeOpen ? "대장간 이용 중" : "E : 장비 강화";
 }
 
-// 4) 돌 채집 힌트 (아이템 줍기 힌트가 없을 때만)
+// 4) 나무 채집 힌트
 if (!hintText) {
-  activeMineRock = findNearestMineRock(2.2);
-  if (activeMineRock) {
-    hintText = "Space : 채굴";
+  activeHarvestTree = findNearestHarvestTree(2.2);
+  if (activeHarvestTree) {
+    hintText = "Space : 나무 채집";
   }
 }
 
-// 5) 표지판 근접 문구 (위 힌트가 없을 때만)
+// 5) 돌 채집 힌트
+if (!hintText) {
+  activeMineRock = findNearestMineRock(2.2);
+  if (activeMineRock) {
+    hintText = activeMineRock.userData.requiredPickaxeLevel > (inventory.pickaxeLevel ?? 0)
+      ? `Space : 채굴 (곡괭이 Lv.${activeMineRock.userData.requiredPickaxeLevel} 이상 필요)`
+      : (activeMineRock.userData.resourceHint ?? "Space : 채굴");
+  }
+}
+
+// 6) 표지판 근접 문구 (위 힌트가 없을 때만)
 if (!hintText && activeInteractable) {
   hintText = activeInteractable.type === "airPurifier"
-    ? getAirPurifierHintText()
+    ? getAirPurifierHintText(activeInteractable.purifierMapId ?? "폐광맵")
     : activeInteractable.type === "refinery"
       ? getRefineryHintText()
       : activeInteractable.text;
@@ -10285,7 +11399,8 @@ else hideHint();
 if (
   activeMineRock &&
   hasItem("pickaxe") &&
-  hasEquippedTool("pickaxe")
+  hasEquippedTool("pickaxe") &&
+  inventory.pickaxeLevel >= (activeMineRock.userData.requiredPickaxeLevel ?? 0)
 ) {
   updateRockHpBar(activeMineRock);
 } else {
