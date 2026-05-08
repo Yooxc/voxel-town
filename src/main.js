@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-const LAST_PATCHED_AT = "2026-05-08 18:59:53 KST";
+const LAST_PATCHED_AT = "2026-05-08 22:27:57 KST";
 
 const scene = new THREE.Scene();
 // ===== Atmosphere: Sky / Fog =====
@@ -26,8 +26,8 @@ const QUICK_USE_ALLOWED_KEYS = ["1", "2", "3", "4", "5"];
 const INVENTORY_STACK_LIMIT = 200;
 const SHIFT_CAMERA_ROTATE_SENSITIVITY = 0.0062;
 const FRONTIER_PARCEL_BORDER_COLOR = 0xf3b24e;
-const FRONTIER_BUILDING_HEIGHT = 3.3;
-const FRONTIER_BUILDING_SIGN_MAX_CHARS = 20;
+const FRONTIER_BUILDING_HEIGHT = 4.4;
+const FRONTIER_BUILDING_SIGN_MAX_CHARS = 8;
 const MAP_POLLUTION_CONFIG = {
   "폐광맵": {
     displayName: "폐광",
@@ -64,8 +64,9 @@ const REFINERY_RECIPES = {
 
 const FRONTIER_BUILD_STAGE_CONFIG = [
   { from: 0, to: 25, wood: 10, stone: 6, label: "기둥 설치" },
-  { from: 25, to: 50, wood: 16, stone: 10, label: "벽면 시공" },
-  { from: 50, to: 100, wood: 24, stone: 16, label: "천장 완성" },
+  { from: 25, to: 50, wood: 14, stone: 9, label: "하단 벽면 시공" },
+  { from: 50, to: 75, wood: 18, stone: 12, label: "상단 골조 보강" },
+  { from: 75, to: 100, wood: 24, stone: 16, label: "천장 완성" },
 ];
 
 // ===== Lighting =====
@@ -1953,6 +1954,13 @@ function setPlayerSaveStatus(text, tone = "neutral", { persist = false } = {}) {
     : "translateY(4px)";
   if (!persist) hidePlayerSaveStatus();
 }
+
+let controls = null;
+
+let frontierBuildOverlay = null;
+let frontierBuildWin = null;
+let frontierBuildOpen = false;
+
 
 function updateWalletUi() {
   const loggedIn = walletAuth.authenticated;
@@ -6350,11 +6358,9 @@ let forgeStation = null;
 let refineryStation = null;
 let airPurifierStation = null;
 let frontierAirPurifierStation = null;
-let frontierBuildOverlay = null;
-let frontierBuildWin = null;
-let frontierBuildOpen = false;
 let frontierP6ConstructionGroup = null;
 let frontierP6ConstructionRoot = null;
+let frontierP6ConstructionColliders = [];
 let frontierParcelDefs = [];
 let mineGate = null;
 let campGate = null;
@@ -6947,7 +6953,7 @@ function normalizeFrontierBuildState(rawState) {
   const source = rawState && typeof rawState === "object" ? rawState : {};
   const rawP6 = source.p6 && typeof source.p6 === "object" ? source.p6 : {};
   const stage = Number(rawP6.stage);
-  const normalizedStage = [0, 25, 50, 100].includes(stage) ? stage : 0;
+  const normalizedStage = [0, 25, 50, 75, 100].includes(stage) ? stage : 0;
   const signText = String(rawP6.signText ?? "P6").trim().slice(0, FRONTIER_BUILDING_SIGN_MAX_CHARS) || "P6";
   return {
     p6: {
@@ -6976,16 +6982,18 @@ function isPlayerInsideFrontierParcel(parcelLabel) {
 
 function buildFrontierBuildingSign(text) {
   const wrap = new THREE.Group();
+  const signWidth = 4.5;
+  const signHeight = 0.95;
 
   const board = new THREE.Mesh(
-    new THREE.BoxGeometry(1.8, 0.75, 0.12),
+    new THREE.BoxGeometry(signWidth, signHeight, 0.14),
     new THREE.MeshStandardMaterial({ color: 0x3a2b1f, roughness: 0.9 })
   );
   wrap.add(board);
 
   const faceCanvas = document.createElement("canvas");
-  faceCanvas.width = 512;
-  faceCanvas.height = 192;
+  faceCanvas.width = 1280;
+  faceCanvas.height = 320;
   const faceCtx = faceCanvas.getContext("2d");
   faceCtx.fillStyle = "#f4dfa4";
   faceCtx.fillRect(0, 0, faceCanvas.width, faceCanvas.height);
@@ -6994,12 +7002,12 @@ function buildFrontierBuildingSign(text) {
   faceCtx.fillStyle = "#f8e6b8";
   faceCtx.fillRect(24, 24, faceCanvas.width - 48, faceCanvas.height - 48);
   const safeText = String(text || "P6").trim() || "P6";
-  let fontSize = 56;
+  let fontSize = 168;
   do {
     faceCtx.font = `900 ${fontSize}px Apple SD Gothic Neo, Malgun Gothic, system-ui, sans-serif`;
-    if (faceCtx.measureText(safeText).width <= 400 || fontSize <= 26) break;
-    fontSize -= 2;
-  } while (fontSize > 26);
+    if (faceCtx.measureText(safeText).width <= 980 || fontSize <= 60) break;
+    fontSize -= 4;
+  } while (fontSize > 60);
   faceCtx.fillStyle = "#2c1b0f";
   faceCtx.textAlign = "center";
   faceCtx.textBaseline = "middle";
@@ -7008,13 +7016,24 @@ function buildFrontierBuildingSign(text) {
   const faceTex = new THREE.CanvasTexture(faceCanvas);
   faceTex.colorSpace = THREE.SRGBColorSpace;
   const signFace = new THREE.Mesh(
-    new THREE.PlaneGeometry(1.55, 0.56),
+    new THREE.PlaneGeometry(signWidth - 0.32, signHeight - 0.18),
     new THREE.MeshBasicMaterial({ map: faceTex, transparent: false })
   );
-  signFace.position.z = 0.067;
+  signFace.position.z = 0.078;
   wrap.add(signFace);
 
   return wrap;
+}
+
+function clearFrontierP6ConstructionColliders() {
+  for (const collider of frontierP6ConstructionColliders) {
+    const colliderIndex = getTrackedColliderIndex(collider, collider?.userData?.colliderIndex);
+    if (typeof colliderIndex === "number") {
+      removeColliderAt(colliderIndex);
+    }
+    if (collider?.parent) collider.removeFromParent();
+  }
+  frontierP6ConstructionColliders = [];
 }
 
 function rebuildFrontierP6ConstructionVisual() {
@@ -7022,18 +7041,25 @@ function rebuildFrontierP6ConstructionVisual() {
   if (frontierP6ConstructionGroup?.parent) {
     frontierP6ConstructionGroup.removeFromParent();
   }
+  clearFrontierP6ConstructionColliders();
 
   const parcel = frontierParcelDefs.find((entry) => entry.label === "P6");
   if (!parcel) return;
   const buildState = getFrontierP6BuildState();
   const stage = buildState.stage;
+  if (parcel.signObj) {
+    parcel.signObj.visible = stage < 25;
+  }
   const buildGroup = new THREE.Group();
+  frontierP6ConstructionRoot.add(buildGroup);
 
   const buildingWidth = Math.max(5.8, parcel.width - 2.6);
   const buildingDepth = Math.max(5.2, parcel.height - 2.4);
   const columnY = FRONTIER_BUILDING_HEIGHT * 0.5;
   const halfW = buildingWidth * 0.5;
   const halfD = buildingDepth * 0.5;
+  const lowerWallHeight = FRONTIER_BUILDING_HEIGHT * 0.36;
+  const upperWallHeight = FRONTIER_BUILDING_HEIGHT * 0.26;
   const bodyMat = new THREE.MeshStandardMaterial({ color: 0x7e6b56, roughness: 0.96 });
   const frameMat = new THREE.MeshStandardMaterial({ color: 0x5a493b, roughness: 0.88 });
   const roofMat = new THREE.MeshStandardMaterial({ color: 0x766553, roughness: 0.92 });
@@ -7051,6 +7077,18 @@ function rebuildFrontierP6ConstructionVisual() {
   marker.position.y = 0.03;
   buildGroup.add(marker);
 
+  const colliderMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 });
+  const registerBuildCollider = (sx, sy, sz, x, y, z) => {
+    const collider = new THREE.Mesh(
+      new THREE.BoxGeometry(sx, sy, sz),
+      colliderMat
+    );
+    collider.position.set(x, y, z);
+    buildGroup.add(collider);
+    collider.userData.colliderIndex = addCollider(collider, 1.0);
+    frontierP6ConstructionColliders.push(collider);
+  };
+
   if (stage >= 25) {
     const columnGeo = new THREE.BoxGeometry(0.34, FRONTIER_BUILDING_HEIGHT, 0.34);
     const columnOffsets = [
@@ -7063,34 +7101,60 @@ function rebuildFrontierP6ConstructionVisual() {
       const column = new THREE.Mesh(columnGeo, frameMat);
       column.position.set(x, y, z);
       buildGroup.add(column);
+      registerBuildCollider(0.38, FRONTIER_BUILDING_HEIGHT, 0.38, x, y, z);
     }
 
-    const signPost = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.15, 0.2), frameMat);
-    signPost.position.set(-halfW + 0.82, 0.58, 0);
-    buildGroup.add(signPost);
+    const frontBeam = new THREE.Mesh(
+      new THREE.BoxGeometry(0.28, 0.34, buildingDepth - 0.2),
+      frameMat
+    );
+    frontBeam.position.set(-halfW + 0.14, FRONTIER_BUILDING_HEIGHT - 0.32, 0);
+    buildGroup.add(frontBeam);
+    registerBuildCollider(0.34, 0.4, buildingDepth - 0.12, -halfW + 0.14, FRONTIER_BUILDING_HEIGHT - 0.32, 0);
 
     const signWrap = buildFrontierBuildingSign(buildState.signText);
-    signWrap.position.set(-halfW + 0.82, 1.32, 0);
+    signWrap.position.set(-halfW - 0.1, FRONTIER_BUILDING_HEIGHT - 0.12, 0);
     signWrap.rotation.y = -Math.PI * 0.5;
     buildGroup.add(signWrap);
   }
 
   if (stage >= 50) {
-    const sideWallGeo = new THREE.BoxGeometry(buildingWidth, FRONTIER_BUILDING_HEIGHT * 0.58, 0.26);
+    const sideWallGeo = new THREE.BoxGeometry(buildingWidth, lowerWallHeight, 0.26);
     const sideNorth = new THREE.Mesh(sideWallGeo, bodyMat);
-    sideNorth.position.set(0, FRONTIER_BUILDING_HEIGHT * 0.29, -halfD + 0.13);
+    sideNorth.position.set(0, lowerWallHeight * 0.5, -halfD + 0.13);
     buildGroup.add(sideNorth);
+    registerBuildCollider(buildingWidth, lowerWallHeight, 0.3, 0, lowerWallHeight * 0.5, -halfD + 0.13);
 
     const sideSouth = new THREE.Mesh(sideWallGeo, bodyMat);
-    sideSouth.position.set(0, FRONTIER_BUILDING_HEIGHT * 0.29, halfD - 0.13);
+    sideSouth.position.set(0, lowerWallHeight * 0.5, halfD - 0.13);
     buildGroup.add(sideSouth);
+    registerBuildCollider(buildingWidth, lowerWallHeight, 0.3, 0, lowerWallHeight * 0.5, halfD - 0.13);
 
     const backWall = new THREE.Mesh(
-      new THREE.BoxGeometry(0.26, FRONTIER_BUILDING_HEIGHT * 0.72, buildingDepth),
+      new THREE.BoxGeometry(0.26, lowerWallHeight + 0.18, buildingDepth),
       bodyMat
     );
-    backWall.position.set(halfW - 0.13, FRONTIER_BUILDING_HEIGHT * 0.36, 0);
+    backWall.position.set(halfW - 0.13, (lowerWallHeight + 0.18) * 0.5, 0);
     buildGroup.add(backWall);
+    registerBuildCollider(0.3, lowerWallHeight + 0.18, buildingDepth, halfW - 0.13, (lowerWallHeight + 0.18) * 0.5, 0);
+  }
+
+  if (stage >= 75) {
+    const upperNorth = new THREE.Mesh(
+      new THREE.BoxGeometry(buildingWidth, upperWallHeight, 0.18),
+      frameMat
+    );
+    upperNorth.position.set(0, lowerWallHeight + upperWallHeight * 0.5 + 0.08, -halfD + 0.09);
+    buildGroup.add(upperNorth);
+    registerBuildCollider(buildingWidth, upperWallHeight, 0.22, 0, lowerWallHeight + upperWallHeight * 0.5 + 0.08, -halfD + 0.09);
+
+    const upperSouth = new THREE.Mesh(
+      new THREE.BoxGeometry(buildingWidth, upperWallHeight, 0.18),
+      frameMat
+    );
+    upperSouth.position.set(0, lowerWallHeight + upperWallHeight * 0.5 + 0.08, halfD - 0.09);
+    buildGroup.add(upperSouth);
+    registerBuildCollider(buildingWidth, upperWallHeight, 0.22, 0, lowerWallHeight + upperWallHeight * 0.5 + 0.08, halfD - 0.09);
 
     const roofFrame = new THREE.Mesh(
       new THREE.BoxGeometry(buildingWidth, 0.16, buildingDepth),
@@ -7107,6 +7171,7 @@ function rebuildFrontierP6ConstructionVisual() {
     );
     roof.position.set(0, FRONTIER_BUILDING_HEIGHT + 0.05, 0);
     buildGroup.add(roof);
+    registerBuildCollider(buildingWidth, 0.26, buildingDepth, 0, FRONTIER_BUILDING_HEIGHT + 0.05, 0);
 
     const rearTrim = new THREE.Mesh(
       new THREE.BoxGeometry(0.14, FRONTIER_BUILDING_HEIGHT * 0.52, buildingDepth - 0.6),
@@ -7117,7 +7182,6 @@ function rebuildFrontierP6ConstructionVisual() {
   }
 
   frontierP6ConstructionGroup = buildGroup;
-  frontierP6ConstructionRoot.add(buildGroup);
 }
 
 function renderFrontierBuildWindow() {
@@ -7145,7 +7209,7 @@ function renderFrontierBuildWindow() {
   stageDesc.style.color = "#555";
   stageDesc.textContent =
     buildState.stage >= 100
-      ? "건축이 완료되었습니다. 간판 텍스트를 수정해 이 필지의 용도를 표시할 수 있습니다."
+      ? "건축이 완료되었습니다. 정면 상단 간판을 수정해 이 필지의 용도를 표시할 수 있습니다."
       : nextStage
         ? `${nextStage.label} 단계로 올리려면 목재 ${nextStage.wood}개와 석재 ${nextStage.stone}개가 필요합니다.`
         : "건축 대기 중";
@@ -7179,7 +7243,7 @@ function renderFrontierBuildWindow() {
 
   frontierBuildNotice.textContent =
     buildState.stage >= 100
-      ? "건물 완공: 정면은 메인 통로 쪽으로 열려 있고, 간판을 수정할 수 있습니다."
+      ? "건물 완공: B 키로 간판 문구를 수정할 수 있습니다."
       : canAdvance
         ? "재료가 충분합니다. 건축 진행을 누르면 다음 단계로 즉시 상승합니다."
         : "다음 단계를 올리려면 필요한 목재와 석재를 먼저 준비해야 합니다.";
@@ -8008,8 +8072,7 @@ frontierBuildSignSaveBtn.addEventListener("click", () => {
 
 // Camera controls
 camera.position.set(0, 4, 8);
-let controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
+controls = new OrbitControls(camera, renderer.domElement);controls.enableDamping = true;
 controls.target.copy(player.position).add(new THREE.Vector3(0, 1.0, 0));
 controls.minDistance = 3;
 controls.maxDistance = 20;
@@ -9346,6 +9409,7 @@ function makeSign(x, z, text, rotationY = 0) {
 
   // 상호작용 대상 등록(텍스트 포함)
   interactables.push({ obj: g, text, board });
+  return g;
 }
 
 function makeTutorialNpc(x, z, rotationY = 0) {
@@ -10328,7 +10392,7 @@ function buildFrontierArea() {
 
   for (const parcel of frontierParcelDefs) {
     addParcelBorder(parcel.x, parcel.z, parcelWidth, parcelHeight);
-    makeSign(parcel.x, parcel.signZ, parcel.label, 0);
+    parcel.signObj = makeSign(parcel.x, parcel.signZ, parcel.label, 0);
   }
 
   const p6Parcel = frontierParcelDefs.find((entry) => entry.label === "P6");
@@ -10340,8 +10404,8 @@ function buildFrontierArea() {
   }
 
   frontierAirPurifierStation = buildAirPurifierStation(
-    FRONTIER_MAP_X,
-    FRONTIER_MAP_Z + half - 5.6,
+    FRONTIER_MAP_X + southOpeningWidth * 0.5 + 2.1,
+    FRONTIER_MAP_Z + half - 2.3,
     Math.PI,
     "개척지"
   );
@@ -11272,6 +11336,7 @@ function animate() {
 
     let bestDist = Infinity;
     for (const it of interactables) {
+  if (it.obj.visible === false) continue;
   const d = it.obj.position.distanceTo(player.position);
   if (d < 2.0 && d < bestDist) {
     bestDist = d;
@@ -11364,7 +11429,14 @@ if (!hintText) {
   }
 }
 
-// 6) 표지판 근접 문구 (위 힌트가 없을 때만)
+// 6) 개척지 P6 건축 힌트
+if (!hintText && isPlayerInsideFrontierParcel("P6")) {
+  hintText = getFrontierP6BuildState().stage >= 100
+    ? "B : 간판 수정"
+    : "B : 건축 진행";
+}
+
+// 7) 표지판 근접 문구 (위 힌트가 없을 때만)
 if (!hintText && activeInteractable) {
   hintText = activeInteractable.type === "airPurifier"
     ? getAirPurifierHintText(activeInteractable.purifierMapId ?? "폐광맵")
