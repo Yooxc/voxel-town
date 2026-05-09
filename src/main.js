@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-const LAST_PATCHED_AT = "2026-05-09 16:52:48 KST";
+const LAST_PATCHED_AT = "2026-05-09 18:19:29 KST";
 
 const scene = new THREE.Scene();
 // ===== Atmosphere: Sky / Fog =====
@@ -10432,12 +10432,14 @@ function buildFrontierArea() {
   const wallThickness = 3.4;
   const wallHeight = 5.8;
   const southOpeningWidth = 12.5;
+  const westHousingOpeningWidth = 13.5;
   const wallDefs = [
     { x: 0, z: -half - wallThickness * 0.2, sx: FRONTIER_GROUND_SIZE + 4, sz: wallThickness },
-    { x: -half - wallThickness * 0.2, z: 0, sx: wallThickness, sz: FRONTIER_GROUND_SIZE + 4 },
     { x: half + wallThickness * 0.2, z: 0, sx: wallThickness, sz: FRONTIER_GROUND_SIZE + 4 },
     { x: -(FRONTIER_GROUND_SIZE - southOpeningWidth) * 0.25 - southOpeningWidth * 0.5, z: half + wallThickness * 0.2, sx: (FRONTIER_GROUND_SIZE - southOpeningWidth) * 0.5 + 2.2, sz: wallThickness },
     { x: (FRONTIER_GROUND_SIZE - southOpeningWidth) * 0.25 + southOpeningWidth * 0.5, z: half + wallThickness * 0.2, sx: (FRONTIER_GROUND_SIZE - southOpeningWidth) * 0.5 + 2.2, sz: wallThickness },
+    { x: -half - wallThickness * 0.2, z: -(FRONTIER_GROUND_SIZE - westHousingOpeningWidth) * 0.25 - westHousingOpeningWidth * 0.5, sx: wallThickness, sz: (FRONTIER_GROUND_SIZE - westHousingOpeningWidth) * 0.5 + 2.2 },
+    { x: -half - wallThickness * 0.2, z: (FRONTIER_GROUND_SIZE - westHousingOpeningWidth) * 0.25 + westHousingOpeningWidth * 0.5, sx: wallThickness, sz: (FRONTIER_GROUND_SIZE - westHousingOpeningWidth) * 0.5 + 2.2 },
   ];
 
   for (const wall of wallDefs) {
@@ -10527,6 +10529,311 @@ function buildFrontierArea() {
     Math.PI,
     "개척지"
   );
+
+  const housingLinkLength = 16;
+  const housingLinkWidth = 11.5;
+  const housingDistrictWidth = 52;
+  const housingDistrictDepth = 42;
+  const housingPlazaDepth = 18;
+  const housingTowerWidth = 24;
+  const housingTowerDepth = 11;
+  const housingTowerHeight = 16.8;
+  const housingWestCenterX =
+    FRONTIER_MAP_X - half - housingLinkLength - housingDistrictWidth * 0.5 - 3.8;
+  const housingCenterZ = FRONTIER_MAP_Z;
+
+  const housingLink = new THREE.Mesh(
+    new THREE.BoxGeometry(housingLinkLength, 0.14, housingLinkWidth),
+    new THREE.MeshStandardMaterial({
+      color: 0x8f816d,
+      roughness: 0.97,
+    })
+  );
+  housingLink.position.set(
+    FRONTIER_MAP_X - half - housingLinkLength * 0.5,
+    0.07,
+    housingCenterZ
+  );
+  scene.add(housingLink);
+  groundSurfaces.push(housingLink);
+  registerWalkableSurface("개척지", housingLink, 0.42);
+
+  const housingLinkWestEdgeX = housingLink.position.x - housingLinkLength * 0.5;
+  const housingDistrictEastEdgeX = housingWestCenterX + housingDistrictWidth * 0.5;
+  const housingJoinLength = Math.max(0.8, housingLinkWestEdgeX - housingDistrictEastEdgeX);
+  const housingJoin = new THREE.Mesh(
+    new THREE.BoxGeometry(housingJoinLength, 0.145, housingLinkWidth),
+    new THREE.MeshStandardMaterial({
+      color: 0x93826f,
+      roughness: 0.97,
+    })
+  );
+  housingJoin.position.set(
+    housingDistrictEastEdgeX + housingJoinLength * 0.5,
+    0.072,
+    housingCenterZ
+  );
+  scene.add(housingJoin);
+  groundSurfaces.push(housingJoin);
+  registerWalkableSurface("개척지", housingJoin, 0.42);
+
+  const housingDistrict = new THREE.Mesh(
+    new THREE.BoxGeometry(housingDistrictWidth, 0.16, housingDistrictDepth),
+    new THREE.MeshStandardMaterial({
+      color: 0x92816b,
+      roughness: 0.98,
+    })
+  );
+  housingDistrict.position.set(housingWestCenterX, 0.08, housingCenterZ + 0.4);
+  scene.add(housingDistrict);
+  groundSurfaces.push(housingDistrict);
+  registerWalkableSurface("개척지", housingDistrict, 0.42);
+
+  const buildHousingNoticeBoard = (x, z, rotationY = 0, title = "게시판") => {
+    const g = new THREE.Group();
+    const boardWidth = 4.02;
+    const boardHeight = 3.52;
+    const boardHalfWidth = boardWidth * 0.5;
+    const frameThickness = 0.12;
+
+    const frameMat = new THREE.MeshStandardMaterial({
+      color: 0x2d3138,
+      roughness: 0.55,
+      metalness: 0.45,
+    });
+    const panelMat = new THREE.MeshStandardMaterial({
+      color: 0xf8fafc,
+      roughness: 0.92,
+      metalness: 0.03,
+    });
+    const wheelMat = new THREE.MeshStandardMaterial({
+      color: 0x1d1f24,
+      roughness: 0.72,
+      metalness: 0.25,
+    });
+
+    const leftPost = new THREE.Mesh(new THREE.BoxGeometry(0.12, 3.55, 0.12), frameMat);
+    leftPost.position.set(-boardHalfWidth - 0.12, 1.78, -0.12);
+    g.add(leftPost);
+
+    const rightPost = new THREE.Mesh(new THREE.BoxGeometry(0.12, 3.55, 0.12), frameMat);
+    rightPost.position.set(boardHalfWidth + 0.12, 1.78, -0.12);
+    g.add(rightPost);
+
+    const bottomBeam = new THREE.Mesh(
+      new THREE.BoxGeometry(boardWidth + 0.18, 0.1, 0.1),
+      frameMat
+    );
+    bottomBeam.position.set(0, 0.42, -0.12);
+    g.add(bottomBeam);
+
+    const frame = new THREE.Mesh(
+      new THREE.BoxGeometry(boardWidth + frameThickness, boardHeight + frameThickness, 0.08),
+      frameMat
+    );
+    frame.position.set(0, 2.66, -0.02);
+    g.add(frame);
+
+    const backPanel = new THREE.Mesh(
+      new THREE.BoxGeometry(boardWidth, boardHeight, 0.04),
+      panelMat
+    );
+    backPanel.position.set(0, 2.66, 0.03);
+    g.add(backPanel);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 960;
+    canvas.height = 760;
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#1f2933";
+      ctx.font = "bold 54px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText(title, canvas.width * 0.5, 92);
+      ctx.strokeStyle = "#d1d8e0";
+      ctx.lineWidth = 6;
+      ctx.strokeRect(58, 132, canvas.width - 116, canvas.height - 190);
+      ctx.fillStyle = "#7c8793";
+      ctx.font = "600 34px Arial";
+      ctx.fillText("공용 알림과 안내가 표시될 예정입니다.", canvas.width * 0.5, canvas.height - 70);
+    }
+    const texture = new THREE.CanvasTexture(canvas);
+    const screen = new THREE.Mesh(
+      new THREE.PlaneGeometry(boardWidth - 0.16, boardHeight - 0.16),
+      new THREE.MeshBasicMaterial({ map: texture })
+    );
+    screen.position.set(0, 2.66, 0.055);
+    g.add(screen);
+
+    const leftFoot = new THREE.Mesh(new THREE.BoxGeometry(1.22, 0.08, 0.18), frameMat);
+    leftFoot.position.set(-boardHalfWidth + 0.42, 0.08, -0.12);
+    g.add(leftFoot);
+
+    const rightFoot = new THREE.Mesh(new THREE.BoxGeometry(1.22, 0.08, 0.18), frameMat);
+    rightFoot.position.set(boardHalfWidth - 0.42, 0.08, -0.12);
+    g.add(rightFoot);
+
+    const wheelOffsets = [
+      [-boardHalfWidth - 0.08, 0.02, -0.08],
+      [-boardHalfWidth + 0.78, 0.02, 0.08],
+      [boardHalfWidth - 0.78, 0.02, -0.08],
+      [boardHalfWidth + 0.08, 0.02, 0.08],
+    ];
+    for (const [wx, wy, wz] of wheelOffsets) {
+      const wheel = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.045, 0.045, 0.03, 16),
+        wheelMat
+      );
+      wheel.rotation.z = Math.PI * 0.5;
+      wheel.position.set(wx, wy, wz);
+      g.add(wheel);
+    }
+
+    g.position.set(x, START_FLAT_Y + 0.22, z);
+    g.rotation.y = rotationY;
+    scene.add(g);
+    addCollider(g, 0.88);
+  };
+
+  buildHousingNoticeBoard(
+    housingWestCenterX + 13.4,
+    housingCenterZ + housingPlazaDepth * 0.5 - 2.2,
+    Math.PI,
+    "게시판 A"
+  );
+  buildHousingNoticeBoard(
+    housingWestCenterX,
+    housingCenterZ + housingPlazaDepth * 0.5 - 1.8,
+    Math.PI,
+    "게시판 B"
+  );
+  buildHousingNoticeBoard(
+    housingWestCenterX - 13.4,
+    housingCenterZ + housingPlazaDepth * 0.5 - 2.2,
+    Math.PI,
+    "게시판 C"
+  );
+
+  const fenceMat = new THREE.MeshStandardMaterial({
+    color: 0x6e6257,
+    roughness: 0.92,
+  });
+  const fenceHeight = 1.45;
+  const fenceY = fenceHeight * 0.5;
+  const addHousingFence = (sx, sz, x, z) => {
+    const fence = new THREE.Mesh(
+      new THREE.BoxGeometry(sx, fenceHeight, sz),
+      fenceMat
+    );
+    fence.position.set(x, fenceY, z);
+    scene.add(fence);
+    addCollider(fence, 1.0);
+  };
+
+  const districtHalfW = housingDistrictWidth * 0.5;
+  const districtHalfD = housingDistrictDepth * 0.5;
+  const linkHalfW = housingLinkWidth * 0.5;
+  const linkHalfL = housingLinkLength * 0.5;
+  addHousingFence(housingDistrictWidth + 0.4, 0.34, housingWestCenterX, housingCenterZ - districtHalfD + 0.17);
+  addHousingFence(housingDistrictWidth + 0.4, 0.34, housingWestCenterX, housingCenterZ + districtHalfD - 0.17);
+  addHousingFence(0.34, housingDistrictDepth + 0.4, housingWestCenterX - districtHalfW + 0.17, housingCenterZ + 0.4);
+  addHousingFence(housingLinkLength + 0.24, 0.34, housingLink.position.x, housingCenterZ - linkHalfW + 0.17);
+  addHousingFence(housingLinkLength + 0.24, 0.34, housingLink.position.x, housingCenterZ + linkHalfW - 0.17);
+
+  const housingTower = new THREE.Group();
+  housingTower.position.set(housingWestCenterX, 0, housingCenterZ - 9.2);
+  scene.add(housingTower);
+
+  const towerBodyMat = new THREE.MeshStandardMaterial({
+    color: 0xd3cec6,
+    roughness: 0.94,
+  });
+  const towerTrimMat = new THREE.MeshStandardMaterial({
+    color: 0x6f6359,
+    roughness: 0.84,
+  });
+  const towerWindowMat = new THREE.MeshStandardMaterial({
+    color: 0x8ea0ad,
+    roughness: 0.42,
+    metalness: 0.12,
+  });
+
+  const towerBody = new THREE.Mesh(
+    new THREE.BoxGeometry(housingTowerWidth, housingTowerHeight, housingTowerDepth),
+    towerBodyMat
+  );
+  towerBody.position.set(0, housingTowerHeight * 0.5, 0);
+  housingTower.add(towerBody);
+  addCollider(towerBody, 1.0);
+
+  const towerRoof = new THREE.Mesh(
+    new THREE.BoxGeometry(housingTowerWidth + 1.2, 0.55, housingTowerDepth + 1.1),
+    towerTrimMat
+  );
+  towerRoof.position.set(0, housingTowerHeight + 0.28, 0);
+  housingTower.add(towerRoof);
+  addCollider(towerRoof, 1.0);
+
+  const entryAwning = new THREE.Mesh(
+    new THREE.BoxGeometry(7.2, 0.28, 1.6),
+    towerTrimMat
+  );
+  entryAwning.position.set(0, 3.1, housingTowerDepth * 0.5 + 0.74);
+  housingTower.add(entryAwning);
+  addCollider(entryAwning, 1.0);
+
+  const entryLeftFrame = new THREE.Mesh(
+    new THREE.BoxGeometry(0.42, 4.6, 0.34),
+    towerTrimMat
+  );
+  entryLeftFrame.position.set(-1.24, 2.3, housingTowerDepth * 0.5 + 0.18);
+  housingTower.add(entryLeftFrame);
+  addCollider(entryLeftFrame, 1.0);
+
+  const entryRightFrame = new THREE.Mesh(
+    new THREE.BoxGeometry(0.42, 4.6, 0.34),
+    towerTrimMat
+  );
+  entryRightFrame.position.set(1.24, 2.3, housingTowerDepth * 0.5 + 0.18);
+  housingTower.add(entryRightFrame);
+  addCollider(entryRightFrame, 1.0);
+
+  const entryCut = new THREE.Mesh(
+    new THREE.BoxGeometry(2.1, 3.5, 0.42),
+    towerBodyMat
+  );
+  entryCut.position.set(0, 1.75, housingTowerDepth * 0.5 + 0.24);
+  housingTower.add(entryCut);
+
+  const windowGeo = new THREE.BoxGeometry(2.15, 1.55, 0.14);
+  const floorYs = [4.2, 7.0, 9.8, 12.6, 15.4];
+  const windowXs = [-7.2, -2.4, 2.4, 7.2];
+  for (const y of floorYs) {
+    for (const x of windowXs) {
+      const windowPane = new THREE.Mesh(windowGeo, towerWindowMat);
+      windowPane.position.set(x, y, housingTowerDepth * 0.5 + 0.09);
+      housingTower.add(windowPane);
+    }
+  }
+
+  const sideWindowGeo = new THREE.BoxGeometry(0.14, 1.45, 1.95);
+  const sideWindowZs = [-3.2, 0, 3.2];
+  for (const y of floorYs) {
+    for (const z of sideWindowZs) {
+      const westWindow = new THREE.Mesh(sideWindowGeo, towerWindowMat);
+      westWindow.position.set(-housingTowerWidth * 0.5 - 0.08, y, z);
+      housingTower.add(westWindow);
+      const eastWindow = westWindow.clone();
+      eastWindow.position.x = housingTowerWidth * 0.5 + 0.08;
+      housingTower.add(eastWindow);
+    }
+  }
+
+  const housingSign = buildFrontierBuildingSign("Mansion ONE");
+  housingSign.position.set(7.2, 4.2, housingTowerDepth * 0.5 + 0.5);
+  housingTower.add(housingSign);
 }
 
 function buildMapConnectorTunnel(startGate, endGate) {
