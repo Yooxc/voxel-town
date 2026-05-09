@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-const LAST_PATCHED_AT = "2026-05-08 22:27:57 KST";
+const LAST_PATCHED_AT = "2026-05-09 16:52:48 KST";
 
 const scene = new THREE.Scene();
 // ===== Atmosphere: Sky / Fog =====
@@ -4841,6 +4841,16 @@ function updateParticles(dt) {
 
 // ===== Inventory (slot-based) =====
 // 아이템 정의(나중에 계속 늘릴 예정)
+const FRONTIER_PARCEL_LABELS = ["P1", "P2", "P3", "P4", "P5", "P6"];
+const FRONTIER_AUTHORITY_ITEM_IDS = {
+  P1: "frontierP1Permit",
+  P2: "frontierP2Permit",
+  P3: "frontierP3Permit",
+  P4: "frontierP4Permit",
+  P5: "frontierP5Permit",
+  P6: "frontierP6Permit",
+};
+
 const ITEM_DEFS = {
   pickaxe: {
     name: "곡괭이",
@@ -4867,6 +4877,12 @@ const ITEM_DEFS = {
     stackMax: 1,
     category: "misc",
   },
+  frontierP1Permit: { name: "개척지 P1 개발권", icon: "📜", stackMax: 1, category: "misc", isAuthorityItem: true },
+  frontierP2Permit: { name: "개척지 P2 개발권", icon: "📜", stackMax: 1, category: "misc", isAuthorityItem: true },
+  frontierP3Permit: { name: "개척지 P3 개발권", icon: "📜", stackMax: 1, category: "misc", isAuthorityItem: true },
+  frontierP4Permit: { name: "개척지 P4 개발권", icon: "📜", stackMax: 1, category: "misc", isAuthorityItem: true },
+  frontierP5Permit: { name: "개척지 P5 개발권", icon: "📜", stackMax: 1, category: "misc", isAuthorityItem: true },
+  frontierP6Permit: { name: "개척지 P6 개발권", icon: "📜", stackMax: 1, category: "misc", isAuthorityItem: true },
   freshAirCanister: {
     name: "신선한 공기 캔",
     icon: "🫧",
@@ -5354,6 +5370,10 @@ function canDiscardInventoryEntry(entry) {
   }
   if (isNftInventoryEntry(entry)) {
     return { ok: false, reason: "NFT 아이템은 버릴 수 없습니다." };
+  }
+  const itemId = getSlotItemId(entry);
+  if (ITEM_DEFS[itemId]?.isAuthorityItem) {
+    return { ok: false, reason: "권한 아이템은 버릴 수 없습니다." };
   }
   const equipSlot = getInventoryEntryEquipSlot(entry);
   if (equipSlot && isSameInventoryEntryAsEquipped(entry, getEquippedItemRef(equipSlot))) {
@@ -6358,9 +6378,10 @@ let forgeStation = null;
 let refineryStation = null;
 let airPurifierStation = null;
 let frontierAirPurifierStation = null;
-let frontierP6ConstructionGroup = null;
-let frontierP6ConstructionRoot = null;
-let frontierP6ConstructionColliders = [];
+let frontierActiveParcelLabel = "P6";
+let frontierParcelConstructionGroups = {};
+let frontierParcelConstructionRoots = {};
+let frontierParcelConstructionColliders = {};
 let frontierParcelDefs = [];
 let mineGate = null;
 let campGate = null;
@@ -6383,12 +6404,320 @@ const mapPurificationProgress = {
 let frontierBuildState = createDefaultFrontierBuildState();
 
 function createDefaultFrontierBuildState() {
+  return Object.fromEntries(
+    FRONTIER_PARCEL_LABELS.map((label) => [
+      label.toLowerCase(),
+      {
+        stage: 0,
+        signText: label,
+      },
+    ])
+  );
+}
+
+function getFrontierParcelAuthorityItemId(parcelLabel) {
+  return FRONTIER_AUTHORITY_ITEM_IDS[parcelLabel] ?? null;
+}
+
+function getFrontierParcelAuthorityName(parcelLabel) {
+  const itemId = getFrontierParcelAuthorityItemId(parcelLabel);
+  return itemId ? ITEM_DEFS[itemId]?.name ?? `${parcelLabel} 개발권` : `${parcelLabel} 개발권`;
+}
+
+function hasFrontierParcelAuthority(parcelLabel) {
+  const itemId = getFrontierParcelAuthorityItemId(parcelLabel);
+  return Boolean(itemId && hasItem(itemId));
+}
+
+function createDefaultFrontierParcelBuildEntry(label) {
   return {
-    p6: {
-      stage: 0,
-      signText: "P6",
-    },
+    stage: 0,
+    signText: label,
   };
+}
+
+function normalizeFrontierParcelBuildEntry(label, rawEntry) {
+  const source = rawEntry && typeof rawEntry === "object" ? rawEntry : {};
+  const stage = Number(source.stage);
+  const normalizedStage = [0, 25, 50, 75, 100].includes(stage) ? stage : 0;
+  const signText =
+    String(source.signText ?? label).trim().slice(0, FRONTIER_BUILDING_SIGN_MAX_CHARS) || label;
+  return {
+    stage: normalizedStage,
+    signText,
+  };
+}
+
+function getCurrentFrontierParcelLabel() {
+  for (const label of FRONTIER_PARCEL_LABELS) {
+    if (isPlayerInsideFrontierParcel(label)) return label;
+  }
+  return "";
+}
+
+function getSelectedFrontierParcelLabel() {
+  const currentLabel = getCurrentFrontierParcelLabel();
+  if (currentLabel) frontierActiveParcelLabel = currentLabel;
+  return frontierActiveParcelLabel || "P6";
+}
+
+function getFrontierBuildState(parcelLabel = getSelectedFrontierParcelLabel()) {
+  const key = String(parcelLabel || "P6").toLowerCase();
+  if (!frontierBuildState[key]) {
+    frontierBuildState[key] = createDefaultFrontierParcelBuildEntry(parcelLabel || "P6");
+  }
+  return frontierBuildState[key];
+}
+
+function getFrontierConstructionRoot(parcelLabel) {
+  return frontierParcelConstructionRoots[parcelLabel] ?? null;
+}
+
+function getFrontierConstructionGroup(parcelLabel) {
+  return frontierParcelConstructionGroups[parcelLabel] ?? null;
+}
+
+function getFrontierConstructionColliders(parcelLabel) {
+  if (!frontierParcelConstructionColliders[parcelLabel]) {
+    frontierParcelConstructionColliders[parcelLabel] = [];
+  }
+  return frontierParcelConstructionColliders[parcelLabel];
+}
+
+function clearFrontierConstructionColliders(parcelLabel) {
+  const colliders = getFrontierConstructionColliders(parcelLabel);
+  for (const collider of colliders) {
+    const colliderIndex = getTrackedColliderIndex(collider, collider?.userData?.colliderIndex);
+    if (typeof colliderIndex === "number") {
+      removeColliderAt(colliderIndex);
+    }
+    if (collider?.parent) collider.removeFromParent();
+  }
+  frontierParcelConstructionColliders[parcelLabel] = [];
+}
+
+function rebuildAllFrontierConstructionVisuals() {
+  for (const label of FRONTIER_PARCEL_LABELS) {
+    rebuildFrontierParcelConstructionVisual(label);
+  }
+}
+
+function normalizeFrontierBuildState(rawState) {
+  const source = rawState && typeof rawState === "object" ? rawState : {};
+  const normalized = {};
+  for (const label of FRONTIER_PARCEL_LABELS) {
+    const key = label.toLowerCase();
+    const legacyRaw = label === "P6" ? source.p6 : null;
+    normalized[key] = normalizeFrontierParcelBuildEntry(label, source[key] ?? legacyRaw);
+  }
+  return normalized;
+}
+
+function getFrontierNextStageConfig(stage = getFrontierBuildState().stage) {
+  return FRONTIER_BUILD_STAGE_CONFIG.find((entry) => entry.from === stage) ?? null;
+}
+
+function buildFrontierBuildingSign(text) {
+  const wrap = new THREE.Group();
+  const signWidth = 4.5;
+  const signHeight = 0.95;
+
+  const board = new THREE.Mesh(
+    new THREE.BoxGeometry(signWidth, signHeight, 0.14),
+    new THREE.MeshStandardMaterial({ color: 0x3a2b1f, roughness: 0.9 })
+  );
+  wrap.add(board);
+
+  const faceCanvas = document.createElement("canvas");
+  faceCanvas.width = 1280;
+  faceCanvas.height = 320;
+  const faceCtx = faceCanvas.getContext("2d");
+  faceCtx.fillStyle = "#f4dfa4";
+  faceCtx.fillRect(0, 0, faceCanvas.width, faceCanvas.height);
+  faceCtx.fillStyle = "#3b2a1e";
+  faceCtx.fillRect(14, 14, faceCanvas.width - 28, faceCanvas.height - 28);
+  faceCtx.fillStyle = "#f8e6b8";
+  faceCtx.fillRect(24, 24, faceCanvas.width - 48, faceCanvas.height - 48);
+  const safeText = String(text || "P6").trim() || "P6";
+  let fontSize = 168;
+  do {
+    faceCtx.font = `900 ${fontSize}px Apple SD Gothic Neo, Malgun Gothic, system-ui, sans-serif`;
+    if (faceCtx.measureText(safeText).width <= 980 || fontSize <= 60) break;
+    fontSize -= 4;
+  } while (fontSize > 60);
+  faceCtx.fillStyle = "#2c1b0f";
+  faceCtx.textAlign = "center";
+  faceCtx.textBaseline = "middle";
+  faceCtx.fillText(safeText, faceCanvas.width * 0.5, faceCanvas.height * 0.52);
+
+  const faceTex = new THREE.CanvasTexture(faceCanvas);
+  faceTex.colorSpace = THREE.SRGBColorSpace;
+  const signFace = new THREE.Mesh(
+    new THREE.PlaneGeometry(signWidth - 0.32, signHeight - 0.18),
+    new THREE.MeshBasicMaterial({ map: faceTex, transparent: false })
+  );
+  signFace.position.z = 0.078;
+  wrap.add(signFace);
+
+  return wrap;
+}
+
+function rebuildFrontierParcelConstructionVisual(parcelLabel) {
+  const root = getFrontierConstructionRoot(parcelLabel);
+  if (!root?.parent) return;
+
+  const existingGroup = getFrontierConstructionGroup(parcelLabel);
+  if (existingGroup?.parent) {
+    existingGroup.removeFromParent();
+  }
+  clearFrontierConstructionColliders(parcelLabel);
+
+  const parcel = frontierParcelDefs.find((entry) => entry.label === parcelLabel);
+  if (!parcel) return;
+
+  const buildState = getFrontierBuildState(parcelLabel);
+  const stage = buildState.stage;
+  if (parcel.signObj) {
+    parcel.signObj.visible = stage < 25;
+  }
+
+  const buildGroup = new THREE.Group();
+  root.add(buildGroup);
+  const facesCenterLaneFromLeft = parcel.x < FRONTIER_MAP_X;
+
+  const buildingWidth = Math.max(5.8, parcel.width - 2.6);
+  const buildingDepth = Math.max(5.2, parcel.height - 2.4);
+  const columnY = FRONTIER_BUILDING_HEIGHT * 0.5;
+  const halfW = buildingWidth * 0.5;
+  const halfD = buildingDepth * 0.5;
+  const lowerWallHeight = FRONTIER_BUILDING_HEIGHT * 0.36;
+  const upperWallHeight = FRONTIER_BUILDING_HEIGHT * 0.26;
+  const bodyMat = new THREE.MeshStandardMaterial({ color: 0x7e6b56, roughness: 0.96 });
+  const frameMat = new THREE.MeshStandardMaterial({ color: 0x5a493b, roughness: 0.88 });
+  const roofMat = new THREE.MeshStandardMaterial({ color: 0x766553, roughness: 0.92 });
+  const markerMat = new THREE.MeshStandardMaterial({
+    color: 0xd7ab56,
+    roughness: 0.72,
+    transparent: true,
+    opacity: stage <= 0 ? 0.92 : 0.38,
+  });
+
+  const marker = new THREE.Mesh(
+    new THREE.BoxGeometry(buildingWidth, 0.05, buildingDepth),
+    markerMat
+  );
+  marker.position.y = 0.03;
+  buildGroup.add(marker);
+
+  const frontFaceX = facesCenterLaneFromLeft ? halfW : -halfW;
+  const frontBeamX = facesCenterLaneFromLeft ? halfW - 0.14 : -halfW + 0.14;
+  const frontSignX = facesCenterLaneFromLeft ? halfW + 0.1 : -halfW - 0.1;
+  const frontSignRotationY = facesCenterLaneFromLeft ? Math.PI * 0.5 : -Math.PI * 0.5;
+  const backWallX = facesCenterLaneFromLeft ? -halfW + 0.13 : halfW - 0.13;
+  const rearTrimX = facesCenterLaneFromLeft ? -halfW + 0.42 : halfW - 0.42;
+
+  const colliderMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 });
+  const registerBuildCollider = (sx, sy, sz, x, y, z) => {
+    const collider = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), colliderMat);
+    collider.position.set(x, y, z);
+    buildGroup.add(collider);
+    collider.userData.colliderIndex = addCollider(collider, 1.0);
+    getFrontierConstructionColliders(parcelLabel).push(collider);
+  };
+
+  if (stage >= 25) {
+    const columnGeo = new THREE.BoxGeometry(0.34, FRONTIER_BUILDING_HEIGHT, 0.34);
+    const columnOffsets = [
+      [-halfW + 0.22, columnY, -halfD + 0.22],
+      [halfW - 0.22, columnY, -halfD + 0.22],
+      [-halfW + 0.22, columnY, halfD - 0.22],
+      [halfW - 0.22, columnY, halfD - 0.22],
+    ];
+    for (const [x, y, z] of columnOffsets) {
+      const column = new THREE.Mesh(columnGeo, frameMat);
+      column.position.set(x, y, z);
+      buildGroup.add(column);
+      registerBuildCollider(0.38, FRONTIER_BUILDING_HEIGHT, 0.38, x, y, z);
+    }
+
+    const frontBeam = new THREE.Mesh(
+      new THREE.BoxGeometry(0.28, 0.34, buildingDepth - 0.2),
+      frameMat
+    );
+    frontBeam.position.set(frontBeamX, FRONTIER_BUILDING_HEIGHT - 0.32, 0);
+    buildGroup.add(frontBeam);
+    registerBuildCollider(0.34, 0.4, buildingDepth - 0.12, frontBeamX, FRONTIER_BUILDING_HEIGHT - 0.32, 0);
+
+    const signWrap = buildFrontierBuildingSign(buildState.signText);
+    signWrap.position.set(frontSignX, FRONTIER_BUILDING_HEIGHT - 0.12, 0);
+    signWrap.rotation.y = frontSignRotationY;
+    buildGroup.add(signWrap);
+  }
+
+  if (stage >= 50) {
+    const sideWallGeo = new THREE.BoxGeometry(buildingWidth, lowerWallHeight, 0.26);
+    const sideNorth = new THREE.Mesh(sideWallGeo, bodyMat);
+    sideNorth.position.set(0, lowerWallHeight * 0.5, -halfD + 0.13);
+    buildGroup.add(sideNorth);
+    registerBuildCollider(buildingWidth, lowerWallHeight, 0.3, 0, lowerWallHeight * 0.5, -halfD + 0.13);
+
+    const sideSouth = new THREE.Mesh(sideWallGeo, bodyMat);
+    sideSouth.position.set(0, lowerWallHeight * 0.5, halfD - 0.13);
+    buildGroup.add(sideSouth);
+    registerBuildCollider(buildingWidth, lowerWallHeight, 0.3, 0, lowerWallHeight * 0.5, halfD - 0.13);
+
+    const backWall = new THREE.Mesh(
+      new THREE.BoxGeometry(0.26, lowerWallHeight + 0.18, buildingDepth),
+      bodyMat
+    );
+    backWall.position.set(backWallX, (lowerWallHeight + 0.18) * 0.5, 0);
+    buildGroup.add(backWall);
+    registerBuildCollider(0.3, lowerWallHeight + 0.18, buildingDepth, backWallX, (lowerWallHeight + 0.18) * 0.5, 0);
+  }
+
+  if (stage >= 75) {
+    const upperNorth = new THREE.Mesh(
+      new THREE.BoxGeometry(buildingWidth, upperWallHeight, 0.18),
+      frameMat
+    );
+    upperNorth.position.set(0, lowerWallHeight + upperWallHeight * 0.5 + 0.08, -halfD + 0.09);
+    buildGroup.add(upperNorth);
+    registerBuildCollider(buildingWidth, upperWallHeight, 0.22, 0, lowerWallHeight + upperWallHeight * 0.5 + 0.08, -halfD + 0.09);
+
+    const upperSouth = new THREE.Mesh(
+      new THREE.BoxGeometry(buildingWidth, upperWallHeight, 0.18),
+      frameMat
+    );
+    upperSouth.position.set(0, lowerWallHeight + upperWallHeight * 0.5 + 0.08, halfD - 0.09);
+    buildGroup.add(upperSouth);
+    registerBuildCollider(buildingWidth, upperWallHeight, 0.22, 0, lowerWallHeight + upperWallHeight * 0.5 + 0.08, halfD - 0.09);
+
+    const roofFrame = new THREE.Mesh(
+      new THREE.BoxGeometry(buildingWidth, 0.16, buildingDepth),
+      frameMat
+    );
+    roofFrame.position.set(0, FRONTIER_BUILDING_HEIGHT - 0.08, 0);
+    buildGroup.add(roofFrame);
+  }
+
+  if (stage >= 100) {
+    const roof = new THREE.Mesh(
+      new THREE.BoxGeometry(buildingWidth, 0.22, buildingDepth),
+      roofMat
+    );
+    roof.position.set(0, FRONTIER_BUILDING_HEIGHT + 0.05, 0);
+    buildGroup.add(roof);
+    registerBuildCollider(buildingWidth, 0.26, buildingDepth, 0, FRONTIER_BUILDING_HEIGHT + 0.05, 0);
+
+    const rearTrim = new THREE.Mesh(
+      new THREE.BoxGeometry(0.14, FRONTIER_BUILDING_HEIGHT * 0.52, buildingDepth - 0.6),
+      frameMat
+    );
+    rearTrim.position.set(rearTrimX, FRONTIER_BUILDING_HEIGHT * 0.42, 0);
+    buildGroup.add(rearTrim);
+  }
+
+  frontierParcelConstructionGroups[parcelLabel] = buildGroup;
 }
 
 function updateSceneFogForCurrentMap() {
@@ -6949,28 +7278,6 @@ function getEffectiveAirMapId() {
   return currentMapId;
 }
 
-function normalizeFrontierBuildState(rawState) {
-  const source = rawState && typeof rawState === "object" ? rawState : {};
-  const rawP6 = source.p6 && typeof source.p6 === "object" ? source.p6 : {};
-  const stage = Number(rawP6.stage);
-  const normalizedStage = [0, 25, 50, 75, 100].includes(stage) ? stage : 0;
-  const signText = String(rawP6.signText ?? "P6").trim().slice(0, FRONTIER_BUILDING_SIGN_MAX_CHARS) || "P6";
-  return {
-    p6: {
-      stage: normalizedStage,
-      signText,
-    },
-  };
-}
-
-function getFrontierP6BuildState() {
-  return frontierBuildState.p6;
-}
-
-function getFrontierNextStageConfig(stage = getFrontierP6BuildState().stage) {
-  return FRONTIER_BUILD_STAGE_CONFIG.find((entry) => entry.from === stage) ?? null;
-}
-
 function isPlayerInsideFrontierParcel(parcelLabel) {
   const parcel = frontierParcelDefs.find((entry) => entry.label === parcelLabel);
   if (!parcel || currentMapId !== "개척지") return false;
@@ -6979,218 +7286,14 @@ function isPlayerInsideFrontierParcel(parcelLabel) {
     Math.abs(player.position.z - parcel.z) <= parcel.height * 0.5
   );
 }
-
-function buildFrontierBuildingSign(text) {
-  const wrap = new THREE.Group();
-  const signWidth = 4.5;
-  const signHeight = 0.95;
-
-  const board = new THREE.Mesh(
-    new THREE.BoxGeometry(signWidth, signHeight, 0.14),
-    new THREE.MeshStandardMaterial({ color: 0x3a2b1f, roughness: 0.9 })
-  );
-  wrap.add(board);
-
-  const faceCanvas = document.createElement("canvas");
-  faceCanvas.width = 1280;
-  faceCanvas.height = 320;
-  const faceCtx = faceCanvas.getContext("2d");
-  faceCtx.fillStyle = "#f4dfa4";
-  faceCtx.fillRect(0, 0, faceCanvas.width, faceCanvas.height);
-  faceCtx.fillStyle = "#3b2a1e";
-  faceCtx.fillRect(14, 14, faceCanvas.width - 28, faceCanvas.height - 28);
-  faceCtx.fillStyle = "#f8e6b8";
-  faceCtx.fillRect(24, 24, faceCanvas.width - 48, faceCanvas.height - 48);
-  const safeText = String(text || "P6").trim() || "P6";
-  let fontSize = 168;
-  do {
-    faceCtx.font = `900 ${fontSize}px Apple SD Gothic Neo, Malgun Gothic, system-ui, sans-serif`;
-    if (faceCtx.measureText(safeText).width <= 980 || fontSize <= 60) break;
-    fontSize -= 4;
-  } while (fontSize > 60);
-  faceCtx.fillStyle = "#2c1b0f";
-  faceCtx.textAlign = "center";
-  faceCtx.textBaseline = "middle";
-  faceCtx.fillText(safeText, faceCanvas.width * 0.5, faceCanvas.height * 0.52);
-
-  const faceTex = new THREE.CanvasTexture(faceCanvas);
-  faceTex.colorSpace = THREE.SRGBColorSpace;
-  const signFace = new THREE.Mesh(
-    new THREE.PlaneGeometry(signWidth - 0.32, signHeight - 0.18),
-    new THREE.MeshBasicMaterial({ map: faceTex, transparent: false })
-  );
-  signFace.position.z = 0.078;
-  wrap.add(signFace);
-
-  return wrap;
-}
-
-function clearFrontierP6ConstructionColliders() {
-  for (const collider of frontierP6ConstructionColliders) {
-    const colliderIndex = getTrackedColliderIndex(collider, collider?.userData?.colliderIndex);
-    if (typeof colliderIndex === "number") {
-      removeColliderAt(colliderIndex);
-    }
-    if (collider?.parent) collider.removeFromParent();
-  }
-  frontierP6ConstructionColliders = [];
-}
-
-function rebuildFrontierP6ConstructionVisual() {
-  if (!frontierP6ConstructionRoot?.parent) return;
-  if (frontierP6ConstructionGroup?.parent) {
-    frontierP6ConstructionGroup.removeFromParent();
-  }
-  clearFrontierP6ConstructionColliders();
-
-  const parcel = frontierParcelDefs.find((entry) => entry.label === "P6");
-  if (!parcel) return;
-  const buildState = getFrontierP6BuildState();
-  const stage = buildState.stage;
-  if (parcel.signObj) {
-    parcel.signObj.visible = stage < 25;
-  }
-  const buildGroup = new THREE.Group();
-  frontierP6ConstructionRoot.add(buildGroup);
-
-  const buildingWidth = Math.max(5.8, parcel.width - 2.6);
-  const buildingDepth = Math.max(5.2, parcel.height - 2.4);
-  const columnY = FRONTIER_BUILDING_HEIGHT * 0.5;
-  const halfW = buildingWidth * 0.5;
-  const halfD = buildingDepth * 0.5;
-  const lowerWallHeight = FRONTIER_BUILDING_HEIGHT * 0.36;
-  const upperWallHeight = FRONTIER_BUILDING_HEIGHT * 0.26;
-  const bodyMat = new THREE.MeshStandardMaterial({ color: 0x7e6b56, roughness: 0.96 });
-  const frameMat = new THREE.MeshStandardMaterial({ color: 0x5a493b, roughness: 0.88 });
-  const roofMat = new THREE.MeshStandardMaterial({ color: 0x766553, roughness: 0.92 });
-  const markerMat = new THREE.MeshStandardMaterial({
-    color: 0xd7ab56,
-    roughness: 0.72,
-    transparent: true,
-    opacity: stage <= 0 ? 0.92 : 0.38,
-  });
-
-  const marker = new THREE.Mesh(
-    new THREE.BoxGeometry(buildingWidth, 0.05, buildingDepth),
-    markerMat
-  );
-  marker.position.y = 0.03;
-  buildGroup.add(marker);
-
-  const colliderMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 });
-  const registerBuildCollider = (sx, sy, sz, x, y, z) => {
-    const collider = new THREE.Mesh(
-      new THREE.BoxGeometry(sx, sy, sz),
-      colliderMat
-    );
-    collider.position.set(x, y, z);
-    buildGroup.add(collider);
-    collider.userData.colliderIndex = addCollider(collider, 1.0);
-    frontierP6ConstructionColliders.push(collider);
-  };
-
-  if (stage >= 25) {
-    const columnGeo = new THREE.BoxGeometry(0.34, FRONTIER_BUILDING_HEIGHT, 0.34);
-    const columnOffsets = [
-      [-halfW + 0.22, columnY, -halfD + 0.22],
-      [halfW - 0.22, columnY, -halfD + 0.22],
-      [-halfW + 0.22, columnY, halfD - 0.22],
-      [halfW - 0.22, columnY, halfD - 0.22],
-    ];
-    for (const [x, y, z] of columnOffsets) {
-      const column = new THREE.Mesh(columnGeo, frameMat);
-      column.position.set(x, y, z);
-      buildGroup.add(column);
-      registerBuildCollider(0.38, FRONTIER_BUILDING_HEIGHT, 0.38, x, y, z);
-    }
-
-    const frontBeam = new THREE.Mesh(
-      new THREE.BoxGeometry(0.28, 0.34, buildingDepth - 0.2),
-      frameMat
-    );
-    frontBeam.position.set(-halfW + 0.14, FRONTIER_BUILDING_HEIGHT - 0.32, 0);
-    buildGroup.add(frontBeam);
-    registerBuildCollider(0.34, 0.4, buildingDepth - 0.12, -halfW + 0.14, FRONTIER_BUILDING_HEIGHT - 0.32, 0);
-
-    const signWrap = buildFrontierBuildingSign(buildState.signText);
-    signWrap.position.set(-halfW - 0.1, FRONTIER_BUILDING_HEIGHT - 0.12, 0);
-    signWrap.rotation.y = -Math.PI * 0.5;
-    buildGroup.add(signWrap);
-  }
-
-  if (stage >= 50) {
-    const sideWallGeo = new THREE.BoxGeometry(buildingWidth, lowerWallHeight, 0.26);
-    const sideNorth = new THREE.Mesh(sideWallGeo, bodyMat);
-    sideNorth.position.set(0, lowerWallHeight * 0.5, -halfD + 0.13);
-    buildGroup.add(sideNorth);
-    registerBuildCollider(buildingWidth, lowerWallHeight, 0.3, 0, lowerWallHeight * 0.5, -halfD + 0.13);
-
-    const sideSouth = new THREE.Mesh(sideWallGeo, bodyMat);
-    sideSouth.position.set(0, lowerWallHeight * 0.5, halfD - 0.13);
-    buildGroup.add(sideSouth);
-    registerBuildCollider(buildingWidth, lowerWallHeight, 0.3, 0, lowerWallHeight * 0.5, halfD - 0.13);
-
-    const backWall = new THREE.Mesh(
-      new THREE.BoxGeometry(0.26, lowerWallHeight + 0.18, buildingDepth),
-      bodyMat
-    );
-    backWall.position.set(halfW - 0.13, (lowerWallHeight + 0.18) * 0.5, 0);
-    buildGroup.add(backWall);
-    registerBuildCollider(0.3, lowerWallHeight + 0.18, buildingDepth, halfW - 0.13, (lowerWallHeight + 0.18) * 0.5, 0);
-  }
-
-  if (stage >= 75) {
-    const upperNorth = new THREE.Mesh(
-      new THREE.BoxGeometry(buildingWidth, upperWallHeight, 0.18),
-      frameMat
-    );
-    upperNorth.position.set(0, lowerWallHeight + upperWallHeight * 0.5 + 0.08, -halfD + 0.09);
-    buildGroup.add(upperNorth);
-    registerBuildCollider(buildingWidth, upperWallHeight, 0.22, 0, lowerWallHeight + upperWallHeight * 0.5 + 0.08, -halfD + 0.09);
-
-    const upperSouth = new THREE.Mesh(
-      new THREE.BoxGeometry(buildingWidth, upperWallHeight, 0.18),
-      frameMat
-    );
-    upperSouth.position.set(0, lowerWallHeight + upperWallHeight * 0.5 + 0.08, halfD - 0.09);
-    buildGroup.add(upperSouth);
-    registerBuildCollider(buildingWidth, upperWallHeight, 0.22, 0, lowerWallHeight + upperWallHeight * 0.5 + 0.08, halfD - 0.09);
-
-    const roofFrame = new THREE.Mesh(
-      new THREE.BoxGeometry(buildingWidth, 0.16, buildingDepth),
-      frameMat
-    );
-    roofFrame.position.set(0, FRONTIER_BUILDING_HEIGHT - 0.08, 0);
-    buildGroup.add(roofFrame);
-  }
-
-  if (stage >= 100) {
-    const roof = new THREE.Mesh(
-      new THREE.BoxGeometry(buildingWidth, 0.22, buildingDepth),
-      roofMat
-    );
-    roof.position.set(0, FRONTIER_BUILDING_HEIGHT + 0.05, 0);
-    buildGroup.add(roof);
-    registerBuildCollider(buildingWidth, 0.26, buildingDepth, 0, FRONTIER_BUILDING_HEIGHT + 0.05, 0);
-
-    const rearTrim = new THREE.Mesh(
-      new THREE.BoxGeometry(0.14, FRONTIER_BUILDING_HEIGHT * 0.52, buildingDepth - 0.6),
-      frameMat
-    );
-    rearTrim.position.set(halfW - 0.42, FRONTIER_BUILDING_HEIGHT * 0.42, 0);
-    buildGroup.add(rearTrim);
-  }
-
-  frontierP6ConstructionGroup = buildGroup;
-}
-
 function renderFrontierBuildWindow() {
-  const buildState = getFrontierP6BuildState();
+  const parcelLabel = getSelectedFrontierParcelLabel();
+  const buildState = getFrontierBuildState(parcelLabel);
   const nextStage = getFrontierNextStageConfig(buildState.stage);
   const woodOwned = getItemCount("woodPlank");
   const stoneOwned = getItemCount("masonryStone");
 
-  frontierBuildTitle.textContent = "P6 건축 진행";
+  frontierBuildTitle.textContent = `${parcelLabel} 건축 진행`;
   frontierBuildStageCard.innerHTML = "";
   frontierBuildRequirementCard.innerHTML = "";
   frontierBuildOwnedCard.innerHTML = "";
@@ -7268,10 +7371,16 @@ function setFrontierBuildOpen(v) {
 }
 
 function tryAdvanceFrontierBuildStage() {
-  const buildState = getFrontierP6BuildState();
+  const parcelLabel = getSelectedFrontierParcelLabel();
+  if (!hasFrontierParcelAuthority(parcelLabel)) {
+    showUI(`${parcelLabel} 개발권 필요`, 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return true;
+  }
+  const buildState = getFrontierBuildState(parcelLabel);
   const nextStage = getFrontierNextStageConfig(buildState.stage);
   if (!nextStage) {
-    showUI("P6 건축은 이미 완료되었습니다.", 1000);
+    showUI(`${parcelLabel} 건축은 이미 완료되었습니다.`, 1000);
     lastMessageUntil = performance.now() + 1000;
     return true;
   }
@@ -7292,20 +7401,22 @@ function tryAdvanceFrontierBuildStage() {
     return true;
   }
   buildState.stage = nextStage.to;
-  rebuildFrontierP6ConstructionVisual();
+  rebuildFrontierParcelConstructionVisual(parcelLabel);
   updateInventoryUI();
   schedulePlayerSaveSync(true);
   renderFrontierBuildWindow();
-  showUI(`P6 건축 진척도 ${buildState.stage}%`, 1100);
+  showUI(`${parcelLabel} 건축 진척도 ${buildState.stage}%`, 1100);
   lastMessageUntil = performance.now() + 1100;
   return true;
 }
 
 function saveFrontierBuildSignText() {
-  if (getFrontierP6BuildState().stage < 100) return false;
-  const text = String(frontierBuildSignInput.value || "").trim().slice(0, FRONTIER_BUILDING_SIGN_MAX_CHARS) || "P6";
-  frontierBuildState.p6.signText = text;
-  rebuildFrontierP6ConstructionVisual();
+  const parcelLabel = getSelectedFrontierParcelLabel();
+  if (!hasFrontierParcelAuthority(parcelLabel)) return false;
+  if (getFrontierBuildState(parcelLabel).stage < 100) return false;
+  const text = String(frontierBuildSignInput.value || "").trim().slice(0, FRONTIER_BUILDING_SIGN_MAX_CHARS) || parcelLabel;
+  frontierBuildState[parcelLabel.toLowerCase()].signText = text;
+  rebuildFrontierParcelConstructionVisual(parcelLabel);
   schedulePlayerSaveSync(true);
   renderFrontierBuildWindow();
   showUI("간판 문구를 저장했습니다.", 900);
@@ -8987,6 +9098,10 @@ function applyDevPreset() {
   for (const itemId of getDevMaterialItemIds()) {
     addItem(itemId, INVENTORY_STACK_LIMIT);
   }
+  for (const label of FRONTIER_PARCEL_LABELS) {
+    const permitId = getFrontierParcelAuthorityItemId(label);
+    if (permitId) addItem(permitId, 1);
+  }
 
   playerAirCurrent = AIR_GAUGE_MAX;
   playerAirMax = AIR_GAUGE_MAX;
@@ -9261,7 +9376,7 @@ function applySerializedPlayerSave(rawSave) {
   latestMoveDir.set(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
   snapCameraToPlayer();
   updateInventoryUI();
-  rebuildFrontierP6ConstructionVisual();
+  rebuildAllFrontierConstructionVisuals();
   scheduleNftExhibitBoardRefresh();
   refreshQuestProgress();
   if (questOpen) renderQuestWindow();
@@ -10395,12 +10510,15 @@ function buildFrontierArea() {
     parcel.signObj = makeSign(parcel.x, parcel.signZ, parcel.label, 0);
   }
 
-  const p6Parcel = frontierParcelDefs.find((entry) => entry.label === "P6");
-  if (p6Parcel) {
-    frontierP6ConstructionRoot = new THREE.Group();
-    frontierP6ConstructionRoot.position.set(p6Parcel.x, 0, p6Parcel.z);
-    scene.add(frontierP6ConstructionRoot);
-    rebuildFrontierP6ConstructionVisual();
+  frontierParcelConstructionRoots = {};
+  frontierParcelConstructionGroups = {};
+  frontierParcelConstructionColliders = {};
+  for (const parcel of frontierParcelDefs) {
+    const root = new THREE.Group();
+    root.position.set(parcel.x, 0, parcel.z);
+    scene.add(root);
+    frontierParcelConstructionRoots[parcel.label] = root;
+    rebuildFrontierParcelConstructionVisual(parcel.label);
   }
 
   frontierAirPurifierStation = buildAirPurifierStation(
@@ -10665,8 +10783,15 @@ window.addEventListener("keydown", (e) => {
   }
 
   if (k === "b") {
-    if (isPlayerInsideFrontierParcel("P6")) {
+    const frontierParcelLabel = getCurrentFrontierParcelLabel();
+    if (frontierParcelLabel) {
       e.preventDefault();
+      frontierActiveParcelLabel = frontierParcelLabel;
+      if (!hasFrontierParcelAuthority(frontierParcelLabel)) {
+        showUI(`${frontierParcelLabel} 개발권 필요`, 1000);
+        lastMessageUntil = performance.now() + 1000;
+        return;
+      }
       setFrontierBuildOpen(!frontierBuildOpen);
       return;
     }
@@ -11429,11 +11554,16 @@ if (!hintText) {
   }
 }
 
-// 6) 개척지 P6 건축 힌트
-if (!hintText && isPlayerInsideFrontierParcel("P6")) {
-  hintText = getFrontierP6BuildState().stage >= 100
-    ? "B : 간판 수정"
-    : "B : 건축 진행";
+// 6) 개척지 필지 건축 힌트
+const activeFrontierParcelLabel = getCurrentFrontierParcelLabel();
+if (!hintText && activeFrontierParcelLabel) {
+  if (hasFrontierParcelAuthority(activeFrontierParcelLabel)) {
+    hintText = getFrontierBuildState(activeFrontierParcelLabel).stage >= 100
+      ? "B : 간판 수정"
+      : "B : 건축 진행";
+  } else {
+    hintText = `${activeFrontierParcelLabel} 개발권 필요`;
+  }
 }
 
 // 7) 표지판 근접 문구 (위 힌트가 없을 때만)
