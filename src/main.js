@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-const LAST_PATCHED_AT = "2026-05-11 20:18:38 KST";
+const LAST_PATCHED_AT = "2026-05-11 23:36:23 KST";
 
 const scene = new THREE.Scene();
 // ===== Atmosphere: Sky / Fog =====
@@ -5797,6 +5797,15 @@ const ITEM_DEFS = {
   masonryStone: { name: "석재", icon: "🧱", stackMax: 200, category: "misc", isMaterial: true },
 };
 
+const DEV_BULK_GRANT_ITEM_IDS = [
+  "freshAirCanister",
+  "woodChip",
+  "woodPlank",
+  "purifyPowder",
+  "stoneDust",
+  "masonryStone",
+];
+
 const DEV_MOCK_NFT_ITEMS = [
   {
     kind: "nft",
@@ -5816,15 +5825,15 @@ function getDevMaterialItemIds() {
 }
 
 function getDevBulkGrantItemIds() {
-  return Object.entries(ITEM_DEFS)
-    .filter(([itemId, def]) =>
+  return DEV_BULK_GRANT_ITEM_IDS.filter((itemId) => {
+    const def = ITEM_DEFS[itemId];
+    return (
       def &&
       (def.category === "cons" || def.category === "misc") &&
       !def.isAuthorityItem &&
-      itemId !== "abandonedMineKey" &&
       getInventoryStackMax(itemId) > 1
-    )
-    .map(([itemId]) => itemId);
+    );
+  });
 }
 
 let inventoryEntryInstanceSeq = 1;
@@ -7543,16 +7552,16 @@ function applyDevProfileRoleOverrides() {
     if (!permitId) continue;
     if (isBuyerProfile) {
       removeAllItemsById(permitId);
-    } else if (!hasItem(permitId)) {
-      addItem(permitId, 1);
+    } else {
+      ensureExactOwnedItemCount(permitId, 1);
     }
   }
   if (isBuyerProfile) {
     removeAllItemsById("mansionOneRoom101Permit");
-    if (!hasItem("mansionOneRoom102Permit")) addItem("mansionOneRoom102Permit", 1);
+    ensureExactOwnedItemCount("mansionOneRoom102Permit", 1);
   } else {
     removeAllItemsById("mansionOneRoom102Permit");
-    if (!hasItem("mansionOneRoom101Permit")) addItem("mansionOneRoom101Permit", 1);
+    ensureExactOwnedItemCount("mansionOneRoom101Permit", 1);
   }
 }
 
@@ -9052,6 +9061,14 @@ function removeAllItemsById(itemId) {
     }
   }
   return removed;
+}
+
+function ensureExactOwnedItemCount(itemId, count = 1) {
+  removeAllItemsById(itemId);
+  const safeCount = Math.max(0, Math.floor(count || 0));
+  if (safeCount > 0) {
+    addItem(itemId, safeCount);
+  }
 }
 
 function getSellableFrontierShopEntries() {
@@ -11763,19 +11780,19 @@ function applyDevPreset() {
     equipFirstOwnedInventoryItem("head", "safetyHelmet");
   }
 
-  addItem("freshAirCanister", 2);
   setPlayerCredits(500);
   if (isBuyerProfile) {
-    addItem("mansionOneRoom102Permit", 1);
+    addItem("freshAirCanister", 2);
+    ensureExactOwnedItemCount("mansionOneRoom102Permit", 1);
   } else {
     for (const itemId of getDevBulkGrantItemIds()) {
       addItem(itemId, INVENTORY_STACK_LIMIT);
     }
     for (const label of FRONTIER_PARCEL_LABELS) {
       const permitId = getFrontierParcelAuthorityItemId(label);
-      if (permitId) addItem(permitId, 1);
+      if (permitId) ensureExactOwnedItemCount(permitId, 1);
     }
-    addItem("mansionOneRoom101Permit", 1);
+    ensureExactOwnedItemCount("mansionOneRoom101Permit", 1);
   }
 
   playerAirCurrent = AIR_GAUGE_MAX;
@@ -11787,7 +11804,9 @@ function applyDevPreset() {
   }
 
   if (inventory.mineKeyIssued) {
-    addItem("abandonedMineKey", 1);
+    ensureExactOwnedItemCount("abandonedMineKey", 1);
+  } else {
+    removeAllItemsById("abandonedMineKey");
   }
   if (inventory.abandonedMineUnlocked) {
     const gateColliderIndex = getTrackedColliderIndex(
