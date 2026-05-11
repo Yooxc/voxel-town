@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-const LAST_PATCHED_AT = "2026-05-11 23:36:23 KST";
+const LAST_PATCHED_AT = "2026-05-12 01:52:35 KST";
 
 const scene = new THREE.Scene();
 // ===== Atmosphere: Sky / Fog =====
@@ -68,6 +68,8 @@ const FRONTIER_BUILD_STAGE_CONFIG = [
   { from: 50, to: 75, wood: 18, stone: 12, label: "상단 골조 보강" },
   { from: 75, to: 100, wood: 24, stone: 16, label: "천장 완성" },
 ];
+const RESIDENCE_MAP_ID = "거주구역";
+const RESIDENCE_NOTICE_BOARD_KEYS = ["boardA", "boardB", "boardC"];
 
 // ===== Lighting =====
 // 전체 밝기 (부드럽게)
@@ -220,6 +222,8 @@ let nftExhibitOwnedTokensCache = {
   items: [],
   fetchedAt: 0,
 };
+let residenceNoticeBoardState = createDefaultResidenceNoticeBoardState();
+const residenceNoticeBoardVisuals = {};
 let quickUseAssignState = null;
 let quickUseAssignmentConsumedUntil = 0;
 
@@ -1091,7 +1095,7 @@ function setNftBoardSelection(nextSelection, { save = true } = {}) {
   nftExhibitSelectedItem = normalizedSelection;
   closeNftBoardSelectionOverlay();
   scheduleNftExhibitBoardRefresh();
-  if (save && isServerBackedWalletSession()) {
+  if (save) {
     schedulePlayerSaveSync(true);
   }
   return true;
@@ -2001,12 +2005,24 @@ function getActivePlayerSaveKey() {
 function createDefaultSharedWorldSave() {
   return {
     frontierBuild: createDefaultFrontierBuildState(),
+    abandonedMineUnlocked: false,
+    mapPurification: Object.fromEntries(
+      Object.keys(MAP_POLLUTION_CONFIG).map((mapId) => [mapId, 0])
+    ),
+    displayBoard: null,
+    residenceNoticeBoards: createDefaultResidenceNoticeBoardState(),
   };
 }
 
 function serializeSharedWorldState() {
   return {
     frontierBuild: structuredClone(frontierBuildState),
+    abandonedMineUnlocked: Boolean(inventory.abandonedMineUnlocked),
+    mapPurification: Object.fromEntries(
+      Object.keys(MAP_POLLUTION_CONFIG).map((mapId) => [mapId, getMapPurificationValue(mapId)])
+    ),
+    displayBoard: nftExhibitSelectedItem ? structuredClone(nftExhibitSelectedItem) : null,
+    residenceNoticeBoards: structuredClone(residenceNoticeBoardState),
   };
 }
 
@@ -2015,13 +2031,43 @@ function normalizeSharedWorldState(rawWorld) {
     ...createDefaultSharedWorldSave(),
     ...(rawWorld && typeof rawWorld === "object" ? rawWorld : {}),
     frontierBuild: normalizeFrontierBuildState(rawWorld?.frontierBuild),
+    abandonedMineUnlocked: Boolean(rawWorld?.abandonedMineUnlocked),
+    mapPurification: {
+      ...createDefaultSharedWorldSave().mapPurification,
+      ...(rawWorld?.mapPurification ?? {}),
+    },
+    displayBoard: normalizeNftBoardSelection(rawWorld?.displayBoard),
+    residenceNoticeBoards: normalizeResidenceNoticeBoardState(rawWorld?.residenceNoticeBoards),
   };
 }
 
 function applySharedWorldState(rawWorld) {
   const world = normalizeSharedWorldState(rawWorld);
   frontierBuildState = normalizeFrontierBuildState(world.frontierBuild);
+  inventory.abandonedMineUnlocked = Boolean(world.abandonedMineUnlocked);
+  for (const mapId of Object.keys(MAP_POLLUTION_CONFIG)) {
+    setMapPurificationValue(mapId, Number(world.mapPurification?.[mapId]) || 0);
+  }
+  if (inventory.abandonedMineUnlocked) {
+    const gateColliderIndex = getTrackedColliderIndex(
+      abandonedMineGate.lockBlocker,
+      abandonedMineGate.lockColliderIndex
+    );
+    if (typeof gateColliderIndex === "number") {
+      removeColliderAt(gateColliderIndex);
+      abandonedMineGate.lockColliderIndex = null;
+    }
+    if (abandonedMineGate.lockBlocker?.parent) {
+      abandonedMineGate.lockBlocker.removeFromParent();
+    }
+  } else {
+    restoreLockedMapGate(abandonedMineGate);
+  }
+  nftExhibitSelectedItem = normalizeNftBoardSelection(world.displayBoard);
+  residenceNoticeBoardState = normalizeResidenceNoticeBoardState(world.residenceNoticeBoards);
   rebuildAllFrontierConstructionVisuals();
+  renderResidenceNoticeBoards();
+  scheduleNftExhibitBoardRefresh();
 }
 
 function saveActiveLocalProfileState() {
@@ -2030,6 +2076,9 @@ function saveActiveLocalProfileState() {
   try {
     const snapshot = serializePlayerSave();
     delete snapshot.frontierBuild;
+    if (isDevSession()) {
+      delete snapshot.displayBoard;
+    }
     localStorage.setItem(saveKey, JSON.stringify(snapshot));
     lastPlayerSaveSnapshot = JSON.stringify(snapshot);
     return true;
@@ -5406,12 +5455,31 @@ ground.receiveShadow = false; // STEP 1에서 그림자 약하게 했으니 유�
 scene.add(ground);
 const groundSurfaces = [ground];
 const walkableMapSurfaces = new Map();
+const residenceMapZones = [];
 
 function registerWalkableSurface(mapId, mesh, padding = 0.55) {
   if (!mesh) return;
   const entries = walkableMapSurfaces.get(mapId) ?? [];
   entries.push({ mesh, padding });
   walkableMapSurfaces.set(mapId, entries);
+}
+
+function registerResidenceMapZone(centerX, centerZ, width, depth) {
+  residenceMapZones.push({
+    minX: centerX - width * 0.5,
+    maxX: centerX + width * 0.5,
+    minZ: centerZ - depth * 0.5,
+    maxZ: centerZ + depth * 0.5,
+  });
+}
+
+function isPlayerInResidenceMapZone() {
+  return residenceMapZones.some((zone) =>
+    player.position.x >= zone.minX &&
+    player.position.x <= zone.maxX &&
+    player.position.z >= zone.minZ &&
+    player.position.z <= zone.maxZ
+  );
 }
 
 // ===== Starting Zone flat floor overlay (visual fix) =====
@@ -7576,8 +7644,8 @@ function createDefaultFrontierParcelBuildEntry(label) {
 function createDefaultFrontierParcelOperationsState() {
   return {
     shop: createDefaultFrontierShopState(),
-    displayA: { statusText: "비어 있음" },
-    displayB: { statusText: "비어 있음" },
+    displayA: createDefaultFrontierDisplayState(),
+    displayB: createDefaultFrontierDisplayState(),
   };
 }
 
@@ -7591,10 +7659,139 @@ function createDefaultFrontierShopState() {
   };
 }
 
+function createDefaultFrontierDisplayState() {
+  return {
+    statusText: "비어 있음",
+    entry: null,
+  };
+}
+
+function createDefaultResidenceNoticeBoardEntry(key) {
+  const titleMap = {
+    boardA: "게시판 A",
+    boardB: "게시판 B",
+    boardC: "게시판 C",
+  };
+  return {
+    title: titleMap[key] ?? "게시판",
+    lines: ["공용 알림과 안내가", "표시될 예정입니다."],
+  };
+}
+
+function createDefaultResidenceNoticeBoardState() {
+  return Object.fromEntries(
+    RESIDENCE_NOTICE_BOARD_KEYS.map((key) => [key, createDefaultResidenceNoticeBoardEntry(key)])
+  );
+}
+
+function normalizeResidenceNoticeBoardEntry(key, rawEntry) {
+  const defaults = createDefaultResidenceNoticeBoardEntry(key);
+  const source = rawEntry && typeof rawEntry === "object" ? rawEntry : {};
+  const rawLines = Array.isArray(source.lines) ? source.lines : defaults.lines;
+  const lines = rawLines
+    .map((line) => String(line ?? "").trim().slice(0, 36))
+    .filter(Boolean)
+    .slice(0, 4);
+  return {
+    title: String(source.title ?? defaults.title).trim().slice(0, 24) || defaults.title,
+    lines: lines.length > 0 ? lines : defaults.lines,
+  };
+}
+
+function normalizeResidenceNoticeBoardState(rawState) {
+  const source = rawState && typeof rawState === "object" ? rawState : {};
+  return Object.fromEntries(
+    RESIDENCE_NOTICE_BOARD_KEYS.map((key) => [key, normalizeResidenceNoticeBoardEntry(key, source[key])])
+  );
+}
+
 function formatFrontierShopStatusText(itemId, quantity, price) {
   if (!itemId || quantity <= 0) return "비어 있음";
   const itemName = ITEM_DEFS[itemId]?.name ?? itemId;
   return `${itemName} x${quantity} / ${price}원`;
+}
+
+function formatFrontierDisplayStatusText(entry) {
+  if (!entry) return "비어 있음";
+  return `${getInventoryEntryDisplayName(entry)} 전시 중`;
+}
+
+function getFrontierDisplaySummary(displayState) {
+  const entry = normalizeInventorySlotEntry(displayState?.entry);
+  if (!entry) {
+    return {
+      active: false,
+      itemName: "없음",
+      statusText: "비어 있음",
+      entry: null,
+    };
+  }
+  return {
+    active: true,
+    itemName: getInventoryEntryDisplayName(entry),
+    statusText: formatFrontierDisplayStatusText(entry),
+    entry,
+  };
+}
+
+function getFrontierShopListingSummary(shopState) {
+  if (!shopState?.itemId || shopState.quantity <= 0) {
+    return {
+      active: false,
+      itemName: "없음",
+      quantity: 0,
+      price: 0,
+      totalPrice: 0,
+      statusText: "비어 있음",
+    };
+  }
+  return {
+    active: true,
+    itemName: ITEM_DEFS[shopState.itemId]?.name ?? shopState.itemId,
+    quantity: shopState.quantity,
+    price: shopState.price,
+    totalPrice: clampPlayerCredits(shopState.quantity * shopState.price),
+    statusText: formatFrontierShopStatusText(shopState.itemId, shopState.quantity, shopState.price),
+  };
+}
+
+function getFrontierShopPurchaseFeedback(parcelLabel, quantity) {
+  const shopState = getFrontierShopOperation(parcelLabel);
+  const purchaseQty = Math.max(1, Math.floor(Number(quantity) || 0));
+  const totalPrice = clampPlayerCredits((shopState.price || 0) * purchaseQty);
+  let purchaseResult = { ok: true, reason: "" };
+  if (!parcelLabel) {
+    purchaseResult = { ok: false, reason: "상점 정보를 찾을 수 없습니다." };
+  } else if (!shopState.itemId || shopState.quantity <= 0) {
+    purchaseResult = { ok: false, reason: "등록된 판매 물품이 없습니다." };
+  } else if (purchaseQty <= 0) {
+    purchaseResult = { ok: false, reason: "구매 수량을 확인해주세요." };
+  } else if (purchaseQty > shopState.quantity) {
+    purchaseResult = { ok: false, reason: "재고가 부족합니다." };
+  } else {
+    const sellerWallet = normalizeFrontierWalletAddress(shopState.userWallet);
+    const currentWallet = getCurrentFrontierWalletAddress();
+    if (sellerWallet && sellerWallet === currentWallet) {
+      purchaseResult = { ok: false, reason: "자신이 등록한 상품은 구매할 수 없습니다." };
+    } else if (!canAffordPlayerCredits(totalPrice)) {
+      purchaseResult = { ok: false, reason: "개척 코인이 부족합니다." };
+    } else {
+      const inventorySnapshot = inventory.slots.map((slot) => (slot ? structuredClone(slot) : null));
+      const canAdd = addEntryToInventory(createInventorySlotEntry(shopState.itemId, purchaseQty), purchaseQty);
+      for (let i = 0; i < inventory.slots.length; i += 1) {
+        inventory.slots[i] = inventorySnapshot[i];
+      }
+      if (!canAdd) {
+        purchaseResult = { ok: false, reason: "인벤토리 공간이 부족합니다." };
+      }
+    }
+  }
+  return {
+    ok: purchaseResult.ok,
+    reason: purchaseResult.ok ? "바로 구매할 수 있습니다." : purchaseResult.reason,
+    totalPrice,
+    purchaseQty,
+  };
 }
 
 function normalizeFrontierWalletAddress(rawAddress) {
@@ -7623,10 +7820,13 @@ function normalizeFrontierShopOperationEntry(rawEntry) {
   };
 }
 
-function normalizeFrontierParcelOperationEntry(rawEntry) {
+function normalizeFrontierDisplayOperationEntry(rawEntry) {
   const source = rawEntry && typeof rawEntry === "object" ? rawEntry : {};
-  const statusText = String(source.statusText ?? "비어 있음").trim().slice(0, 40) || "비어 있음";
-  return { statusText };
+  const entry = normalizeInventorySlotEntry(source.entry);
+  return {
+    statusText: formatFrontierDisplayStatusText(entry),
+    entry,
+  };
 }
 
 function normalizeFrontierParcelOperationsState(rawState) {
@@ -7634,8 +7834,8 @@ function normalizeFrontierParcelOperationsState(rawState) {
   const defaults = createDefaultFrontierParcelOperationsState();
   return {
     shop: normalizeFrontierShopOperationEntry(source.shop ?? defaults.shop),
-    displayA: normalizeFrontierParcelOperationEntry(source.displayA ?? defaults.displayA),
-    displayB: normalizeFrontierParcelOperationEntry(source.displayB ?? defaults.displayB),
+    displayA: normalizeFrontierDisplayOperationEntry(source.displayA ?? defaults.displayA),
+    displayB: normalizeFrontierDisplayOperationEntry(source.displayB ?? defaults.displayB),
   };
 }
 
@@ -7654,6 +7854,66 @@ function normalizeFrontierParcelBuildEntry(label, rawEntry) {
 
 function getFrontierShopOperation(parcelLabel = getSelectedFrontierParcelLabel()) {
   return getFrontierBuildState(parcelLabel).operations.shop;
+}
+
+function getFrontierDisplayOperation(parcelLabel = getSelectedFrontierParcelLabel(), slotKey = "displayA") {
+  return getFrontierBuildState(parcelLabel).operations[slotKey];
+}
+
+function isFrontierDisplayableEntry(entry) {
+  if (!entry) return { ok: false, reason: "전시할 아이템이 없습니다." };
+  if (isQuestCriticalItemBlockedFromDiscard(entry)) {
+    return { ok: false, reason: "퀘스트 아이템은 전시할 수 없습니다." };
+  }
+  return { ok: true };
+}
+
+function getDisplayableFrontierEntries() {
+  return inventory.slots
+    .map((entry, index) => ({ entry, index }))
+    .filter(({ entry }) => entry)
+    .filter(({ entry }) => isFrontierDisplayableEntry(entry).ok);
+}
+
+function assignFrontierDisplayEntry(parcelLabel, slotKey, entry) {
+  if (!parcelLabel || !["displayA", "displayB"].includes(slotKey)) return false;
+  if (!hasFrontierParcelAuthority(parcelLabel)) return false;
+  const validation = isFrontierDisplayableEntry(entry);
+  if (!validation.ok) {
+    showUI(validation.reason, 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return false;
+  }
+  const displayState = getFrontierDisplayOperation(parcelLabel, slotKey);
+  displayState.entry = normalizeInventorySlotEntry(entry);
+  displayState.statusText = formatFrontierDisplayStatusText(displayState.entry);
+  rebuildFrontierParcelConstructionVisual(parcelLabel);
+  schedulePlayerSaveSync(true);
+  renderFrontierBoothDialog();
+  if (frontierBuildOpen) renderFrontierBuildWindow();
+  showUI(`${getInventoryEntryDisplayName(entry)} 전시`, 1000);
+  lastMessageUntil = performance.now() + 1000;
+  return true;
+}
+
+function clearFrontierDisplayEntry(parcelLabel, slotKey) {
+  if (!parcelLabel || !["displayA", "displayB"].includes(slotKey)) return false;
+  if (!hasFrontierParcelAuthority(parcelLabel)) return false;
+  const displayState = getFrontierDisplayOperation(parcelLabel, slotKey);
+  if (!displayState.entry) {
+    showUI("현재 전시 중인 대상이 없습니다.", 900);
+    lastMessageUntil = performance.now() + 900;
+    return false;
+  }
+  displayState.entry = null;
+  displayState.statusText = "비어 있음";
+  rebuildFrontierParcelConstructionVisual(parcelLabel);
+  schedulePlayerSaveSync(true);
+  renderFrontierBoothDialog();
+  if (frontierBuildOpen) renderFrontierBuildWindow();
+  showUI("전시를 해제했습니다.", 900);
+  lastMessageUntil = performance.now() + 900;
+  return true;
 }
 
 function getFrontierShopAssignedWallet(parcelLabel = getSelectedFrontierParcelLabel()) {
@@ -7984,6 +8244,88 @@ function buildFrontierBoothProductVisual(itemId, quantity = 0) {
   return wrap;
 }
 
+function buildFrontierDisplayBoothVisual(entry) {
+  const wrap = new THREE.Group();
+  const normalizedEntry = normalizeInventorySlotEntry(entry);
+  if (!normalizedEntry) return wrap;
+
+  if (!isNftInventoryEntry(normalizedEntry)) {
+    const itemId = getSlotItemId(normalizedEntry);
+    const def = ITEM_DEFS[itemId];
+    if (def && typeof def.makeInventoryModel === "function") {
+      const model = def.makeInventoryModel();
+      const box = new THREE.Box3().setFromObject(model);
+      const size = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z) || 1;
+      model.scale.multiplyScalar(0.64 / maxDim);
+      const scaledBox = new THREE.Box3().setFromObject(model);
+      const center = scaledBox.getCenter(new THREE.Vector3());
+      model.position.sub(center);
+      model.position.y -= scaledBox.min.y;
+      wrap.add(model);
+    }
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 360;
+  canvas.height = 360;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "rgba(246, 235, 210, 0.96)";
+  ctx.beginPath();
+  ctx.roundRect(30, 30, 300, 300, 30);
+  ctx.fill();
+  ctx.fillStyle = "#5a4637";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = "900 144px Apple SD Gothic Neo, Malgun Gothic, system-ui, sans-serif";
+  ctx.fillText(getInventoryEntryDisplayIcon(normalizedEntry), canvas.width * 0.5, canvas.height * 0.46);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const plane = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.86, 0.86),
+    new THREE.MeshBasicMaterial({ map: tex, transparent: true })
+  );
+  plane.position.y = 0.12;
+  if (wrap.children.length === 0) {
+    wrap.add(plane);
+  } else {
+    plane.position.y = 0.74;
+    plane.scale.setScalar(0.52);
+    wrap.add(plane);
+  }
+
+  const nameCanvas = document.createElement("canvas");
+  nameCanvas.width = 560;
+  nameCanvas.height = 120;
+  const nameCtx = nameCanvas.getContext("2d");
+  nameCtx.clearRect(0, 0, nameCanvas.width, nameCanvas.height);
+  nameCtx.fillStyle = "rgba(48,36,28,0.88)";
+  nameCtx.beginPath();
+  nameCtx.roundRect(24, 16, 512, 88, 24);
+  nameCtx.fill();
+  nameCtx.fillStyle = "#fbf1d7";
+  nameCtx.textAlign = "center";
+  nameCtx.textBaseline = "middle";
+  let fontSize = 44;
+  const safeName = getInventoryEntryDisplayName(normalizedEntry);
+  do {
+    nameCtx.font = `800 ${fontSize}px Apple SD Gothic Neo, Malgun Gothic, system-ui, sans-serif`;
+    if (nameCtx.measureText(safeName).width <= 460 || fontSize <= 24) break;
+    fontSize -= 2;
+  } while (fontSize > 24);
+  nameCtx.fillText(safeName, nameCanvas.width * 0.5, nameCanvas.height * 0.55);
+  const nameTex = new THREE.CanvasTexture(nameCanvas);
+  nameTex.colorSpace = THREE.SRGBColorSpace;
+  const nameTag = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.02, 0.22),
+    new THREE.MeshBasicMaterial({ map: nameTex, transparent: true })
+  );
+  nameTag.position.set(0, 0.88, 0.02);
+  wrap.add(nameTag);
+  return wrap;
+}
+
 function registerFrontierBoothMarker(parcelLabel, type, title, x, y, z, slotKey = "") {
   const marker = new THREE.Mesh(
     new THREE.BoxGeometry(1.2, 1.6, 1.2),
@@ -8221,6 +8563,15 @@ function rebuildFrontierParcelConstructionVisual(parcelLabel) {
         productWrap.position.set(booth.x, boothTopY + 0.08, booth.z);
         productWrap.rotation.y = facesCenterLaneFromLeft ? Math.PI * 0.5 : -Math.PI * 0.5;
         buildGroup.add(productWrap);
+      } else if (booth.title !== "상점") {
+        const displayState =
+          booth.title === "전시 A" ? buildState.operations.displayA : buildState.operations.displayB;
+        if (displayState.entry) {
+          const displayWrap = buildFrontierDisplayBoothVisual(displayState.entry);
+          displayWrap.position.set(booth.x, boothTopY + 0.08, booth.z);
+          displayWrap.rotation.y = facesCenterLaneFromLeft ? Math.PI * 0.5 : -Math.PI * 0.5;
+          buildGroup.add(displayWrap);
+        }
       }
 
       registerBuildCollider(
@@ -8306,6 +8657,12 @@ function getMapPurificationValue(mapId = currentMapId) {
 function setMapPurificationValue(mapId, value) {
   if (!getMapPollutionConfig(mapId)) return;
   mapPurificationProgress[mapId] = Math.max(0, Math.min(100, value));
+}
+
+function resetAllMapPurificationValues() {
+  for (const mapId of Object.keys(MAP_POLLUTION_CONFIG)) {
+    setMapPurificationValue(mapId, 0);
+  }
 }
 
 function getCurrentAirDrainPerSecond() {
@@ -8873,6 +9230,11 @@ function updateCurrentMapFromPlayerPosition() {
   const campNorthDoorThresholdZ = frontierCampGate.position.z - 0.35;
   const frontierDoorThresholdZ = frontierGate.position.z + 0.35;
 
+  if (isPlayerInResidenceMapZone()) {
+    currentMapId = RESIDENCE_MAP_ID;
+    return;
+  }
+
   if (player.position.z <= frontierDoorThresholdZ) {
     currentMapId = "개척지";
     return;
@@ -9254,8 +9616,12 @@ function renderFrontierShopRegisterDialog() {
   if (!frontierShopRegisterOpen) return;
   const parcelLabel = frontierShopRegisterParcelLabel || getSelectedFrontierParcelLabel();
   const shopState = getFrontierShopOperation(parcelLabel);
+  const listingSummary = getFrontierShopListingSummary(shopState);
+  const assignedWallet = getFrontierShopAssignedWallet(parcelLabel);
   frontierShopTitle.textContent = `${parcelLabel} 판매 등록`;
-  frontierShopCurrentStatus.textContent = `현재 판매 상태: ${shopState.statusText}`;
+  frontierShopCurrentStatus.innerHTML = listingSummary.active
+    ? `현재 판매 상태: <strong>${listingSummary.statusText}</strong><br><span style="font-weight:600;color:#6b6053;">상품 ${listingSummary.itemName} / 재고 ${listingSummary.quantity}개 / 개당 ${listingSummary.price}원 / 상점 사용자 ${assignedWallet ? shortenWalletAddress(assignedWallet) : "미지정"}</span>`
+    : `현재 판매 상태: <strong>비어 있음</strong><br><span style="font-weight:600;color:#6b6053;">상점 사용자 ${assignedWallet ? shortenWalletAddress(assignedWallet) : "미지정"} / 판매 중인 상품 없음</span>`;
   frontierShopInventoryGrid.innerHTML = "";
 
   const sellableEntries = getSellableFrontierShopEntries();
@@ -9321,7 +9687,9 @@ function renderFrontierShopRegisterDialog() {
     ? ITEM_DEFS[frontierShopRegisterSelectedItemId]?.name ?? frontierShopRegisterSelectedItemId
     : "선택 없음";
   frontierShopSelectedItem.textContent = `선택한 아이템: ${selectedItemName}`;
-  frontierShopSelectedOwned.textContent = `보유 수량: ${frontierShopRegisterSelectedAvailable}개`;
+  frontierShopSelectedOwned.textContent = frontierShopRegisterSelectedItemId
+    ? `보유 수량: ${frontierShopRegisterSelectedAvailable}개 / 등록 시 기존 상품은 회수 후 새 상품으로 교체됩니다.`
+    : "보유 수량: 0개 / 판매할 아이템을 먼저 고르세요.";
   frontierShopQuantityInput.max = String(Math.max(1, frontierShopRegisterSelectedAvailable));
   if (!frontierShopRegisterSelectedItemId) {
     frontierShopQuantityInput.value = "1";
@@ -9442,6 +9810,7 @@ function tryUnlockMapGate(gate) {
   }
   updateInventoryUI();
   if (questOpen) renderQuestWindow();
+  schedulePlayerSaveSync(true);
   showUI(gate.unlockText ?? "통로가 열렸습니다.", 1200);
   lastMessageUntil = performance.now() + 1200;
   return true;
@@ -10570,9 +10939,11 @@ function renderFrontierBoothDialog() {
 
   if (slotKey === "shop") {
     const assignedWallet = getFrontierShopAssignedWallet(parcelLabel);
+    const listingSummary = getFrontierShopListingSummary(slotState);
     frontierBoothStatus.innerHTML = `
-      <div>현재 상태: <strong>${slotState.statusText}</strong></div>
+      <div>현재 상태: <strong>${listingSummary.statusText}</strong></div>
       <div style="margin-top:6px;">현재 사용자: <strong>${assignedWallet ? shortenWalletAddress(assignedWallet) : "미지정"}</strong></div>
+      <div style="margin-top:6px;">판매 상품: <strong>${listingSummary.itemName}</strong> / 재고 <strong>${listingSummary.quantity}개</strong> / 개당 <strong>${listingSummary.price}원</strong></div>
       <div style="margin-top:6px;opacity:0.78;">${mode === "manage" ? "상점 사용자 지정과 판매 등록을 이곳에서 관리합니다." : "방문자는 등록된 판매 물품 상태를 여기서 확인할 수 있습니다."}</div>
     `;
     if (mode === "manage") {
@@ -10792,28 +11163,45 @@ function renderFrontierBoothDialog() {
         note.style.gridColumn = "1 / -1";
         note.style.fontSize = "12px";
         note.style.color = "#6b6053";
-        note.textContent = "원하는 수량을 입력한 뒤 구매할 수 있습니다.";
         purchaseCard.appendChild(note);
+
+        const purchaseState = document.createElement("div");
+        purchaseState.style.gridColumn = "1 / -1";
+        purchaseState.style.padding = "10px 12px";
+        purchaseState.style.borderRadius = "10px";
+        purchaseState.style.fontSize = "12px";
+        purchaseState.style.fontWeight = "700";
+        purchaseCard.appendChild(purchaseState);
 
         const normalizePurchaseQtyInput = () => {
           const qty = Math.max(1, Math.min(slotState.quantity, Math.floor(Number(qtyInput.value) || 1)));
           qtyInput.value = String(qty);
-          totalHint.textContent = `총 ${clampPlayerCredits(slotState.price * qty)}원`;
+          updatePurchaseFeedback();
         };
-        const updateTotalHint = () => {
+        const updatePurchaseFeedback = () => {
           const rawValue = qtyInput.value.trim();
+          let qty = 1;
           if (!rawValue) {
             totalHint.textContent = `총 ${clampPlayerCredits(slotState.price)}원`;
-            return;
+          } else {
+            qty = Math.max(1, Math.min(slotState.quantity, Math.floor(Number(rawValue) || 1)));
+            totalHint.textContent = `총 ${clampPlayerCredits(slotState.price * qty)}원`;
           }
-          const qty = Math.max(1, Math.min(slotState.quantity, Math.floor(Number(rawValue) || 1)));
-          totalHint.textContent = `총 ${clampPlayerCredits(slotState.price * qty)}원`;
+          const feedback = getFrontierShopPurchaseFeedback(parcelLabel, qty);
+          purchaseBtn.disabled = !feedback.ok;
+          purchaseBtn.style.opacity = feedback.ok ? "1" : "0.58";
+          purchaseState.textContent = feedback.reason;
+          purchaseState.style.background = feedback.ok ? "rgba(54,179,126,0.12)" : "rgba(220,38,38,0.1)";
+          purchaseState.style.color = feedback.ok ? "#1f6a4a" : "#9f1239";
+          note.textContent = feedback.ok
+            ? `재고 ${slotState.quantity}개 / 구매 후 총 ${feedback.totalPrice}원 차감`
+            : `재고 ${slotState.quantity}개 / 현재 구매 불가`;
         };
         qtyInput.addEventListener("focus", () => qtyInput.select());
         qtyInput.addEventListener("click", () => qtyInput.select());
-        qtyInput.addEventListener("input", updateTotalHint);
+        qtyInput.addEventListener("input", updatePurchaseFeedback);
         qtyInput.addEventListener("blur", normalizePurchaseQtyInput);
-        updateTotalHint();
+        updatePurchaseFeedback();
 
         purchaseBtn.addEventListener("click", () => {
           normalizePurchaseQtyInput();
@@ -10836,10 +11224,142 @@ function renderFrontierBoothDialog() {
     return;
   }
 
+  const displaySummary = getFrontierDisplaySummary(slotState);
   frontierBoothStatus.innerHTML = `
-    <div>현재 상태: <strong>${slotState.statusText}</strong></div>
-    <div style="margin-top:6px;opacity:0.78;">${mode === "manage" ? "전시 권한 구조는 다음 단계에서 연결됩니다. 지금은 상태 확인만 가능합니다." : "전시 부스 상태를 확인할 수 있습니다."}</div>
+    <div>현재 상태: <strong>${displaySummary.statusText}</strong></div>
+    <div style="margin-top:6px;">전시 대상: <strong>${displaySummary.itemName}</strong></div>
+    <div style="margin-top:6px;opacity:0.78;">${mode === "manage" ? "운영자는 인벤토리에서 전시 대상을 골라 교체하거나 해제할 수 있습니다." : "방문자는 현재 전시 중인 대상을 여기서 확인할 수 있습니다."}</div>
   `;
+
+  if (mode === "manage") {
+    const manageWrap = document.createElement("div");
+    manageWrap.style.display = "grid";
+    manageWrap.style.gap = "12px";
+
+    const controls = document.createElement("div");
+    controls.style.display = "flex";
+    controls.style.flexWrap = "wrap";
+    controls.style.gap = "8px";
+    manageWrap.appendChild(controls);
+
+    const clearBtn = document.createElement("button");
+    clearBtn.type = "button";
+    clearBtn.textContent = "전시 해제";
+    clearBtn.style.padding = "10px 12px";
+    clearBtn.style.borderRadius = "10px";
+    clearBtn.style.border = "1px solid rgba(0,0,0,0.14)";
+    clearBtn.style.background = "rgba(255,255,255,0.94)";
+    clearBtn.style.fontSize = "13px";
+    clearBtn.style.fontWeight = "800";
+    clearBtn.style.cursor = "pointer";
+    clearBtn.style.opacity = displaySummary.active ? "1" : "0.58";
+    clearBtn.disabled = !displaySummary.active;
+    clearBtn.addEventListener("click", () => {
+      clearFrontierDisplayEntry(parcelLabel, slotKey);
+    });
+    controls.appendChild(clearBtn);
+
+    const availableEntries = getDisplayableFrontierEntries();
+    if (!availableEntries.length) {
+      const empty = document.createElement("div");
+      empty.textContent = "전시 가능한 아이템이 인벤토리에 없습니다.";
+      empty.style.padding = "14px 12px";
+      empty.style.borderRadius = "12px";
+      empty.style.background = "rgba(0,0,0,0.05)";
+      empty.style.fontSize = "13px";
+      empty.style.color = "#666";
+      manageWrap.appendChild(empty);
+    } else {
+      const grid = document.createElement("div");
+      grid.style.display = "grid";
+      grid.style.gridTemplateColumns = "repeat(auto-fill, minmax(118px, 1fr))";
+      grid.style.gap = "10px";
+      manageWrap.appendChild(grid);
+
+      for (const { entry } of availableEntries) {
+        const card = document.createElement("button");
+        card.type = "button";
+        card.style.border = "1px solid rgba(0,0,0,0.14)";
+        card.style.borderRadius = "12px";
+        card.style.background = "rgba(255,255,255,0.96)";
+        card.style.padding = "10px";
+        card.style.cursor = "pointer";
+        card.style.display = "flex";
+        card.style.flexDirection = "column";
+        card.style.alignItems = "center";
+        card.style.gap = "6px";
+
+        const visual = createInventoryEntryVisualElement(entry, { size: 42 });
+        card.appendChild(visual);
+
+        const name = document.createElement("div");
+        name.textContent = getInventoryEntryDisplayName(entry);
+        name.style.fontSize = "12px";
+        name.style.fontWeight = "800";
+        name.style.color = "#333";
+        name.style.textAlign = "center";
+        card.appendChild(name);
+
+        const meta = document.createElement("div");
+        meta.textContent = isNftInventoryEntry(entry) ? "NFT 전시" : `보유 ${getSlotItemCount(entry)}개`;
+        meta.style.fontSize = "11px";
+        meta.style.color = "#7a6550";
+        card.appendChild(meta);
+
+        card.addEventListener("click", () => {
+          assignFrontierDisplayEntry(parcelLabel, slotKey, entry);
+        });
+        grid.appendChild(card);
+      }
+    }
+
+    frontierBoothActionArea.appendChild(manageWrap);
+  } else {
+    const viewCard = document.createElement("div");
+    viewCard.style.border = "1px solid rgba(0,0,0,0.12)";
+    viewCard.style.borderRadius = "12px";
+    viewCard.style.background = "rgba(255,255,255,0.94)";
+    viewCard.style.padding = "14px";
+    viewCard.style.display = "grid";
+    viewCard.style.gap = "10px";
+
+    if (!displaySummary.active) {
+      const empty = document.createElement("div");
+      empty.textContent = "현재 전시 중인 대상이 없습니다.";
+      empty.style.fontSize = "13px";
+      empty.style.color = "#6b6053";
+      viewCard.appendChild(empty);
+    } else {
+      const visualWrap = document.createElement("div");
+      visualWrap.style.display = "flex";
+      visualWrap.style.alignItems = "center";
+      visualWrap.style.gap = "12px";
+      viewCard.appendChild(visualWrap);
+
+      const visual = createInventoryEntryVisualElement(displaySummary.entry, { size: 54 });
+      visualWrap.appendChild(visual);
+
+      const textWrap = document.createElement("div");
+      textWrap.style.display = "grid";
+      textWrap.style.gap = "4px";
+      visualWrap.appendChild(textWrap);
+
+      const title = document.createElement("div");
+      title.textContent = displaySummary.itemName;
+      title.style.fontSize = "14px";
+      title.style.fontWeight = "900";
+      title.style.color = "#222";
+      textWrap.appendChild(title);
+
+      const state = document.createElement("div");
+      state.textContent = displaySummary.statusText;
+      state.style.fontSize = "12px";
+      state.style.color = "#6b6053";
+      textWrap.appendChild(state);
+    }
+
+    frontierBoothActionArea.appendChild(viewCard);
+  }
 }
 
 function openFrontierBoothDialog(parcelLabel, slotKey, boothTitle, mode) {
@@ -11797,7 +12317,7 @@ function applyDevPreset() {
 
   playerAirCurrent = AIR_GAUGE_MAX;
   playerAirMax = AIR_GAUGE_MAX;
-  setMapPurificationValue("폐광맵", 0);
+  resetAllMapPurificationValues();
 
   for (const nftEntry of DEV_MOCK_NFT_ITEMS) {
     addInventoryEntry(nftEntry);
@@ -11868,7 +12388,7 @@ function applyFreshPlayerStartState() {
   tutorialQuest.archivedSteps = [];
   playerAirCurrent = AIR_GAUGE_MAX;
   playerAirMax = AIR_GAUGE_MAX;
-  setMapPurificationValue("폐광맵", 0);
+  resetAllMapPurificationValues();
 
   restoreLockedMapGate(abandonedMineGate);
 
@@ -12045,7 +12565,9 @@ function applySerializedPlayerSave(rawSave, { preserveSharedWorld = false } = {}
     Math.min(source.inventory.pickaxeLevel ?? 0, PICKAXE_UPGRADE_LEVELS.length - 1)
   );
   inventory.mineKeyIssued = Boolean(source.inventory.mineKeyIssued);
-  inventory.abandonedMineUnlocked = Boolean(source.inventory.abandonedMineUnlocked);
+  inventory.abandonedMineUnlocked = preserveSharedWorld
+    ? Boolean(inventory.abandonedMineUnlocked)
+    : Boolean(source.inventory.abandonedMineUnlocked);
   for (const key of QUICK_USE_ALLOWED_KEYS) {
     inventory.quickUse[key] = normalizeQuickUseBinding(source.inventory.quickUse[key]);
   }
@@ -12065,8 +12587,11 @@ function applySerializedPlayerSave(rawSave, { preserveSharedWorld = false } = {}
     : [];
   playerAirMax = Math.max(1, Number(source.airSystem.max) || AIR_GAUGE_MAX);
   playerAirCurrent = Math.max(0, Math.min(playerAirMax, Number(source.airSystem.current) || AIR_GAUGE_MAX));
-  setMapPurificationValue("폐광맵", Number(source.airSystem.mapPurification?.["폐광맵"]) || 0);
-  setMapPurificationValue("개척지", Number(source.airSystem.mapPurification?.["개척지"]) || 0);
+  if (!preserveSharedWorld) {
+    for (const mapId of Object.keys(MAP_POLLUTION_CONFIG)) {
+      setMapPurificationValue(mapId, Number(source.airSystem.mapPurification?.[mapId]) || 0);
+    }
+  }
   for (let i = 0; i < personalStorage.slots.length; i += 1) {
     const slot = source.personalStorage.slots?.[i] ?? null;
     personalStorage.slots[i] = normalizeInventorySlotEntry(slot);
@@ -12074,7 +12599,9 @@ function applySerializedPlayerSave(rawSave, { preserveSharedWorld = false } = {}
   if (!preserveSharedWorld) {
     frontierBuildState = normalizeFrontierBuildState(source.frontierBuild);
   }
-  nftExhibitSelectedItem = normalizeNftBoardSelection(source.displayBoard);
+  if (!preserveSharedWorld) {
+    nftExhibitSelectedItem = normalizeNftBoardSelection(source.displayBoard);
+  }
 
   if (inventory.abandonedMineUnlocked) {
     const gateColliderIndex = getTrackedColliderIndex(
@@ -12092,7 +12619,9 @@ function applySerializedPlayerSave(rawSave, { preserveSharedWorld = false } = {}
     restoreLockedMapGate(abandonedMineGate);
   }
 
-  currentMapId = ["광산맵", "폐광맵", "개척지"].includes(source.mapId) ? source.mapId : "광산맵";
+  currentMapId = ["광산맵", "폐광맵", "개척지", RESIDENCE_MAP_ID].includes(source.mapId)
+    ? source.mapId
+    : "광산맵";
   updateSceneFogForCurrentMap();
   player.position.set(
     Number.isFinite(source.position?.x) ? source.position.x : START_X,
@@ -12466,6 +12995,36 @@ function buildNftExhibitBoard(x, z, rotationY = Math.PI * 0.5) {
   );
   scheduleNftExhibitBoardRefresh();
   return g;
+}
+
+function renderResidenceNoticeBoard(boardKey) {
+  const visual = residenceNoticeBoardVisuals[boardKey];
+  if (!visual?.canvas || !visual?.texture) return;
+  const entry = normalizeResidenceNoticeBoardEntry(boardKey, residenceNoticeBoardState[boardKey]);
+  const ctx = visual.canvas.getContext("2d");
+  if (!ctx) return;
+  ctx.clearRect(0, 0, visual.canvas.width, visual.canvas.height);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, visual.canvas.width, visual.canvas.height);
+  ctx.fillStyle = "#1f2933";
+  ctx.font = "bold 54px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText(entry.title, visual.canvas.width * 0.5, 92);
+  ctx.strokeStyle = "#d1d8e0";
+  ctx.lineWidth = 6;
+  ctx.strokeRect(58, 132, visual.canvas.width - 116, visual.canvas.height - 190);
+  ctx.fillStyle = "#425466";
+  ctx.font = "700 34px Arial";
+  entry.lines.forEach((line, index) => {
+    ctx.fillText(line, visual.canvas.width * 0.5, 252 + index * 74);
+  });
+  visual.texture.needsUpdate = true;
+}
+
+function renderResidenceNoticeBoards() {
+  for (const key of RESIDENCE_NOTICE_BOARD_KEYS) {
+    renderResidenceNoticeBoard(key);
+  }
 }
 
 function buildAirPurifierStation(x, z, rotationY = Math.PI, mapId = "폐광맵") {
@@ -13293,7 +13852,7 @@ function buildFrontierArea() {
   );
   scene.add(housingLink);
   groundSurfaces.push(housingLink);
-  registerWalkableSurface("개척지", housingLink, 0.42);
+  registerWalkableSurface(RESIDENCE_MAP_ID, housingLink, 0.42);
 
   const housingLinkWestEdgeX = housingLink.position.x - housingLinkLength * 0.5;
   const housingDistrictEastEdgeX = housingWestCenterX + housingDistrictWidth * 0.5;
@@ -13312,7 +13871,7 @@ function buildFrontierArea() {
   );
   scene.add(housingJoin);
   groundSurfaces.push(housingJoin);
-  registerWalkableSurface("개척지", housingJoin, 0.42);
+  registerWalkableSurface(RESIDENCE_MAP_ID, housingJoin, 0.42);
 
   const housingDistrict = new THREE.Mesh(
     new THREE.BoxGeometry(housingDistrictWidth, 0.16, housingDistrictDepth),
@@ -13324,9 +13883,12 @@ function buildFrontierArea() {
   housingDistrict.position.set(housingWestCenterX, 0.08, housingCenterZ + 0.4);
   scene.add(housingDistrict);
   groundSurfaces.push(housingDistrict);
-  registerWalkableSurface("개척지", housingDistrict, 0.42);
+  registerWalkableSurface(RESIDENCE_MAP_ID, housingDistrict, 0.42);
+  registerResidenceMapZone(housingLink.position.x, housingLink.position.z, housingLinkLength, housingLinkWidth);
+  registerResidenceMapZone(housingJoin.position.x, housingJoin.position.z, housingJoinLength, housingLinkWidth);
+  registerResidenceMapZone(housingDistrict.position.x, housingDistrict.position.z, housingDistrictWidth, housingDistrictDepth);
 
-  const buildHousingNoticeBoard = (x, z, rotationY = 0, title = "게시판") => {
+  const buildHousingNoticeBoard = (boardKey, x, z, rotationY = 0) => {
     const g = new THREE.Group();
     const boardWidth = 4.02;
     const boardHeight = 3.52;
@@ -13381,21 +13943,6 @@ function buildFrontierArea() {
     const canvas = document.createElement("canvas");
     canvas.width = 960;
     canvas.height = 760;
-    const ctx = canvas.getContext("2d");
-    if (ctx) {
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "#1f2933";
-      ctx.font = "bold 54px Arial";
-      ctx.textAlign = "center";
-      ctx.fillText(title, canvas.width * 0.5, 92);
-      ctx.strokeStyle = "#d1d8e0";
-      ctx.lineWidth = 6;
-      ctx.strokeRect(58, 132, canvas.width - 116, canvas.height - 190);
-      ctx.fillStyle = "#7c8793";
-      ctx.font = "600 34px Arial";
-      ctx.fillText("공용 알림과 안내가 표시될 예정입니다.", canvas.width * 0.5, canvas.height - 70);
-    }
     const texture = new THREE.CanvasTexture(canvas);
     const screen = new THREE.Mesh(
       new THREE.PlaneGeometry(boardWidth - 0.16, boardHeight - 0.16),
@@ -13432,25 +13979,27 @@ function buildFrontierArea() {
     g.rotation.y = rotationY;
     scene.add(g);
     addCollider(g, 0.88);
+    residenceNoticeBoardVisuals[boardKey] = { canvas, texture, group: g, screen };
+    renderResidenceNoticeBoard(boardKey);
   };
 
   buildHousingNoticeBoard(
+    "boardA",
     housingWestCenterX + 13.4,
     housingCenterZ + housingPlazaDepth * 0.5 - 2.2,
-    Math.PI,
-    "게시판 A"
+    Math.PI
   );
   buildHousingNoticeBoard(
+    "boardB",
     housingWestCenterX,
     housingCenterZ + housingPlazaDepth * 0.5 - 1.8,
-    Math.PI,
-    "게시판 B"
+    Math.PI
   );
   buildHousingNoticeBoard(
+    "boardC",
     housingWestCenterX - 13.4,
     housingCenterZ + housingPlazaDepth * 0.5 - 2.2,
-    Math.PI,
-    "게시판 C"
+    Math.PI
   );
 
   const fenceMat = new THREE.MeshStandardMaterial({
@@ -13643,7 +14192,8 @@ function buildFrontierArea() {
     roomFloor.position.set(0, 0.08, 0);
     roomRootTarget.add(roomFloor);
     groundSurfaces.push(roomFloor);
-    registerWalkableSurface("개척지", roomFloor, 0.42);
+    registerWalkableSurface(RESIDENCE_MAP_ID, roomFloor, 0.42);
+    registerResidenceMapZone(roomRootTarget.position.x, roomRootTarget.position.z, 12, 10);
 
     const backWall = new THREE.Mesh(new THREE.BoxGeometry(12, 3.8, 0.28), roomWallMat);
     backWall.position.set(0, 1.9, -5.0);
