@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-const LAST_PATCHED_AT = "2026-05-11 16:52:42 KST";
+const LAST_PATCHED_AT = "2026-05-11 17:41:44 KST";
 
 const scene = new THREE.Scene();
 // ===== Atmosphere: Sky / Fog =====
@@ -162,6 +162,9 @@ patchInfoWrap.textContent = `마지막 패치\n${LAST_PATCHED_AT}`;
 uiLayer.appendChild(patchInfoWrap);
 
 const WALLET_SESSION_KEY = "voxel-town.wallet-auth.v1";
+const DEV_ACTIVE_PROFILE_KEY = "voxel-town.dev-active-profile.v1";
+const DEV_PROFILE_SAVE_PREFIX = "voxel-town.dev-profile-save.v1.";
+const DEV_SHARED_WORLD_KEY = "voxel-town.dev-shared-world.v1";
 const AUTH_API_BASE_URL = "http://localhost:8787";
 const NFT_EXHIBIT_TARGET = {
   chainId: "0x1",
@@ -187,6 +190,7 @@ const walletProfile = {
 };
 const PLAYER_SAVE_VERSION = 1;
 const PLAYER_SAVE_INTERVAL_MS = 4000;
+const DEV_PROFILE_IDS = ["dev_user_1", "dev_user_2"];
 let playerSaveSyncInFlight = null;
 let lastPlayerSaveSnapshot = "";
 let lastPlayerSaveAttemptAt = 0;
@@ -194,6 +198,7 @@ let playerSaveSyncPaused = false;
 let playerSaveStatusTimer = null;
 let lastKnownPlayerSaveUpdatedAt = "";
 let playerSaveBaselineState = "unknown";
+let activeDevProfileId = DEV_PROFILE_IDS[0];
 let nftExhibitBoard = null;
 let nftExhibitScreenMaterial = null;
 let nftExhibitRefreshToken = 0;
@@ -546,6 +551,49 @@ walletDevBypassBtn.style.cursor = "pointer";
 walletDevBypassBtn.style.pointerEvents = "auto";
 walletLoginActions.appendChild(walletDevBypassBtn);
 
+const devProfileSwitcher = document.createElement("div");
+devProfileSwitcher.style.position = "fixed";
+devProfileSwitcher.style.left = "50%";
+devProfileSwitcher.style.top = "18px";
+devProfileSwitcher.style.transform = "translateX(-50%)";
+devProfileSwitcher.style.display = "none";
+devProfileSwitcher.style.alignItems = "center";
+devProfileSwitcher.style.gap = "8px";
+devProfileSwitcher.style.padding = "8px 10px";
+devProfileSwitcher.style.borderRadius = "14px";
+devProfileSwitcher.style.background = "rgba(26,30,36,0.84)";
+devProfileSwitcher.style.border = "1px solid rgba(255,255,255,0.12)";
+devProfileSwitcher.style.backdropFilter = "blur(6px)";
+devProfileSwitcher.style.boxShadow = "0 10px 28px rgba(0,0,0,0.24)";
+devProfileSwitcher.style.zIndex = "1000002";
+uiLayer.appendChild(devProfileSwitcher);
+
+const devProfileLabel = document.createElement("div");
+devProfileLabel.textContent = "개발자 계정";
+devProfileLabel.style.fontFamily = "system-ui, -apple-system, sans-serif";
+devProfileLabel.style.fontSize = "12px";
+devProfileLabel.style.fontWeight = "800";
+devProfileLabel.style.color = "rgba(255,255,255,0.88)";
+devProfileSwitcher.appendChild(devProfileLabel);
+
+const devProfileButtons = {};
+for (const profileId of DEV_PROFILE_IDS) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.textContent = profileId === "dev_user_1" ? "개발자1" : "개발자2";
+  btn.style.padding = "8px 12px";
+  btn.style.borderRadius = "999px";
+  btn.style.border = "1px solid rgba(255,255,255,0.16)";
+  btn.style.background = "rgba(255,255,255,0.08)";
+  btn.style.color = "white";
+  btn.style.fontSize = "12px";
+  btn.style.fontWeight = "800";
+  btn.style.cursor = "pointer";
+  btn.style.pointerEvents = "auto";
+  devProfileSwitcher.appendChild(btn);
+  devProfileButtons[profileId] = btn;
+}
+
 const walletNicknameOverlay = document.createElement("div");
 walletNicknameOverlay.id = "walletNicknameOverlay";
 walletNicknameOverlay.style.position = "fixed";
@@ -717,9 +765,19 @@ nftBoardCard.appendChild(nftBoardGrid);
 
 function shortenWalletAddress(address) {
   if (!address) return "";
+  if (address === "dev_user_1") return "DEV-1";
+  if (address === "dev_user_2") return "DEV-2";
   if (address === "dev-mode-local") return "DEV MODE";
   if (address === "guest-local") return "GUEST";
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
+function getDevProfileDisplayName(profileId = activeDevProfileId) {
+  return profileId === "dev_user_2" ? "개발자2" : "개발자1";
+}
+
+function sanitizeDevProfileId(profileId) {
+  return DEV_PROFILE_IDS.includes(profileId) ? profileId : DEV_PROFILE_IDS[0];
 }
 
 function getKeyInputCode(event) {
@@ -1901,12 +1959,86 @@ function isGuestSession() {
   return walletAuth.sessionType === "guest" || walletAuth.address === "guest-local";
 }
 
+function isDevSession() {
+  return walletAuth.sessionType === "dev";
+}
+
 function isLocalProfileSession() {
-  return walletAuth.address === "dev-mode-local" || isGuestSession();
+  return isDevSession() || isGuestSession();
 }
 
 function isServerBackedWalletSession() {
   return walletAuth.authenticated && walletAuth.sessionType === "wallet" && Boolean(walletAuth.token);
+}
+
+function getActivePlayerSaveKey() {
+  if (isDevSession()) {
+    return `${DEV_PROFILE_SAVE_PREFIX}${sanitizeDevProfileId(activeDevProfileId)}`;
+  }
+  if (isGuestSession()) {
+    return "voxel-town.guest-profile-save.v1";
+  }
+  return "";
+}
+
+function createDefaultSharedWorldSave() {
+  return {
+    frontierBuild: createDefaultFrontierBuildState(),
+  };
+}
+
+function serializeSharedWorldState() {
+  return {
+    frontierBuild: structuredClone(frontierBuildState),
+  };
+}
+
+function normalizeSharedWorldState(rawWorld) {
+  return {
+    ...createDefaultSharedWorldSave(),
+    ...(rawWorld && typeof rawWorld === "object" ? rawWorld : {}),
+    frontierBuild: normalizeFrontierBuildState(rawWorld?.frontierBuild),
+  };
+}
+
+function applySharedWorldState(rawWorld) {
+  const world = normalizeSharedWorldState(rawWorld);
+  frontierBuildState = normalizeFrontierBuildState(world.frontierBuild);
+  rebuildAllFrontierConstructionVisuals();
+}
+
+function saveActiveLocalProfileState() {
+  const saveKey = getActivePlayerSaveKey();
+  if (!saveKey) return false;
+  try {
+    const snapshot = serializePlayerSave();
+    delete snapshot.frontierBuild;
+    localStorage.setItem(saveKey, JSON.stringify(snapshot));
+    lastPlayerSaveSnapshot = JSON.stringify(snapshot);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function saveSharedWorldStateToLocal() {
+  if (!isDevSession()) return false;
+  try {
+    localStorage.setItem(DEV_SHARED_WORLD_KEY, JSON.stringify(serializeSharedWorldState()));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function loadSharedWorldStateFromLocal() {
+  try {
+    const raw = localStorage.getItem(DEV_SHARED_WORLD_KEY);
+    if (!raw) return createDefaultSharedWorldSave();
+    return normalizeSharedWorldState(JSON.parse(raw));
+  } catch {
+    return createDefaultSharedWorldSave();
+  }
 }
 
 function resetPlayerSaveProtectionState() {
@@ -2024,6 +2156,15 @@ function updateWalletUi() {
       : `${shortenWalletAddress(walletAuth.address)} 주소로 로그인되었습니다.`
     : "메타마스크 연결을 기다리는 중입니다.";
   walletDevBypassBtn.style.display = DEV_PRESET_ENABLED ? "inline-flex" : "none";
+  devProfileSwitcher.style.display = isDevSession() ? "flex" : "none";
+  for (const profileId of DEV_PROFILE_IDS) {
+    const btn = devProfileButtons[profileId];
+    if (!btn) continue;
+    const active = isDevSession() && sanitizeDevProfileId(activeDevProfileId) === profileId;
+    btn.style.background = active ? "rgba(255,183,77,0.92)" : "rgba(255,255,255,0.08)";
+    btn.style.borderColor = active ? "rgba(255,214,148,0.88)" : "rgba(255,255,255,0.16)";
+    btn.style.color = active ? "#3d2505" : "white";
+  }
   walletNicknameOverlay.style.display = loggedIn && !hasNickname() ? "flex" : "none";
   if (!isServerBackedWalletSession()) {
     nftExhibitSelectionOpen = false;
@@ -2087,8 +2228,11 @@ function setWalletAuthState(nextState, { persist = true } = {}) {
   walletAuth.chainId = nextState.chainId ?? "";
   walletAuth.token = nextState.token ?? "";
   walletAuth.sessionType = nextState.sessionType ?? "";
-  if (walletAuth.address === "dev-mode-local") {
-    walletProfile.nickname = nextState.nickname ?? "개발자";
+  if (isDevSession()) {
+    const profileId = sanitizeDevProfileId(nextState.devProfileId ?? walletAuth.address ?? activeDevProfileId);
+    activeDevProfileId = profileId;
+    walletAuth.address = profileId;
+    walletProfile.nickname = nextState.nickname ?? getDevProfileDisplayName(profileId);
   } else if (isGuestSession()) {
     walletProfile.nickname = nextState.nickname ?? "";
   } else {
@@ -2164,11 +2308,69 @@ function restoreWalletSession() {
   }
 }
 
+function loadActiveLocalProfileState() {
+  const saveKey = getActivePlayerSaveKey();
+  if (!saveKey) return false;
+  try {
+    const raw = localStorage.getItem(saveKey);
+    if (!raw) return false;
+    applySerializedPlayerSave(JSON.parse(raw), { preserveSharedWorld: isDevSession() });
+    return true;
+  } catch {
+    localStorage.removeItem(saveKey);
+    return false;
+  }
+}
+
+function initializeDevProfileState(preferredProfileId = "") {
+  const rawProfile = localStorage.getItem(DEV_ACTIVE_PROFILE_KEY);
+  activeDevProfileId = sanitizeDevProfileId(preferredProfileId || rawProfile || activeDevProfileId);
+  resetPlayerSaveProtectionState();
+  playerSaveSyncPaused = false;
+  setWalletAuthState(
+    {
+      authenticated: true,
+      address: activeDevProfileId,
+      signature: "",
+      nonce: "",
+      issuedAt: new Date().toISOString(),
+      chainId: "development",
+      token: "",
+      sessionType: "dev",
+      nickname: getDevProfileDisplayName(activeDevProfileId),
+      devProfileId: activeDevProfileId,
+    },
+    { persist: false }
+  );
+  const sharedWorld = loadSharedWorldStateFromLocal();
+  applySharedWorldState(sharedWorld);
+  const loaded = loadActiveLocalProfileState();
+  if (!loaded) {
+    applyFreshPlayerStartState();
+    applySharedWorldState(sharedWorld);
+    applyDevPreset();
+    saveActiveLocalProfileState();
+    saveSharedWorldStateToLocal();
+  }
+  localStorage.setItem(DEV_ACTIVE_PROFILE_KEY, activeDevProfileId);
+  walletLoginStatus.textContent = `${getDevProfileDisplayName(activeDevProfileId)}로 개발자 모드에 입장했습니다.`;
+}
+
+function switchDevProfile(profileId) {
+  if (!isDevSession()) return;
+  const nextProfileId = sanitizeDevProfileId(profileId);
+  if (nextProfileId === activeDevProfileId) return;
+  saveActiveLocalProfileState();
+  saveSharedWorldStateToLocal();
+  localStorage.setItem(DEV_ACTIVE_PROFILE_KEY, nextProfileId);
+  initializeDevProfileState(nextProfileId);
+}
+
 async function hydrateWalletSessionFromServer() {
   if (
     !walletAuth.authenticated ||
     !walletAuth.token ||
-    walletAuth.address === "dev-mode-local" ||
+    isDevSession() ||
     isGuestSession()
   ) {
     return;
@@ -2328,19 +2530,14 @@ walletGuestBtn.addEventListener("click", () => {
 });
 
 walletDevBypassBtn.addEventListener("click", () => {
-  setWalletAuthState(
-    {
-      authenticated: true,
-      address: "dev-mode-local",
-      signature: "",
-      nonce: "",
-      issuedAt: new Date().toISOString(),
-      chainId: "development",
-      sessionType: "dev",
-    },
-    { persist: false }
-  );
+  initializeDevProfileState();
 });
+
+for (const profileId of DEV_PROFILE_IDS) {
+  devProfileButtons[profileId]?.addEventListener("click", () => {
+    switchDevProfile(profileId);
+  });
+}
 
 async function commitNickname() {
   const nickname = walletNicknameInput.value.trim();
@@ -11290,7 +11487,7 @@ function serializePlayerSave() {
   };
 }
 
-function applySerializedPlayerSave(rawSave) {
+function applySerializedPlayerSave(rawSave, { preserveSharedWorld = false } = {}) {
   const save = rawSave && typeof rawSave === "object" ? rawSave : createDefaultPlayerSave();
   const source = {
     ...createDefaultPlayerSave(),
@@ -11323,7 +11520,9 @@ function applySerializedPlayerSave(rawSave) {
       ...createDefaultPlayerSave().personalStorage,
       ...(save.personalStorage ?? {}),
     },
-    frontierBuild: normalizeFrontierBuildState(save.frontierBuild),
+    frontierBuild: preserveSharedWorld
+      ? normalizeFrontierBuildState(frontierBuildState)
+      : normalizeFrontierBuildState(save.frontierBuild),
     displayBoard: save.displayBoard ?? null,
   };
 
@@ -11362,7 +11561,9 @@ function applySerializedPlayerSave(rawSave) {
     const slot = source.personalStorage.slots?.[i] ?? null;
     personalStorage.slots[i] = normalizeInventorySlotEntry(slot);
   }
-  frontierBuildState = normalizeFrontierBuildState(source.frontierBuild);
+  if (!preserveSharedWorld) {
+    frontierBuildState = normalizeFrontierBuildState(source.frontierBuild);
+  }
   nftExhibitSelectedItem = normalizeNftBoardSelection(source.displayBoard);
 
   if (inventory.abandonedMineUnlocked) {
@@ -11467,6 +11668,11 @@ async function pushPlayerSaveToServer() {
 }
 
 function flushPlayerSaveOnExit() {
+  if (isDevSession()) {
+    saveActiveLocalProfileState();
+    saveSharedWorldStateToLocal();
+    return;
+  }
   if (!isServerBackedWalletSession()) return;
   if (playerSaveSyncPaused || !hasConfirmedPlayerSaveBaseline()) return;
 
@@ -11491,6 +11697,11 @@ function flushPlayerSaveOnExit() {
 }
 
 function schedulePlayerSaveSync(force = false) {
+  if (isDevSession()) {
+    saveActiveLocalProfileState();
+    saveSharedWorldStateToLocal();
+    return;
+  }
   if (!isServerBackedWalletSession()) return;
   if (playerSaveSyncPaused || !hasConfirmedPlayerSaveBaseline()) return;
   const now = performance.now();
