@@ -4,7 +4,7 @@
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
       "nickname": "XC",
       "createdAt": "2026-04-30T08:26:16.091Z",
-      "lastLoginAt": "2026-05-11T05:07:32.150Z"
+      "lastLoginAt": "2026-05-11T10:40:32.382Z"
     }
   ],
   "nonces": [],
@@ -464,6 +464,12 @@
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
       "createdAt": "2026-05-11T05:07:32.150Z",
       "expiresAt": "2026-06-10T05:07:32.150Z"
+    },
+    {
+      "token": "7fc93606-6009-4f30-8e70-25d567b64d85",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-11T10:40:32.382Z",
+      "expiresAt": "2026-06-10T10:40:32.382Z"
     }
   ],
   "playerSaves": [
@@ -473,11 +479,14 @@
         "version": 1,
         "mapId": "개척지",
         "position": {
-          "x": -2.229,
+          "x": -1.054,
           "y": 0.14,
-          "z": -186.226
+          "z": -186.469
         },
-        "rotationY": 0.1863,
+        "rotationY": 1.7808,
+        "economy": {
+          "credits": 0
+        },
         "inventory": {
           "slots": [
             {
@@ -607,27 +616,117 @@
         "frontierBuild": {
           "p1": {
             "stage": 0,
-            "signText": "P1"
+            "signText": "P1",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": ""
+              },
+              "displayA": {
+                "statusText": "비어 있음"
+              },
+              "displayB": {
+                "statusText": "비어 있음"
+              }
+            }
           },
           "p2": {
             "stage": 0,
-            "signText": "P2"
+            "signText": "P2",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": ""
+              },
+              "displayA": {
+                "statusText": "비어 있음"
+              },
+              "displayB": {
+                "statusText": "비어 있음"
+              }
+            }
           },
           "p3": {
             "stage": 0,
-            "signText": "P3"
+            "signText": "P3",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": ""
+              },
+              "displayA": {
+                "statusText": "비어 있음"
+              },
+              "displayB": {
+                "statusText": "비어 있음"
+              }
+            }
           },
           "p4": {
             "stage": 0,
-            "signText": "P4"
+            "signText": "P4",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": ""
+              },
+              "displayA": {
+                "statusText": "비어 있음"
+              },
+              "displayB": {
+                "statusText": "비어 있음"
+              }
+            }
           },
           "p5": {
             "stage": 0,
-            "signText": "P5"
+            "signText": "P5",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": ""
+              },
+              "displayA": {
+                "statusText": "비어 있음"
+              },
+              "displayB": {
+                "statusText": "비어 있음"
+              }
+            }
           },
           "p6": {
             "stage": 0,
-            "signText": "P6"
+            "signText": "P6",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": ""
+              },
+              "displayA": {
+                "statusText": "비어 있음"
+              },
+              "displayB": {
+                "statusText": "비어 있음"
+              }
+            }
           }
         },
         "displayBoard": {
@@ -639,185 +738,10 @@
           "subtitle": "I call myself as a Digitalian, because I spend most of my daytime in digital world. My artwork captures my gaze in the digital world I live in as a landscape painting.\n\nArtwork 'DLP #00 concept' is a concept image of the DLP collection. DLP will show 12 artworks. The selling price of all artworks is 121% of the selling price of the previous works."
         }
       },
-      "updatedAt": "2026-05-11T05:09:31.008Z"
+      "updatedAt": "2026-05-11T10:40:36.462Z"
     }
   ],
   "playerSaveBackups": [
-    {
-      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
-      "updatedAt": "2026-05-11T05:08:50.911Z",
-      "backedUpAt": "2026-05-11T05:08:54.913Z",
-      "data": {
-        "version": 1,
-        "mapId": "개척지",
-        "position": {
-          "x": -2.229,
-          "y": 0.14,
-          "z": -186.226
-        },
-        "rotationY": 0.1863,
-        "inventory": {
-          "slots": [
-            {
-              "kind": "item",
-              "itemId": "safetyHelmet",
-              "count": 1,
-              "instanceId": "inv_mos7ta4k_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "pickaxe",
-              "count": 1,
-              "instanceId": "inv_mos7tasd_7"
-            },
-            {
-              "kind": "item",
-              "itemId": "stoneDust",
-              "count": 21,
-              "instanceId": "inv_mos80voc_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "freshAirCanister",
-              "count": 4,
-              "instanceId": "inv_motu5uok_6"
-            },
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null
-          ],
-          "pickaxeLevel": 3,
-          "mineKeyIssued": true,
-          "abandonedMineUnlocked": true,
-          "quickUse": {
-            "1": {
-              "kind": "item",
-              "itemId": "freshAirCanister"
-            },
-            "2": null,
-            "3": null,
-            "4": null,
-            "5": null
-          },
-          "equipped": {
-            "head": {
-              "kind": "item",
-              "itemId": "safetyHelmet",
-              "instanceId": "inv_mos7ta4k_6"
-            },
-            "body": null,
-            "shoes": null,
-            "tool": {
-              "kind": "item",
-              "itemId": "pickaxe",
-              "instanceId": "inv_mos7tasd_7"
-            }
-          }
-        },
-        "tutorial": {
-          "currentStep": 6,
-          "minedRockCount": 38,
-          "upgradeCount": 3,
-          "completed": true,
-          "archivedSteps": [
-            0,
-            1,
-            2,
-            3,
-            4
-          ]
-        },
-        "airSystem": {
-          "current": 56.5,
-          "max": 100,
-          "mapPurification": {
-            "폐광맵": 0,
-            "개척지": 0
-          }
-        },
-        "personalStorage": {
-          "slots": [
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null
-          ]
-        },
-        "frontierBuild": {
-          "p1": {
-            "stage": 0,
-            "signText": "P1"
-          },
-          "p2": {
-            "stage": 0,
-            "signText": "P2"
-          },
-          "p3": {
-            "stage": 0,
-            "signText": "P3"
-          },
-          "p4": {
-            "stage": 0,
-            "signText": "P4"
-          },
-          "p5": {
-            "stage": 0,
-            "signText": "P5"
-          },
-          "p6": {
-            "stage": 0,
-            "signText": "P6"
-          }
-        },
-        "displayBoard": {
-          "chainId": "0x1",
-          "contractAddress": "0x3aaa87fbe562ac659f9e657a8efe00b411a56273",
-          "tokenId": "1",
-          "name": "DLP#00_concept",
-          "image": "ipfs://Qmb3pSfANoA1qGzZXyshGPvadxLKBxjoWjxboUoYzGmt9Y/nft.png",
-          "subtitle": "I call myself as a Digitalian, because I spend most of my daytime in digital world. My artwork captures my gaze in the digital world I live in as a landscape painting.\n\nArtwork 'DLP #00 concept' is a concept image of the DLP collection. DLP will show 12 artworks. The selling price of all artworks is 121% of the selling price of the previous works."
-        }
-      }
-    },
     {
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
       "updatedAt": "2026-05-11T05:08:54.913Z",
@@ -2327,6 +2251,181 @@
         },
         "airSystem": {
           "current": 96.19,
+          "max": 100,
+          "mapPurification": {
+            "폐광맵": 0,
+            "개척지": 0
+          }
+        },
+        "personalStorage": {
+          "slots": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        "frontierBuild": {
+          "p1": {
+            "stage": 0,
+            "signText": "P1"
+          },
+          "p2": {
+            "stage": 0,
+            "signText": "P2"
+          },
+          "p3": {
+            "stage": 0,
+            "signText": "P3"
+          },
+          "p4": {
+            "stage": 0,
+            "signText": "P4"
+          },
+          "p5": {
+            "stage": 0,
+            "signText": "P5"
+          },
+          "p6": {
+            "stage": 0,
+            "signText": "P6"
+          }
+        },
+        "displayBoard": {
+          "chainId": "0x1",
+          "contractAddress": "0x3aaa87fbe562ac659f9e657a8efe00b411a56273",
+          "tokenId": "1",
+          "name": "DLP#00_concept",
+          "image": "ipfs://Qmb3pSfANoA1qGzZXyshGPvadxLKBxjoWjxboUoYzGmt9Y/nft.png",
+          "subtitle": "I call myself as a Digitalian, because I spend most of my daytime in digital world. My artwork captures my gaze in the digital world I live in as a landscape painting.\n\nArtwork 'DLP #00 concept' is a concept image of the DLP collection. DLP will show 12 artworks. The selling price of all artworks is 121% of the selling price of the previous works."
+        }
+      }
+    },
+    {
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "updatedAt": "2026-05-11T05:09:31.008Z",
+      "backedUpAt": "2026-05-11T10:40:36.464Z",
+      "data": {
+        "version": 1,
+        "mapId": "개척지",
+        "position": {
+          "x": -2.229,
+          "y": 0.14,
+          "z": -186.226
+        },
+        "rotationY": 0.1863,
+        "inventory": {
+          "slots": [
+            {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "count": 1,
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "count": 1,
+              "instanceId": "inv_mos7tasd_7"
+            },
+            {
+              "kind": "item",
+              "itemId": "stoneDust",
+              "count": 21,
+              "instanceId": "inv_mos80voc_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "freshAirCanister",
+              "count": 4,
+              "instanceId": "inv_motu5uok_6"
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "pickaxeLevel": 3,
+          "mineKeyIssued": true,
+          "abandonedMineUnlocked": true,
+          "quickUse": {
+            "1": {
+              "kind": "item",
+              "itemId": "freshAirCanister"
+            },
+            "2": null,
+            "3": null,
+            "4": null,
+            "5": null
+          },
+          "equipped": {
+            "head": {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            "body": null,
+            "shoes": null,
+            "tool": {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "instanceId": "inv_mos7tasd_7"
+            }
+          }
+        },
+        "tutorial": {
+          "currentStep": 6,
+          "minedRockCount": 38,
+          "upgradeCount": 3,
+          "completed": true,
+          "archivedSteps": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "airSystem": {
+          "current": 100,
           "max": 100,
           "mapPurification": {
             "폐광맵": 0,

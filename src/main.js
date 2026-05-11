@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-const LAST_PATCHED_AT = "2026-05-11 17:41:44 KST";
+const LAST_PATCHED_AT = "2026-05-11 20:18:38 KST";
 
 const scene = new THREE.Scene();
 // ===== Atmosphere: Sky / Fog =====
@@ -164,6 +164,7 @@ uiLayer.appendChild(patchInfoWrap);
 const WALLET_SESSION_KEY = "voxel-town.wallet-auth.v1";
 const DEV_ACTIVE_PROFILE_KEY = "voxel-town.dev-active-profile.v1";
 const DEV_PROFILE_SAVE_PREFIX = "voxel-town.dev-profile-save.v1.";
+const DEV_CREDITS_MIGRATION_PREFIX = "voxel-town.dev-credits-migrated.v1.";
 const DEV_SHARED_WORLD_KEY = "voxel-town.dev-shared-world.v1";
 const AUTH_API_BASE_URL = "http://localhost:8787";
 const NFT_EXHIBIT_TARGET = {
@@ -188,6 +189,7 @@ const walletAuth = {
 const walletProfile = {
   nickname: "",
 };
+const PLAYER_CURRENCY_NAME = "개척 코인";
 const PLAYER_SAVE_VERSION = 1;
 const PLAYER_SAVE_INTERVAL_MS = 4000;
 const DEV_PROFILE_IDS = ["dev_user_1", "dev_user_2"];
@@ -281,6 +283,7 @@ walletHud.appendChild(walletHudLogoutBtn);
 let equipProfileAddress = null;
 let equipProfileChain = null;
 let equipProfileNickname = null;
+let equipProfileCredits = null;
 let equipProfileLogoutBtn = null;
 let equipProfileCopyBtn = null;
 
@@ -593,6 +596,20 @@ for (const profileId of DEV_PROFILE_IDS) {
   devProfileSwitcher.appendChild(btn);
   devProfileButtons[profileId] = btn;
 }
+
+const devResetButton = document.createElement("button");
+devResetButton.type = "button";
+devResetButton.textContent = "테스트 초기화";
+devResetButton.style.padding = "8px 12px";
+devResetButton.style.borderRadius = "999px";
+devResetButton.style.border = "1px solid rgba(255,255,255,0.16)";
+devResetButton.style.background = "rgba(255,255,255,0.08)";
+devResetButton.style.color = "white";
+devResetButton.style.fontSize = "12px";
+devResetButton.style.fontWeight = "800";
+devResetButton.style.cursor = "pointer";
+devResetButton.style.pointerEvents = "auto";
+devProfileSwitcher.appendChild(devResetButton);
 
 const walletNicknameOverlay = document.createElement("div");
 walletNicknameOverlay.id = "walletNicknameOverlay";
@@ -2141,6 +2158,9 @@ function updateWalletUi() {
       ? `닉네임: ${walletProfile.nickname}`
       : "닉네임: 설정 필요";
   }
+  if (equipProfileCredits) {
+    equipProfileCredits.textContent = formatPlayerCreditsLabel();
+  }
   if (equipProfileLogoutBtn) {
     equipProfileLogoutBtn.style.display = loggedIn ? "inline-flex" : "none";
   }
@@ -2314,12 +2334,20 @@ function loadActiveLocalProfileState() {
   try {
     const raw = localStorage.getItem(saveKey);
     if (!raw) return false;
-    applySerializedPlayerSave(JSON.parse(raw), { preserveSharedWorld: isDevSession() });
+    const parsed = JSON.parse(raw);
+    applySerializedPlayerSave(parsed, { preserveSharedWorld: isDevSession() });
+    if (isDevSession() && !Number.isFinite(parsed?.economy?.credits)) {
+      setPlayerCredits(500);
+    }
     return true;
   } catch {
     localStorage.removeItem(saveKey);
     return false;
   }
+}
+
+function getDevCreditsMigrationKey(profileId = activeDevProfileId) {
+  return `${DEV_CREDITS_MIGRATION_PREFIX}${sanitizeDevProfileId(profileId)}`;
 }
 
 function initializeDevProfileState(preferredProfileId = "") {
@@ -2352,6 +2380,14 @@ function initializeDevProfileState(preferredProfileId = "") {
     saveActiveLocalProfileState();
     saveSharedWorldStateToLocal();
   }
+  const creditsMigrationKey = getDevCreditsMigrationKey(activeDevProfileId);
+  if (isDevSession() && !localStorage.getItem(creditsMigrationKey) && getPlayerCredits() === 0) {
+    setPlayerCredits(500);
+    saveActiveLocalProfileState();
+  }
+  localStorage.setItem(creditsMigrationKey, "1");
+  applyDevProfileRoleOverrides();
+  saveActiveLocalProfileState();
   localStorage.setItem(DEV_ACTIVE_PROFILE_KEY, activeDevProfileId);
   walletLoginStatus.textContent = `${getDevProfileDisplayName(activeDevProfileId)}로 개발자 모드에 입장했습니다.`;
 }
@@ -2364,6 +2400,47 @@ function switchDevProfile(profileId) {
   saveSharedWorldStateToLocal();
   localStorage.setItem(DEV_ACTIVE_PROFILE_KEY, nextProfileId);
   initializeDevProfileState(nextProfileId);
+}
+
+function writeDevProfilePresetSnapshot(profileId) {
+  const targetProfileId = sanitizeDevProfileId(profileId);
+  activeDevProfileId = targetProfileId;
+  setWalletAuthState(
+    {
+      authenticated: true,
+      address: targetProfileId,
+      signature: "",
+      nonce: "",
+      issuedAt: new Date().toISOString(),
+      chainId: "development",
+      token: "",
+      sessionType: "dev",
+      nickname: getDevProfileDisplayName(targetProfileId),
+      devProfileId: targetProfileId,
+    },
+    { persist: false }
+  );
+  applyFreshPlayerStartState();
+  applySharedWorldState(createDefaultSharedWorldSave());
+  applyDevPreset();
+  applyDevProfileRoleOverrides();
+  saveActiveLocalProfileState();
+  localStorage.setItem(getDevCreditsMigrationKey(targetProfileId), "1");
+}
+
+function resetDevTestingEnvironment() {
+  if (!isDevSession()) return false;
+  const currentProfileId = sanitizeDevProfileId(activeDevProfileId);
+  const blankWorld = createDefaultSharedWorldSave();
+  for (const profileId of DEV_PROFILE_IDS) {
+    writeDevProfilePresetSnapshot(profileId);
+  }
+  localStorage.setItem(DEV_SHARED_WORLD_KEY, JSON.stringify(blankWorld));
+  localStorage.setItem(DEV_ACTIVE_PROFILE_KEY, currentProfileId);
+  initializeDevProfileState(currentProfileId);
+  showUI("개발자 테스트 환경을 초기화했습니다.", 1200);
+  lastMessageUntil = performance.now() + 1200;
+  return true;
 }
 
 async function hydrateWalletSessionFromServer() {
@@ -2538,6 +2615,15 @@ for (const profileId of DEV_PROFILE_IDS) {
     switchDevProfile(profileId);
   });
 }
+
+devResetButton.addEventListener("click", () => {
+  if (!isDevSession()) return;
+  const confirmed = window.confirm(
+    "개발자 테스트 월드를 초기화할까요?\n개발자1/개발자2 상태와 개척지 월드 상태가 초기값으로 돌아갑니다."
+  );
+  if (!confirmed) return;
+  resetDevTestingEnvironment();
+});
 
 async function commitNickname() {
   const nickname = walletNicknameInput.value.trim();
@@ -3136,6 +3222,12 @@ equipProfileNickname.style.fontSize = "12px";
 equipProfileNickname.style.fontWeight = "700";
 equipProfileNickname.style.color = "#8b6b1b";
 equipProfileInfo.appendChild(equipProfileNickname);
+
+equipProfileCredits = document.createElement("div");
+equipProfileCredits.style.fontSize = "12px";
+equipProfileCredits.style.fontWeight = "700";
+equipProfileCredits.style.color = "#2d5f1f";
+equipProfileInfo.appendChild(equipProfileCredits);
 
 const forgeOverlay = document.createElement("div");
 forgeOverlay.id = "forgeOverlay";
@@ -5259,7 +5351,7 @@ const DEV_PRESET = {
   completeTutorial: true,
   unlockAbandonedMine: true,
   giveStarterGear: true,
-  pickaxeLevel: 3,
+  pickaxeLevel: 5,
   stoneDust: 500,
 };
 
@@ -5665,6 +5757,13 @@ const ITEM_DEFS = {
     category: "misc",
     isAuthorityItem: true,
   },
+  mansionOneRoom102Permit: {
+    name: "Mansion ONE 102호",
+    icon: "🪪",
+    stackMax: 1,
+    category: "misc",
+    isAuthorityItem: true,
+  },
   freshAirCanister: {
     name: "신선한 공기 캔",
     icon: "🫧",
@@ -5713,6 +5812,18 @@ const DEV_MOCK_NFT_ITEMS = [
 function getDevMaterialItemIds() {
   return Object.entries(ITEM_DEFS)
     .filter(([, def]) => def?.isMaterial)
+    .map(([itemId]) => itemId);
+}
+
+function getDevBulkGrantItemIds() {
+  return Object.entries(ITEM_DEFS)
+    .filter(([itemId, def]) =>
+      def &&
+      (def.category === "cons" || def.category === "misc") &&
+      !def.isAuthorityItem &&
+      itemId !== "abandonedMineKey" &&
+      getInventoryStackMax(itemId) > 1
+    )
     .map(([itemId]) => itemId);
 }
 
@@ -6109,6 +6220,7 @@ function getEquippedMiningPower() {
     tool: null,
   },
     };
+let playerCredits = 0;
 
 const personalStorage = {
   slots: Array.from({ length: 20 }, () => null),
@@ -6142,6 +6254,38 @@ function findInventorySlotIndexByEntry(entry) {
 function getInventorySlotEntryByEntry(entry) {
   const idx = findInventorySlotIndexByEntry(entry);
   return idx >= 0 ? inventory.slots[idx] : null;
+}
+
+function clampPlayerCredits(value) {
+  return Math.max(0, Math.floor(Number.isFinite(value) ? value : 0));
+}
+
+function getPlayerCredits() {
+  return playerCredits;
+}
+
+function setPlayerCredits(value) {
+  playerCredits = clampPlayerCredits(value);
+  updateWalletUi();
+}
+
+function grantPlayerCredits(amount) {
+  setPlayerCredits(playerCredits + amount);
+}
+
+function canAffordPlayerCredits(amount) {
+  return playerCredits >= clampPlayerCredits(amount);
+}
+
+function spendPlayerCredits(amount) {
+  const normalized = clampPlayerCredits(amount);
+  if (playerCredits < normalized) return false;
+  setPlayerCredits(playerCredits - normalized);
+  return true;
+}
+
+function formatPlayerCreditsLabel(value = playerCredits) {
+  return `${PLAYER_CURRENCY_NAME}: ${clampPlayerCredits(value)}원`;
 }
 
 function isQuestCriticalItemBlockedFromDiscard(entry) {
@@ -7324,6 +7468,8 @@ let mansionOneExitInteractable = null;
 let mansionOneBedInteractable = null;
 let mansionOneStorageInteractable = null;
 let mansionOneRoomRoot = null;
+let mansionOneRoom102Root = null;
+let mansionOneActiveRoomKey = "101";
 let mansionOneExteriorReturn = { x: 0, z: 0, rotationY: Math.PI };
 let mineGate = null;
 let campGate = null;
@@ -7369,11 +7515,45 @@ function hasFrontierParcelAuthority(parcelLabel) {
 }
 
 function hasMansionOneResidenceAuthority() {
-  return hasItem("mansionOneRoom101Permit");
+  return hasItem("mansionOneRoom101Permit") || hasItem("mansionOneRoom102Permit");
 }
 
 function hasMansionPersonalStorageAuthority() {
   return hasMansionOneResidenceAuthority();
+}
+
+function getOwnedMansionRoomKey() {
+  if (hasItem("mansionOneRoom101Permit")) return "101";
+  if (hasItem("mansionOneRoom102Permit")) return "102";
+  return "";
+}
+
+function getOwnedMansionRoomPermitName() {
+  const roomKey = getOwnedMansionRoomKey();
+  if (roomKey === "101") return ITEM_DEFS.mansionOneRoom101Permit.name;
+  if (roomKey === "102") return ITEM_DEFS.mansionOneRoom102Permit.name;
+  return "거주권";
+}
+
+function applyDevProfileRoleOverrides() {
+  if (!isDevSession()) return;
+  const isBuyerProfile = activeDevProfileId === "dev_user_2";
+  for (const label of FRONTIER_PARCEL_LABELS) {
+    const permitId = getFrontierParcelAuthorityItemId(label);
+    if (!permitId) continue;
+    if (isBuyerProfile) {
+      removeAllItemsById(permitId);
+    } else if (!hasItem(permitId)) {
+      addItem(permitId, 1);
+    }
+  }
+  if (isBuyerProfile) {
+    removeAllItemsById("mansionOneRoom101Permit");
+    if (!hasItem("mansionOneRoom102Permit")) addItem("mansionOneRoom102Permit", 1);
+  } else {
+    removeAllItemsById("mansionOneRoom102Permit");
+    if (!hasItem("mansionOneRoom101Permit")) addItem("mansionOneRoom101Permit", 1);
+  }
 }
 
 function createDefaultFrontierParcelBuildEntry(label) {
@@ -7405,7 +7585,7 @@ function createDefaultFrontierShopState() {
 function formatFrontierShopStatusText(itemId, quantity, price) {
   if (!itemId || quantity <= 0) return "비어 있음";
   const itemName = ITEM_DEFS[itemId]?.name ?? itemId;
-  return `${itemName} x${quantity} / ${price}G`;
+  return `${itemName} x${quantity} / ${price}원`;
 }
 
 function normalizeFrontierWalletAddress(rawAddress) {
@@ -7483,6 +7663,51 @@ function canManageFrontierShopSlot(parcelLabel = getSelectedFrontierParcelLabel(
 
 function canUseFrontierShopSlot(parcelLabel = getSelectedFrontierParcelLabel()) {
   return isFrontierShopSlotUser(parcelLabel);
+}
+
+function getDevProfileSaveKey(profileId) {
+  return `${DEV_PROFILE_SAVE_PREFIX}${sanitizeDevProfileId(profileId)}`;
+}
+
+function grantFrontierShopSellerCredits(walletAddress, amount) {
+  const normalizedWallet = normalizeFrontierWalletAddress(walletAddress);
+  const safeAmount = clampPlayerCredits(amount);
+  if (!normalizedWallet || safeAmount <= 0) return false;
+  if (normalizedWallet === getCurrentFrontierWalletAddress()) {
+    grantPlayerCredits(safeAmount);
+    return true;
+  }
+  if (!DEV_PROFILE_IDS.includes(normalizedWallet)) {
+    return false;
+  }
+  const saveKey = getDevProfileSaveKey(normalizedWallet);
+  let parsed = createDefaultPlayerSave();
+  try {
+    const raw = localStorage.getItem(saveKey);
+    if (raw) {
+      parsed = {
+        ...parsed,
+        ...JSON.parse(raw),
+        economy: {
+          ...parsed.economy,
+          ...(JSON.parse(raw).economy ?? {}),
+        },
+      };
+    }
+  } catch {
+    parsed = createDefaultPlayerSave();
+  }
+  parsed.economy = {
+    ...createDefaultPlayerSave().economy,
+    ...(parsed.economy ?? {}),
+  };
+  parsed.economy.credits = clampPlayerCredits((Number(parsed.economy.credits) || 0) + safeAmount);
+  try {
+    localStorage.setItem(saveKey, JSON.stringify(parsed));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function formatFrontierShopUserDisplay(parcelLabel = getSelectedFrontierParcelLabel()) {
@@ -8407,17 +8632,19 @@ function tryUseAirPurifier(mapId = "폐광맵") {
   return true;
 }
 
-function enterMansionOneRoom() {
-  if (!mansionOneRoomRoot) return false;
+function enterMansionOneRoom(roomKey = getOwnedMansionRoomKey()) {
+  const targetRoomRoot = roomKey === "102" ? mansionOneRoom102Root : mansionOneRoomRoot;
+  if (!targetRoomRoot) return false;
+  mansionOneActiveRoomKey = roomKey === "102" ? "102" : "101";
   player.position.set(
-    mansionOneRoomRoot.position.x,
+    targetRoomRoot.position.x,
     player.position.y,
-    mansionOneRoomRoot.position.z + 4.2
+    targetRoomRoot.position.z + 4.2
   );
   player.rotation.y = Math.PI;
   latestMoveDir.set(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
   snapCameraToPlayer();
-  showUI("Mansion ONE 101호 입장", 1000);
+  showUI(`Mansion ONE ${mansionOneActiveRoomKey}호 입장`, 1000);
   return true;
 }
 
@@ -8445,16 +8672,18 @@ function setMansionSleepOpen(v) {
 }
 
 function openMansionSleepDialog() {
-  if (!mansionOneBedInteractable) return;
+  const bedInteractable =
+    activeInteractable?.type === "mansionBed" ? activeInteractable : mansionOneBedInteractable;
+  if (!bedInteractable) return;
   mansionSleepWakePoint = {
-    x: mansionOneBedInteractable.obj.position.x + 1.95,
-    z: mansionOneBedInteractable.obj.position.z + 0.2,
+    x: bedInteractable.obj.position.x + 1.95,
+    z: bedInteractable.obj.position.z + 0.2,
     rotationY: Math.PI * -0.5,
   };
   player.position.set(
-    mansionOneBedInteractable.obj.position.x - 0.15,
+    bedInteractable.obj.position.x - 0.15,
     player.position.y,
-    mansionOneBedInteractable.obj.position.z
+    bedInteractable.obj.position.z
   );
   player.rotation.y = Math.PI * -0.5;
   latestMoveDir.set(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
@@ -8803,6 +9032,28 @@ function isFrontierShopSellableEntry(entry) {
   return { ok: true, reason: "" };
 }
 
+function removeAllItemsById(itemId) {
+  let removed = false;
+  for (let i = 0; i < inventory.slots.length; i += 1) {
+    const slot = inventory.slots[i];
+    if (!slot) continue;
+    if (getSlotItemId(slot) !== itemId) continue;
+    inventory.slots[i] = null;
+    removed = true;
+  }
+  if (removed) {
+    pruneQuickUseBindings();
+    for (const slotId of Object.keys(inventory.equipped)) {
+      const equipped = getEquippedItemRef(slotId);
+      if (!equipped) continue;
+      if (equipped.itemId === itemId) {
+        inventory.equipped[slotId] = null;
+      }
+    }
+  }
+  return removed;
+}
+
 function getSellableFrontierShopEntries() {
   return inventory.slots
     .map((entry, index) => ({ entry, index }))
@@ -8872,6 +9123,63 @@ function clearFrontierShopListing(parcelLabel = frontierShopRegisterParcelLabel)
   showUI("판매 물품을 회수했습니다.", 1000);
   lastMessageUntil = performance.now() + 1000;
   return true;
+}
+
+function tryPurchaseFrontierShopListing(parcelLabel, quantity) {
+  if (!parcelLabel) return { ok: false, reason: "상점 정보를 찾을 수 없습니다." };
+  const shopState = getFrontierShopOperation(parcelLabel);
+  if (!shopState.itemId || shopState.quantity <= 0) {
+    return { ok: false, reason: "등록된 판매 물품이 없습니다." };
+  }
+  const purchaseQty = Math.max(1, Math.floor(Number(quantity) || 0));
+  if (purchaseQty <= 0) {
+    return { ok: false, reason: "구매 수량을 확인해주세요." };
+  }
+  if (purchaseQty > shopState.quantity) {
+    return { ok: false, reason: "재고가 부족합니다." };
+  }
+  const sellerWallet = normalizeFrontierWalletAddress(shopState.userWallet);
+  const currentWallet = getCurrentFrontierWalletAddress();
+  if (sellerWallet && sellerWallet === currentWallet) {
+    return { ok: false, reason: "자신이 등록한 상품은 구매할 수 없습니다." };
+  }
+  const totalPrice = clampPlayerCredits(shopState.price * purchaseQty);
+  const purchasedItemId = shopState.itemId;
+  const purchasedItemName = ITEM_DEFS[purchasedItemId]?.name ?? purchasedItemId;
+  if (!canAffordPlayerCredits(totalPrice)) {
+    return { ok: false, reason: "개척 코인이 부족합니다." };
+  }
+  const inventorySnapshot = inventory.slots.map((slot) => (slot ? structuredClone(slot) : null));
+  if (!addEntryToInventory(createInventorySlotEntry(purchasedItemId, purchaseQty), purchaseQty)) {
+    return { ok: false, reason: "인벤토리 공간이 부족합니다." };
+  }
+  if (!spendPlayerCredits(totalPrice)) {
+    for (let i = 0; i < inventory.slots.length; i += 1) inventory.slots[i] = inventorySnapshot[i];
+    return { ok: false, reason: "개척 코인을 차감하지 못했습니다." };
+  }
+  if (!grantFrontierShopSellerCredits(sellerWallet, totalPrice)) {
+    for (let i = 0; i < inventory.slots.length; i += 1) inventory.slots[i] = inventorySnapshot[i];
+    setPlayerCredits(getPlayerCredits() + totalPrice);
+    return { ok: false, reason: "판매자 정산에 실패했습니다." };
+  }
+  shopState.quantity -= purchaseQty;
+  if (shopState.quantity <= 0) {
+    shopState.itemId = "";
+    shopState.quantity = 0;
+    shopState.price = 0;
+    shopState.statusText = "비어 있음";
+  } else {
+    shopState.statusText = formatFrontierShopStatusText(shopState.itemId, shopState.quantity, shopState.price);
+  }
+  rebuildFrontierParcelConstructionVisual(parcelLabel);
+  updateInventoryUI();
+  schedulePlayerSaveSync(true);
+  if (frontierBuildOpen) renderFrontierBuildWindow();
+  return {
+    ok: true,
+    itemName: purchasedItemName,
+    totalPrice,
+  };
 }
 
 function commitFrontierShopListing() {
@@ -10348,6 +10656,165 @@ function renderFrontierBoothDialog() {
           : "상점 사용자를 먼저 지정해야 판매 등록을 할 수 있습니다.";
         frontierBoothActionArea.appendChild(note);
       }
+    } else {
+      const viewWrap = document.createElement("div");
+      viewWrap.style.display = "grid";
+      viewWrap.style.gap = "12px";
+
+      const slotsGrid = document.createElement("div");
+      slotsGrid.style.display = "grid";
+      slotsGrid.style.gridTemplateColumns = "repeat(3, minmax(0, 1fr))";
+      slotsGrid.style.gap = "10px";
+
+      for (let i = 0; i < 3; i += 1) {
+        const slotCard = document.createElement("div");
+        slotCard.style.border = "1px solid rgba(0,0,0,0.12)";
+        slotCard.style.borderRadius = "12px";
+        slotCard.style.background = "rgba(255,255,255,0.94)";
+        slotCard.style.padding = "12px";
+        slotCard.style.minHeight = "116px";
+        slotCard.style.display = "grid";
+        slotCard.style.alignContent = "start";
+        slotCard.style.gap = "6px";
+
+        const slotTitle = document.createElement("div");
+        slotTitle.style.fontSize = "13px";
+        slotTitle.style.fontWeight = "900";
+        slotTitle.style.color = "#222";
+        slotTitle.textContent = `판매 슬롯 ${i + 1}`;
+        slotCard.appendChild(slotTitle);
+
+        const isActiveSlot = i === 0 && slotState.itemId && slotState.quantity > 0;
+        if (!isActiveSlot) {
+          const empty = document.createElement("div");
+          empty.style.fontSize = "12px";
+          empty.style.lineHeight = "1.5";
+          empty.style.color = "#6b6053";
+          empty.textContent = i === 0 ? "등록된 상품이 없습니다." : "준비 중";
+          slotCard.appendChild(empty);
+        } else {
+          const itemName = ITEM_DEFS[slotState.itemId]?.name ?? slotState.itemId;
+          const lines = [
+            `상품: ${itemName}`,
+            `재고: ${slotState.quantity}개`,
+            `가격: ${slotState.price}원`,
+          ];
+          for (const line of lines) {
+            const info = document.createElement("div");
+            info.style.fontSize = "12px";
+            info.style.color = "#4a4138";
+            info.textContent = line;
+            slotCard.appendChild(info);
+          }
+        }
+        slotsGrid.appendChild(slotCard);
+      }
+
+      viewWrap.appendChild(slotsGrid);
+
+      if (slotState.itemId && slotState.quantity > 0) {
+        const purchaseCard = document.createElement("div");
+        purchaseCard.style.border = "1px solid rgba(0,0,0,0.12)";
+        purchaseCard.style.borderRadius = "12px";
+        purchaseCard.style.background = "rgba(255,255,255,0.94)";
+        purchaseCard.style.padding = "14px";
+        purchaseCard.style.display = "grid";
+        purchaseCard.style.gridTemplateColumns = "1fr auto";
+        purchaseCard.style.gap = "10px 14px";
+
+        const balance = document.createElement("div");
+        balance.style.gridColumn = "1 / -1";
+        balance.style.fontSize = "13px";
+        balance.style.fontWeight = "800";
+        balance.style.color = "#2f3f2b";
+        balance.textContent = `보유 개척 코인: ${formatPlayerCreditsLabel()}`;
+        purchaseCard.appendChild(balance);
+
+        const qtyLabel = document.createElement("label");
+        qtyLabel.textContent = "구매 수량";
+        qtyLabel.style.fontSize = "12px";
+        qtyLabel.style.fontWeight = "700";
+        qtyLabel.style.color = "#555";
+        purchaseCard.appendChild(qtyLabel);
+
+        const totalHint = document.createElement("div");
+        totalHint.style.fontSize = "12px";
+        totalHint.style.fontWeight = "700";
+        totalHint.style.color = "#7a4a12";
+        totalHint.style.alignSelf = "end";
+        purchaseCard.appendChild(totalHint);
+
+        const qtyInput = document.createElement("input");
+        qtyInput.type = "number";
+        qtyInput.min = "1";
+        qtyInput.max = String(Math.max(1, slotState.quantity));
+        qtyInput.step = "1";
+        qtyInput.value = "1";
+        qtyInput.style.border = "1px solid rgba(0,0,0,0.16)";
+        qtyInput.style.borderRadius = "10px";
+        qtyInput.style.padding = "10px 12px";
+        qtyInput.style.fontSize = "14px";
+        qtyInput.style.background = "rgba(255,255,255,0.96)";
+        purchaseCard.appendChild(qtyInput);
+
+        const purchaseBtn = document.createElement("button");
+        purchaseBtn.type = "button";
+        purchaseBtn.textContent = "구매";
+        purchaseBtn.style.minWidth = "94px";
+        purchaseBtn.style.border = "1px solid rgba(150,90,20,0.35)";
+        purchaseBtn.style.borderRadius = "12px";
+        purchaseBtn.style.padding = "10px 12px";
+        purchaseBtn.style.fontSize = "14px";
+        purchaseBtn.style.fontWeight = "900";
+        purchaseBtn.style.cursor = "pointer";
+        purchaseBtn.style.background = "rgba(255,255,255,0.94)";
+        purchaseBtn.style.color = "#7a4a12";
+        purchaseCard.appendChild(purchaseBtn);
+
+        const note = document.createElement("div");
+        note.style.gridColumn = "1 / -1";
+        note.style.fontSize = "12px";
+        note.style.color = "#6b6053";
+        note.textContent = "원하는 수량을 입력한 뒤 구매할 수 있습니다.";
+        purchaseCard.appendChild(note);
+
+        const normalizePurchaseQtyInput = () => {
+          const qty = Math.max(1, Math.min(slotState.quantity, Math.floor(Number(qtyInput.value) || 1)));
+          qtyInput.value = String(qty);
+          totalHint.textContent = `총 ${clampPlayerCredits(slotState.price * qty)}원`;
+        };
+        const updateTotalHint = () => {
+          const rawValue = qtyInput.value.trim();
+          if (!rawValue) {
+            totalHint.textContent = `총 ${clampPlayerCredits(slotState.price)}원`;
+            return;
+          }
+          const qty = Math.max(1, Math.min(slotState.quantity, Math.floor(Number(rawValue) || 1)));
+          totalHint.textContent = `총 ${clampPlayerCredits(slotState.price * qty)}원`;
+        };
+        qtyInput.addEventListener("focus", () => qtyInput.select());
+        qtyInput.addEventListener("click", () => qtyInput.select());
+        qtyInput.addEventListener("input", updateTotalHint);
+        qtyInput.addEventListener("blur", normalizePurchaseQtyInput);
+        updateTotalHint();
+
+        purchaseBtn.addEventListener("click", () => {
+          normalizePurchaseQtyInput();
+          const result = tryPurchaseFrontierShopListing(parcelLabel, qtyInput.value);
+          if (!result.ok) {
+            showUI(result.reason, 1100);
+            lastMessageUntil = performance.now() + 1100;
+            return;
+          }
+          showUI(`${result.itemName} 구매 완료 (-${result.totalPrice}원)`, 1100);
+          lastMessageUntil = performance.now() + 1100;
+          renderFrontierBoothDialog();
+        });
+
+        viewWrap.appendChild(purchaseCard);
+      }
+
+      frontierBoothActionArea.appendChild(viewWrap);
     }
     return;
   }
@@ -11261,12 +11728,19 @@ registerMapGate({
 
 function applyDevPreset() {
   if (!DEV_PRESET_ENABLED) return;
+  const isBuyerProfile = activeDevProfileId === "dev_user_2";
 
   for (let i = 0; i < inventory.slots.length; i++) {
     inventory.slots[i] = null;
   }
+  for (let i = 0; i < personalStorage.slots.length; i += 1) {
+    personalStorage.slots[i] = null;
+  }
 
-  inventory.pickaxeLevel = Math.max(0, Math.min(DEV_PRESET.pickaxeLevel ?? 0, PICKAXE_UPGRADE_LEVELS.length - 1));
+  inventory.pickaxeLevel = Math.max(
+    0,
+    Math.min(isBuyerProfile ? 1 : 5, PICKAXE_UPGRADE_LEVELS.length - 1)
+  );
   inventory.mineKeyIssued = Boolean(DEV_PRESET.unlockAbandonedMine);
   inventory.abandonedMineUnlocked = Boolean(DEV_PRESET.unlockAbandonedMine);
   for (const key of QUICK_USE_ALLOWED_KEYS) inventory.quickUse[key] = null;
@@ -11274,6 +11748,7 @@ function applyDevPreset() {
   inventory.equipped.body = null;
   inventory.equipped.shoes = null;
   inventory.equipped.tool = null;
+  setPlayerCredits(0);
 
   tutorialQuest.minedRockCount = DEV_PRESET.completeTutorial ? 1 : 0;
   tutorialQuest.upgradeCount = DEV_PRESET.completeTutorial ? 3 : 0;
@@ -11289,14 +11764,19 @@ function applyDevPreset() {
   }
 
   addItem("freshAirCanister", 2);
-  for (const itemId of getDevMaterialItemIds()) {
-    addItem(itemId, INVENTORY_STACK_LIMIT);
+  setPlayerCredits(500);
+  if (isBuyerProfile) {
+    addItem("mansionOneRoom102Permit", 1);
+  } else {
+    for (const itemId of getDevBulkGrantItemIds()) {
+      addItem(itemId, INVENTORY_STACK_LIMIT);
+    }
+    for (const label of FRONTIER_PARCEL_LABELS) {
+      const permitId = getFrontierParcelAuthorityItemId(label);
+      if (permitId) addItem(permitId, 1);
+    }
+    addItem("mansionOneRoom101Permit", 1);
   }
-  for (const label of FRONTIER_PARCEL_LABELS) {
-    const permitId = getFrontierParcelAuthorityItemId(label);
-    if (permitId) addItem(permitId, 1);
-  }
-  addItem("mansionOneRoom101Permit", 1);
 
   playerAirCurrent = AIR_GAUGE_MAX;
   playerAirMax = AIR_GAUGE_MAX;
@@ -11394,6 +11874,9 @@ function createDefaultPlayerSave() {
       z: START_Z,
     },
     rotationY: 0,
+    economy: {
+      credits: 0,
+    },
     inventory: {
       slots: Array.from({ length: inventory.slots.length }, () => null),
       pickaxeLevel: 1,
@@ -11446,6 +11929,9 @@ function serializePlayerSave() {
       z: Number(player.position.z.toFixed(3)),
     },
     rotationY: Number(player.rotation.y.toFixed(4)),
+    economy: {
+      credits: clampPlayerCredits(playerCredits),
+    },
     inventory: {
       slots: inventory.slots.map((slot) => (slot ? structuredClone(slot) : null)),
       pickaxeLevel: inventory.pickaxeLevel,
@@ -11508,6 +11994,10 @@ function applySerializedPlayerSave(rawSave, { preserveSharedWorld = false } = {}
       ...createDefaultPlayerSave().tutorial,
       ...(save.tutorial ?? {}),
     },
+    economy: {
+      ...createDefaultPlayerSave().economy,
+      ...(save.economy ?? {}),
+    },
     airSystem: {
       ...createDefaultPlayerSave().airSystem,
       ...(save.airSystem ?? {}),
@@ -11544,6 +12034,7 @@ function applySerializedPlayerSave(rawSave, { preserveSharedWorld = false } = {}
   inventory.equipped.body = normalizeEquippedItemRef(source.inventory.equipped.body);
   inventory.equipped.shoes = normalizeEquippedItemRef(source.inventory.equipped.shoes);
   inventory.equipped.tool = normalizeEquippedItemRef(source.inventory.equipped.tool);
+  setPlayerCredits(source.economy.credits);
   pruneQuickUseBindings();
 
   tutorialQuest.currentStep = Math.max(0, Math.min(source.tutorial.currentStep ?? 0, tutorialQuest.steps.length));
@@ -13122,171 +13613,187 @@ function buildFrontierArea() {
   scene.add(roomRoot);
   mansionOneRoomRoot = roomRoot;
 
-  const roomFloor = new THREE.Mesh(
-    new THREE.BoxGeometry(12, 0.16, 10),
-    new THREE.MeshStandardMaterial({ color: 0xa79a89, roughness: 0.96 })
-  );
-  roomFloor.position.set(0, 0.08, 0);
-  roomRoot.add(roomFloor);
-  groundSurfaces.push(roomFloor);
-  registerWalkableSurface("개척지", roomFloor, 0.42);
-
   const roomWallMat = new THREE.MeshStandardMaterial({ color: 0xd9d1c8, roughness: 0.94 });
   const roomTrimMat = new THREE.MeshStandardMaterial({ color: 0x7a6d61, roughness: 0.88 });
 
-  const backWall = new THREE.Mesh(new THREE.BoxGeometry(12, 3.8, 0.28), roomWallMat);
-  backWall.position.set(0, 1.9, -5.0);
-  roomRoot.add(backWall);
-  addCollider(backWall, 1.0);
+  function buildMansionRoomUnit(roomRootTarget, roomKey) {
+    const roomFloor = new THREE.Mesh(
+      new THREE.BoxGeometry(12, 0.16, 10),
+      new THREE.MeshStandardMaterial({ color: 0xa79a89, roughness: 0.96 })
+    );
+    roomFloor.position.set(0, 0.08, 0);
+    roomRootTarget.add(roomFloor);
+    groundSurfaces.push(roomFloor);
+    registerWalkableSurface("개척지", roomFloor, 0.42);
 
-  const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.28, 3.8, 10), roomWallMat);
-  leftWall.position.set(-6.0, 1.9, 0);
-  roomRoot.add(leftWall);
-  addCollider(leftWall, 1.0);
+    const backWall = new THREE.Mesh(new THREE.BoxGeometry(12, 3.8, 0.28), roomWallMat);
+    backWall.position.set(0, 1.9, -5.0);
+    roomRootTarget.add(backWall);
+    addCollider(backWall, 1.0);
 
-  const rightWall = leftWall.clone();
-  rightWall.position.x = 6.0;
-  roomRoot.add(rightWall);
-  addCollider(rightWall, 1.0);
+    const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.28, 3.8, 10), roomWallMat);
+    leftWall.position.set(-6.0, 1.9, 0);
+    roomRootTarget.add(leftWall);
+    addCollider(leftWall, 1.0);
 
-  const frontLeftWall = new THREE.Mesh(new THREE.BoxGeometry(4.35, 3.8, 0.28), roomWallMat);
-  frontLeftWall.position.set(-3.83, 1.9, 5.0);
-  roomRoot.add(frontLeftWall);
-  addCollider(frontLeftWall, 1.0);
+    const rightWall = leftWall.clone();
+    rightWall.position.x = 6.0;
+    roomRootTarget.add(rightWall);
+    addCollider(rightWall, 1.0);
 
-  const frontRightWall = frontLeftWall.clone();
-  frontRightWall.position.x = 3.83;
-  roomRoot.add(frontRightWall);
-  addCollider(frontRightWall, 1.0);
+    const frontLeftWall = new THREE.Mesh(new THREE.BoxGeometry(4.35, 3.8, 0.28), roomWallMat);
+    frontLeftWall.position.set(-3.83, 1.9, 5.0);
+    roomRootTarget.add(frontLeftWall);
+    addCollider(frontLeftWall, 1.0);
 
-  const ceiling = new THREE.Mesh(new THREE.BoxGeometry(12, 0.18, 10), roomTrimMat);
-  ceiling.position.set(0, 3.9, 0);
-  roomRoot.add(ceiling);
-  addCollider(ceiling, 1.0);
+    const frontRightWall = frontLeftWall.clone();
+    frontRightWall.position.x = 3.83;
+    roomRootTarget.add(frontRightWall);
+    addCollider(frontRightWall, 1.0);
 
-  const roomDoorFrameLeft = new THREE.Mesh(new THREE.BoxGeometry(0.24, 2.7, 0.2), roomTrimMat);
-  roomDoorFrameLeft.position.set(-1.2, 1.35, 4.92);
-  roomRoot.add(roomDoorFrameLeft);
-  addCollider(roomDoorFrameLeft, 1.0);
+    const ceiling = new THREE.Mesh(new THREE.BoxGeometry(12, 0.18, 10), roomTrimMat);
+    ceiling.position.set(0, 3.9, 0);
+    roomRootTarget.add(ceiling);
+    addCollider(ceiling, 1.0);
 
-  const roomDoorFrameRight = roomDoorFrameLeft.clone();
-  roomDoorFrameRight.position.x = 1.2;
-  roomRoot.add(roomDoorFrameRight);
-  addCollider(roomDoorFrameRight, 1.0);
+    const roomDoorFrameLeft = new THREE.Mesh(new THREE.BoxGeometry(0.24, 2.7, 0.2), roomTrimMat);
+    roomDoorFrameLeft.position.set(-1.2, 1.35, 4.92);
+    roomRootTarget.add(roomDoorFrameLeft);
+    addCollider(roomDoorFrameLeft, 1.0);
 
-  const roomDoorTop = new THREE.Mesh(new THREE.BoxGeometry(2.64, 0.2, 0.2), roomTrimMat);
-  roomDoorTop.position.set(0, 2.7, 4.92);
-  roomRoot.add(roomDoorTop);
-  addCollider(roomDoorTop, 1.0);
+    const roomDoorFrameRight = roomDoorFrameLeft.clone();
+    roomDoorFrameRight.position.x = 1.2;
+    roomRootTarget.add(roomDoorFrameRight);
+    addCollider(roomDoorFrameRight, 1.0);
 
-  const roomDoorPanel = new THREE.Mesh(
-    new THREE.BoxGeometry(2.1, 2.35, 0.12),
-    new THREE.MeshStandardMaterial({ color: 0x8f7a67, roughness: 0.9 })
-  );
-  roomDoorPanel.position.set(0, 1.18, 4.88);
-  roomRoot.add(roomDoorPanel);
-  addCollider(roomDoorPanel, 1.0);
+    const roomDoorTop = new THREE.Mesh(new THREE.BoxGeometry(2.64, 0.2, 0.2), roomTrimMat);
+    roomDoorTop.position.set(0, 2.7, 4.92);
+    roomRootTarget.add(roomDoorTop);
+    addCollider(roomDoorTop, 1.0);
 
-  const roomBedBase = new THREE.Mesh(
-    new THREE.BoxGeometry(2.5, 0.38, 1.35),
-    new THREE.MeshStandardMaterial({ color: 0x6a5d51, roughness: 0.92 })
-  );
-  roomBedBase.position.set(-3.1, 0.38, -2.2);
-  roomRoot.add(roomBedBase);
-  addCollider(roomBedBase, 1.0);
+    const roomDoorPanel = new THREE.Mesh(
+      new THREE.BoxGeometry(2.1, 2.35, 0.12),
+      new THREE.MeshStandardMaterial({ color: 0x8f7a67, roughness: 0.9 })
+    );
+    roomDoorPanel.position.set(0, 1.18, 4.88);
+    roomRootTarget.add(roomDoorPanel);
+    addCollider(roomDoorPanel, 1.0);
 
-  const roomMattress = new THREE.Mesh(
-    new THREE.BoxGeometry(2.28, 0.22, 1.12),
-    new THREE.MeshStandardMaterial({ color: 0xe9e5df, roughness: 0.98 })
-  );
-  roomMattress.position.set(-3.1, 0.68, -2.2);
-  roomRoot.add(roomMattress);
+    const roomBedBase = new THREE.Mesh(
+      new THREE.BoxGeometry(2.5, 0.38, 1.35),
+      new THREE.MeshStandardMaterial({ color: 0x6a5d51, roughness: 0.92 })
+    );
+    roomBedBase.position.set(-3.1, 0.38, -2.2);
+    roomRootTarget.add(roomBedBase);
+    addCollider(roomBedBase, 1.0);
 
-  const roomPillow = new THREE.Mesh(
-    new THREE.BoxGeometry(0.78, 0.18, 0.42),
-    new THREE.MeshStandardMaterial({ color: 0xf7f5f2, roughness: 1.0 })
-  );
-  roomPillow.position.set(-3.8, 0.88, -2.2);
-  roomRoot.add(roomPillow);
+    const roomMattress = new THREE.Mesh(
+      new THREE.BoxGeometry(2.28, 0.22, 1.12),
+      new THREE.MeshStandardMaterial({ color: 0xe9e5df, roughness: 0.98 })
+    );
+    roomMattress.position.set(-3.1, 0.68, -2.2);
+    roomRootTarget.add(roomMattress);
 
-  const roomBedMarker = new THREE.Mesh(
-    new THREE.BoxGeometry(2.8, 1.5, 1.8),
-    new THREE.MeshBasicMaterial({ visible: false })
-  );
-  roomBedMarker.position.set(
-    roomRoot.position.x - 3.1,
-    START_FLAT_Y + 1.0,
-    roomRoot.position.z - 2.2
-  );
-  scene.add(roomBedMarker);
-  mansionOneBedInteractable = {
-    obj: roomBedMarker,
-    board: roomBedMarker,
-    highlightKind: "none",
-    type: "mansionBed",
-  };
-  interactables.push(mansionOneBedInteractable);
+    const roomPillow = new THREE.Mesh(
+      new THREE.BoxGeometry(0.78, 0.18, 0.42),
+      new THREE.MeshStandardMaterial({ color: 0xf7f5f2, roughness: 1.0 })
+    );
+    roomPillow.position.set(-3.8, 0.88, -2.2);
+    roomRootTarget.add(roomPillow);
 
-  const roomChest = new THREE.Mesh(
-    new THREE.BoxGeometry(1.2, 0.88, 0.78),
-    new THREE.MeshStandardMaterial({ color: 0x8a6a46, roughness: 0.94 })
-  );
-  roomChest.position.set(3.2, 0.44, -2.6);
-  roomRoot.add(roomChest);
-  addCollider(roomChest, 1.0);
+    const roomBedMarker = new THREE.Mesh(
+      new THREE.BoxGeometry(2.8, 1.5, 1.8),
+      new THREE.MeshBasicMaterial({ visible: false })
+    );
+    roomBedMarker.position.set(
+      roomRootTarget.position.x - 3.1,
+      START_FLAT_Y + 1.0,
+      roomRootTarget.position.z - 2.2
+    );
+    roomBedMarker.userData.roomKey = roomKey;
+    scene.add(roomBedMarker);
+    interactables.push({
+      obj: roomBedMarker,
+      board: roomBedMarker,
+      highlightKind: "none",
+      type: "mansionBed",
+      roomKey,
+    });
+    if (roomKey === "101") mansionOneBedInteractable = interactables[interactables.length - 1];
 
-  const roomChestLid = new THREE.Mesh(
-    new THREE.BoxGeometry(1.28, 0.14, 0.86),
-    new THREE.MeshStandardMaterial({ color: 0x9a7850, roughness: 0.9 })
-  );
-  roomChestLid.position.set(3.2, 0.95, -2.6);
-  roomRoot.add(roomChestLid);
+    const roomChest = new THREE.Mesh(
+      new THREE.BoxGeometry(1.2, 0.88, 0.78),
+      new THREE.MeshStandardMaterial({ color: 0x8a6a46, roughness: 0.94 })
+    );
+    roomChest.position.set(3.2, 0.44, -2.6);
+    roomRootTarget.add(roomChest);
+    addCollider(roomChest, 1.0);
 
-  const roomStorageMarker = new THREE.Mesh(
-    new THREE.BoxGeometry(1.8, 1.6, 1.5),
-    new THREE.MeshBasicMaterial({ visible: false })
-  );
-  roomStorageMarker.position.set(
-    roomRoot.position.x + 3.2,
-    START_FLAT_Y + 0.9,
-    roomRoot.position.z - 2.6
-  );
-  scene.add(roomStorageMarker);
-  mansionOneStorageInteractable = {
-    obj: roomStorageMarker,
-    board: roomStorageMarker,
-    highlightKind: "none",
-    type: "mansionStorage",
-  };
-  interactables.push(mansionOneStorageInteractable);
+    const roomChestLid = new THREE.Mesh(
+      new THREE.BoxGeometry(1.28, 0.14, 0.86),
+      new THREE.MeshStandardMaterial({ color: 0x9a7850, roughness: 0.9 })
+    );
+    roomChestLid.position.set(3.2, 0.95, -2.6);
+    roomRootTarget.add(roomChestLid);
 
-  const roomExitMarker = new THREE.Mesh(
-    new THREE.BoxGeometry(2.4, 2.8, 1.0),
-    new THREE.MeshBasicMaterial({ visible: false })
-  );
-  roomExitMarker.position.set(
-    roomRoot.position.x,
-    START_FLAT_Y + 1.4,
-    roomRoot.position.z + 3.8
-  );
-  scene.add(roomExitMarker);
-  mansionOneExitInteractable = {
-    obj: roomExitMarker,
-    board: roomExitMarker,
-    highlightKind: "none",
-    type: "mansionExit",
-  };
-  interactables.push(mansionOneExitInteractable);
+    const roomStorageMarker = new THREE.Mesh(
+      new THREE.BoxGeometry(1.8, 1.6, 1.5),
+      new THREE.MeshBasicMaterial({ visible: false })
+    );
+    roomStorageMarker.position.set(
+      roomRootTarget.position.x + 3.2,
+      START_FLAT_Y + 0.9,
+      roomRootTarget.position.z - 2.6
+    );
+    roomStorageMarker.userData.roomKey = roomKey;
+    scene.add(roomStorageMarker);
+    interactables.push({
+      obj: roomStorageMarker,
+      board: roomStorageMarker,
+      highlightKind: "none",
+      type: "mansionStorage",
+      roomKey,
+    });
+    if (roomKey === "101") mansionOneStorageInteractable = interactables[interactables.length - 1];
 
-  ensurePlayerNotInsideGeneratedColliders(
-    [roomDoorPanel, roomBedBase, roomChest],
-    {
-      x: roomRoot.position.x,
-      z: roomRoot.position.z + 3.35,
-      rotationY: Math.PI,
-    },
-    ""
-  );
+    const roomExitMarker = new THREE.Mesh(
+      new THREE.BoxGeometry(2.4, 2.8, 1.0),
+      new THREE.MeshBasicMaterial({ visible: false })
+    );
+    roomExitMarker.position.set(
+      roomRootTarget.position.x,
+      START_FLAT_Y + 1.4,
+      roomRootTarget.position.z + 3.8
+    );
+    roomExitMarker.userData.roomKey = roomKey;
+    scene.add(roomExitMarker);
+    interactables.push({
+      obj: roomExitMarker,
+      board: roomExitMarker,
+      highlightKind: "none",
+      type: "mansionExit",
+      roomKey,
+    });
+    if (roomKey === "101") mansionOneExitInteractable = interactables[interactables.length - 1];
+
+    ensurePlayerNotInsideGeneratedColliders(
+      [roomDoorPanel, roomBedBase, roomChest],
+      {
+        x: roomRootTarget.position.x,
+        z: roomRootTarget.position.z + 3.35,
+        rotationY: Math.PI,
+      },
+      ""
+    );
+  }
+
+  buildMansionRoomUnit(roomRoot, "101");
+
+  const room102Root = new THREE.Group();
+  room102Root.position.set(housingWestCenterX - 114, START_FLAT_Y, housingCenterZ - 4);
+  scene.add(room102Root);
+  mansionOneRoom102Root = room102Root;
+  buildMansionRoomUnit(room102Root, "102");
 }
 
 function buildMapConnectorTunnel(startGate, endGate) {
@@ -13533,10 +14040,10 @@ window.addEventListener("keydown", (e) => {
 
   if (activeInteractable?.type === "mansionEntry") {
     if (!hasMansionOneResidenceAuthority()) {
-      showUI("101호 거주권 필요", 1000);
+      showUI("거주권 필요", 1000);
       return;
     }
-    if (enterMansionOneRoom()) return;
+    if (enterMansionOneRoom(getOwnedMansionRoomKey())) return;
   }
 
   if (activeInteractable?.type === "mansionExit") {
@@ -14425,7 +14932,7 @@ if (!hintText && activeInteractable) {
     : activeInteractable.type === "frontierDisplayBooth"
       ? (hasFrontierParcelAuthority(activeInteractable.parcelLabel) ? "E : 전시 관리" : "E : 전시 보기")
     : activeInteractable.type === "mansionEntry"
-      ? (hasMansionOneResidenceAuthority() ? "E : 거주 공간 입장" : "101호 거주권 필요")
+      ? (hasMansionOneResidenceAuthority() ? `E : ${getOwnedMansionRoomPermitName()} 입장` : "거주권 필요")
     : activeInteractable.type === "mansionBed"
       ? "Space : 취침"
     : activeInteractable.type === "mansionStorage"
