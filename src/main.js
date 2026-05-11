@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-const LAST_PATCHED_AT = "2026-05-09 22:11:08 KST";
+const LAST_PATCHED_AT = "2026-05-11 16:52:42 KST";
 
 const scene = new THREE.Scene();
 // ===== Atmosphere: Sky / Fog =====
@@ -132,6 +132,12 @@ let mansionSleepWakePoint = { x: 0, z: 0, rotationY: Math.PI };
 let personalStorageOverlay = null;
 let personalStorageWin = null;
 let personalStorageOpen = false;
+let frontierShopRegisterOverlay = null;
+let frontierShopRegisterWin = null;
+let frontierShopRegisterOpen = false;
+let frontierShopRegisterParcelLabel = "";
+let frontierShopRegisterSelectedItemId = "";
+let frontierShopRegisterSelectedAvailable = 0;
 
 const patchInfoWrap = document.createElement("div");
 patchInfoWrap.id = "patchInfoWrap";
@@ -7114,6 +7120,7 @@ let frontierActiveParcelLabel = "P6";
 let frontierParcelConstructionGroups = {};
 let frontierParcelConstructionRoots = {};
 let frontierParcelConstructionColliders = {};
+let frontierParcelBoothInteractables = {};
 let frontierParcelDefs = [];
 let mansionOneEntranceInteractable = null;
 let mansionOneExitInteractable = null;
@@ -7145,10 +7152,7 @@ function createDefaultFrontierBuildState() {
   return Object.fromEntries(
     FRONTIER_PARCEL_LABELS.map((label) => [
       label.toLowerCase(),
-      {
-        stage: 0,
-        signText: label,
-      },
+      createDefaultFrontierParcelBuildEntry(label),
     ])
   );
 }
@@ -7179,6 +7183,73 @@ function createDefaultFrontierParcelBuildEntry(label) {
   return {
     stage: 0,
     signText: label,
+    operations: createDefaultFrontierParcelOperationsState(),
+  };
+}
+
+function createDefaultFrontierParcelOperationsState() {
+  return {
+    shop: createDefaultFrontierShopState(),
+    displayA: { statusText: "비어 있음" },
+    displayB: { statusText: "비어 있음" },
+  };
+}
+
+function createDefaultFrontierShopState() {
+  return {
+    statusText: "비어 있음",
+    itemId: "",
+    quantity: 0,
+    price: 0,
+    userWallet: "",
+  };
+}
+
+function formatFrontierShopStatusText(itemId, quantity, price) {
+  if (!itemId || quantity <= 0) return "비어 있음";
+  const itemName = ITEM_DEFS[itemId]?.name ?? itemId;
+  return `${itemName} x${quantity} / ${price}G`;
+}
+
+function normalizeFrontierWalletAddress(rawAddress) {
+  return String(rawAddress || "").trim().toLowerCase();
+}
+
+function getCurrentFrontierWalletAddress() {
+  return normalizeFrontierWalletAddress(walletAuth.address);
+}
+
+function normalizeFrontierShopOperationEntry(rawEntry) {
+  const source = rawEntry && typeof rawEntry === "object" ? rawEntry : {};
+  const itemId =
+    typeof source.itemId === "string" && ITEM_DEFS[source.itemId]
+      ? source.itemId
+      : "";
+  const quantity = itemId ? Math.max(0, Math.min(999, Math.floor(Number(source.quantity) || 0))) : 0;
+  const price = itemId ? Math.max(0, Math.min(999999, Math.floor(Number(source.price) || 0))) : 0;
+  const userWallet = normalizeFrontierWalletAddress(source.userWallet);
+  return {
+    statusText: formatFrontierShopStatusText(itemId, quantity, price),
+    itemId,
+    quantity,
+    price,
+    userWallet,
+  };
+}
+
+function normalizeFrontierParcelOperationEntry(rawEntry) {
+  const source = rawEntry && typeof rawEntry === "object" ? rawEntry : {};
+  const statusText = String(source.statusText ?? "비어 있음").trim().slice(0, 40) || "비어 있음";
+  return { statusText };
+}
+
+function normalizeFrontierParcelOperationsState(rawState) {
+  const source = rawState && typeof rawState === "object" ? rawState : {};
+  const defaults = createDefaultFrontierParcelOperationsState();
+  return {
+    shop: normalizeFrontierShopOperationEntry(source.shop ?? defaults.shop),
+    displayA: normalizeFrontierParcelOperationEntry(source.displayA ?? defaults.displayA),
+    displayB: normalizeFrontierParcelOperationEntry(source.displayB ?? defaults.displayB),
   };
 }
 
@@ -7191,7 +7262,35 @@ function normalizeFrontierParcelBuildEntry(label, rawEntry) {
   return {
     stage: normalizedStage,
     signText,
+    operations: normalizeFrontierParcelOperationsState(source.operations),
   };
+}
+
+function getFrontierShopOperation(parcelLabel = getSelectedFrontierParcelLabel()) {
+  return getFrontierBuildState(parcelLabel).operations.shop;
+}
+
+function getFrontierShopAssignedWallet(parcelLabel = getSelectedFrontierParcelLabel()) {
+  return normalizeFrontierWalletAddress(getFrontierShopOperation(parcelLabel).userWallet);
+}
+
+function isFrontierShopSlotUser(parcelLabel = getSelectedFrontierParcelLabel(), walletAddress = getCurrentFrontierWalletAddress()) {
+  const currentWallet = normalizeFrontierWalletAddress(walletAddress);
+  if (!currentWallet) return false;
+  return getFrontierShopAssignedWallet(parcelLabel) === currentWallet;
+}
+
+function canManageFrontierShopSlot(parcelLabel = getSelectedFrontierParcelLabel()) {
+  return hasFrontierParcelAuthority(parcelLabel);
+}
+
+function canUseFrontierShopSlot(parcelLabel = getSelectedFrontierParcelLabel()) {
+  return isFrontierShopSlotUser(parcelLabel);
+}
+
+function formatFrontierShopUserDisplay(parcelLabel = getSelectedFrontierParcelLabel()) {
+  const assignedWallet = getFrontierShopAssignedWallet(parcelLabel);
+  return assignedWallet ? shortenWalletAddress(assignedWallet) : "미지정";
 }
 
 function getCurrentFrontierParcelLabel() {
@@ -7230,6 +7329,26 @@ function getFrontierConstructionColliders(parcelLabel) {
   return frontierParcelConstructionColliders[parcelLabel];
 }
 
+function getFrontierParcelBoothInteractables(parcelLabel) {
+  if (!frontierParcelBoothInteractables[parcelLabel]) {
+    frontierParcelBoothInteractables[parcelLabel] = [];
+  }
+  return frontierParcelBoothInteractables[parcelLabel];
+}
+
+function getFrontierParcelSafeStandingPoint(parcelLabel) {
+  const parcel = frontierParcelDefs.find((entry) => entry.label === parcelLabel);
+  if (!parcel) {
+    return { x: player.position.x, z: player.position.z, rotationY: player.rotation.y };
+  }
+  const facesCenterLaneFromLeft = parcel.x < FRONTIER_MAP_X;
+  return {
+    x: parcel.x + (facesCenterLaneFromLeft ? parcel.width * 0.28 : -parcel.width * 0.28),
+    z: parcel.z,
+    rotationY: facesCenterLaneFromLeft ? Math.PI * 0.5 : -Math.PI * 0.5,
+  };
+}
+
 function clearFrontierConstructionColliders(parcelLabel) {
   const colliders = getFrontierConstructionColliders(parcelLabel);
   for (const collider of colliders) {
@@ -7240,6 +7359,16 @@ function clearFrontierConstructionColliders(parcelLabel) {
     if (collider?.parent) collider.removeFromParent();
   }
   frontierParcelConstructionColliders[parcelLabel] = [];
+}
+
+function clearFrontierParcelBoothMarkers(parcelLabel) {
+  const markers = getFrontierParcelBoothInteractables(parcelLabel);
+  for (const marker of markers) {
+    const idx = interactables.indexOf(marker);
+    if (idx !== -1) interactables.splice(idx, 1);
+    if (marker?.obj?.parent) marker.obj.removeFromParent();
+  }
+  frontierParcelBoothInteractables[parcelLabel] = [];
 }
 
 function rebuildAllFrontierConstructionVisuals() {
@@ -7308,6 +7437,144 @@ function buildFrontierBuildingSign(text) {
   return wrap;
 }
 
+function buildFrontierBoothLabel(titleText, statusText) {
+  const wrap = new THREE.Group();
+  const width = 1.9;
+  const height = 0.68;
+
+  const board = new THREE.Mesh(
+    new THREE.BoxGeometry(width, height, 0.08),
+    new THREE.MeshStandardMaterial({ color: 0x4f3b2d, roughness: 0.88 })
+  );
+  wrap.add(board);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 820;
+  canvas.height = 280;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#f4ead0";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#473528";
+  ctx.fillRect(12, 12, canvas.width - 24, canvas.height - 24);
+  ctx.fillStyle = "#fbf1d7";
+  ctx.fillRect(22, 22, canvas.width - 44, canvas.height - 44);
+
+  const safeTitle = String(titleText || "").trim() || "부스";
+  const safeStatus = String(statusText || "").trim() || "비어 있음";
+  ctx.fillStyle = "#2b1d14";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = "900 84px Apple SD Gothic Neo, Malgun Gothic, system-ui, sans-serif";
+  ctx.fillText(safeTitle, canvas.width * 0.5, 108);
+
+  let statusFont = 56;
+  do {
+    ctx.font = `800 ${statusFont}px Apple SD Gothic Neo, Malgun Gothic, system-ui, sans-serif`;
+    if (ctx.measureText(safeStatus).width <= 650 || statusFont <= 32) break;
+    statusFont -= 2;
+  } while (statusFont > 32);
+  ctx.fillStyle = "#7a6550";
+  ctx.fillText(safeStatus, canvas.width * 0.5, 198);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const face = new THREE.Mesh(
+    new THREE.PlaneGeometry(width - 0.16, height - 0.14),
+    new THREE.MeshBasicMaterial({ map: tex })
+  );
+  face.position.z = 0.046;
+  wrap.add(face);
+
+  return wrap;
+}
+
+function buildFrontierBoothProductVisual(itemId, quantity = 0) {
+  const wrap = new THREE.Group();
+  if (!itemId || !ITEM_DEFS[itemId]) return wrap;
+
+  const def = ITEM_DEFS[itemId];
+  if (typeof def.makeInventoryModel === "function") {
+    const model = def.makeInventoryModel();
+    const box = new THREE.Box3().setFromObject(model);
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z) || 1;
+    model.scale.multiplyScalar(0.72 / maxDim);
+    const scaledBox = new THREE.Box3().setFromObject(model);
+    const center = scaledBox.getCenter(new THREE.Vector3());
+    model.position.sub(center);
+    model.position.y -= scaledBox.min.y;
+    wrap.add(model);
+  } else {
+    const canvas = document.createElement("canvas");
+    canvas.width = 300;
+    canvas.height = 300;
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "rgba(246, 235, 210, 0.96)";
+    ctx.beginPath();
+    ctx.roundRect(28, 28, 244, 244, 28);
+    ctx.fill();
+    ctx.fillStyle = "#5a4637";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = "900 140px Apple SD Gothic Neo, Malgun Gothic, system-ui, sans-serif";
+    ctx.fillText(def.icon ?? "?", canvas.width * 0.5, canvas.height * 0.48);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const plane = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.88, 0.88),
+      new THREE.MeshBasicMaterial({ map: tex, transparent: true })
+    );
+    wrap.add(plane);
+  }
+
+  const qtyCanvas = document.createElement("canvas");
+  qtyCanvas.width = 360;
+  qtyCanvas.height = 120;
+  const qtyCtx = qtyCanvas.getContext("2d");
+  qtyCtx.clearRect(0, 0, qtyCanvas.width, qtyCanvas.height);
+  qtyCtx.fillStyle = "rgba(48,36,28,0.88)";
+  qtyCtx.beginPath();
+  qtyCtx.roundRect(60, 16, 240, 88, 24);
+  qtyCtx.fill();
+  qtyCtx.fillStyle = "#fbf1d7";
+  qtyCtx.textAlign = "center";
+  qtyCtx.textBaseline = "middle";
+  qtyCtx.font = "800 58px Apple SD Gothic Neo, Malgun Gothic, system-ui, sans-serif";
+  qtyCtx.fillText(`x${quantity}`, qtyCanvas.width * 0.5, qtyCanvas.height * 0.52);
+  const qtyTex = new THREE.CanvasTexture(qtyCanvas);
+  qtyTex.colorSpace = THREE.SRGBColorSpace;
+  const qtyTag = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.72, 0.24),
+    new THREE.MeshBasicMaterial({ map: qtyTex, transparent: true })
+  );
+  qtyTag.position.set(0, 0.68, 0.02);
+  wrap.add(qtyTag);
+  return wrap;
+}
+
+function registerFrontierBoothMarker(parcelLabel, type, title, x, y, z, slotKey = "") {
+  const marker = new THREE.Mesh(
+    new THREE.BoxGeometry(1.2, 1.6, 1.2),
+    new THREE.MeshBasicMaterial({ visible: false })
+  );
+  marker.position.set(x, y, z);
+  scene.add(marker);
+  const interactable = {
+    obj: marker,
+    board: marker,
+    highlightKind: "none",
+    type,
+    parcelLabel,
+    slotKey,
+    boothTitle: title,
+    text: `E : ${title}`,
+  };
+  interactables.push(interactable);
+  getFrontierParcelBoothInteractables(parcelLabel).push(interactable);
+  return interactable;
+}
+
 function rebuildFrontierParcelConstructionVisual(parcelLabel) {
   const root = getFrontierConstructionRoot(parcelLabel);
   if (!root?.parent) return;
@@ -7317,6 +7584,7 @@ function rebuildFrontierParcelConstructionVisual(parcelLabel) {
     existingGroup.removeFromParent();
   }
   clearFrontierConstructionColliders(parcelLabel);
+  clearFrontierParcelBoothMarkers(parcelLabel);
 
   const parcel = frontierParcelDefs.find((entry) => entry.label === parcelLabel);
   if (!parcel) return;
@@ -7461,9 +7729,99 @@ function rebuildFrontierParcelConstructionVisual(parcelLabel) {
     );
     rearTrim.position.set(rearTrimX, FRONTIER_BUILDING_HEIGHT * 0.42, 0);
     buildGroup.add(rearTrim);
+
+    const boothBaseMat = new THREE.MeshStandardMaterial({ color: 0xc8b494, roughness: 0.95 });
+    const boothTopMat = new THREE.MeshStandardMaterial({ color: 0x8d755f, roughness: 0.88 });
+    const boothWidth = 1.45;
+    const boothDepth = 1.05;
+    const boothHeight = 0.86;
+    const boothTopHeight = 0.14;
+    const boothY = boothHeight * 0.5;
+    const boothTopY = boothHeight + boothTopHeight * 0.5;
+    const labelY = boothHeight + 0.78;
+    const sideLaneZ = halfD - 1.1;
+    const displayX = facesCenterLaneFromLeft ? [-0.95, -0.95] : [0.95, 0.95];
+    const boothEntries = [
+      {
+        title: "전시 A",
+        status: buildState.operations.displayA.statusText,
+        x: displayX[0],
+        z: -sideLaneZ,
+      },
+      {
+        title: "전시 B",
+        status: buildState.operations.displayB.statusText,
+        x: displayX[1],
+        z: sideLaneZ,
+      },
+      {
+        title: "상점",
+        status: buildState.operations.shop.statusText,
+        x: facesCenterLaneFromLeft ? 1.18 : -1.18,
+        z: 0,
+      },
+    ];
+
+    for (const booth of boothEntries) {
+      const base = new THREE.Mesh(
+        new THREE.BoxGeometry(boothWidth, boothHeight, boothDepth),
+        boothBaseMat
+      );
+      base.position.set(booth.x, boothY, booth.z);
+      buildGroup.add(base);
+
+      const top = new THREE.Mesh(
+        new THREE.BoxGeometry(boothWidth + 0.1, boothTopHeight, boothDepth + 0.14),
+        boothTopMat
+      );
+      top.position.set(booth.x, boothTopY, booth.z);
+      buildGroup.add(top);
+
+      const label = buildFrontierBoothLabel(booth.title, booth.status);
+      label.position.set(booth.x, labelY, booth.z);
+      label.rotation.y = facesCenterLaneFromLeft ? Math.PI * 0.5 : -Math.PI * 0.5;
+      buildGroup.add(label);
+
+      if (booth.title === "상점" && buildState.operations.shop.itemId && buildState.operations.shop.quantity > 0) {
+        const productWrap = buildFrontierBoothProductVisual(
+          buildState.operations.shop.itemId,
+          buildState.operations.shop.quantity
+        );
+        productWrap.position.set(booth.x, boothTopY + 0.08, booth.z);
+        productWrap.rotation.y = facesCenterLaneFromLeft ? Math.PI * 0.5 : -Math.PI * 0.5;
+        buildGroup.add(productWrap);
+      }
+
+      registerBuildCollider(
+        boothWidth - 0.16,
+        boothHeight + boothTopHeight,
+        boothDepth - 0.12,
+        booth.x,
+        boothHeight * 0.5,
+        booth.z
+      );
+
+      const boothInteractOffsetX = facesCenterLaneFromLeft ? 0.88 : -0.88;
+      const boothWorldPos = buildGroup.localToWorld(
+        new THREE.Vector3(booth.x + boothInteractOffsetX, 0.82, booth.z)
+      );
+      registerFrontierBoothMarker(
+        parcelLabel,
+        booth.title === "상점" ? "frontierShopBooth" : "frontierDisplayBooth",
+        booth.title,
+        boothWorldPos.x,
+        boothWorldPos.y,
+        boothWorldPos.z,
+        booth.title === "상점" ? "shop" : booth.title === "전시 A" ? "displayA" : "displayB"
+      );
+    }
   }
 
   frontierParcelConstructionGroups[parcelLabel] = buildGroup;
+  ensurePlayerNotInsideGeneratedColliders(
+    getFrontierConstructionColliders(parcelLabel),
+    getFrontierParcelSafeStandingPoint(parcelLabel)
+  );
 }
 
 function updateSceneFogForCurrentMap() {
@@ -8124,11 +8482,17 @@ function isPlayerInsideFrontierParcel(parcelLabel) {
 function renderFrontierBuildWindow() {
   const parcelLabel = getSelectedFrontierParcelLabel();
   const buildState = getFrontierBuildState(parcelLabel);
+  const isCompleted = buildState.stage >= 100;
+  const hasAuthority = hasFrontierParcelAuthority(parcelLabel);
+  const canManageShop = canManageFrontierShopSlot(parcelLabel);
+  const canUseShop = canUseFrontierShopSlot(parcelLabel);
+  const assignedWallet = getFrontierShopAssignedWallet(parcelLabel);
   const nextStage = getFrontierNextStageConfig(buildState.stage);
   const woodOwned = getItemCount("woodPlank");
   const stoneOwned = getItemCount("masonryStone");
 
   frontierBuildTitle.textContent = `${parcelLabel} 건축 진행`;
+  frontierBuildHeaderNote.textContent = isCompleted ? "개척지 건축 완료" : "개척지 건축 예정지";
   frontierBuildStageCard.innerHTML = "";
   frontierBuildRequirementCard.innerHTML = "";
   frontierBuildOwnedCard.innerHTML = "";
@@ -8146,54 +8510,79 @@ function renderFrontierBuildWindow() {
   stageDesc.style.lineHeight = "1.65";
   stageDesc.style.color = "#555";
   stageDesc.textContent =
-    buildState.stage >= 100
-      ? "건축이 완료되었습니다. 정면 상단 간판을 수정해 이 필지의 용도를 표시할 수 있습니다."
+    isCompleted
+      ? "건축이 완료되었습니다. 이 필지의 상점 슬롯 1개와 전시 슬롯 2개의 운영 상태를 여기서 확인할 수 있습니다."
       : nextStage
         ? `${nextStage.label} 단계로 올리려면 목재 ${nextStage.wood}개와 석재 ${nextStage.stone}개가 필요합니다.`
         : "건축 대기 중";
   frontierBuildStageCard.appendChild(stageDesc);
 
-  frontierBuildRequirementCard.innerHTML = `
-    <div style="font-size:13px;font-weight:800;color:#222;">다음 단계 필요 재료</div>
-    <div style="margin-top:10px;font-size:14px;line-height:1.8;color:#444;">
-      <div>목재: <strong>${nextStage ? nextStage.wood : 0}</strong></div>
-      <div>석재: <strong>${nextStage ? nextStage.stone : 0}</strong></div>
-    </div>
-  `;
+  if (isCompleted) {
+    frontierBuildRequirementCard.innerHTML = `
+      <div style="font-size:13px;font-weight:800;color:#222;">건축 상태</div>
+      <div style="margin-top:10px;font-size:14px;line-height:1.8;color:#444;">
+        <div>현재 상태: <strong>건축 완료</strong></div>
+        <div>건물 운영은 내부 부스 앞에서 <strong>E</strong>키로 진행할 수 있습니다.</div>
+        <div style="margin-top:6px;opacity:0.72;">상점은 판매 관리/보기, 전시는 관리/보기로 분리됩니다.</div>
+      </div>
+    `;
 
-  frontierBuildOwnedCard.innerHTML = `
-    <div style="font-size:13px;font-weight:800;color:#222;">현재 보유 재료</div>
-    <div style="margin-top:10px;font-size:14px;line-height:1.8;color:#444;">
-      <div>목재: <strong>${woodOwned}</strong></div>
-      <div>석재: <strong>${stoneOwned}</strong></div>
-    </div>
-  `;
+    frontierBuildOwnedCard.innerHTML = `
+      <div style="font-size:13px;font-weight:800;color:#222;">운영 슬롯 요약</div>
+      <div style="margin-top:10px;font-size:14px;line-height:1.8;color:#444;">
+        <div>상점 슬롯 1: <strong>${buildState.operations.shop.statusText}</strong></div>
+        <div>전시 슬롯 A: <strong>${buildState.operations.displayA.statusText}</strong></div>
+        <div>전시 슬롯 B: <strong>${buildState.operations.displayB.statusText}</strong></div>
+      </div>
+    `;
+    frontierBuildShopManagerCard.style.display = "none";
+  } else {
+    frontierBuildRequirementCard.innerHTML = `
+      <div style="font-size:13px;font-weight:800;color:#222;">다음 단계 필요 재료</div>
+      <div style="margin-top:10px;font-size:14px;line-height:1.8;color:#444;">
+        <div>목재: <strong>${nextStage ? nextStage.wood : 0}</strong></div>
+        <div>석재: <strong>${nextStage ? nextStage.stone : 0}</strong></div>
+      </div>
+    `;
+
+    frontierBuildOwnedCard.innerHTML = `
+      <div style="font-size:13px;font-weight:800;color:#222;">현재 보유 재료</div>
+      <div style="margin-top:10px;font-size:14px;line-height:1.8;color:#444;">
+        <div>목재: <strong>${woodOwned}</strong></div>
+        <div>석재: <strong>${stoneOwned}</strong></div>
+      </div>
+    `;
+    frontierBuildShopManagerCard.style.display = "none";
+  }
 
   const canAdvance = Boolean(
     nextStage &&
     woodOwned >= nextStage.wood &&
     stoneOwned >= nextStage.stone
   );
-  frontierBuildActionBtn.disabled = !nextStage || !canAdvance;
-  frontierBuildActionBtn.textContent = nextStage ? "건축 진행" : "완공";
+  frontierBuildActionBtn.disabled = isCompleted ? true : !nextStage || !canAdvance;
+  frontierBuildActionBtn.textContent = isCompleted ? "건축 완료" : nextStage ? "건축 진행" : "완공";
   frontierBuildActionBtn.style.opacity = frontierBuildActionBtn.disabled ? "0.58" : "1";
   frontierBuildActionBtn.style.cursor = frontierBuildActionBtn.disabled ? "default" : "pointer";
 
   frontierBuildNotice.textContent =
-    buildState.stage >= 100
-      ? "건물 완공: B 키로 간판 문구를 수정할 수 있습니다."
+    isCompleted
+      ? "건축은 완료되었습니다. 상점/전시 운영은 각 부스 앞에서 E키로 관리하거나 볼 수 있습니다."
       : canAdvance
         ? "재료가 충분합니다. 건축 진행을 누르면 다음 단계로 즉시 상승합니다."
         : "다음 단계를 올리려면 필요한 목재와 석재를 먼저 준비해야 합니다.";
 
-  frontierBuildSignCard.style.display = buildState.stage >= 100 ? "block" : "none";
+  frontierBuildSignCard.style.display = isCompleted ? "block" : "none";
   frontierBuildSignInput.value = buildState.signText;
-  frontierBuildSignInput.disabled = buildState.stage < 100;
-  frontierBuildSignSaveBtn.disabled = buildState.stage < 100;
+  frontierBuildSignInput.disabled = !isCompleted || !hasAuthority;
+  frontierBuildSignSaveBtn.disabled = !isCompleted || !hasAuthority;
 }
 
 function setFrontierBuildOpen(v) {
   frontierBuildOpen = v;
+  if (!v) {
+    closeFrontierShopRegisterDialog();
+  }
   frontierBuildOverlay.style.display = frontierBuildOpen ? "block" : "none";
   frontierBuildWin.style.display = frontierBuildOpen ? "block" : "none";
   if (frontierBuildOpen) {
@@ -8203,6 +8592,255 @@ function setFrontierBuildOpen(v) {
     setRefineryOpen(false);
     renderFrontierBuildWindow();
   }
+}
+
+function isFrontierShopSellableEntry(entry) {
+  if (!entry || isNftInventoryEntry(entry)) return { ok: false, reason: "NFT 아이템은 판매 등록할 수 없습니다." };
+  const itemId = getSlotItemId(entry);
+  const def = ITEM_DEFS[itemId];
+  if (!def) return { ok: false, reason: "알 수 없는 아이템입니다." };
+  if (getInventoryEntryCategory(entry) === "equip") return { ok: false, reason: "장비 아이템은 판매 등록할 수 없습니다." };
+  if (def.isAuthorityItem) return { ok: false, reason: "권한 아이템은 판매 등록할 수 없습니다." };
+  if (isQuestCriticalItemBlockedFromDiscard(entry)) return { ok: false, reason: "퀘스트 아이템은 판매 등록할 수 없습니다." };
+  if (!["cons", "misc"].includes(def.category)) return { ok: false, reason: "이 아이템은 판매할 수 없습니다." };
+  return { ok: true, reason: "" };
+}
+
+function getSellableFrontierShopEntries() {
+  return inventory.slots
+    .map((entry, index) => ({ entry, index }))
+    .filter(({ entry }) => entry)
+    .filter(({ entry }) => isFrontierShopSellableEntry(entry).ok);
+}
+
+function openFrontierShopRegisterDialog(parcelLabel = getSelectedFrontierParcelLabel()) {
+  if (getFrontierBuildState(parcelLabel).stage < 100) {
+    showUI("건축 완료 후 상점을 운영할 수 있습니다.", 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return false;
+  }
+  if (!getFrontierShopAssignedWallet(parcelLabel)) {
+    showUI("상점 사용자 지정 필요", 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return false;
+  }
+  if (!canUseFrontierShopSlot(parcelLabel)) {
+    showUI("상점 운영 권한이 없습니다.", 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return false;
+  }
+  frontierShopRegisterParcelLabel = parcelLabel;
+  frontierShopRegisterSelectedItemId = "";
+  frontierShopRegisterSelectedAvailable = 0;
+  frontierShopRegisterOpen = true;
+  frontierShopRegisterOverlay.style.display = "block";
+  frontierShopRegisterWin.style.display = "block";
+  closeFrontierBoothDialog();
+  renderFrontierShopRegisterDialog();
+  return true;
+}
+
+function closeFrontierShopRegisterDialog() {
+  frontierShopRegisterOpen = false;
+  frontierShopRegisterParcelLabel = "";
+  frontierShopRegisterSelectedItemId = "";
+  frontierShopRegisterSelectedAvailable = 0;
+  if (frontierShopRegisterOverlay) frontierShopRegisterOverlay.style.display = "none";
+  if (frontierShopRegisterWin) frontierShopRegisterWin.style.display = "none";
+}
+
+function clearFrontierShopListing(parcelLabel = frontierShopRegisterParcelLabel) {
+  if (!parcelLabel) return false;
+  if (!canUseFrontierShopSlot(parcelLabel)) return false;
+  const shopState = getFrontierShopOperation(parcelLabel);
+  if (!shopState.itemId || shopState.quantity <= 0) {
+    showUI("현재 등록된 판매 물품이 없습니다.", 900);
+    lastMessageUntil = performance.now() + 900;
+    return false;
+  }
+  if (!addItem(shopState.itemId, shopState.quantity)) {
+    showUI("인벤토리가 가득 차 판매 물품을 회수할 수 없습니다.", 1200);
+    lastMessageUntil = performance.now() + 1200;
+    return false;
+  }
+  shopState.itemId = "";
+  shopState.quantity = 0;
+  shopState.price = 0;
+  shopState.statusText = "비어 있음";
+  rebuildFrontierParcelConstructionVisual(parcelLabel);
+  updateInventoryUI();
+  schedulePlayerSaveSync(true);
+  renderFrontierBuildWindow();
+  renderFrontierShopRegisterDialog();
+  showUI("판매 물품을 회수했습니다.", 1000);
+  lastMessageUntil = performance.now() + 1000;
+  return true;
+}
+
+function commitFrontierShopListing() {
+  const parcelLabel = frontierShopRegisterParcelLabel || getSelectedFrontierParcelLabel();
+  if (!parcelLabel) return false;
+  if (!canUseFrontierShopSlot(parcelLabel)) return false;
+  const itemId = frontierShopRegisterSelectedItemId;
+  if (!itemId) {
+    showUI("판매할 아이템을 먼저 선택하세요.", 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return false;
+  }
+  const quantity = Math.max(1, Math.floor(Number(frontierShopQuantityInput.value) || 0));
+  const price = Math.max(0, Math.floor(Number(frontierShopPriceInput.value) || 0));
+  if (getItemCount(itemId) < quantity) {
+    showUI("판매 수량만큼 아이템을 보유하고 있지 않습니다.", 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return false;
+  }
+  const shopState = getFrontierShopOperation(parcelLabel);
+  let previousItemId = "";
+  let previousQuantity = 0;
+  if (shopState.itemId && shopState.quantity > 0) {
+    previousItemId = shopState.itemId;
+    previousQuantity = shopState.quantity;
+    if (!addItem(previousItemId, previousQuantity)) {
+      showUI("기존 판매 물품을 회수할 인벤토리 공간이 부족합니다.", 1200);
+      lastMessageUntil = performance.now() + 1200;
+      return false;
+    }
+  }
+  if (!consumeItem(itemId, quantity)) {
+    if (previousItemId && previousQuantity > 0) {
+      consumeItem(previousItemId, previousQuantity);
+    }
+    showUI("판매 물품을 등록하지 못했습니다.", 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return false;
+  }
+  shopState.itemId = itemId;
+  shopState.quantity = quantity;
+  shopState.price = price;
+  shopState.statusText = formatFrontierShopStatusText(itemId, quantity, price);
+  rebuildFrontierParcelConstructionVisual(parcelLabel);
+  updateInventoryUI();
+  schedulePlayerSaveSync(true);
+  renderFrontierBuildWindow();
+  renderFrontierShopRegisterDialog();
+  showUI("판매 물품을 등록했습니다.", 1000);
+  lastMessageUntil = performance.now() + 1000;
+  return true;
+}
+
+function renderFrontierShopRegisterDialog() {
+  if (!frontierShopRegisterOpen) return;
+  const parcelLabel = frontierShopRegisterParcelLabel || getSelectedFrontierParcelLabel();
+  const shopState = getFrontierShopOperation(parcelLabel);
+  frontierShopTitle.textContent = `${parcelLabel} 판매 등록`;
+  frontierShopCurrentStatus.textContent = `현재 판매 상태: ${shopState.statusText}`;
+  frontierShopInventoryGrid.innerHTML = "";
+
+  const sellableEntries = getSellableFrontierShopEntries();
+  if (!sellableEntries.length) {
+    const empty = document.createElement("div");
+    empty.textContent = "판매 등록 가능한 재료/소비 아이템이 없습니다.";
+    empty.style.gridColumn = "1 / -1";
+    empty.style.padding = "16px 10px";
+    empty.style.borderRadius = "12px";
+    empty.style.background = "rgba(0,0,0,0.05)";
+    empty.style.fontSize = "13px";
+    empty.style.color = "#666";
+    frontierShopInventoryGrid.appendChild(empty);
+  }
+
+  for (const { entry } of sellableEntries) {
+    const itemId = getSlotItemId(entry);
+    const count = getSlotItemCount(entry);
+    const card = document.createElement("button");
+    card.type = "button";
+    card.style.border = frontierShopRegisterSelectedItemId === itemId
+      ? "2px solid rgba(255,145,45,0.95)"
+      : "1px solid rgba(0,0,0,0.14)";
+    card.style.borderRadius = "12px";
+    card.style.background = frontierShopRegisterSelectedItemId === itemId
+      ? "rgba(255,235,205,0.88)"
+      : "rgba(255,255,255,0.96)";
+    card.style.padding = "10px";
+    card.style.cursor = "pointer";
+    card.style.display = "flex";
+    card.style.flexDirection = "column";
+    card.style.alignItems = "center";
+    card.style.gap = "6px";
+
+    const visual = createInventoryEntryVisualElement(entry, { size: 40 });
+    card.appendChild(visual);
+
+    const name = document.createElement("div");
+    name.textContent = getInventoryEntryDisplayName(entry);
+    name.style.fontSize = "12px";
+    name.style.fontWeight = "800";
+    name.style.color = "#333";
+    name.style.textAlign = "center";
+    card.appendChild(name);
+
+    const meta = document.createElement("div");
+    meta.textContent = `보유 ${count}개`;
+    meta.style.fontSize = "11px";
+    meta.style.color = "#7a6550";
+    card.appendChild(meta);
+
+    card.addEventListener("click", () => {
+      frontierShopRegisterSelectedItemId = itemId;
+      frontierShopRegisterSelectedAvailable = count;
+      frontierShopQuantityInput.max = String(count);
+      frontierShopQuantityInput.value = "1";
+      renderFrontierShopRegisterDialog();
+    });
+    frontierShopInventoryGrid.appendChild(card);
+  }
+
+  const selectedItemName = frontierShopRegisterSelectedItemId
+    ? ITEM_DEFS[frontierShopRegisterSelectedItemId]?.name ?? frontierShopRegisterSelectedItemId
+    : "선택 없음";
+  frontierShopSelectedItem.textContent = `선택한 아이템: ${selectedItemName}`;
+  frontierShopSelectedOwned.textContent = `보유 수량: ${frontierShopRegisterSelectedAvailable}개`;
+  frontierShopQuantityInput.max = String(Math.max(1, frontierShopRegisterSelectedAvailable));
+  if (!frontierShopRegisterSelectedItemId) {
+    frontierShopQuantityInput.value = "1";
+  }
+  frontierShopRegisterBtn.disabled = !frontierShopRegisterSelectedItemId;
+  frontierShopRegisterBtn.style.opacity = frontierShopRegisterBtn.disabled ? "0.58" : "1";
+  frontierShopClearBtn.disabled = !(shopState.itemId && shopState.quantity > 0);
+  frontierShopClearBtn.style.opacity = frontierShopClearBtn.disabled ? "0.58" : "1";
+}
+
+function assignFrontierShopSlotUser(parcelLabel, walletAddress) {
+  if (!canManageFrontierShopSlot(parcelLabel)) return false;
+  const normalizedWallet = normalizeFrontierWalletAddress(walletAddress);
+  if (!normalizedWallet) {
+    showUI("지갑 주소를 입력해주세요.", 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return false;
+  }
+  const shopState = getFrontierShopOperation(parcelLabel);
+  shopState.userWallet = normalizedWallet;
+  schedulePlayerSaveSync(true);
+  renderFrontierBuildWindow();
+  showUI(`상점 사용자를 ${shortenWalletAddress(normalizedWallet)}(으)로 지정했습니다.`, 1100);
+  lastMessageUntil = performance.now() + 1100;
+  return true;
+}
+
+function clearFrontierShopSlotUser(parcelLabel) {
+  if (!canManageFrontierShopSlot(parcelLabel)) return false;
+  const shopState = getFrontierShopOperation(parcelLabel);
+  if (shopState.itemId && shopState.quantity > 0) {
+    showUI("판매 물품이 등록된 상태에서는 사용자를 해제할 수 없습니다.", 1200);
+    lastMessageUntil = performance.now() + 1200;
+    return false;
+  }
+  shopState.userWallet = "";
+  schedulePlayerSaveSync(true);
+  renderFrontierBuildWindow();
+  showUI("상점 사용자를 해제했습니다.", 1000);
+  lastMessageUntil = performance.now() + 1000;
+  return true;
 }
 
 function tryAdvanceFrontierBuildStage() {
@@ -8999,6 +9637,343 @@ frontierBuildSignSaveBtn.style.background = "rgba(255,255,255,0.92)";
 frontierBuildSignSaveBtn.style.color = "#333";
 frontierBuildSignCard.appendChild(frontierBuildSignSaveBtn);
 
+const frontierBuildShopManagerCard = document.createElement("div");
+frontierBuildShopManagerCard.style.padding = "14px";
+frontierBuildShopManagerCard.style.borderRadius = "12px";
+frontierBuildShopManagerCard.style.background = "rgba(255,255,255,0.94)";
+frontierBuildShopManagerCard.style.border = "1px solid rgba(0,0,0,0.14)";
+frontierBuildShopManagerCard.style.fontFamily = "system-ui, -apple-system, sans-serif";
+frontierBuildShopManagerCard.style.display = "none";
+frontierBuildBody.appendChild(frontierBuildShopManagerCard);
+
+const frontierBuildShopManagerTitle = document.createElement("div");
+frontierBuildShopManagerTitle.textContent = "상점 슬롯 사용자 관리";
+frontierBuildShopManagerTitle.style.fontSize = "13px";
+frontierBuildShopManagerTitle.style.fontWeight = "800";
+frontierBuildShopManagerTitle.style.color = "#222";
+frontierBuildShopManagerCard.appendChild(frontierBuildShopManagerTitle);
+
+const frontierBuildShopCurrentUser = document.createElement("div");
+frontierBuildShopCurrentUser.style.marginTop = "10px";
+frontierBuildShopCurrentUser.style.fontSize = "13px";
+frontierBuildShopCurrentUser.style.fontWeight = "700";
+frontierBuildShopCurrentUser.style.color = "#444";
+frontierBuildShopManagerCard.appendChild(frontierBuildShopCurrentUser);
+
+const frontierBuildShopAddressInput = document.createElement("input");
+frontierBuildShopAddressInput.type = "text";
+frontierBuildShopAddressInput.placeholder = "상점 사용자 지갑 주소 입력";
+frontierBuildShopAddressInput.style.marginTop = "10px";
+frontierBuildShopAddressInput.style.width = "100%";
+frontierBuildShopAddressInput.style.boxSizing = "border-box";
+frontierBuildShopAddressInput.style.border = "1px solid rgba(0,0,0,0.18)";
+frontierBuildShopAddressInput.style.borderRadius = "10px";
+frontierBuildShopAddressInput.style.padding = "11px 12px";
+frontierBuildShopAddressInput.style.fontFamily = "system-ui, -apple-system, sans-serif";
+frontierBuildShopAddressInput.style.fontSize = "14px";
+frontierBuildShopAddressInput.style.background = "rgba(255,255,255,0.96)";
+frontierBuildShopManagerCard.appendChild(frontierBuildShopAddressInput);
+
+const frontierBuildShopButtonRow = document.createElement("div");
+frontierBuildShopButtonRow.style.display = "flex";
+frontierBuildShopButtonRow.style.gap = "8px";
+frontierBuildShopButtonRow.style.flexWrap = "wrap";
+frontierBuildShopButtonRow.style.marginTop = "10px";
+frontierBuildShopManagerCard.appendChild(frontierBuildShopButtonRow);
+
+const frontierBuildShopSelfBtn = document.createElement("button");
+frontierBuildShopSelfBtn.textContent = "내가 직접 사용";
+frontierBuildShopSelfBtn.style.border = "1px solid rgba(0,0,0,0.18)";
+frontierBuildShopSelfBtn.style.borderRadius = "10px";
+frontierBuildShopSelfBtn.style.padding = "9px 12px";
+frontierBuildShopSelfBtn.style.fontSize = "13px";
+frontierBuildShopSelfBtn.style.fontWeight = "700";
+frontierBuildShopSelfBtn.style.cursor = "pointer";
+frontierBuildShopSelfBtn.style.background = "rgba(255,255,255,0.92)";
+frontierBuildShopSelfBtn.style.color = "#333";
+frontierBuildShopButtonRow.appendChild(frontierBuildShopSelfBtn);
+
+const frontierBuildShopAssignBtn = document.createElement("button");
+frontierBuildShopAssignBtn.textContent = "지갑 주소로 지정";
+frontierBuildShopAssignBtn.style.border = "1px solid rgba(0,0,0,0.18)";
+frontierBuildShopAssignBtn.style.borderRadius = "10px";
+frontierBuildShopAssignBtn.style.padding = "9px 12px";
+frontierBuildShopAssignBtn.style.fontSize = "13px";
+frontierBuildShopAssignBtn.style.fontWeight = "700";
+frontierBuildShopAssignBtn.style.cursor = "pointer";
+frontierBuildShopAssignBtn.style.background = "rgba(255,255,255,0.92)";
+frontierBuildShopAssignBtn.style.color = "#333";
+frontierBuildShopButtonRow.appendChild(frontierBuildShopAssignBtn);
+
+const frontierBuildShopClearBtn = document.createElement("button");
+frontierBuildShopClearBtn.textContent = "사용자 해제";
+frontierBuildShopClearBtn.style.border = "1px solid rgba(0,0,0,0.18)";
+frontierBuildShopClearBtn.style.borderRadius = "10px";
+frontierBuildShopClearBtn.style.padding = "9px 12px";
+frontierBuildShopClearBtn.style.fontSize = "13px";
+frontierBuildShopClearBtn.style.fontWeight = "700";
+frontierBuildShopClearBtn.style.cursor = "pointer";
+frontierBuildShopClearBtn.style.background = "rgba(255,255,255,0.92)";
+frontierBuildShopClearBtn.style.color = "#333";
+frontierBuildShopButtonRow.appendChild(frontierBuildShopClearBtn);
+
+frontierShopRegisterOverlay = document.createElement("div");
+frontierShopRegisterOverlay.style.position = "fixed";
+frontierShopRegisterOverlay.style.inset = "0";
+frontierShopRegisterOverlay.style.background = "rgba(12, 16, 22, 0.28)";
+frontierShopRegisterOverlay.style.display = "none";
+frontierShopRegisterOverlay.style.pointerEvents = "auto";
+frontierShopRegisterOverlay.style.zIndex = "1000003";
+uiLayer.appendChild(frontierShopRegisterOverlay);
+
+frontierShopRegisterWin = document.createElement("div");
+frontierShopRegisterWin.style.position = "fixed";
+frontierShopRegisterWin.style.left = "50%";
+frontierShopRegisterWin.style.top = "50%";
+frontierShopRegisterWin.style.transform = "translate(-50%, -50%)";
+frontierShopRegisterWin.style.width = "min(620px, calc(100vw - 40px))";
+frontierShopRegisterWin.style.maxHeight = "min(76vh, 720px)";
+frontierShopRegisterWin.style.background = "rgba(244, 241, 235, 0.98)";
+frontierShopRegisterWin.style.border = "1px solid rgba(0,0,0,0.2)";
+frontierShopRegisterWin.style.borderRadius = "14px";
+frontierShopRegisterWin.style.boxShadow = "0 18px 42px rgba(0,0,0,0.28)";
+frontierShopRegisterWin.style.display = "none";
+frontierShopRegisterWin.style.pointerEvents = "auto";
+frontierShopRegisterWin.style.zIndex = "1000004";
+frontierShopRegisterWin.style.overflow = "hidden";
+uiLayer.appendChild(frontierShopRegisterWin);
+
+const frontierShopHeader = document.createElement("div");
+frontierShopHeader.style.display = "flex";
+frontierShopHeader.style.alignItems = "center";
+frontierShopHeader.style.gap = "12px";
+frontierShopHeader.style.padding = "12px 14px";
+frontierShopHeader.style.borderBottom = "1px solid rgba(0,0,0,0.15)";
+frontierShopHeader.style.background = "rgba(255,255,255,0.74)";
+frontierShopRegisterWin.appendChild(frontierShopHeader);
+
+const frontierShopTitle = document.createElement("div");
+frontierShopTitle.textContent = "판매 등록";
+frontierShopTitle.style.fontFamily = "system-ui, -apple-system, sans-serif";
+frontierShopTitle.style.fontSize = "18px";
+frontierShopTitle.style.fontWeight = "800";
+frontierShopTitle.style.color = "#222";
+frontierShopTitle.style.marginRight = "auto";
+frontierShopHeader.appendChild(frontierShopTitle);
+
+const frontierShopCloseBtn = document.createElement("button");
+frontierShopCloseBtn.type = "button";
+frontierShopCloseBtn.textContent = "닫기";
+frontierShopCloseBtn.style.minWidth = "74px";
+frontierShopCloseBtn.style.border = "1px solid rgba(0,0,0,0.18)";
+frontierShopCloseBtn.style.borderRadius = "10px";
+frontierShopCloseBtn.style.padding = "8px 10px";
+frontierShopCloseBtn.style.fontSize = "13px";
+frontierShopCloseBtn.style.fontWeight = "700";
+frontierShopCloseBtn.style.cursor = "pointer";
+frontierShopCloseBtn.style.background = "rgba(255,255,255,0.92)";
+frontierShopCloseBtn.style.color = "#333";
+frontierShopHeader.appendChild(frontierShopCloseBtn);
+
+const frontierShopBody = document.createElement("div");
+frontierShopBody.style.padding = "16px";
+frontierShopBody.style.display = "grid";
+frontierShopBody.style.gridTemplateRows = "auto auto auto auto";
+frontierShopBody.style.gap = "14px";
+frontierShopRegisterWin.appendChild(frontierShopBody);
+
+const frontierShopCurrentStatus = document.createElement("div");
+frontierShopCurrentStatus.style.padding = "12px 14px";
+frontierShopCurrentStatus.style.borderRadius = "12px";
+frontierShopCurrentStatus.style.background = "rgba(255,255,255,0.94)";
+frontierShopCurrentStatus.style.border = "1px solid rgba(0,0,0,0.12)";
+frontierShopCurrentStatus.style.fontSize = "13px";
+frontierShopCurrentStatus.style.fontWeight = "700";
+frontierShopCurrentStatus.style.color = "#333";
+frontierShopBody.appendChild(frontierShopCurrentStatus);
+
+const frontierShopInventoryGrid = document.createElement("div");
+frontierShopInventoryGrid.style.display = "grid";
+frontierShopInventoryGrid.style.gridTemplateColumns = "repeat(auto-fill, minmax(104px, 1fr))";
+frontierShopInventoryGrid.style.gap = "10px";
+frontierShopInventoryGrid.style.maxHeight = "240px";
+frontierShopInventoryGrid.style.overflowY = "auto";
+frontierShopInventoryGrid.style.paddingRight = "4px";
+frontierShopBody.appendChild(frontierShopInventoryGrid);
+
+const frontierShopConfigCard = document.createElement("div");
+frontierShopConfigCard.style.padding = "14px";
+frontierShopConfigCard.style.borderRadius = "12px";
+frontierShopConfigCard.style.background = "rgba(255,255,255,0.94)";
+frontierShopConfigCard.style.border = "1px solid rgba(0,0,0,0.12)";
+frontierShopConfigCard.style.display = "grid";
+frontierShopConfigCard.style.gridTemplateColumns = "1fr 1fr";
+frontierShopConfigCard.style.gap = "10px 14px";
+frontierShopBody.appendChild(frontierShopConfigCard);
+
+const frontierShopSelectedItem = document.createElement("div");
+frontierShopSelectedItem.style.gridColumn = "1 / -1";
+frontierShopSelectedItem.style.fontSize = "13px";
+frontierShopSelectedItem.style.fontWeight = "800";
+frontierShopSelectedItem.style.color = "#222";
+frontierShopConfigCard.appendChild(frontierShopSelectedItem);
+
+const frontierShopSelectedOwned = document.createElement("div");
+frontierShopSelectedOwned.style.gridColumn = "1 / -1";
+frontierShopSelectedOwned.style.marginTop = "-4px";
+frontierShopSelectedOwned.style.fontSize = "12px";
+frontierShopSelectedOwned.style.color = "#6b6053";
+frontierShopConfigCard.appendChild(frontierShopSelectedOwned);
+
+const frontierShopQtyLabel = document.createElement("label");
+frontierShopQtyLabel.textContent = "판매 수량";
+frontierShopQtyLabel.style.fontSize = "12px";
+frontierShopQtyLabel.style.fontWeight = "700";
+frontierShopQtyLabel.style.color = "#555";
+frontierShopConfigCard.appendChild(frontierShopQtyLabel);
+
+const frontierShopPriceLabel = document.createElement("label");
+frontierShopPriceLabel.textContent = "가격";
+frontierShopPriceLabel.style.fontSize = "12px";
+frontierShopPriceLabel.style.fontWeight = "700";
+frontierShopPriceLabel.style.color = "#555";
+frontierShopConfigCard.appendChild(frontierShopPriceLabel);
+
+const frontierShopQuantityInput = document.createElement("input");
+frontierShopQuantityInput.type = "number";
+frontierShopQuantityInput.min = "1";
+frontierShopQuantityInput.step = "1";
+frontierShopQuantityInput.value = "1";
+frontierShopQuantityInput.style.border = "1px solid rgba(0,0,0,0.16)";
+frontierShopQuantityInput.style.borderRadius = "10px";
+frontierShopQuantityInput.style.padding = "10px 12px";
+frontierShopQuantityInput.style.fontSize = "14px";
+frontierShopQuantityInput.style.background = "rgba(255,255,255,0.96)";
+frontierShopConfigCard.appendChild(frontierShopQuantityInput);
+
+const frontierShopPriceInput = document.createElement("input");
+frontierShopPriceInput.type = "number";
+frontierShopPriceInput.min = "0";
+frontierShopPriceInput.step = "1";
+frontierShopPriceInput.value = "0";
+frontierShopPriceInput.style.border = "1px solid rgba(0,0,0,0.16)";
+frontierShopPriceInput.style.borderRadius = "10px";
+frontierShopPriceInput.style.padding = "10px 12px";
+frontierShopPriceInput.style.fontSize = "14px";
+frontierShopPriceInput.style.background = "rgba(255,255,255,0.96)";
+frontierShopConfigCard.appendChild(frontierShopPriceInput);
+
+const frontierShopButtonRow = document.createElement("div");
+frontierShopButtonRow.style.display = "flex";
+frontierShopButtonRow.style.justifyContent = "space-between";
+frontierShopButtonRow.style.alignItems = "center";
+frontierShopBody.appendChild(frontierShopButtonRow);
+
+const frontierShopClearBtn = document.createElement("button");
+frontierShopClearBtn.type = "button";
+frontierShopClearBtn.textContent = "판매 해제";
+frontierShopClearBtn.style.minWidth = "100px";
+frontierShopClearBtn.style.border = "1px solid rgba(0,0,0,0.18)";
+frontierShopClearBtn.style.borderRadius = "10px";
+frontierShopClearBtn.style.padding = "10px 12px";
+frontierShopClearBtn.style.fontSize = "13px";
+frontierShopClearBtn.style.fontWeight = "700";
+frontierShopClearBtn.style.cursor = "pointer";
+frontierShopClearBtn.style.background = "rgba(255,255,255,0.92)";
+frontierShopClearBtn.style.color = "#333";
+frontierShopButtonRow.appendChild(frontierShopClearBtn);
+
+const frontierShopRegisterBtn = document.createElement("button");
+frontierShopRegisterBtn.type = "button";
+frontierShopRegisterBtn.textContent = "판매 등록";
+frontierShopRegisterBtn.style.minWidth = "112px";
+frontierShopRegisterBtn.style.border = "1px solid rgba(150,90,20,0.35)";
+frontierShopRegisterBtn.style.borderRadius = "12px";
+frontierShopRegisterBtn.style.padding = "12px 14px";
+frontierShopRegisterBtn.style.fontSize = "15px";
+frontierShopRegisterBtn.style.fontWeight = "900";
+frontierShopRegisterBtn.style.cursor = "pointer";
+frontierShopRegisterBtn.style.background = "rgba(255,255,255,0.92)";
+frontierShopRegisterBtn.style.color = "#7a4a12";
+frontierShopButtonRow.appendChild(frontierShopRegisterBtn);
+
+const frontierBoothOverlay = document.createElement("div");
+frontierBoothOverlay.style.position = "fixed";
+frontierBoothOverlay.style.inset = "0";
+frontierBoothOverlay.style.background = "rgba(12, 16, 22, 0.28)";
+frontierBoothOverlay.style.display = "none";
+frontierBoothOverlay.style.pointerEvents = "auto";
+frontierBoothOverlay.style.zIndex = "1000003";
+uiLayer.appendChild(frontierBoothOverlay);
+
+const frontierBoothWin = document.createElement("div");
+frontierBoothWin.style.position = "fixed";
+frontierBoothWin.style.left = "50%";
+frontierBoothWin.style.top = "50%";
+frontierBoothWin.style.transform = "translate(-50%, -50%)";
+frontierBoothWin.style.width = "min(520px, calc(100vw - 40px))";
+frontierBoothWin.style.background = "rgba(245,245,245,0.98)";
+frontierBoothWin.style.border = "1px solid rgba(0,0,0,0.16)";
+frontierBoothWin.style.borderRadius = "18px";
+frontierBoothWin.style.boxShadow = "0 18px 42px rgba(0,0,0,0.28)";
+frontierBoothWin.style.display = "none";
+frontierBoothWin.style.pointerEvents = "auto";
+frontierBoothWin.style.zIndex = "1000004";
+frontierBoothWin.style.overflow = "hidden";
+uiLayer.appendChild(frontierBoothWin);
+
+const frontierBoothHeader = document.createElement("div");
+frontierBoothHeader.style.display = "flex";
+frontierBoothHeader.style.alignItems = "center";
+frontierBoothHeader.style.gap = "12px";
+frontierBoothHeader.style.padding = "14px 16px";
+frontierBoothHeader.style.borderBottom = "1px solid rgba(0,0,0,0.12)";
+frontierBoothHeader.style.background = "rgba(255,255,255,0.72)";
+frontierBoothWin.appendChild(frontierBoothHeader);
+
+const frontierBoothTitle = document.createElement("div");
+frontierBoothTitle.style.fontSize = "19px";
+frontierBoothTitle.style.fontWeight = "900";
+frontierBoothTitle.style.color = "#222";
+frontierBoothTitle.style.marginRight = "auto";
+frontierBoothHeader.appendChild(frontierBoothTitle);
+
+const frontierBoothCloseBtn = document.createElement("button");
+frontierBoothCloseBtn.type = "button";
+frontierBoothCloseBtn.textContent = "닫기";
+frontierBoothCloseBtn.style.padding = "9px 12px";
+frontierBoothCloseBtn.style.borderRadius = "10px";
+frontierBoothCloseBtn.style.border = "1px solid rgba(0,0,0,0.14)";
+frontierBoothCloseBtn.style.background = "rgba(255,255,255,0.92)";
+frontierBoothCloseBtn.style.fontSize = "13px";
+frontierBoothCloseBtn.style.fontWeight = "800";
+frontierBoothCloseBtn.style.cursor = "pointer";
+frontierBoothHeader.appendChild(frontierBoothCloseBtn);
+
+const frontierBoothBody = document.createElement("div");
+frontierBoothBody.style.padding = "16px";
+frontierBoothBody.style.display = "grid";
+frontierBoothBody.style.gap = "14px";
+frontierBoothWin.appendChild(frontierBoothBody);
+
+const frontierBoothStatus = document.createElement("div");
+frontierBoothStatus.style.padding = "12px 14px";
+frontierBoothStatus.style.borderRadius = "12px";
+frontierBoothStatus.style.background = "rgba(255,255,255,0.94)";
+frontierBoothStatus.style.border = "1px solid rgba(0,0,0,0.12)";
+frontierBoothStatus.style.fontSize = "13px";
+frontierBoothStatus.style.lineHeight = "1.6";
+frontierBoothStatus.style.color = "#444";
+frontierBoothBody.appendChild(frontierBoothStatus);
+
+const frontierBoothActionArea = document.createElement("div");
+frontierBoothActionArea.style.display = "grid";
+frontierBoothActionArea.style.gap = "10px";
+frontierBoothBody.appendChild(frontierBoothActionArea);
+
+let frontierBoothOpen = false;
+let frontierBoothContext = null;
+
 frontierBuildCloseBtn.addEventListener("click", () => {
   setFrontierBuildOpen(false);
 });
@@ -9008,11 +9983,198 @@ frontierBuildOverlay.addEventListener("click", () => {
 });
 
 frontierBuildActionBtn.addEventListener("click", () => {
+  const parcelLabel = getSelectedFrontierParcelLabel();
+  const buildState = getFrontierBuildState(parcelLabel);
+  if (buildState.stage >= 100) {
+    openFrontierShopRegisterDialog(parcelLabel);
+    return;
+  }
   tryAdvanceFrontierBuildStage();
 });
 
 frontierBuildSignSaveBtn.addEventListener("click", () => {
   saveFrontierBuildSignText();
+});
+
+frontierShopCloseBtn.addEventListener("click", () => {
+  closeFrontierShopRegisterDialog();
+});
+
+frontierShopRegisterOverlay.addEventListener("click", () => {
+  closeFrontierShopRegisterDialog();
+});
+
+frontierShopRegisterBtn.addEventListener("click", () => {
+  commitFrontierShopListing();
+});
+
+frontierShopClearBtn.addEventListener("click", () => {
+  clearFrontierShopListing();
+});
+
+frontierBuildShopSelfBtn.addEventListener("click", () => {
+  const parcelLabel = getSelectedFrontierParcelLabel();
+  const currentWallet = getCurrentFrontierWalletAddress();
+  if (!currentWallet) {
+    showUI("로그인 지갑 주소를 확인할 수 없습니다.", 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return;
+  }
+  assignFrontierShopSlotUser(parcelLabel, currentWallet);
+});
+
+frontierBuildShopAssignBtn.addEventListener("click", () => {
+  assignFrontierShopSlotUser(getSelectedFrontierParcelLabel(), frontierBuildShopAddressInput.value);
+});
+
+frontierBuildShopClearBtn.addEventListener("click", () => {
+  clearFrontierShopSlotUser(getSelectedFrontierParcelLabel());
+});
+
+function closeFrontierBoothDialog() {
+  frontierBoothOpen = false;
+  frontierBoothContext = null;
+  frontierBoothOverlay.style.display = "none";
+  frontierBoothWin.style.display = "none";
+}
+
+function renderFrontierBoothDialog() {
+  if (!frontierBoothContext) return;
+  const { parcelLabel, slotKey, boothTitle, mode } = frontierBoothContext;
+  const buildState = getFrontierBuildState(parcelLabel);
+  const slotState = slotKey === "shop" ? buildState.operations.shop : buildState.operations[slotKey];
+  frontierBoothTitle.textContent = `${parcelLabel} ${boothTitle} ${mode === "manage" ? "관리" : "보기"}`;
+  frontierBoothActionArea.innerHTML = "";
+
+  if (slotKey === "shop") {
+    const assignedWallet = getFrontierShopAssignedWallet(parcelLabel);
+    frontierBoothStatus.innerHTML = `
+      <div>현재 상태: <strong>${slotState.statusText}</strong></div>
+      <div style="margin-top:6px;">현재 사용자: <strong>${assignedWallet ? shortenWalletAddress(assignedWallet) : "미지정"}</strong></div>
+      <div style="margin-top:6px;opacity:0.78;">${mode === "manage" ? "상점 사용자 지정과 판매 등록을 이곳에서 관리합니다." : "방문자는 등록된 판매 물품 상태를 여기서 확인할 수 있습니다."}</div>
+    `;
+    if (mode === "manage") {
+      if (canManageFrontierShopSlot(parcelLabel)) {
+        const controls = document.createElement("div");
+        controls.style.display = "grid";
+        controls.style.gap = "10px";
+
+        const current = document.createElement("div");
+        current.style.fontSize = "13px";
+        current.style.fontWeight = "700";
+        current.style.color = "#444";
+        current.textContent = assignedWallet ? `현재 지정: ${shortenWalletAddress(assignedWallet)}` : "현재 지정: 미지정";
+        controls.appendChild(current);
+
+        const input = document.createElement("input");
+        input.type = "text";
+        input.placeholder = "상점 사용자 지갑 주소 입력";
+        input.value = assignedWallet;
+        input.style.border = "1px solid rgba(0,0,0,0.14)";
+        input.style.borderRadius = "10px";
+        input.style.padding = "10px 12px";
+        input.style.fontSize = "14px";
+        controls.appendChild(input);
+
+        const row = document.createElement("div");
+        row.style.display = "flex";
+        row.style.flexWrap = "wrap";
+        row.style.gap = "8px";
+        controls.appendChild(row);
+
+        const makeBtn = (label) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.textContent = label;
+          btn.style.padding = "10px 12px";
+          btn.style.borderRadius = "10px";
+          btn.style.border = "1px solid rgba(0,0,0,0.14)";
+          btn.style.background = "rgba(255,255,255,0.94)";
+          btn.style.fontSize = "13px";
+          btn.style.fontWeight = "800";
+          btn.style.cursor = "pointer";
+          return btn;
+        };
+
+        const selfBtn = makeBtn("내가 직접 사용");
+        selfBtn.addEventListener("click", () => {
+          const currentWallet = getCurrentFrontierWalletAddress();
+          if (!currentWallet) {
+            showUI("로그인 지갑 주소를 확인할 수 없습니다.", 1000);
+            lastMessageUntil = performance.now() + 1000;
+            return;
+          }
+          assignFrontierShopSlotUser(parcelLabel, currentWallet);
+          renderFrontierBoothDialog();
+        });
+        row.appendChild(selfBtn);
+
+        const assignBtn = makeBtn("지갑 주소로 지정");
+        assignBtn.addEventListener("click", () => {
+          assignFrontierShopSlotUser(parcelLabel, input.value);
+          renderFrontierBoothDialog();
+        });
+        row.appendChild(assignBtn);
+
+        const clearBtn = makeBtn("사용자 해제");
+        clearBtn.addEventListener("click", () => {
+          clearFrontierShopSlotUser(parcelLabel);
+          renderFrontierBoothDialog();
+        });
+        row.appendChild(clearBtn);
+
+        frontierBoothActionArea.appendChild(controls);
+      }
+
+      if (canUseFrontierShopSlot(parcelLabel)) {
+        const salesBtn = document.createElement("button");
+        salesBtn.type = "button";
+        salesBtn.textContent = "판매 등록";
+        salesBtn.style.padding = "12px 14px";
+        salesBtn.style.borderRadius = "12px";
+        salesBtn.style.border = "1px solid rgba(150,90,20,0.35)";
+        salesBtn.style.background = "rgba(255,255,255,0.94)";
+        salesBtn.style.fontSize = "15px";
+        salesBtn.style.fontWeight = "900";
+        salesBtn.style.color = "#7a4a12";
+        salesBtn.style.cursor = "pointer";
+        salesBtn.addEventListener("click", () => {
+          openFrontierShopRegisterDialog(parcelLabel);
+        });
+        frontierBoothActionArea.appendChild(salesBtn);
+      } else {
+        const note = document.createElement("div");
+        note.style.fontSize = "13px";
+        note.style.color = "#6b6053";
+        note.textContent = assignedWallet
+          ? "현재 로그인한 지갑은 상점 사용자로 지정되어 있지 않아 판매 등록을 할 수 없습니다."
+          : "상점 사용자를 먼저 지정해야 판매 등록을 할 수 있습니다.";
+        frontierBoothActionArea.appendChild(note);
+      }
+    }
+    return;
+  }
+
+  frontierBoothStatus.innerHTML = `
+    <div>현재 상태: <strong>${slotState.statusText}</strong></div>
+    <div style="margin-top:6px;opacity:0.78;">${mode === "manage" ? "전시 권한 구조는 다음 단계에서 연결됩니다. 지금은 상태 확인만 가능합니다." : "전시 부스 상태를 확인할 수 있습니다."}</div>
+  `;
+}
+
+function openFrontierBoothDialog(parcelLabel, slotKey, boothTitle, mode) {
+  frontierBoothContext = { parcelLabel, slotKey, boothTitle, mode };
+  frontierBoothOpen = true;
+  frontierBoothOverlay.style.display = "block";
+  frontierBoothWin.style.display = "block";
+  renderFrontierBoothDialog();
+}
+
+frontierBoothCloseBtn.addEventListener("click", () => {
+  closeFrontierBoothDialog();
+});
+
+frontierBoothOverlay.addEventListener("click", () => {
+  closeFrontierBoothDialog();
 });
 
 
@@ -11904,6 +13066,16 @@ function buildFrontierArea() {
     type: "mansionExit",
   };
   interactables.push(mansionOneExitInteractable);
+
+  ensurePlayerNotInsideGeneratedColliders(
+    [roomDoorPanel, roomBedBase, roomChest],
+    {
+      x: roomRoot.position.x,
+      z: roomRoot.position.z + 3.35,
+      rotationY: Math.PI,
+    },
+    ""
+  );
 }
 
 function buildMapConnectorTunnel(startGate, endGate) {
@@ -12134,6 +13306,20 @@ window.addEventListener("keydown", (e) => {
     return;
   }
 
+  if (activeInteractable?.type === "frontierShopBooth") {
+    const parcelLabel = activeInteractable.parcelLabel ?? getSelectedFrontierParcelLabel();
+    const mode = canManageFrontierShopSlot(parcelLabel) || canUseFrontierShopSlot(parcelLabel) ? "manage" : "view";
+    openFrontierBoothDialog(parcelLabel, "shop", activeInteractable.boothTitle ?? "상점", mode);
+    return;
+  }
+
+  if (activeInteractable?.type === "frontierDisplayBooth") {
+    const parcelLabel = activeInteractable.parcelLabel ?? getSelectedFrontierParcelLabel();
+    const mode = hasFrontierParcelAuthority(parcelLabel) ? "manage" : "view";
+    openFrontierBoothDialog(parcelLabel, activeInteractable.slotKey ?? "displayA", activeInteractable.boothTitle ?? "전시", mode);
+    return;
+  }
+
   if (activeInteractable?.type === "mansionEntry") {
     if (!hasMansionOneResidenceAuthority()) {
       showUI("101호 거주권 필요", 1000);
@@ -12176,6 +13362,7 @@ window.addEventListener("keydown", (e) => {
     if (frontierParcelLabel) {
       e.preventDefault();
       frontierActiveParcelLabel = frontierParcelLabel;
+      const buildState = getFrontierBuildState(frontierParcelLabel);
       if (!hasFrontierParcelAuthority(frontierParcelLabel)) {
         showUI(`${frontierParcelLabel} 개발권 필요`, 1000);
         lastMessageUntil = performance.now() + 1000;
@@ -12241,6 +13428,32 @@ function getPlayerBox() {
   const box = new THREE.Box3();
   box.setFromCenterAndSize(center, size);
   return box;
+}
+
+function ensurePlayerNotInsideGeneratedColliders(colliderObjects = [], fallback = null, message = "구조물 생성으로 위치를 조정했습니다.") {
+  if (!Array.isArray(colliderObjects) || !colliderObjects.length || !fallback) return false;
+  const playerBox = getPlayerBox();
+  const overlaps = colliderObjects.some((obj) => {
+    const colliderIndex = getTrackedColliderIndex(obj, obj?.userData?.colliderIndex);
+    return typeof colliderIndex === "number" && colliderBoxes[colliderIndex] && playerBox.intersectsBox(colliderBoxes[colliderIndex]);
+  });
+  if (!overlaps) return false;
+
+  player.position.set(
+    Number.isFinite(fallback.x) ? fallback.x : player.position.x,
+    Number.isFinite(fallback.y) ? fallback.y : player.position.y,
+    Number.isFinite(fallback.z) ? fallback.z : player.position.z
+  );
+  if (Number.isFinite(fallback.rotationY)) {
+    player.rotation.y = fallback.rotationY;
+    latestMoveDir.set(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
+  }
+  snapCameraToPlayer();
+  if (message) {
+    showUI(message, 950);
+    lastMessageUntil = performance.now() + 950;
+  }
+  return true;
 }
 
 function intersectsAnyCollider(playerBox) {
@@ -12978,10 +14191,15 @@ if (!hintText) {
 // 6) 개척지 필지 건축 힌트
 const activeFrontierParcelLabel = getCurrentFrontierParcelLabel();
 if (!hintText && activeFrontierParcelLabel) {
-  if (hasFrontierParcelAuthority(activeFrontierParcelLabel)) {
-    hintText = getFrontierBuildState(activeFrontierParcelLabel).stage >= 100
-      ? "B : 간판 수정"
-      : "B : 건축 진행";
+  const activeBuildState = getFrontierBuildState(activeFrontierParcelLabel);
+  if (activeBuildState.stage >= 100) {
+    if (hasFrontierParcelAuthority(activeFrontierParcelLabel)) {
+      hintText = "B : 건축 관리";
+    } else {
+      hintText = `${activeFrontierParcelLabel} 개발권 필요`;
+    }
+  } else if (hasFrontierParcelAuthority(activeFrontierParcelLabel)) {
+    hintText = "B : 건축 진행";
   } else {
     hintText = `${activeFrontierParcelLabel} 개발권 필요`;
   }
@@ -12991,6 +14209,10 @@ if (!hintText && activeFrontierParcelLabel) {
 if (!hintText && activeInteractable) {
   hintText = activeInteractable.type === "airPurifier"
     ? getAirPurifierHintText(activeInteractable.purifierMapId ?? "폐광맵")
+    : activeInteractable.type === "frontierShopBooth"
+      ? ((canManageFrontierShopSlot(activeInteractable.parcelLabel) || canUseFrontierShopSlot(activeInteractable.parcelLabel)) ? "E : 판매 관리" : "E : 판매 보기")
+    : activeInteractable.type === "frontierDisplayBooth"
+      ? (hasFrontierParcelAuthority(activeInteractable.parcelLabel) ? "E : 전시 관리" : "E : 전시 보기")
     : activeInteractable.type === "mansionEntry"
       ? (hasMansionOneResidenceAuthority() ? "E : 거주 공간 입장" : "101호 거주권 필요")
     : activeInteractable.type === "mansionBed"
