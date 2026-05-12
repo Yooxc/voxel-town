@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-const LAST_PATCHED_AT = "2026-05-12 01:52:35 KST";
+const LAST_PATCHED_AT = "2026-05-12 16:04:51 KST";
 
 const scene = new THREE.Scene();
 // ===== Atmosphere: Sky / Fog =====
@@ -5460,17 +5460,21 @@ const residenceMapZones = [];
 function registerWalkableSurface(mapId, mesh, padding = 0.55) {
   if (!mesh) return;
   const entries = walkableMapSurfaces.get(mapId) ?? [];
-  entries.push({ mesh, padding });
+  const entry = { mesh, padding };
+  entries.push(entry);
   walkableMapSurfaces.set(mapId, entries);
+  return entry;
 }
 
 function registerResidenceMapZone(centerX, centerZ, width, depth) {
-  residenceMapZones.push({
+  const zone = {
     minX: centerX - width * 0.5,
     maxX: centerX + width * 0.5,
     minZ: centerZ - depth * 0.5,
     maxZ: centerZ + depth * 0.5,
-  });
+  };
+  residenceMapZones.push(zone);
+  return zone;
 }
 
 function isPlayerInResidenceMapZone() {
@@ -7546,6 +7550,14 @@ let mansionOneBedInteractable = null;
 let mansionOneStorageInteractable = null;
 let mansionOneRoomRoot = null;
 let mansionOneRoom102Root = null;
+const mansionOneRoomInstances = {
+  "101": null,
+  "102": null,
+};
+const MANSION_ONE_ROOM_INSTANCE_ORIGINS = {
+  "101": { x: -4800, z: -4800 },
+  "102": { x: -4820, z: -4800 },
+};
 let mansionOneActiveRoomKey = "101";
 let mansionOneExteriorReturn = { x: 0, z: 0, rotationY: Math.PI };
 let mineGate = null;
@@ -7610,6 +7622,260 @@ function getOwnedMansionRoomPermitName() {
   if (roomKey === "101") return ITEM_DEFS.mansionOneRoom101Permit.name;
   if (roomKey === "102") return ITEM_DEFS.mansionOneRoom102Permit.name;
   return "거주권";
+}
+
+function removeGroundSurface(mesh) {
+  const idx = groundSurfaces.indexOf(mesh);
+  if (idx !== -1) groundSurfaces.splice(idx, 1);
+}
+
+function unregisterWalkableSurface(mapId, entry) {
+  if (!entry) return;
+  const entries = walkableMapSurfaces.get(mapId);
+  if (!entries) return;
+  const idx = entries.indexOf(entry);
+  if (idx !== -1) entries.splice(idx, 1);
+}
+
+function unregisterResidenceMapZone(zone) {
+  if (!zone) return;
+  const idx = residenceMapZones.indexOf(zone);
+  if (idx !== -1) residenceMapZones.splice(idx, 1);
+}
+
+function removeInteractableEntry(interactable) {
+  if (!interactable) return;
+  const idx = interactables.indexOf(interactable);
+  if (idx !== -1) interactables.splice(idx, 1);
+  if (activeInteractable === interactable) {
+    activeInteractable = null;
+  }
+  interactable.obj?.removeFromParent?.();
+}
+
+function destroyMansionRoomInstance(roomKey) {
+  const normalizedRoomKey = roomKey === "102" ? "102" : "101";
+  const instance = mansionOneRoomInstances[normalizedRoomKey];
+  if (!instance) return;
+
+  for (let i = instance.colliderObjects.length - 1; i >= 0; i -= 1) {
+    const colliderObj = instance.colliderObjects[i];
+    const colliderIndex = getTrackedColliderIndex(colliderObj, colliderObj?.userData?.colliderIndex);
+    if (typeof colliderIndex === "number") {
+      removeColliderAt(colliderIndex);
+    }
+  }
+  for (const interactable of instance.interactables) {
+    removeInteractableEntry(interactable);
+  }
+  for (const mesh of instance.groundMeshes) {
+    removeGroundSurface(mesh);
+  }
+  for (const walkableEntry of instance.walkableEntries) {
+    unregisterWalkableSurface(RESIDENCE_MAP_ID, walkableEntry);
+  }
+  for (const zone of instance.residenceZones) {
+    unregisterResidenceMapZone(zone);
+  }
+
+  instance.root.removeFromParent();
+  mansionOneRoomInstances[normalizedRoomKey] = null;
+
+  if (normalizedRoomKey === "101") {
+    mansionOneRoomRoot = null;
+  } else {
+    mansionOneRoom102Root = null;
+  }
+  mansionOneBedInteractable = null;
+  mansionOneStorageInteractable = null;
+  mansionOneExitInteractable = null;
+}
+
+function createMansionRoomInstance(roomKey) {
+  const normalizedRoomKey = roomKey === "102" ? "102" : "101";
+  const existing = mansionOneRoomInstances[normalizedRoomKey];
+  if (existing) return existing;
+
+  const origin = MANSION_ONE_ROOM_INSTANCE_ORIGINS[normalizedRoomKey] ?? MANSION_ONE_ROOM_INSTANCE_ORIGINS["101"];
+  const roomRoot = new THREE.Group();
+  roomRoot.position.set(origin.x, START_FLAT_Y, origin.z);
+  scene.add(roomRoot);
+
+  const instance = {
+    roomKey: normalizedRoomKey,
+    root: roomRoot,
+    colliderObjects: [],
+    interactables: [],
+    groundMeshes: [],
+    walkableEntries: [],
+    residenceZones: [],
+  };
+
+  const roomWallMat = new THREE.MeshStandardMaterial({ color: 0xd9d1c8, roughness: 0.94 });
+  const roomTrimMat = new THREE.MeshStandardMaterial({ color: 0x7a6d61, roughness: 0.88 });
+
+  function trackCollider(obj, shrink = 1.0) {
+    addCollider(obj, shrink);
+    instance.colliderObjects.push(obj);
+    return obj;
+  }
+
+  function trackMarker(marker, interactableData) {
+    scene.add(marker);
+    const interactable = {
+      obj: marker,
+      board: marker,
+      highlightKind: "none",
+      roomKey: normalizedRoomKey,
+      ...interactableData,
+    };
+    interactables.push(interactable);
+    instance.interactables.push(interactable);
+    return interactable;
+  }
+
+  const roomFloor = new THREE.Mesh(
+    new THREE.BoxGeometry(12, 0.16, 10),
+    new THREE.MeshStandardMaterial({ color: 0xa79a89, roughness: 0.96 })
+  );
+  roomFloor.position.set(0, 0.08, 0);
+  roomRoot.add(roomFloor);
+  groundSurfaces.push(roomFloor);
+  instance.groundMeshes.push(roomFloor);
+  instance.walkableEntries.push(registerWalkableSurface(RESIDENCE_MAP_ID, roomFloor, 0.42));
+  instance.residenceZones.push(registerResidenceMapZone(roomRoot.position.x, roomRoot.position.z, 12, 10));
+
+  const backWall = new THREE.Mesh(new THREE.BoxGeometry(12, 3.8, 0.28), roomWallMat);
+  backWall.position.set(0, 1.9, -5.0);
+  roomRoot.add(backWall);
+  trackCollider(backWall, 1.0);
+
+  const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.28, 3.8, 10), roomWallMat);
+  leftWall.position.set(-6.0, 1.9, 0);
+  roomRoot.add(leftWall);
+  trackCollider(leftWall, 1.0);
+
+  const rightWall = leftWall.clone();
+  rightWall.position.x = 6.0;
+  roomRoot.add(rightWall);
+  trackCollider(rightWall, 1.0);
+
+  const frontLeftWall = new THREE.Mesh(new THREE.BoxGeometry(4.35, 3.8, 0.28), roomWallMat);
+  frontLeftWall.position.set(-3.83, 1.9, 5.0);
+  roomRoot.add(frontLeftWall);
+  trackCollider(frontLeftWall, 1.0);
+
+  const frontRightWall = frontLeftWall.clone();
+  frontRightWall.position.x = 3.83;
+  roomRoot.add(frontRightWall);
+  trackCollider(frontRightWall, 1.0);
+
+  const ceiling = new THREE.Mesh(new THREE.BoxGeometry(12, 0.18, 10), roomTrimMat);
+  ceiling.position.set(0, 3.9, 0);
+  roomRoot.add(ceiling);
+  trackCollider(ceiling, 1.0);
+
+  const roomDoorFrameLeft = new THREE.Mesh(new THREE.BoxGeometry(0.24, 2.7, 0.2), roomTrimMat);
+  roomDoorFrameLeft.position.set(-1.2, 1.35, 4.92);
+  roomRoot.add(roomDoorFrameLeft);
+  trackCollider(roomDoorFrameLeft, 1.0);
+
+  const roomDoorFrameRight = roomDoorFrameLeft.clone();
+  roomDoorFrameRight.position.x = 1.2;
+  roomRoot.add(roomDoorFrameRight);
+  trackCollider(roomDoorFrameRight, 1.0);
+
+  const roomDoorTop = new THREE.Mesh(new THREE.BoxGeometry(2.64, 0.2, 0.2), roomTrimMat);
+  roomDoorTop.position.set(0, 2.7, 4.92);
+  roomRoot.add(roomDoorTop);
+  trackCollider(roomDoorTop, 1.0);
+
+  const roomDoorPanel = new THREE.Mesh(
+    new THREE.BoxGeometry(2.1, 2.35, 0.12),
+    new THREE.MeshStandardMaterial({ color: 0x8f7a67, roughness: 0.9 })
+  );
+  roomDoorPanel.position.set(0, 1.18, 4.88);
+  roomRoot.add(roomDoorPanel);
+  trackCollider(roomDoorPanel, 1.0);
+
+  const roomBedBase = new THREE.Mesh(
+    new THREE.BoxGeometry(2.5, 0.38, 1.35),
+    new THREE.MeshStandardMaterial({ color: 0x6a5d51, roughness: 0.92 })
+  );
+  roomBedBase.position.set(-3.1, 0.38, -2.2);
+  roomRoot.add(roomBedBase);
+  trackCollider(roomBedBase, 1.0);
+
+  const roomMattress = new THREE.Mesh(
+    new THREE.BoxGeometry(2.28, 0.22, 1.12),
+    new THREE.MeshStandardMaterial({ color: 0xe9e5df, roughness: 0.98 })
+  );
+  roomMattress.position.set(-3.1, 0.68, -2.2);
+  roomRoot.add(roomMattress);
+
+  const roomPillow = new THREE.Mesh(
+    new THREE.BoxGeometry(0.78, 0.18, 0.42),
+    new THREE.MeshStandardMaterial({ color: 0xf7f5f2, roughness: 1.0 })
+  );
+  roomPillow.position.set(-3.8, 0.88, -2.2);
+  roomRoot.add(roomPillow);
+
+  const roomBedMarker = new THREE.Mesh(
+    new THREE.BoxGeometry(2.8, 1.5, 1.8),
+    new THREE.MeshBasicMaterial({ visible: false })
+  );
+  roomBedMarker.position.set(roomRoot.position.x - 3.1, START_FLAT_Y + 1.0, roomRoot.position.z - 2.2);
+  const bedInteractable = trackMarker(roomBedMarker, { type: "mansionBed" });
+
+  const roomChest = new THREE.Mesh(
+    new THREE.BoxGeometry(1.2, 0.88, 0.78),
+    new THREE.MeshStandardMaterial({ color: 0x8a6a46, roughness: 0.94 })
+  );
+  roomChest.position.set(3.2, 0.44, -2.6);
+  roomRoot.add(roomChest);
+  trackCollider(roomChest, 1.0);
+
+  const roomChestLid = new THREE.Mesh(
+    new THREE.BoxGeometry(1.28, 0.14, 0.86),
+    new THREE.MeshStandardMaterial({ color: 0x9a7850, roughness: 0.9 })
+  );
+  roomChestLid.position.set(3.2, 0.95, -2.6);
+  roomRoot.add(roomChestLid);
+
+  const roomStorageMarker = new THREE.Mesh(
+    new THREE.BoxGeometry(1.8, 1.6, 1.5),
+    new THREE.MeshBasicMaterial({ visible: false })
+  );
+  roomStorageMarker.position.set(roomRoot.position.x + 3.2, START_FLAT_Y + 0.9, roomRoot.position.z - 2.6);
+  const storageInteractable = trackMarker(roomStorageMarker, { type: "mansionStorage" });
+
+  const roomExitMarker = new THREE.Mesh(
+    new THREE.BoxGeometry(2.4, 2.8, 1.0),
+    new THREE.MeshBasicMaterial({ visible: false })
+  );
+  roomExitMarker.position.set(roomRoot.position.x, START_FLAT_Y + 1.4, roomRoot.position.z + 3.8);
+  const exitInteractable = trackMarker(roomExitMarker, { type: "mansionExit" });
+
+  ensurePlayerNotInsideGeneratedColliders(
+    [roomDoorPanel, roomBedBase, roomChest],
+    {
+      x: roomRoot.position.x,
+      z: roomRoot.position.z + 3.35,
+      rotationY: Math.PI,
+    },
+    ""
+  );
+
+  mansionOneRoomInstances[normalizedRoomKey] = instance;
+  if (normalizedRoomKey === "101") {
+    mansionOneRoomRoot = roomRoot;
+  } else {
+    mansionOneRoom102Root = roomRoot;
+  }
+  mansionOneBedInteractable = bedInteractable;
+  mansionOneStorageInteractable = storageInteractable;
+  mansionOneExitInteractable = exitInteractable;
+  return instance;
 }
 
 function applyDevProfileRoleOverrides() {
@@ -8999,9 +9265,12 @@ function tryUseAirPurifier(mapId = "폐광맵") {
 }
 
 function enterMansionOneRoom(roomKey = getOwnedMansionRoomKey()) {
-  const targetRoomRoot = roomKey === "102" ? mansionOneRoom102Root : mansionOneRoomRoot;
+  const normalizedRoomKey = roomKey === "102" ? "102" : "101";
+  destroyMansionRoomInstance(normalizedRoomKey === "102" ? "101" : "102");
+  const instance = createMansionRoomInstance(normalizedRoomKey);
+  const targetRoomRoot = instance?.root;
   if (!targetRoomRoot) return false;
-  mansionOneActiveRoomKey = roomKey === "102" ? "102" : "101";
+  mansionOneActiveRoomKey = normalizedRoomKey;
   player.position.set(
     targetRoomRoot.position.x,
     player.position.y,
@@ -9015,6 +9284,7 @@ function enterMansionOneRoom(roomKey = getOwnedMansionRoomKey()) {
 }
 
 function exitMansionOneRoom() {
+  const activeRoomKey = mansionOneActiveRoomKey === "102" ? "102" : "101";
   mansionSleepPoseActive = false;
   setMansionSleepOpen(false);
   setPersonalStorageOpen(false);
@@ -9026,6 +9296,7 @@ function exitMansionOneRoom() {
   player.rotation.y = mansionOneExteriorReturn.rotationY;
   latestMoveDir.set(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
   snapCameraToPlayer();
+  destroyMansionRoomInstance(activeRoomKey);
   showUI("Mansion ONE 외부로 나왔습니다.", 1000);
   return true;
 }
@@ -11478,6 +11749,9 @@ function makeTree(x, z) {
   g.userData.harvestDisabled = false;
   g.userData.trunk = trunk;
   g.userData.leaves = leaves;
+  g.userData.baseRotationZ = 0;
+  g.userData.harvestShakeUntil = 0;
+  g.userData.harvestShakeStartedAt = 0;
   harvestTrees.push(g);
 
   return g;
@@ -11588,7 +11862,19 @@ function setHarvestTreeActive(tree, active) {
 function updateHarvestTrees() {
   const now = performance.now();
   for (const tree of harvestTrees) {
-    if (!tree?.parent || !tree.userData.harvestDisabled) continue;
+    if (!tree?.parent) continue;
+    const shakeUntil = tree.userData.harvestShakeUntil ?? 0;
+    if (shakeUntil > now) {
+      const startedAt = tree.userData.harvestShakeStartedAt ?? now;
+      const duration = Math.max(1, shakeUntil - startedAt);
+      const progress = THREE.MathUtils.clamp((now - startedAt) / duration, 0, 1);
+      const damping = 1 - progress;
+      tree.rotation.z = (tree.userData.baseRotationZ ?? 0) + Math.sin(progress * Math.PI * 7) * 0.12 * damping;
+    } else {
+      tree.rotation.z = THREE.MathUtils.lerp(tree.rotation.z, tree.userData.baseRotationZ ?? 0, 0.24);
+    }
+
+    if (!tree.userData.harvestDisabled) continue;
     if (now >= (tree.userData.harvestCooldownUntil ?? 0)) {
       setHarvestTreeActive(tree, true);
     }
@@ -12365,6 +12651,8 @@ function applyDevPreset() {
 
 function applyFreshPlayerStartState() {
   nftExhibitSelectedItem = null;
+  destroyMansionRoomInstance("101");
+  destroyMansionRoomInstance("102");
   for (let i = 0; i < inventory.slots.length; i++) {
     inventory.slots[i] = null;
   }
@@ -12453,6 +12741,9 @@ function createDefaultPlayerSave() {
     personalStorage: {
       slots: Array.from({ length: personalStorage.slots.length }, () => null),
     },
+    residence: {
+      activeRoomKey: "101",
+    },
     frontierBuild: createDefaultFrontierBuildState(),
     displayBoard: null,
   };
@@ -12507,6 +12798,9 @@ function serializePlayerSave() {
     personalStorage: {
       slots: personalStorage.slots.map((slot) => (slot ? structuredClone(slot) : null)),
     },
+    residence: {
+      activeRoomKey: mansionOneActiveRoomKey === "102" ? "102" : "101",
+    },
     frontierBuild: structuredClone(frontierBuildState),
     displayBoard: nftExhibitSelectedItem ? structuredClone(nftExhibitSelectedItem) : null,
   };
@@ -12548,6 +12842,10 @@ function applySerializedPlayerSave(rawSave, { preserveSharedWorld = false } = {}
     personalStorage: {
       ...createDefaultPlayerSave().personalStorage,
       ...(save.personalStorage ?? {}),
+    },
+    residence: {
+      ...createDefaultPlayerSave().residence,
+      ...(save.residence ?? {}),
     },
     frontierBuild: preserveSharedWorld
       ? normalizeFrontierBuildState(frontierBuildState)
@@ -12622,6 +12920,15 @@ function applySerializedPlayerSave(rawSave, { preserveSharedWorld = false } = {}
   currentMapId = ["광산맵", "폐광맵", "개척지", RESIDENCE_MAP_ID].includes(source.mapId)
     ? source.mapId
     : "광산맵";
+  const restoredResidenceRoomKey = source.residence?.activeRoomKey === "102" ? "102" : "101";
+  mansionOneActiveRoomKey = restoredResidenceRoomKey;
+  if (currentMapId === RESIDENCE_MAP_ID) {
+    createMansionRoomInstance(restoredResidenceRoomKey);
+    destroyMansionRoomInstance(restoredResidenceRoomKey === "102" ? "101" : "102");
+  } else {
+    destroyMansionRoomInstance("101");
+    destroyMansionRoomInstance("102");
+  }
   updateSceneFogForCurrentMap();
   player.position.set(
     Number.isFinite(source.position?.x) ? source.position.x : START_X,
@@ -14176,193 +14483,10 @@ function buildFrontierArea() {
     rotationY: Math.PI,
   };
 
-  const roomRoot = new THREE.Group();
-  roomRoot.position.set(housingWestCenterX - 96, START_FLAT_Y, housingCenterZ - 4);
-  scene.add(roomRoot);
-  mansionOneRoomRoot = roomRoot;
-
-  const roomWallMat = new THREE.MeshStandardMaterial({ color: 0xd9d1c8, roughness: 0.94 });
-  const roomTrimMat = new THREE.MeshStandardMaterial({ color: 0x7a6d61, roughness: 0.88 });
-
-  function buildMansionRoomUnit(roomRootTarget, roomKey) {
-    const roomFloor = new THREE.Mesh(
-      new THREE.BoxGeometry(12, 0.16, 10),
-      new THREE.MeshStandardMaterial({ color: 0xa79a89, roughness: 0.96 })
-    );
-    roomFloor.position.set(0, 0.08, 0);
-    roomRootTarget.add(roomFloor);
-    groundSurfaces.push(roomFloor);
-    registerWalkableSurface(RESIDENCE_MAP_ID, roomFloor, 0.42);
-    registerResidenceMapZone(roomRootTarget.position.x, roomRootTarget.position.z, 12, 10);
-
-    const backWall = new THREE.Mesh(new THREE.BoxGeometry(12, 3.8, 0.28), roomWallMat);
-    backWall.position.set(0, 1.9, -5.0);
-    roomRootTarget.add(backWall);
-    addCollider(backWall, 1.0);
-
-    const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.28, 3.8, 10), roomWallMat);
-    leftWall.position.set(-6.0, 1.9, 0);
-    roomRootTarget.add(leftWall);
-    addCollider(leftWall, 1.0);
-
-    const rightWall = leftWall.clone();
-    rightWall.position.x = 6.0;
-    roomRootTarget.add(rightWall);
-    addCollider(rightWall, 1.0);
-
-    const frontLeftWall = new THREE.Mesh(new THREE.BoxGeometry(4.35, 3.8, 0.28), roomWallMat);
-    frontLeftWall.position.set(-3.83, 1.9, 5.0);
-    roomRootTarget.add(frontLeftWall);
-    addCollider(frontLeftWall, 1.0);
-
-    const frontRightWall = frontLeftWall.clone();
-    frontRightWall.position.x = 3.83;
-    roomRootTarget.add(frontRightWall);
-    addCollider(frontRightWall, 1.0);
-
-    const ceiling = new THREE.Mesh(new THREE.BoxGeometry(12, 0.18, 10), roomTrimMat);
-    ceiling.position.set(0, 3.9, 0);
-    roomRootTarget.add(ceiling);
-    addCollider(ceiling, 1.0);
-
-    const roomDoorFrameLeft = new THREE.Mesh(new THREE.BoxGeometry(0.24, 2.7, 0.2), roomTrimMat);
-    roomDoorFrameLeft.position.set(-1.2, 1.35, 4.92);
-    roomRootTarget.add(roomDoorFrameLeft);
-    addCollider(roomDoorFrameLeft, 1.0);
-
-    const roomDoorFrameRight = roomDoorFrameLeft.clone();
-    roomDoorFrameRight.position.x = 1.2;
-    roomRootTarget.add(roomDoorFrameRight);
-    addCollider(roomDoorFrameRight, 1.0);
-
-    const roomDoorTop = new THREE.Mesh(new THREE.BoxGeometry(2.64, 0.2, 0.2), roomTrimMat);
-    roomDoorTop.position.set(0, 2.7, 4.92);
-    roomRootTarget.add(roomDoorTop);
-    addCollider(roomDoorTop, 1.0);
-
-    const roomDoorPanel = new THREE.Mesh(
-      new THREE.BoxGeometry(2.1, 2.35, 0.12),
-      new THREE.MeshStandardMaterial({ color: 0x8f7a67, roughness: 0.9 })
-    );
-    roomDoorPanel.position.set(0, 1.18, 4.88);
-    roomRootTarget.add(roomDoorPanel);
-    addCollider(roomDoorPanel, 1.0);
-
-    const roomBedBase = new THREE.Mesh(
-      new THREE.BoxGeometry(2.5, 0.38, 1.35),
-      new THREE.MeshStandardMaterial({ color: 0x6a5d51, roughness: 0.92 })
-    );
-    roomBedBase.position.set(-3.1, 0.38, -2.2);
-    roomRootTarget.add(roomBedBase);
-    addCollider(roomBedBase, 1.0);
-
-    const roomMattress = new THREE.Mesh(
-      new THREE.BoxGeometry(2.28, 0.22, 1.12),
-      new THREE.MeshStandardMaterial({ color: 0xe9e5df, roughness: 0.98 })
-    );
-    roomMattress.position.set(-3.1, 0.68, -2.2);
-    roomRootTarget.add(roomMattress);
-
-    const roomPillow = new THREE.Mesh(
-      new THREE.BoxGeometry(0.78, 0.18, 0.42),
-      new THREE.MeshStandardMaterial({ color: 0xf7f5f2, roughness: 1.0 })
-    );
-    roomPillow.position.set(-3.8, 0.88, -2.2);
-    roomRootTarget.add(roomPillow);
-
-    const roomBedMarker = new THREE.Mesh(
-      new THREE.BoxGeometry(2.8, 1.5, 1.8),
-      new THREE.MeshBasicMaterial({ visible: false })
-    );
-    roomBedMarker.position.set(
-      roomRootTarget.position.x - 3.1,
-      START_FLAT_Y + 1.0,
-      roomRootTarget.position.z - 2.2
-    );
-    roomBedMarker.userData.roomKey = roomKey;
-    scene.add(roomBedMarker);
-    interactables.push({
-      obj: roomBedMarker,
-      board: roomBedMarker,
-      highlightKind: "none",
-      type: "mansionBed",
-      roomKey,
-    });
-    if (roomKey === "101") mansionOneBedInteractable = interactables[interactables.length - 1];
-
-    const roomChest = new THREE.Mesh(
-      new THREE.BoxGeometry(1.2, 0.88, 0.78),
-      new THREE.MeshStandardMaterial({ color: 0x8a6a46, roughness: 0.94 })
-    );
-    roomChest.position.set(3.2, 0.44, -2.6);
-    roomRootTarget.add(roomChest);
-    addCollider(roomChest, 1.0);
-
-    const roomChestLid = new THREE.Mesh(
-      new THREE.BoxGeometry(1.28, 0.14, 0.86),
-      new THREE.MeshStandardMaterial({ color: 0x9a7850, roughness: 0.9 })
-    );
-    roomChestLid.position.set(3.2, 0.95, -2.6);
-    roomRootTarget.add(roomChestLid);
-
-    const roomStorageMarker = new THREE.Mesh(
-      new THREE.BoxGeometry(1.8, 1.6, 1.5),
-      new THREE.MeshBasicMaterial({ visible: false })
-    );
-    roomStorageMarker.position.set(
-      roomRootTarget.position.x + 3.2,
-      START_FLAT_Y + 0.9,
-      roomRootTarget.position.z - 2.6
-    );
-    roomStorageMarker.userData.roomKey = roomKey;
-    scene.add(roomStorageMarker);
-    interactables.push({
-      obj: roomStorageMarker,
-      board: roomStorageMarker,
-      highlightKind: "none",
-      type: "mansionStorage",
-      roomKey,
-    });
-    if (roomKey === "101") mansionOneStorageInteractable = interactables[interactables.length - 1];
-
-    const roomExitMarker = new THREE.Mesh(
-      new THREE.BoxGeometry(2.4, 2.8, 1.0),
-      new THREE.MeshBasicMaterial({ visible: false })
-    );
-    roomExitMarker.position.set(
-      roomRootTarget.position.x,
-      START_FLAT_Y + 1.4,
-      roomRootTarget.position.z + 3.8
-    );
-    roomExitMarker.userData.roomKey = roomKey;
-    scene.add(roomExitMarker);
-    interactables.push({
-      obj: roomExitMarker,
-      board: roomExitMarker,
-      highlightKind: "none",
-      type: "mansionExit",
-      roomKey,
-    });
-    if (roomKey === "101") mansionOneExitInteractable = interactables[interactables.length - 1];
-
-    ensurePlayerNotInsideGeneratedColliders(
-      [roomDoorPanel, roomBedBase, roomChest],
-      {
-        x: roomRootTarget.position.x,
-        z: roomRootTarget.position.z + 3.35,
-        rotationY: Math.PI,
-      },
-      ""
-    );
-  }
-
-  buildMansionRoomUnit(roomRoot, "101");
-
-  const room102Root = new THREE.Group();
-  room102Root.position.set(housingWestCenterX - 114, START_FLAT_Y, housingCenterZ - 4);
-  scene.add(room102Root);
-  mansionOneRoom102Root = room102Root;
-  buildMansionRoomUnit(room102Root, "102");
+  mansionOneRoomRoot = null;
+  mansionOneRoom102Root = null;
+  mansionOneRoomInstances["101"] = null;
+  mansionOneRoomInstances["102"] = null;
 }
 
 function buildMapConnectorTunnel(startGate, endGate) {
@@ -15238,6 +15362,9 @@ window.addEventListener("keydown", (e) => {
     return;
   }
   if (activeHarvestTree) {
+    triggerMiningSwing(activeHarvestTree);
+    activeHarvestTree.userData.harvestShakeStartedAt = performance.now();
+    activeHarvestTree.userData.harvestShakeUntil = activeHarvestTree.userData.harvestShakeStartedAt + 380;
     if (addItem(activeHarvestTree.userData.harvestItemId, activeHarvestTree.userData.harvestCount ?? 1)) {
       setHarvestTreeActive(activeHarvestTree, false);
       updateInventoryUI();
@@ -15482,13 +15609,9 @@ if (!hintText && activeFrontierParcelLabel) {
   if (activeBuildState.stage >= 100) {
     if (hasFrontierParcelAuthority(activeFrontierParcelLabel)) {
       hintText = "B : 건축 관리";
-    } else {
-      hintText = `${activeFrontierParcelLabel} 개발권 필요`;
     }
   } else if (hasFrontierParcelAuthority(activeFrontierParcelLabel)) {
     hintText = "B : 건축 진행";
-  } else {
-    hintText = `${activeFrontierParcelLabel} 개발권 필요`;
   }
 }
 
@@ -15501,7 +15624,7 @@ if (!hintText && activeInteractable) {
     : activeInteractable.type === "frontierDisplayBooth"
       ? (hasFrontierParcelAuthority(activeInteractable.parcelLabel) ? "E : 전시 관리" : "E : 전시 보기")
     : activeInteractable.type === "mansionEntry"
-      ? (hasMansionOneResidenceAuthority() ? `E : ${getOwnedMansionRoomPermitName()} 입장` : "거주권 필요")
+      ? (hasMansionOneResidenceAuthority() ? `E : ${getOwnedMansionRoomPermitName()} 입장` : "")
     : activeInteractable.type === "mansionBed"
       ? "Space : 취침"
     : activeInteractable.type === "mansionStorage"
