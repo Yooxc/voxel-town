@@ -4,7 +4,7 @@
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
       "nickname": "XC",
       "createdAt": "2026-04-30T08:26:16.091Z",
-      "lastLoginAt": "2026-05-12T07:06:47.779Z"
+      "lastLoginAt": "2026-05-12T08:50:12.480Z"
     }
   ],
   "nonces": [],
@@ -500,6 +500,36 @@
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
       "createdAt": "2026-05-12T07:06:47.779Z",
       "expiresAt": "2026-06-11T07:06:47.790Z"
+    },
+    {
+      "token": "0143a667-11ee-4841-9ce4-092b46e6dcf6",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-12T08:19:02.497Z",
+      "expiresAt": "2026-06-11T08:19:02.497Z"
+    },
+    {
+      "token": "7e01ef92-5557-43ec-a3d2-b3f279810615",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-12T08:34:26.784Z",
+      "expiresAt": "2026-06-11T08:34:26.784Z"
+    },
+    {
+      "token": "44b7b948-aeae-458a-ab62-c30e67da5dcf",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-12T08:43:52.172Z",
+      "expiresAt": "2026-06-11T08:43:52.172Z"
+    },
+    {
+      "token": "9df92a8f-0ef8-47c3-b4fc-fe20c2aa86ec",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-12T08:46:08.957Z",
+      "expiresAt": "2026-06-11T08:46:08.957Z"
+    },
+    {
+      "token": "264e9100-eb66-4496-997a-08fe96b04cf1",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-12T08:50:12.480Z",
+      "expiresAt": "2026-06-11T08:50:12.481Z"
     }
   ],
   "playerSaves": [
@@ -509,11 +539,11 @@
         "version": 1,
         "mapId": "광산맵",
         "position": {
-          "x": -31.455,
-          "y": 0.104,
-          "z": 34.434
+          "x": 0.141,
+          "y": 0,
+          "z": 2.844
         },
-        "rotationY": 1.9884,
+        "rotationY": 0.6058,
         "economy": {
           "credits": 0
         },
@@ -540,17 +570,22 @@
             {
               "kind": "item",
               "itemId": "freshAirCanister",
-              "count": 4,
+              "count": 5,
               "instanceId": "inv_motu5uok_6"
             },
             {
               "kind": "item",
               "itemId": "woodChip",
-              "count": 11,
+              "count": 15,
               "instanceId": "inv_mp2a6kor_p"
             },
             null,
-            null,
+            {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "count": 1,
+              "instanceId": "inv_mp2dk8ok_i"
+            },
             null,
             null,
             null,
@@ -595,7 +630,11 @@
               "instanceId": "inv_mos7ta4k_6"
             },
             "body": null,
-            "shoes": null,
+            "shoes": {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "instanceId": "inv_mp2dk8ok_i"
+            },
             "tool": {
               "kind": "item",
               "itemId": "pickaxe",
@@ -788,23 +827,23 @@
           "subtitle": "I call myself as a Digitalian, because I spend most of my daytime in digital world. My artwork captures my gaze in the digital world I live in as a landscape painting.\n\nArtwork 'DLP #00 concept' is a concept image of the DLP collection. DLP will show 12 artworks. The selling price of all artworks is 121% of the selling price of the previous works."
         }
       },
-      "updatedAt": "2026-05-12T07:07:09.811Z"
+      "updatedAt": "2026-05-12T08:51:47.830Z"
     }
   ],
   "playerSaveBackups": [
     {
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
-      "updatedAt": "2026-05-12T07:02:32.593Z",
-      "backedUpAt": "2026-05-12T07:02:36.613Z",
+      "updatedAt": "2026-05-12T08:50:27.571Z",
+      "backedUpAt": "2026-05-12T08:50:31.570Z",
       "data": {
         "version": 1,
         "mapId": "광산맵",
         "position": {
-          "x": 24.123,
-          "y": -0.354,
-          "z": 13.954
+          "x": 0.31,
+          "y": -0.27,
+          "z": 11.217
         },
-        "rotationY": -1.4529,
+        "rotationY": 2.0962,
         "economy": {
           "credits": 0
         },
@@ -831,17 +870,22 @@
             {
               "kind": "item",
               "itemId": "freshAirCanister",
-              "count": 4,
-              "instanceId": "inv_motu5uok_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "woodChip",
               "count": 5,
+              "instanceId": "inv_motu5uok_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "woodChip",
+              "count": 15,
               "instanceId": "inv_mp2a6kor_p"
             },
             null,
-            null,
+            {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "count": 1,
+              "instanceId": "inv_mp2dk8ok_i"
+            },
             null,
             null,
             null,
@@ -886,7 +930,11 @@
               "instanceId": "inv_mos7ta4k_6"
             },
             "body": null,
-            "shoes": null,
+            "shoes": {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "instanceId": "inv_mp2dk8ok_i"
+            },
             "tool": {
               "kind": "item",
               "itemId": "pickaxe",
@@ -1082,17 +1130,17 @@
     },
     {
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
-      "updatedAt": "2026-05-12T07:02:36.612Z",
-      "backedUpAt": "2026-05-12T07:06:48.217Z",
+      "updatedAt": "2026-05-12T08:50:31.570Z",
+      "backedUpAt": "2026-05-12T08:50:35.589Z",
       "data": {
         "version": 1,
         "mapId": "광산맵",
         "position": {
-          "x": 24.123,
-          "y": -0.374,
-          "z": 13.954
+          "x": 0.871,
+          "y": -0.1,
+          "z": 10.892
         },
-        "rotationY": -1.4529,
+        "rotationY": 2.0962,
         "economy": {
           "credits": 0
         },
@@ -1119,17 +1167,22 @@
             {
               "kind": "item",
               "itemId": "freshAirCanister",
-              "count": 4,
-              "instanceId": "inv_motu5uok_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "woodChip",
               "count": 5,
+              "instanceId": "inv_motu5uok_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "woodChip",
+              "count": 15,
               "instanceId": "inv_mp2a6kor_p"
             },
             null,
-            null,
+            {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "count": 1,
+              "instanceId": "inv_mp2dk8ok_i"
+            },
             null,
             null,
             null,
@@ -1174,7 +1227,11 @@
               "instanceId": "inv_mos7ta4k_6"
             },
             "body": null,
-            "shoes": null,
+            "shoes": {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "instanceId": "inv_mp2dk8ok_i"
+            },
             "tool": {
               "kind": "item",
               "itemId": "pickaxe",
@@ -1370,17 +1427,17 @@
     },
     {
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
-      "updatedAt": "2026-05-12T07:06:48.214Z",
-      "backedUpAt": "2026-05-12T07:06:51.278Z",
+      "updatedAt": "2026-05-12T08:50:35.588Z",
+      "backedUpAt": "2026-05-12T08:50:39.781Z",
       "data": {
         "version": 1,
         "mapId": "광산맵",
         "position": {
-          "x": 24.123,
-          "y": -0.303,
-          "z": 13.954
+          "x": 7.985,
+          "y": -0.346,
+          "z": 6.767
         },
-        "rotationY": -1.4529,
+        "rotationY": -1.0454,
         "economy": {
           "credits": 0
         },
@@ -1407,17 +1464,22 @@
             {
               "kind": "item",
               "itemId": "freshAirCanister",
-              "count": 4,
-              "instanceId": "inv_motu5uok_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "woodChip",
               "count": 5,
+              "instanceId": "inv_motu5uok_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "woodChip",
+              "count": 15,
               "instanceId": "inv_mp2a6kor_p"
             },
             null,
-            null,
+            {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "count": 1,
+              "instanceId": "inv_mp2dk8ok_i"
+            },
             null,
             null,
             null,
@@ -1462,7 +1524,11 @@
               "instanceId": "inv_mos7ta4k_6"
             },
             "body": null,
-            "shoes": null,
+            "shoes": {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "instanceId": "inv_mp2dk8ok_i"
+            },
             "tool": {
               "kind": "item",
               "itemId": "pickaxe",
@@ -1658,17 +1724,17 @@
     },
     {
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
-      "updatedAt": "2026-05-12T07:06:51.278Z",
-      "backedUpAt": "2026-05-12T07:06:55.291Z",
+      "updatedAt": "2026-05-12T08:50:39.781Z",
+      "backedUpAt": "2026-05-12T08:50:43.608Z",
       "data": {
         "version": 1,
         "mapId": "광산맵",
         "position": {
-          "x": 15.433,
-          "y": -0.146,
-          "z": 18.12
+          "x": -5.588,
+          "y": -0.275,
+          "z": 11.055
         },
-        "rotationY": -1.6277,
+        "rotationY": -1.1477,
         "economy": {
           "credits": 0
         },
@@ -1695,17 +1761,22 @@
             {
               "kind": "item",
               "itemId": "freshAirCanister",
-              "count": 4,
+              "count": 5,
               "instanceId": "inv_motu5uok_6"
             },
             {
               "kind": "item",
               "itemId": "woodChip",
-              "count": 6,
+              "count": 15,
               "instanceId": "inv_mp2a6kor_p"
             },
             null,
-            null,
+            {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "count": 1,
+              "instanceId": "inv_mp2dk8ok_i"
+            },
             null,
             null,
             null,
@@ -1750,7 +1821,11 @@
               "instanceId": "inv_mos7ta4k_6"
             },
             "body": null,
-            "shoes": null,
+            "shoes": {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "instanceId": "inv_mp2dk8ok_i"
+            },
             "tool": {
               "kind": "item",
               "itemId": "pickaxe",
@@ -1946,17 +2021,17 @@
     },
     {
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
-      "updatedAt": "2026-05-12T07:06:55.291Z",
-      "backedUpAt": "2026-05-12T07:06:56.286Z",
+      "updatedAt": "2026-05-12T08:50:43.608Z",
+      "backedUpAt": "2026-05-12T08:50:47.619Z",
       "data": {
         "version": 1,
         "mapId": "광산맵",
         "position": {
-          "x": 7.485,
-          "y": 0.095,
-          "z": 33.438
+          "x": -19.049,
+          "y": -0.229,
+          "z": 4.804
         },
-        "rotationY": -0.1689,
+        "rotationY": -2.1389,
         "economy": {
           "credits": 0
         },
@@ -1983,17 +2058,22 @@
             {
               "kind": "item",
               "itemId": "freshAirCanister",
-              "count": 4,
+              "count": 5,
               "instanceId": "inv_motu5uok_6"
             },
             {
               "kind": "item",
               "itemId": "woodChip",
-              "count": 6,
+              "count": 15,
               "instanceId": "inv_mp2a6kor_p"
             },
             null,
-            null,
+            {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "count": 1,
+              "instanceId": "inv_mp2dk8ok_i"
+            },
             null,
             null,
             null,
@@ -2038,7 +2118,11 @@
               "instanceId": "inv_mos7ta4k_6"
             },
             "body": null,
-            "shoes": null,
+            "shoes": {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "instanceId": "inv_mp2dk8ok_i"
+            },
             "tool": {
               "kind": "item",
               "itemId": "pickaxe",
@@ -2234,17 +2318,17 @@
     },
     {
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
-      "updatedAt": "2026-05-12T07:06:56.286Z",
-      "backedUpAt": "2026-05-12T07:06:57.710Z",
+      "updatedAt": "2026-05-12T08:50:47.619Z",
+      "backedUpAt": "2026-05-12T08:50:51.623Z",
       "data": {
         "version": 1,
         "mapId": "광산맵",
         "position": {
-          "x": 4.82,
-          "y": 0.201,
-          "z": 37.107
+          "x": -27.168,
+          "y": 0.29,
+          "z": 2.288
         },
-        "rotationY": 0.2989,
+        "rotationY": 1.5733,
         "economy": {
           "credits": 0
         },
@@ -2271,17 +2355,22 @@
             {
               "kind": "item",
               "itemId": "freshAirCanister",
-              "count": 4,
+              "count": 5,
               "instanceId": "inv_motu5uok_6"
             },
             {
               "kind": "item",
               "itemId": "woodChip",
-              "count": 7,
+              "count": 15,
               "instanceId": "inv_mp2a6kor_p"
             },
             null,
-            null,
+            {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "count": 1,
+              "instanceId": "inv_mp2dk8ok_i"
+            },
             null,
             null,
             null,
@@ -2326,7 +2415,11 @@
               "instanceId": "inv_mos7ta4k_6"
             },
             "body": null,
-            "shoes": null,
+            "shoes": {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "instanceId": "inv_mp2dk8ok_i"
+            },
             "tool": {
               "kind": "item",
               "itemId": "pickaxe",
@@ -2522,17 +2615,17 @@
     },
     {
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
-      "updatedAt": "2026-05-12T07:06:57.710Z",
-      "backedUpAt": "2026-05-12T07:07:00.520Z",
+      "updatedAt": "2026-05-12T08:50:51.623Z",
+      "backedUpAt": "2026-05-12T08:50:55.636Z",
       "data": {
         "version": 1,
         "mapId": "광산맵",
         "position": {
-          "x": 1.277,
-          "y": 0.06,
-          "z": 41.687
+          "x": -12.816,
+          "y": -0.019,
+          "z": 8.987
         },
-        "rotationY": -0.3345,
+        "rotationY": 1.5733,
         "economy": {
           "credits": 0
         },
@@ -2559,17 +2652,22 @@
             {
               "kind": "item",
               "itemId": "freshAirCanister",
-              "count": 4,
+              "count": 5,
               "instanceId": "inv_motu5uok_6"
             },
             {
               "kind": "item",
               "itemId": "woodChip",
-              "count": 8,
+              "count": 15,
               "instanceId": "inv_mp2a6kor_p"
             },
             null,
-            null,
+            {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "count": 1,
+              "instanceId": "inv_mp2dk8ok_i"
+            },
             null,
             null,
             null,
@@ -2614,7 +2712,11 @@
               "instanceId": "inv_mos7ta4k_6"
             },
             "body": null,
-            "shoes": null,
+            "shoes": {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "instanceId": "inv_mp2dk8ok_i"
+            },
             "tool": {
               "kind": "item",
               "itemId": "pickaxe",
@@ -2810,17 +2912,17 @@
     },
     {
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
-      "updatedAt": "2026-05-12T07:07:00.520Z",
-      "backedUpAt": "2026-05-12T07:07:03.168Z",
+      "updatedAt": "2026-05-12T08:50:55.636Z",
+      "backedUpAt": "2026-05-12T08:51:39.794Z",
       "data": {
         "version": 1,
         "mapId": "광산맵",
         "position": {
-          "x": -12.956,
-          "y": -0.089,
-          "z": 33.732
+          "x": -10.059,
+          "y": -0.149,
+          "z": 11.507
         },
-        "rotationY": -1.4964,
+        "rotationY": -0.528,
         "economy": {
           "credits": 0
         },
@@ -2847,17 +2949,22 @@
             {
               "kind": "item",
               "itemId": "freshAirCanister",
-              "count": 4,
+              "count": 5,
               "instanceId": "inv_motu5uok_6"
             },
             {
               "kind": "item",
               "itemId": "woodChip",
-              "count": 9,
+              "count": 15,
               "instanceId": "inv_mp2a6kor_p"
             },
             null,
-            null,
+            {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "count": 1,
+              "instanceId": "inv_mp2dk8ok_i"
+            },
             null,
             null,
             null,
@@ -2902,7 +3009,11 @@
               "instanceId": "inv_mos7ta4k_6"
             },
             "body": null,
-            "shoes": null,
+            "shoes": {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "instanceId": "inv_mp2dk8ok_i"
+            },
             "tool": {
               "kind": "item",
               "itemId": "pickaxe",
@@ -3098,17 +3209,17 @@
     },
     {
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
-      "updatedAt": "2026-05-12T07:07:03.168Z",
-      "backedUpAt": "2026-05-12T07:07:05.793Z",
+      "updatedAt": "2026-05-12T08:51:39.794Z",
+      "backedUpAt": "2026-05-12T08:51:43.782Z",
       "data": {
         "version": 1,
         "mapId": "광산맵",
         "position": {
-          "x": -21.154,
-          "y": 0.17,
-          "z": 37.574
+          "x": -10.015,
+          "y": -0.148,
+          "z": 11.483
         },
-        "rotationY": -1.2485,
+        "rotationY": 2.0754,
         "economy": {
           "credits": 0
         },
@@ -3135,17 +3246,22 @@
             {
               "kind": "item",
               "itemId": "freshAirCanister",
-              "count": 4,
+              "count": 5,
               "instanceId": "inv_motu5uok_6"
             },
             {
               "kind": "item",
               "itemId": "woodChip",
-              "count": 10,
+              "count": 15,
               "instanceId": "inv_mp2a6kor_p"
             },
             null,
-            null,
+            {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "count": 1,
+              "instanceId": "inv_mp2dk8ok_i"
+            },
             null,
             null,
             null,
@@ -3190,7 +3306,11 @@
               "instanceId": "inv_mos7ta4k_6"
             },
             "body": null,
-            "shoes": null,
+            "shoes": {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "instanceId": "inv_mp2dk8ok_i"
+            },
             "tool": {
               "kind": "item",
               "itemId": "pickaxe",
@@ -3386,17 +3506,17 @@
     },
     {
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
-      "updatedAt": "2026-05-12T07:07:05.793Z",
-      "backedUpAt": "2026-05-12T07:07:09.811Z",
+      "updatedAt": "2026-05-12T08:51:43.782Z",
+      "backedUpAt": "2026-05-12T08:51:47.831Z",
       "data": {
         "version": 1,
         "mapId": "광산맵",
         "position": {
-          "x": -42.087,
-          "y": -0.379,
-          "z": 39.305
+          "x": 1.225,
+          "y": -0.145,
+          "z": 5.102
         },
-        "rotationY": -1.4148,
+        "rotationY": 2.962,
         "economy": {
           "credits": 0
         },
@@ -3423,17 +3543,22 @@
             {
               "kind": "item",
               "itemId": "freshAirCanister",
-              "count": 4,
+              "count": 5,
               "instanceId": "inv_motu5uok_6"
             },
             {
               "kind": "item",
               "itemId": "woodChip",
-              "count": 11,
+              "count": 15,
               "instanceId": "inv_mp2a6kor_p"
             },
             null,
-            null,
+            {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "count": 1,
+              "instanceId": "inv_mp2dk8ok_i"
+            },
             null,
             null,
             null,
@@ -3478,7 +3603,11 @@
               "instanceId": "inv_mos7ta4k_6"
             },
             "body": null,
-            "shoes": null,
+            "shoes": {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "instanceId": "inv_mp2dk8ok_i"
+            },
             "tool": {
               "kind": "item",
               "itemId": "pickaxe",

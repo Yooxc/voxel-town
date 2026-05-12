@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-const LAST_PATCHED_AT = "2026-05-12 16:04:51 KST";
+const LAST_PATCHED_AT = "2026-05-12 17:47:48 KST";
 
 const scene = new THREE.Scene();
 // ===== Atmosphere: Sky / Fog =====
@@ -5810,6 +5810,14 @@ const ITEM_DEFS = {
     equipSlot: "head",
     makeInventoryModel: () => buildSafetyHelmetModel(),
   },
+  basicShoes: {
+    name: "기본신발",
+    icon: "👞",
+    stackMax: 1,
+    category: "equip",
+    equipSlot: "shoes",
+    makeInventoryModel: () => buildBasicShoesModel(),
+  },
   abandonedMineKey: {
     name: "폐광 열쇠",
     icon: "🗝️",
@@ -6745,6 +6753,20 @@ function commitDiscardDialog() {
   forwardBias: 0.06,
     });
 
+    const equippedLeftShoe = buildSingleBasicShoeModel();
+    equippedLeftShoe.name = "equippedBasicShoeLeft";
+    equippedLeftShoe.scale.setScalar(0.96);
+    equippedLeftShoe.visible = false;
+    leftLeg.add(equippedLeftShoe);
+    equippedLeftShoe.position.set(0, -0.93, 0.02);
+
+    const equippedRightShoe = buildSingleBasicShoeModel();
+    equippedRightShoe.name = "equippedBasicShoeRight";
+    equippedRightShoe.scale.setScalar(0.96);
+    equippedRightShoe.visible = false;
+    rightLeg.add(equippedRightShoe);
+    equippedRightShoe.position.set(0, -0.93, 0.02);
+
     function updateEquippedVisual() {
   const headRef = getEquippedItemRef("head");
   const isNftHelmetEquipped =
@@ -6754,6 +6776,9 @@ function commitDiscardDialog() {
   equippedPickaxe.visible = hasEquippedTool("pickaxe");
   equippedSafetyHelmet.visible = !isNftHelmetEquipped && getEquippedItemForSlot("head") === "safetyHelmet";
   equippedNftHelmet.visible = isNftHelmetEquipped;
+  const shoesVisible = getEquippedItemForSlot("shoes") === "basicShoes";
+  equippedLeftShoe.visible = shoesVisible;
+  equippedRightShoe.visible = shoesVisible;
     }
 
     function getEquippedItemRef(slotId) {
@@ -6949,7 +6974,7 @@ function commitQuickUseAssignment(key) {
     previewParts.equippedNftHelmet.visible = equippedNftHelmet.visible;
   }
   equipPreviewRenderer.render(equipPreviewScene, equipPreviewCamera);
-    }
+}
 
     function renderEquipmentWindow() {
   const slotOrder = ["head", "body", "shoes", "tool"];
@@ -12182,6 +12207,59 @@ function buildSafetyHelmetModel(theme = "default") {
   return g;
 }
 
+function buildBasicShoesModel() {
+  const g = new THREE.Group();
+  const shoeMat = new THREE.MeshStandardMaterial({
+    color: 0xc49a6c,
+    roughness: 0.94,
+    metalness: 0.02,
+  });
+  const soleMat = new THREE.MeshStandardMaterial({
+    color: 0x7d6247,
+    roughness: 0.98,
+    metalness: 0.01,
+  });
+
+  const leftSole = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.08, 0.44), soleMat);
+  leftSole.position.set(-0.18, 0.04, 0.02);
+  g.add(leftSole);
+  const leftUpper = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.12, 0.34), shoeMat);
+  leftUpper.position.set(-0.18, 0.12, 0.02);
+  g.add(leftUpper);
+
+  const rightSole = leftSole.clone();
+  rightSole.position.x = 0.18;
+  g.add(rightSole);
+  const rightUpper = leftUpper.clone();
+  rightUpper.position.x = 0.18;
+  g.add(rightUpper);
+
+  return g;
+}
+
+function buildSingleBasicShoeModel() {
+  const g = new THREE.Group();
+  const shoeMat = new THREE.MeshStandardMaterial({
+    color: 0xc49a6c,
+    roughness: 0.94,
+    metalness: 0.02,
+  });
+  const soleMat = new THREE.MeshStandardMaterial({
+    color: 0x7d6247,
+    roughness: 0.98,
+    metalness: 0.01,
+  });
+
+  const sole = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.08, 0.44), soleMat);
+  sole.position.set(0, 0.04, 0.02);
+  g.add(sole);
+  const upper = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.12, 0.34), shoeMat);
+  upper.position.set(0, 0.12, 0.02);
+  g.add(upper);
+
+  return g;
+}
+
 function buildFreshAirCanisterModel() {
   const g = new THREE.Group();
   const shellMat = new THREE.MeshStandardMaterial({
@@ -12333,6 +12411,19 @@ function makeSafetyHelmet(x, z, y = 0, rotation = null) {
   return g;
 }
 
+function makeBasicShoes(x, z, y = 0, rotation = null) {
+  const g = buildBasicShoesModel();
+  g.position.set(x, y, z);
+
+  if (rotation) {
+    g.rotation.set(rotation.x, rotation.y, rotation.z);
+  }
+
+  g.userData.isBasicShoes = true;
+  scene.add(g);
+  return g;
+}
+
 // 배치 실행 (맵 크기에 맞춰 랜덤 배치)
 function spawnTreesAndRocks() {
   const half = (typeof GROUND_SIZE !== "undefined" ? GROUND_SIZE : 120) / 2;
@@ -12441,6 +12532,20 @@ scene.add(airCanRight);
 restPropOnSupport(airCanRight, startStall.top);
 enableDynamicProp(airCanRight, { sleeping: true });
 registerPickupItem(airCanRight, "freshAirCanister", "E : 신선한 공기 캔 줍기");
+
+const basicShoes = makeBasicShoes(
+  START_X + 0.18,
+  START_Z - 2.5,
+  START_FLAT_Y,
+  {
+    x: 0,
+    y: Math.PI * 0.08,
+    z: 0,
+  }
+);
+restPropOnSupport(basicShoes, startStall.top);
+enableDynamicProp(basicShoes, { sleeping: true });
+registerPickupItem(basicShoes, "basicShoes", "E : 기본신발 줍기");
 
 const tutorialNpc = makeTutorialNpc(
   START_X,
@@ -15140,12 +15245,16 @@ function updateMovement(dt) {
   if (isMoving) {
     move.normalize();
     latestMoveDir.copy(move);
-    const devSpeedMultiplier = DEV_PRESET_ENABLED ? 3 : 1;
+    const isDevMovementMode = isDevSession();
+    const hasShoesEquipped = getEquippedItemForSlot("shoes") === "basicShoes";
     const airMoveScalar =
       isPollutedMap(currentMapId) && getMapPurificationValue(currentMapId) < 100 && playerAirCurrent <= 0
         ? 0.12
         : 1;
-    const speed = (keys.shift ? 7.0 : 4.0) * devSpeedMultiplier * airMoveScalar;
+    const baseSpeed = isDevMovementMode ? 7.0 : 3.0;
+    const runSpeed = isDevMovementMode ? 7.0 : 4.5;
+    const isSprinting = keys.shift && (isDevMovementMode || hasShoesEquipped);
+    const speed = (isSprinting ? runSpeed : baseSpeed) * airMoveScalar;
      
     const prevPos = player.position.clone();
     const delta = move.clone().multiplyScalar(speed * dt);
@@ -15186,14 +15295,16 @@ function updateMovement(dt) {
   const torsoBaseZ = 0;
   const headBaseY = 2.1;
   const headBaseZ = 0;
+  const walkAnimSpeed = isMoving && keys.shift && (isDevSession() || getEquippedItemForSlot("shoes") === "basicShoes") ? 1.28 : 1.0;
   if (isMoving) {
-    const armSwing = Math.sin(walkT) * 0.65;
-    const legSwing = Math.sin(walkT) * 0.75;
+    const walkPhase = walkT * (typeof walkAnimSpeed === "number" ? walkAnimSpeed : 1.0);
+    const armSwing = Math.sin(walkPhase) * ((typeof walkAnimSpeed === "number" && walkAnimSpeed > 1) ? 0.76 : 0.65);
+    const legSwing = Math.sin(walkPhase) * ((typeof walkAnimSpeed === "number" && walkAnimSpeed > 1) ? 0.88 : 0.75);
     leftArmPivot.rotation.x = armSwing;
     rightArmPivot.rotation.x = -armSwing;
     leftLegPivot.rotation.x = -legSwing;
     rightLegPivot.rotation.x = legSwing;
-    torso.rotation.x = Math.sin(walkT * 2) * 0.04;
+    torso.rotation.x = Math.sin(walkPhase * 2) * 0.04;
   } else {
     leftArmPivot.rotation.x *= 0.8;
     rightArmPivot.rotation.x *= 0.8;
