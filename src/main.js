@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-const LAST_PATCHED_AT = "2026-05-12 17:47:48 KST";
+const LAST_PATCHED_AT = "2026-05-13 19:22:11 KST";
 
 const scene = new THREE.Scene();
 // ===== Atmosphere: Sky / Fog =====
@@ -2917,7 +2917,7 @@ invWin.id = "invWindow";
 invWin.style.position = "fixed";
 invWin.style.left = "12px";
 invWin.style.top = "12px";
-invWin.style.width = "320px";
+invWin.style.width = "340px";
 invWin.style.height = "500px";
 invWin.style.background = "rgba(235, 235, 235, 0.92)";
 invWin.style.border = "1px solid rgba(0,0,0,0.25)";
@@ -2933,7 +2933,7 @@ uiLayer.appendChild(invWin);
 const equipWin = document.createElement("div");
 equipWin.id = "equipWindow";
 equipWin.style.position = "fixed";
-equipWin.style.left = "348px";
+equipWin.style.left = "368px";
 equipWin.style.top = "12px";
 equipWin.style.width = "288px";
 equipWin.style.height = "520px";
@@ -3683,6 +3683,7 @@ const gridWrap = document.createElement("div");
 gridWrap.style.flex = "1";
 gridWrap.style.minHeight = "0";
 gridWrap.style.overflowY = "auto";
+gridWrap.style.overflowX = "hidden";
 gridWrap.style.paddingRight = "6px";
 invBody.appendChild(gridWrap);
 
@@ -6753,19 +6754,29 @@ function commitDiscardDialog() {
   forwardBias: 0.06,
     });
 
+    const leftFootAnchor = new THREE.Group();
+    leftFootAnchor.name = "leftFootAnchor";
+    leftFootAnchor.position.set(0, -0.9, 0.05);
+    leftLegPivot.add(leftFootAnchor);
+
+    const rightFootAnchor = new THREE.Group();
+    rightFootAnchor.name = "rightFootAnchor";
+    rightFootAnchor.position.set(0, -0.9, 0.05);
+    rightLegPivot.add(rightFootAnchor);
+
     const equippedLeftShoe = buildSingleBasicShoeModel();
     equippedLeftShoe.name = "equippedBasicShoeLeft";
     equippedLeftShoe.scale.setScalar(0.96);
     equippedLeftShoe.visible = false;
-    leftLeg.add(equippedLeftShoe);
-    equippedLeftShoe.position.set(0, -0.93, 0.02);
+    leftFootAnchor.add(equippedLeftShoe);
+    equippedLeftShoe.position.set(0, 0, 0);
 
     const equippedRightShoe = buildSingleBasicShoeModel();
     equippedRightShoe.name = "equippedBasicShoeRight";
     equippedRightShoe.scale.setScalar(0.96);
     equippedRightShoe.visible = false;
-    rightLeg.add(equippedRightShoe);
-    equippedRightShoe.position.set(0, -0.93, 0.02);
+    rightFootAnchor.add(equippedRightShoe);
+    equippedRightShoe.position.set(0, 0, 0);
 
     function updateEquippedVisual() {
   const headRef = getEquippedItemRef("head");
@@ -7947,6 +7958,9 @@ function createDefaultFrontierShopState() {
     quantity: 0,
     price: 0,
     userWallet: "",
+    sellerWallet: "",
+    pendingCredits: 0,
+    lifetimeCredits: 0,
   };
 }
 
@@ -7954,6 +7968,7 @@ function createDefaultFrontierDisplayState() {
   return {
     statusText: "비어 있음",
     entry: null,
+    userWallet: "",
   };
 }
 
@@ -8034,6 +8049,8 @@ function getFrontierShopListingSummary(shopState) {
       price: 0,
       totalPrice: 0,
       statusText: "비어 있음",
+      pendingCredits: clampPlayerCredits(shopState?.pendingCredits || 0),
+      lifetimeCredits: clampPlayerCredits(shopState?.lifetimeCredits || 0),
     };
   }
   return {
@@ -8043,6 +8060,8 @@ function getFrontierShopListingSummary(shopState) {
     price: shopState.price,
     totalPrice: clampPlayerCredits(shopState.quantity * shopState.price),
     statusText: formatFrontierShopStatusText(shopState.itemId, shopState.quantity, shopState.price),
+    pendingCredits: clampPlayerCredits(shopState.pendingCredits || 0),
+    lifetimeCredits: clampPlayerCredits(shopState.lifetimeCredits || 0),
   };
 }
 
@@ -8060,7 +8079,7 @@ function getFrontierShopPurchaseFeedback(parcelLabel, quantity) {
   } else if (purchaseQty > shopState.quantity) {
     purchaseResult = { ok: false, reason: "재고가 부족합니다." };
   } else {
-    const sellerWallet = normalizeFrontierWalletAddress(shopState.userWallet);
+    const sellerWallet = normalizeFrontierWalletAddress(shopState.sellerWallet || shopState.userWallet);
     const currentWallet = getCurrentFrontierWalletAddress();
     if (sellerWallet && sellerWallet === currentWallet) {
       purchaseResult = { ok: false, reason: "자신이 등록한 상품은 구매할 수 없습니다." };
@@ -8102,12 +8121,18 @@ function normalizeFrontierShopOperationEntry(rawEntry) {
   const quantity = itemId ? Math.max(0, Math.min(999, Math.floor(Number(source.quantity) || 0))) : 0;
   const price = itemId ? Math.max(0, Math.min(999999, Math.floor(Number(source.price) || 0))) : 0;
   const userWallet = normalizeFrontierWalletAddress(source.userWallet);
+  const sellerWallet = normalizeFrontierWalletAddress(source.sellerWallet || userWallet);
+  const pendingCredits = clampPlayerCredits(source.pendingCredits || 0);
+  const lifetimeCredits = clampPlayerCredits(source.lifetimeCredits || 0);
   return {
     statusText: formatFrontierShopStatusText(itemId, quantity, price),
     itemId,
     quantity,
     price,
     userWallet,
+    sellerWallet,
+    pendingCredits,
+    lifetimeCredits,
   };
 }
 
@@ -8117,6 +8142,7 @@ function normalizeFrontierDisplayOperationEntry(rawEntry) {
   return {
     statusText: formatFrontierDisplayStatusText(entry),
     entry,
+    userWallet: normalizeFrontierWalletAddress(source.userWallet),
   };
 }
 
@@ -8168,7 +8194,7 @@ function getDisplayableFrontierEntries() {
 
 function assignFrontierDisplayEntry(parcelLabel, slotKey, entry) {
   if (!parcelLabel || !["displayA", "displayB"].includes(slotKey)) return false;
-  if (!hasFrontierParcelAuthority(parcelLabel)) return false;
+  if (!canUseFrontierDisplaySlot(parcelLabel, slotKey)) return false;
   const validation = isFrontierDisplayableEntry(entry);
   if (!validation.ok) {
     showUI(validation.reason, 1000);
@@ -8189,7 +8215,7 @@ function assignFrontierDisplayEntry(parcelLabel, slotKey, entry) {
 
 function clearFrontierDisplayEntry(parcelLabel, slotKey) {
   if (!parcelLabel || !["displayA", "displayB"].includes(slotKey)) return false;
-  if (!hasFrontierParcelAuthority(parcelLabel)) return false;
+  if (!canUseFrontierDisplaySlot(parcelLabel, slotKey)) return false;
   const displayState = getFrontierDisplayOperation(parcelLabel, slotKey);
   if (!displayState.entry) {
     showUI("현재 전시 중인 대상이 없습니다.", 900);
@@ -8211,10 +8237,20 @@ function getFrontierShopAssignedWallet(parcelLabel = getSelectedFrontierParcelLa
   return normalizeFrontierWalletAddress(getFrontierShopOperation(parcelLabel).userWallet);
 }
 
+function getFrontierShopSellerWallet(parcelLabel = getSelectedFrontierParcelLabel()) {
+  return normalizeFrontierWalletAddress(getFrontierShopOperation(parcelLabel).sellerWallet);
+}
+
 function isFrontierShopSlotUser(parcelLabel = getSelectedFrontierParcelLabel(), walletAddress = getCurrentFrontierWalletAddress()) {
   const currentWallet = normalizeFrontierWalletAddress(walletAddress);
   if (!currentWallet) return false;
   return getFrontierShopAssignedWallet(parcelLabel) === currentWallet;
+}
+
+function isFrontierShopSeller(parcelLabel = getSelectedFrontierParcelLabel(), walletAddress = getCurrentFrontierWalletAddress()) {
+  const currentWallet = normalizeFrontierWalletAddress(walletAddress);
+  if (!currentWallet) return false;
+  return getFrontierShopSellerWallet(parcelLabel) === currentWallet;
 }
 
 function canManageFrontierShopSlot(parcelLabel = getSelectedFrontierParcelLabel()) {
@@ -8223,6 +8259,50 @@ function canManageFrontierShopSlot(parcelLabel = getSelectedFrontierParcelLabel(
 
 function canUseFrontierShopSlot(parcelLabel = getSelectedFrontierParcelLabel()) {
   return isFrontierShopSlotUser(parcelLabel);
+}
+
+function canEditFrontierShopListing(parcelLabel = getSelectedFrontierParcelLabel()) {
+  const shopState = getFrontierShopOperation(parcelLabel);
+  if (!shopState.itemId || shopState.quantity <= 0) return false;
+  return isFrontierShopSeller(parcelLabel);
+}
+
+function canManageFrontierShopSellerTools(parcelLabel = getSelectedFrontierParcelLabel()) {
+  const shopState = getFrontierShopOperation(parcelLabel);
+  return isFrontierShopSeller(parcelLabel) && (
+    (shopState.itemId && shopState.quantity > 0) ||
+    clampPlayerCredits(shopState.pendingCredits || 0) > 0
+  );
+}
+
+function canRegisterFrontierShopListing(parcelLabel = getSelectedFrontierParcelLabel()) {
+  if (!canUseFrontierShopSlot(parcelLabel)) return false;
+  const shopState = getFrontierShopOperation(parcelLabel);
+  if (!shopState.itemId || shopState.quantity <= 0) return true;
+  return isFrontierShopSeller(parcelLabel);
+}
+
+function canCollectFrontierShopSettlement(parcelLabel = getSelectedFrontierParcelLabel()) {
+  const shopState = getFrontierShopOperation(parcelLabel);
+  return isFrontierShopSeller(parcelLabel) && clampPlayerCredits(shopState.pendingCredits || 0) > 0;
+}
+
+function getFrontierDisplayAssignedWallet(parcelLabel = getSelectedFrontierParcelLabel(), slotKey = "displayA") {
+  return normalizeFrontierWalletAddress(getFrontierDisplayOperation(parcelLabel, slotKey).userWallet);
+}
+
+function isFrontierDisplaySlotUser(parcelLabel = getSelectedFrontierParcelLabel(), slotKey = "displayA", walletAddress = getCurrentFrontierWalletAddress()) {
+  const currentWallet = normalizeFrontierWalletAddress(walletAddress);
+  if (!currentWallet) return false;
+  return getFrontierDisplayAssignedWallet(parcelLabel, slotKey) === currentWallet;
+}
+
+function canManageFrontierDisplaySlot(parcelLabel = getSelectedFrontierParcelLabel(), slotKey = "displayA") {
+  return hasFrontierParcelAuthority(parcelLabel);
+}
+
+function canUseFrontierDisplaySlot(parcelLabel = getSelectedFrontierParcelLabel(), slotKey = "displayA") {
+  return isFrontierDisplaySlotUser(parcelLabel, slotKey);
 }
 
 function getDevProfileSaveKey(profileId) {
@@ -8268,6 +8348,72 @@ function grantFrontierShopSellerCredits(walletAddress, amount) {
   } catch {
     return false;
   }
+}
+
+function collectFrontierShopSettlement(parcelLabel = getSelectedFrontierParcelLabel()) {
+  if (!parcelLabel) return false;
+  if (!canCollectFrontierShopSettlement(parcelLabel)) {
+    showUI("회수할 정산금이 없거나 판매자 권한이 없습니다.", 1100);
+    lastMessageUntil = performance.now() + 1100;
+    return false;
+  }
+  const shopState = getFrontierShopOperation(parcelLabel);
+  const amount = clampPlayerCredits(shopState.pendingCredits || 0);
+  if (amount <= 0) return false;
+  const sellerWallet = normalizeFrontierWalletAddress(shopState.sellerWallet);
+  if (!grantFrontierShopSellerCredits(sellerWallet, amount)) {
+    showUI("정산금 회수에 실패했습니다.", 1100);
+    lastMessageUntil = performance.now() + 1100;
+    return false;
+  }
+  shopState.pendingCredits = 0;
+  schedulePlayerSaveSync(true);
+  renderFrontierBoothDialog();
+  if (frontierBuildOpen) renderFrontierBuildWindow();
+  updateInventoryUI();
+  showUI(`정산금 ${amount}원을 회수했습니다.`, 1100);
+  lastMessageUntil = performance.now() + 1100;
+  return true;
+}
+
+function assignFrontierDisplaySlotUser(parcelLabel, slotKey, walletAddress) {
+  if (!parcelLabel || !["displayA", "displayB"].includes(slotKey)) return false;
+  if (!canManageFrontierDisplaySlot(parcelLabel, slotKey)) return false;
+  const displayState = getFrontierDisplayOperation(parcelLabel, slotKey);
+  if (displayState.entry) {
+    showUI("전시 중인 대상이 있을 때는 사용자를 변경할 수 없습니다.", 1100);
+    lastMessageUntil = performance.now() + 1100;
+    return false;
+  }
+  const normalizedWallet = normalizeFrontierWalletAddress(walletAddress);
+  if (!normalizedWallet) {
+    showUI("지갑 주소를 입력해주세요.", 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return false;
+  }
+  displayState.userWallet = normalizedWallet;
+  schedulePlayerSaveSync(true);
+  if (frontierBuildOpen) renderFrontierBuildWindow();
+  showUI(`${slotKey === "displayA" ? "전시 A" : "전시 B"} 사용자를 ${shortenWalletAddress(normalizedWallet)}(으)로 지정했습니다.`, 1100);
+  lastMessageUntil = performance.now() + 1100;
+  return true;
+}
+
+function clearFrontierDisplaySlotUser(parcelLabel, slotKey) {
+  if (!parcelLabel || !["displayA", "displayB"].includes(slotKey)) return false;
+  if (!canManageFrontierDisplaySlot(parcelLabel, slotKey)) return false;
+  const displayState = getFrontierDisplayOperation(parcelLabel, slotKey);
+  if (displayState.entry) {
+    showUI("전시 중인 대상이 있을 때는 사용자를 해제할 수 없습니다.", 1100);
+    lastMessageUntil = performance.now() + 1100;
+    return false;
+  }
+  displayState.userWallet = "";
+  schedulePlayerSaveSync(true);
+  if (frontierBuildOpen) renderFrontierBuildWindow();
+  showUI(`${slotKey === "displayA" ? "전시 A" : "전시 B"} 사용자를 해제했습니다.`, 1000);
+  lastMessageUntil = performance.now() + 1000;
+  return true;
 }
 
 function formatFrontierShopUserDisplay(parcelLabel = getSelectedFrontierParcelLabel()) {
@@ -9774,7 +9920,7 @@ function closeFrontierShopRegisterDialog() {
 
 function clearFrontierShopListing(parcelLabel = frontierShopRegisterParcelLabel) {
   if (!parcelLabel) return false;
-  if (!canUseFrontierShopSlot(parcelLabel)) return false;
+  if (!canEditFrontierShopListing(parcelLabel)) return false;
   const shopState = getFrontierShopOperation(parcelLabel);
   if (!shopState.itemId || shopState.quantity <= 0) {
     showUI("현재 등록된 판매 물품이 없습니다.", 900);
@@ -9790,6 +9936,9 @@ function clearFrontierShopListing(parcelLabel = frontierShopRegisterParcelLabel)
   shopState.quantity = 0;
   shopState.price = 0;
   shopState.statusText = "비어 있음";
+  if (clampPlayerCredits(shopState.pendingCredits || 0) <= 0) {
+    shopState.sellerWallet = "";
+  }
   rebuildFrontierParcelConstructionVisual(parcelLabel);
   updateInventoryUI();
   schedulePlayerSaveSync(true);
@@ -9813,7 +9962,7 @@ function tryPurchaseFrontierShopListing(parcelLabel, quantity) {
   if (purchaseQty > shopState.quantity) {
     return { ok: false, reason: "재고가 부족합니다." };
   }
-  const sellerWallet = normalizeFrontierWalletAddress(shopState.userWallet);
+  const sellerWallet = normalizeFrontierWalletAddress(shopState.sellerWallet || shopState.userWallet);
   const currentWallet = getCurrentFrontierWalletAddress();
   if (sellerWallet && sellerWallet === currentWallet) {
     return { ok: false, reason: "자신이 등록한 상품은 구매할 수 없습니다." };
@@ -9832,11 +9981,13 @@ function tryPurchaseFrontierShopListing(parcelLabel, quantity) {
     for (let i = 0; i < inventory.slots.length; i += 1) inventory.slots[i] = inventorySnapshot[i];
     return { ok: false, reason: "개척 코인을 차감하지 못했습니다." };
   }
-  if (!grantFrontierShopSellerCredits(sellerWallet, totalPrice)) {
+  if (!sellerWallet) {
     for (let i = 0; i < inventory.slots.length; i += 1) inventory.slots[i] = inventorySnapshot[i];
     setPlayerCredits(getPlayerCredits() + totalPrice);
-    return { ok: false, reason: "판매자 정산에 실패했습니다." };
+    return { ok: false, reason: "판매자 정보를 찾을 수 없습니다." };
   }
+  shopState.pendingCredits = clampPlayerCredits((shopState.pendingCredits || 0) + totalPrice);
+  shopState.lifetimeCredits = clampPlayerCredits((shopState.lifetimeCredits || 0) + totalPrice);
   shopState.quantity -= purchaseQty;
   if (shopState.quantity <= 0) {
     shopState.itemId = "";
@@ -9860,7 +10011,7 @@ function tryPurchaseFrontierShopListing(parcelLabel, quantity) {
 function commitFrontierShopListing() {
   const parcelLabel = frontierShopRegisterParcelLabel || getSelectedFrontierParcelLabel();
   if (!parcelLabel) return false;
-  if (!canUseFrontierShopSlot(parcelLabel)) return false;
+  if (!canRegisterFrontierShopListing(parcelLabel)) return false;
   const itemId = frontierShopRegisterSelectedItemId;
   if (!itemId) {
     showUI("판매할 아이템을 먼저 선택하세요.", 1000);
@@ -9897,6 +10048,7 @@ function commitFrontierShopListing() {
   shopState.itemId = itemId;
   shopState.quantity = quantity;
   shopState.price = price;
+  shopState.sellerWallet = getCurrentFrontierWalletAddress();
   shopState.statusText = formatFrontierShopStatusText(itemId, quantity, price);
   rebuildFrontierParcelConstructionVisual(parcelLabel);
   updateInventoryUI();
@@ -9992,7 +10144,7 @@ function renderFrontierShopRegisterDialog() {
   }
   frontierShopRegisterBtn.disabled = !frontierShopRegisterSelectedItemId;
   frontierShopRegisterBtn.style.opacity = frontierShopRegisterBtn.disabled ? "0.58" : "1";
-  frontierShopClearBtn.disabled = !(shopState.itemId && shopState.quantity > 0);
+  frontierShopClearBtn.disabled = !canEditFrontierShopListing(parcelLabel);
   frontierShopClearBtn.style.opacity = frontierShopClearBtn.disabled ? "0.58" : "1";
 }
 
@@ -10005,6 +10157,11 @@ function assignFrontierShopSlotUser(parcelLabel, walletAddress) {
     return false;
   }
   const shopState = getFrontierShopOperation(parcelLabel);
+  if ((shopState.itemId && shopState.quantity > 0) || clampPlayerCredits(shopState.pendingCredits || 0) > 0) {
+    showUI("판매 물품 또는 정산금이 남아 있을 때는 상점 사용자를 변경할 수 없습니다.", 1200);
+    lastMessageUntil = performance.now() + 1200;
+    return false;
+  }
   shopState.userWallet = normalizedWallet;
   schedulePlayerSaveSync(true);
   renderFrontierBuildWindow();
@@ -10016,15 +10173,33 @@ function assignFrontierShopSlotUser(parcelLabel, walletAddress) {
 function clearFrontierShopSlotUser(parcelLabel) {
   if (!canManageFrontierShopSlot(parcelLabel)) return false;
   const shopState = getFrontierShopOperation(parcelLabel);
-  if (shopState.itemId && shopState.quantity > 0) {
-    showUI("판매 물품이 등록된 상태에서는 사용자를 해제할 수 없습니다.", 1200);
+  if ((shopState.itemId && shopState.quantity > 0) || clampPlayerCredits(shopState.pendingCredits || 0) > 0) {
+    showUI("판매 물품 또는 정산금이 남아 있을 때는 사용자를 해제할 수 없습니다.", 1200);
     lastMessageUntil = performance.now() + 1200;
     return false;
   }
   shopState.userWallet = "";
+  shopState.sellerWallet = "";
   schedulePlayerSaveSync(true);
   renderFrontierBuildWindow();
   showUI("상점 사용자를 해제했습니다.", 1000);
+  lastMessageUntil = performance.now() + 1000;
+  return true;
+}
+
+function updateFrontierShopListingPrice(parcelLabel, nextPrice) {
+  if (!parcelLabel) return false;
+  if (!canEditFrontierShopListing(parcelLabel)) return false;
+  const shopState = getFrontierShopOperation(parcelLabel);
+  if (!shopState.itemId || shopState.quantity <= 0) return false;
+  const price = Math.max(0, Math.min(999999, Math.floor(Number(nextPrice) || 0)));
+  shopState.price = price;
+  shopState.statusText = formatFrontierShopStatusText(shopState.itemId, shopState.quantity, price);
+  rebuildFrontierParcelConstructionVisual(parcelLabel);
+  schedulePlayerSaveSync(true);
+  renderFrontierBoothDialog();
+  if (frontierBuildOpen) renderFrontierBuildWindow();
+  showUI(`판매 가격을 ${price}원으로 수정했습니다.`, 1000);
   lastMessageUntil = performance.now() + 1000;
   return true;
 }
@@ -11099,6 +11274,7 @@ frontierBoothWin.style.left = "50%";
 frontierBoothWin.style.top = "50%";
 frontierBoothWin.style.transform = "translate(-50%, -50%)";
 frontierBoothWin.style.width = "min(520px, calc(100vw - 40px))";
+frontierBoothWin.dataset.defaultWidth = "min(520px, calc(100vw - 40px))";
 frontierBoothWin.style.background = "rgba(245,245,245,0.98)";
 frontierBoothWin.style.border = "1px solid rgba(0,0,0,0.16)";
 frontierBoothWin.style.borderRadius = "18px";
@@ -11107,6 +11283,7 @@ frontierBoothWin.style.display = "none";
 frontierBoothWin.style.pointerEvents = "auto";
 frontierBoothWin.style.zIndex = "1000004";
 frontierBoothWin.style.overflow = "hidden";
+frontierBoothWin.style.maxHeight = "calc(100vh - 48px)";
 uiLayer.appendChild(frontierBoothWin);
 
 const frontierBoothHeader = document.createElement("div");
@@ -11141,6 +11318,8 @@ const frontierBoothBody = document.createElement("div");
 frontierBoothBody.style.padding = "16px";
 frontierBoothBody.style.display = "grid";
 frontierBoothBody.style.gap = "14px";
+frontierBoothBody.style.maxHeight = "calc(100vh - 132px)";
+frontierBoothBody.style.overflow = "hidden";
 frontierBoothWin.appendChild(frontierBoothBody);
 
 const frontierBoothStatus = document.createElement("div");
@@ -11230,117 +11409,34 @@ function renderFrontierBoothDialog() {
   const { parcelLabel, slotKey, boothTitle, mode } = frontierBoothContext;
   const buildState = getFrontierBuildState(parcelLabel);
   const slotState = slotKey === "shop" ? buildState.operations.shop : buildState.operations[slotKey];
+  const isDisplayManageMode = slotKey !== "shop" && mode === "manage";
+  frontierBoothWin.style.width = isDisplayManageMode
+    ? "min(1040px, calc(100vw - 48px))"
+    : frontierBoothWin.dataset.defaultWidth;
   frontierBoothTitle.textContent = `${parcelLabel} ${boothTitle} ${mode === "manage" ? "관리" : "보기"}`;
   frontierBoothActionArea.innerHTML = "";
 
   if (slotKey === "shop") {
     const assignedWallet = getFrontierShopAssignedWallet(parcelLabel);
     const listingSummary = getFrontierShopListingSummary(slotState);
-    frontierBoothStatus.innerHTML = `
-      <div>현재 상태: <strong>${listingSummary.statusText}</strong></div>
-      <div style="margin-top:6px;">현재 사용자: <strong>${assignedWallet ? shortenWalletAddress(assignedWallet) : "미지정"}</strong></div>
-      <div style="margin-top:6px;">판매 상품: <strong>${listingSummary.itemName}</strong> / 재고 <strong>${listingSummary.quantity}개</strong> / 개당 <strong>${listingSummary.price}원</strong></div>
-      <div style="margin-top:6px;opacity:0.78;">${mode === "manage" ? "상점 사용자 지정과 판매 등록을 이곳에서 관리합니다." : "방문자는 등록된 판매 물품 상태를 여기서 확인할 수 있습니다."}</div>
-    `;
-    if (mode === "manage") {
-      if (canManageFrontierShopSlot(parcelLabel)) {
-        const controls = document.createElement("div");
-        controls.style.display = "grid";
-        controls.style.gap = "10px";
-
-        const current = document.createElement("div");
-        current.style.fontSize = "13px";
-        current.style.fontWeight = "700";
-        current.style.color = "#444";
-        current.textContent = assignedWallet ? `현재 지정: ${shortenWalletAddress(assignedWallet)}` : "현재 지정: 미지정";
-        controls.appendChild(current);
-
-        const input = document.createElement("input");
-        input.type = "text";
-        input.placeholder = "상점 사용자 지갑 주소 입력";
-        input.value = assignedWallet;
-        input.style.border = "1px solid rgba(0,0,0,0.14)";
-        input.style.borderRadius = "10px";
-        input.style.padding = "10px 12px";
-        input.style.fontSize = "14px";
-        controls.appendChild(input);
-
-        const row = document.createElement("div");
-        row.style.display = "flex";
-        row.style.flexWrap = "wrap";
-        row.style.gap = "8px";
-        controls.appendChild(row);
-
-        const makeBtn = (label) => {
-          const btn = document.createElement("button");
-          btn.type = "button";
-          btn.textContent = label;
-          btn.style.padding = "10px 12px";
-          btn.style.borderRadius = "10px";
-          btn.style.border = "1px solid rgba(0,0,0,0.14)";
-          btn.style.background = "rgba(255,255,255,0.94)";
-          btn.style.fontSize = "13px";
-          btn.style.fontWeight = "800";
-          btn.style.cursor = "pointer";
-          return btn;
-        };
-
-        const selfBtn = makeBtn("내가 직접 사용");
-        selfBtn.addEventListener("click", () => {
-          const currentWallet = getCurrentFrontierWalletAddress();
-          if (!currentWallet) {
-            showUI("로그인 지갑 주소를 확인할 수 없습니다.", 1000);
-            lastMessageUntil = performance.now() + 1000;
-            return;
-          }
-          assignFrontierShopSlotUser(parcelLabel, currentWallet);
-          renderFrontierBoothDialog();
-        });
-        row.appendChild(selfBtn);
-
-        const assignBtn = makeBtn("지갑 주소로 지정");
-        assignBtn.addEventListener("click", () => {
-          assignFrontierShopSlotUser(parcelLabel, input.value);
-          renderFrontierBoothDialog();
-        });
-        row.appendChild(assignBtn);
-
-        const clearBtn = makeBtn("사용자 해제");
-        clearBtn.addEventListener("click", () => {
-          clearFrontierShopSlotUser(parcelLabel);
-          renderFrontierBoothDialog();
-        });
-        row.appendChild(clearBtn);
-
-        frontierBoothActionArea.appendChild(controls);
-      }
-
-      if (canUseFrontierShopSlot(parcelLabel)) {
-        const salesBtn = document.createElement("button");
-        salesBtn.type = "button";
-        salesBtn.textContent = "판매 등록";
-        salesBtn.style.padding = "12px 14px";
-        salesBtn.style.borderRadius = "12px";
-        salesBtn.style.border = "1px solid rgba(150,90,20,0.35)";
-        salesBtn.style.background = "rgba(255,255,255,0.94)";
-        salesBtn.style.fontSize = "15px";
-        salesBtn.style.fontWeight = "900";
-        salesBtn.style.color = "#7a4a12";
-        salesBtn.style.cursor = "pointer";
-        salesBtn.addEventListener("click", () => {
-          openFrontierShopRegisterDialog(parcelLabel);
-        });
-        frontierBoothActionArea.appendChild(salesBtn);
-      } else {
-        const note = document.createElement("div");
-        note.style.fontSize = "13px";
-        note.style.color = "#6b6053";
-        note.textContent = assignedWallet
-          ? "현재 로그인한 지갑은 상점 사용자로 지정되어 있지 않아 판매 등록을 할 수 없습니다."
-          : "상점 사용자를 먼저 지정해야 판매 등록을 할 수 있습니다.";
-        frontierBoothActionArea.appendChild(note);
-      }
-    } else {
+    const sellerWallet = getFrontierShopSellerWallet(parcelLabel);
+    const isOperator = canManageFrontierShopSlot(parcelLabel);
+    const isSeller = isFrontierShopSeller(parcelLabel);
+    const isAssignedUser = canUseFrontierShopSlot(parcelLabel);
+    const makeManageBtn = (label) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = label;
+      btn.style.padding = "10px 12px";
+      btn.style.borderRadius = "10px";
+      btn.style.border = "1px solid rgba(0,0,0,0.14)";
+      btn.style.background = "rgba(255,255,255,0.94)";
+      btn.style.fontSize = "13px";
+      btn.style.fontWeight = "800";
+      btn.style.cursor = "pointer";
+      return btn;
+    };
+    const appendShopBuyerView = (targetWrap) => {
       const viewWrap = document.createElement("div");
       viewWrap.style.display = "grid";
       viewWrap.style.gap = "12px";
@@ -11515,98 +11611,401 @@ function renderFrontierBoothDialog() {
         viewWrap.appendChild(purchaseCard);
       }
 
-      frontierBoothActionArea.appendChild(viewWrap);
+      targetWrap.appendChild(viewWrap);
+    };
+    frontierBoothStatus.innerHTML = `
+      <div>현재 판매 상태 카드</div>
+      <div style="margin-top:6px;">현재 사용자: <strong>${assignedWallet ? shortenWalletAddress(assignedWallet) : "미지정"}</strong></div>
+      <div style="margin-top:6px;">현재 판매자: <strong>${sellerWallet ? shortenWalletAddress(sellerWallet) : "없음"}</strong></div>
+      <div style="margin-top:6px;">판매 상품: <strong>${listingSummary.itemName}</strong></div>
+      <div style="margin-top:6px;">재고 <strong>${listingSummary.quantity}개</strong> / 개당 <strong>${listingSummary.price}원</strong></div>
+      <div style="margin-top:6px;">정산 대기금 <strong>${listingSummary.pendingCredits}원</strong> / 누적 판매금 <strong>${listingSummary.lifetimeCredits}원</strong></div>
+      <div style="margin-top:6px;opacity:0.78;">${mode === "manage" ? "운영자는 사용자 지정, 판매자는 상품/정산을 관리합니다." : "방문자는 등록된 판매 물품 상태를 여기서 확인할 수 있습니다."}</div>
+    `;
+    if (mode === "manage") {
+      if (isOperator) {
+        const controls = document.createElement("div");
+        controls.style.display = "grid";
+        controls.style.gap = "10px";
+
+        const current = document.createElement("div");
+        current.style.fontSize = "13px";
+        current.style.fontWeight = "700";
+        current.style.color = "#444";
+        current.textContent = assignedWallet ? `현재 지정: ${shortenWalletAddress(assignedWallet)}` : "현재 지정: 미지정";
+        controls.appendChild(current);
+
+        const input = document.createElement("input");
+        input.type = "text";
+        input.placeholder = "상점 사용자 지갑 주소 입력";
+        input.value = assignedWallet;
+        input.style.border = "1px solid rgba(0,0,0,0.14)";
+        input.style.borderRadius = "10px";
+        input.style.padding = "10px 12px";
+        input.style.fontSize = "14px";
+        controls.appendChild(input);
+
+        const row = document.createElement("div");
+        row.style.display = "flex";
+        row.style.flexWrap = "wrap";
+        row.style.gap = "8px";
+        controls.appendChild(row);
+
+        const selfBtn = makeManageBtn("내가 직접 사용");
+        selfBtn.addEventListener("click", () => {
+          const currentWallet = getCurrentFrontierWalletAddress();
+          if (!currentWallet) {
+            showUI("로그인 지갑 주소를 확인할 수 없습니다.", 1000);
+            lastMessageUntil = performance.now() + 1000;
+            return;
+          }
+          assignFrontierShopSlotUser(parcelLabel, currentWallet);
+          renderFrontierBoothDialog();
+        });
+        row.appendChild(selfBtn);
+
+        const assignBtn = makeManageBtn("지갑 주소로 지정");
+        assignBtn.addEventListener("click", () => {
+          assignFrontierShopSlotUser(parcelLabel, input.value);
+          renderFrontierBoothDialog();
+        });
+        row.appendChild(assignBtn);
+
+        const clearBtn = makeManageBtn("사용자 해제");
+        clearBtn.addEventListener("click", () => {
+          clearFrontierShopSlotUser(parcelLabel);
+          renderFrontierBoothDialog();
+        });
+        row.appendChild(clearBtn);
+
+        frontierBoothActionArea.appendChild(controls);
+      }
+
+      if (canRegisterFrontierShopListing(parcelLabel)) {
+        const salesBtn = document.createElement("button");
+        salesBtn.type = "button";
+        salesBtn.textContent = listingSummary.active ? "상품 교체 등록" : "판매 등록";
+        salesBtn.style.padding = "12px 14px";
+        salesBtn.style.borderRadius = "12px";
+        salesBtn.style.border = "1px solid rgba(150,90,20,0.35)";
+        salesBtn.style.background = "rgba(255,255,255,0.94)";
+        salesBtn.style.fontSize = "15px";
+        salesBtn.style.fontWeight = "900";
+        salesBtn.style.color = "#7a4a12";
+        salesBtn.style.cursor = "pointer";
+        salesBtn.addEventListener("click", () => {
+          openFrontierShopRegisterDialog(parcelLabel);
+        });
+        frontierBoothActionArea.appendChild(salesBtn);
+      }
+
+      if (canManageFrontierShopSellerTools(parcelLabel)) {
+        const sellerTools = document.createElement("div");
+        sellerTools.style.display = "grid";
+        sellerTools.style.gap = "10px";
+
+        if (canEditFrontierShopListing(parcelLabel)) {
+          const priceRow = document.createElement("div");
+          priceRow.style.display = "grid";
+          priceRow.style.gridTemplateColumns = "1fr auto";
+          priceRow.style.gap = "8px";
+          sellerTools.appendChild(priceRow);
+
+          const priceInput = document.createElement("input");
+          priceInput.type = "number";
+          priceInput.min = "0";
+          priceInput.step = "1";
+          priceInput.value = String(listingSummary.price);
+          priceInput.style.border = "1px solid rgba(0,0,0,0.14)";
+          priceInput.style.borderRadius = "10px";
+          priceInput.style.padding = "10px 12px";
+          priceInput.style.fontSize = "14px";
+          priceRow.appendChild(priceInput);
+
+          const priceBtn = makeManageBtn("가격 수정");
+          priceBtn.addEventListener("click", () => {
+            updateFrontierShopListingPrice(parcelLabel, priceInput.value);
+          });
+          priceRow.appendChild(priceBtn);
+        }
+
+        const sellerRow = document.createElement("div");
+        sellerRow.style.display = "flex";
+        sellerRow.style.flexWrap = "wrap";
+        sellerRow.style.gap = "8px";
+        sellerTools.appendChild(sellerRow);
+
+        if (canEditFrontierShopListing(parcelLabel)) {
+          const revokeBtn = makeManageBtn("판매 회수");
+          revokeBtn.addEventListener("click", () => {
+            clearFrontierShopListing(parcelLabel);
+          });
+          sellerRow.appendChild(revokeBtn);
+        }
+
+        const collectBtn = makeManageBtn("정산금 회수");
+        collectBtn.disabled = !canCollectFrontierShopSettlement(parcelLabel);
+        collectBtn.style.opacity = collectBtn.disabled ? "0.58" : "1";
+        collectBtn.addEventListener("click", () => {
+          collectFrontierShopSettlement(parcelLabel);
+        });
+        sellerRow.appendChild(collectBtn);
+
+        frontierBoothActionArea.appendChild(sellerTools);
+      } else if (isOperator && listingSummary.active) {
+        const operatorBuyerNote = document.createElement("div");
+        operatorBuyerNote.style.fontSize = "13px";
+        operatorBuyerNote.style.color = "#6b6053";
+        operatorBuyerNote.textContent = "현재 판매자는 다른 사용자입니다. 아래에서 상품 상태를 확인하고 방문자처럼 구매할 수 있습니다.";
+        frontierBoothActionArea.appendChild(operatorBuyerNote);
+        appendShopBuyerView(frontierBoothActionArea);
+      } else if (!isOperator) {
+        const note = document.createElement("div");
+        note.style.fontSize = "13px";
+        note.style.color = "#6b6053";
+        note.textContent = assignedWallet
+          ? (listingSummary.active
+            ? "현재 등록된 상품은 실제 판매자만 가격 수정, 회수, 정산금 회수를 할 수 있습니다."
+            : (isAssignedUser
+              ? "상품을 등록하면 판매 관리 항목이 여기에 표시됩니다."
+              : "현재 로그인한 지갑은 상점 사용자로 지정되어 있지 않아 판매 등록을 할 수 없습니다."))
+          : "상점 사용자를 먼저 지정해야 판매 등록을 할 수 있습니다.";
+        frontierBoothActionArea.appendChild(note);
+      }
+    } else {
+      appendShopBuyerView(frontierBoothActionArea);
     }
     return;
   }
 
   const displaySummary = getFrontierDisplaySummary(slotState);
+  const displayAssignedWallet = getFrontierDisplayAssignedWallet(parcelLabel, slotKey);
   frontierBoothStatus.innerHTML = `
     <div>현재 상태: <strong>${displaySummary.statusText}</strong></div>
+    <div style="margin-top:6px;">전시 슬롯: <strong>${boothTitle}</strong></div>
+    <div style="margin-top:6px;">현재 사용자: <strong>${displayAssignedWallet ? shortenWalletAddress(displayAssignedWallet) : "미지정"}</strong></div>
     <div style="margin-top:6px;">전시 대상: <strong>${displaySummary.itemName}</strong></div>
-    <div style="margin-top:6px;opacity:0.78;">${mode === "manage" ? "운영자는 인벤토리에서 전시 대상을 골라 교체하거나 해제할 수 있습니다." : "방문자는 현재 전시 중인 대상을 여기서 확인할 수 있습니다."}</div>
+    <div style="margin-top:6px;opacity:0.78;">${mode === "manage" ? "운영자는 사용자 지정, 전시 사용자는 전시 관리가 가능합니다." : "방문자는 현재 전시 중인 대상을 여기서 확인할 수 있습니다."}</div>
   `;
 
   if (mode === "manage") {
     const manageWrap = document.createElement("div");
     manageWrap.style.display = "grid";
-    manageWrap.style.gap = "12px";
+    manageWrap.style.gap = "16px";
+    const isDisplayOperator = canManageFrontierDisplaySlot(parcelLabel, slotKey);
+    const isDisplayUser = canUseFrontierDisplaySlot(parcelLabel, slotKey);
+
+    const shouldSplitDisplayLayout = slotKey !== "shop";
+    let leftColumn = manageWrap;
+    let rightColumn = manageWrap;
+
+    if (shouldSplitDisplayLayout) {
+      manageWrap.style.gridTemplateColumns = "minmax(300px, 340px) minmax(0, 1fr)";
+      manageWrap.style.alignItems = "start";
+      manageWrap.style.maxHeight = "calc(100vh - 224px)";
+      manageWrap.style.overflow = "hidden";
+
+      leftColumn = document.createElement("div");
+      leftColumn.style.display = "grid";
+      leftColumn.style.gap = "12px";
+      leftColumn.style.alignContent = "start";
+      manageWrap.appendChild(leftColumn);
+
+      rightColumn = document.createElement("div");
+      rightColumn.style.display = "grid";
+      rightColumn.style.gap = "10px";
+      rightColumn.style.alignContent = "start";
+      rightColumn.style.minHeight = "0";
+      manageWrap.appendChild(rightColumn);
+    }
+
+    const statusCard = document.createElement("div");
+    statusCard.style.border = "1px solid rgba(0,0,0,0.12)";
+    statusCard.style.borderRadius = "12px";
+    statusCard.style.background = "rgba(255,255,255,0.94)";
+    statusCard.style.padding = "14px";
+    statusCard.appendChild(frontierBoothStatus);
+    leftColumn.appendChild(statusCard);
+
+    if (isDisplayOperator) {
+      const assignWrap = document.createElement("div");
+      assignWrap.style.display = "grid";
+      assignWrap.style.gap = "10px";
+      assignWrap.style.border = "1px solid rgba(0,0,0,0.12)";
+      assignWrap.style.borderRadius = "12px";
+      assignWrap.style.background = "rgba(255,255,255,0.94)";
+      assignWrap.style.padding = "14px";
+      leftColumn.appendChild(assignWrap);
+
+      const current = document.createElement("div");
+      current.style.fontSize = "13px";
+      current.style.fontWeight = "700";
+      current.style.color = "#444";
+      current.textContent = displayAssignedWallet ? `현재 지정: ${shortenWalletAddress(displayAssignedWallet)}` : "현재 지정: 미지정";
+      assignWrap.appendChild(current);
+
+      const input = document.createElement("input");
+      input.type = "text";
+      input.placeholder = `${boothTitle} 사용자 지갑 주소 입력`;
+      input.value = displayAssignedWallet;
+      input.style.border = "1px solid rgba(0,0,0,0.14)";
+      input.style.borderRadius = "10px";
+      input.style.padding = "10px 12px";
+      input.style.fontSize = "14px";
+      assignWrap.appendChild(input);
+
+      const assignRow = document.createElement("div");
+      assignRow.style.display = "flex";
+      assignRow.style.flexWrap = "wrap";
+      assignRow.style.gap = "8px";
+      assignWrap.appendChild(assignRow);
+
+      const makeDisplayBtn = (label) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = label;
+        btn.style.padding = "10px 12px";
+        btn.style.borderRadius = "10px";
+        btn.style.border = "1px solid rgba(0,0,0,0.14)";
+        btn.style.background = "rgba(255,255,255,0.94)";
+        btn.style.fontSize = "13px";
+        btn.style.fontWeight = "800";
+        btn.style.cursor = "pointer";
+        return btn;
+      };
+
+      const selfBtn = makeDisplayBtn("내가 직접 사용");
+      selfBtn.addEventListener("click", () => {
+        const currentWallet = getCurrentFrontierWalletAddress();
+        if (!currentWallet) {
+          showUI("로그인 지갑 주소를 확인할 수 없습니다.", 1000);
+          lastMessageUntil = performance.now() + 1000;
+          return;
+        }
+        assignFrontierDisplaySlotUser(parcelLabel, slotKey, currentWallet);
+        renderFrontierBoothDialog();
+      });
+      assignRow.appendChild(selfBtn);
+
+      const assignBtn = makeDisplayBtn("지갑 주소로 지정");
+      assignBtn.addEventListener("click", () => {
+        assignFrontierDisplaySlotUser(parcelLabel, slotKey, input.value);
+        renderFrontierBoothDialog();
+      });
+      assignRow.appendChild(assignBtn);
+
+      const clearUserBtn = makeDisplayBtn("사용자 해제");
+      clearUserBtn.addEventListener("click", () => {
+        clearFrontierDisplaySlotUser(parcelLabel, slotKey);
+        renderFrontierBoothDialog();
+      });
+      assignRow.appendChild(clearUserBtn);
+    }
 
     const controls = document.createElement("div");
     controls.style.display = "flex";
     controls.style.flexWrap = "wrap";
     controls.style.gap = "8px";
-    manageWrap.appendChild(controls);
+    if (isDisplayUser) {
+      leftColumn.appendChild(controls);
+    }
 
-    const clearBtn = document.createElement("button");
-    clearBtn.type = "button";
-    clearBtn.textContent = "전시 해제";
-    clearBtn.style.padding = "10px 12px";
-    clearBtn.style.borderRadius = "10px";
-    clearBtn.style.border = "1px solid rgba(0,0,0,0.14)";
-    clearBtn.style.background = "rgba(255,255,255,0.94)";
-    clearBtn.style.fontSize = "13px";
-    clearBtn.style.fontWeight = "800";
-    clearBtn.style.cursor = "pointer";
-    clearBtn.style.opacity = displaySummary.active ? "1" : "0.58";
-    clearBtn.disabled = !displaySummary.active;
-    clearBtn.addEventListener("click", () => {
-      clearFrontierDisplayEntry(parcelLabel, slotKey);
-    });
-    controls.appendChild(clearBtn);
+    if (isDisplayUser) {
+      const clearBtn = document.createElement("button");
+      clearBtn.type = "button";
+      clearBtn.textContent = "전시 해제";
+      clearBtn.style.padding = "10px 12px";
+      clearBtn.style.borderRadius = "10px";
+      clearBtn.style.border = "1px solid rgba(0,0,0,0.14)";
+      clearBtn.style.background = "rgba(255,255,255,0.94)";
+      clearBtn.style.fontSize = "13px";
+      clearBtn.style.fontWeight = "800";
+      clearBtn.style.cursor = "pointer";
+      clearBtn.style.opacity = displaySummary.active ? "1" : "0.58";
+      clearBtn.disabled = !displaySummary.active;
+      clearBtn.addEventListener("click", () => {
+        clearFrontierDisplayEntry(parcelLabel, slotKey);
+      });
+      controls.appendChild(clearBtn);
 
-    const availableEntries = getDisplayableFrontierEntries();
-    if (!availableEntries.length) {
-      const empty = document.createElement("div");
-      empty.textContent = "전시 가능한 아이템이 인벤토리에 없습니다.";
-      empty.style.padding = "14px 12px";
-      empty.style.borderRadius = "12px";
-      empty.style.background = "rgba(0,0,0,0.05)";
-      empty.style.fontSize = "13px";
-      empty.style.color = "#666";
-      manageWrap.appendChild(empty);
-    } else {
-      const grid = document.createElement("div");
-      grid.style.display = "grid";
-      grid.style.gridTemplateColumns = "repeat(auto-fill, minmax(118px, 1fr))";
-      grid.style.gap = "10px";
-      manageWrap.appendChild(grid);
+      const availableEntries = getDisplayableFrontierEntries();
+      const listTitle = document.createElement("div");
+      listTitle.textContent = "전시할 물품";
+      listTitle.style.fontSize = "14px";
+      listTitle.style.fontWeight = "900";
+      listTitle.style.color = "#222";
+      rightColumn.appendChild(listTitle);
 
-      for (const { entry } of availableEntries) {
-        const card = document.createElement("button");
-        card.type = "button";
-        card.style.border = "1px solid rgba(0,0,0,0.14)";
-        card.style.borderRadius = "12px";
-        card.style.background = "rgba(255,255,255,0.96)";
-        card.style.padding = "10px";
-        card.style.cursor = "pointer";
-        card.style.display = "flex";
-        card.style.flexDirection = "column";
-        card.style.alignItems = "center";
-        card.style.gap = "6px";
+      if (!availableEntries.length) {
+        const empty = document.createElement("div");
+        empty.textContent = "전시 가능한 아이템이 인벤토리에 없습니다.";
+        empty.style.padding = "14px 12px";
+        empty.style.borderRadius = "12px";
+        empty.style.background = "rgba(0,0,0,0.05)";
+        empty.style.fontSize = "13px";
+        empty.style.color = "#666";
+        rightColumn.appendChild(empty);
+      } else {
+        const scrollWrap = document.createElement("div");
+        scrollWrap.style.minHeight = "0";
+        scrollWrap.style.maxHeight = "calc(100vh - 300px)";
+        scrollWrap.style.overflowY = "auto";
+        scrollWrap.style.paddingRight = "6px";
+        rightColumn.appendChild(scrollWrap);
 
-        const visual = createInventoryEntryVisualElement(entry, { size: 42 });
-        card.appendChild(visual);
+        const grid = document.createElement("div");
+        grid.style.display = "grid";
+        grid.style.gridTemplateColumns = "repeat(auto-fill, minmax(118px, 1fr))";
+        grid.style.gap = "10px";
+        scrollWrap.appendChild(grid);
 
-        const name = document.createElement("div");
-        name.textContent = getInventoryEntryDisplayName(entry);
-        name.style.fontSize = "12px";
-        name.style.fontWeight = "800";
-        name.style.color = "#333";
-        name.style.textAlign = "center";
-        card.appendChild(name);
+        for (const { entry } of availableEntries) {
+          const card = document.createElement("button");
+          card.type = "button";
+          card.style.border = "1px solid rgba(0,0,0,0.14)";
+          card.style.borderRadius = "12px";
+          card.style.background = "rgba(255,255,255,0.96)";
+          card.style.padding = "10px";
+          card.style.cursor = "pointer";
+          card.style.display = "flex";
+          card.style.flexDirection = "column";
+          card.style.alignItems = "center";
+          card.style.gap = "6px";
 
-        const meta = document.createElement("div");
-        meta.textContent = isNftInventoryEntry(entry) ? "NFT 전시" : `보유 ${getSlotItemCount(entry)}개`;
-        meta.style.fontSize = "11px";
-        meta.style.color = "#7a6550";
-        card.appendChild(meta);
+          const visual = createInventoryEntryVisualElement(entry, { size: 42 });
+          card.appendChild(visual);
 
-        card.addEventListener("click", () => {
-          assignFrontierDisplayEntry(parcelLabel, slotKey, entry);
-        });
-        grid.appendChild(card);
+          const name = document.createElement("div");
+          name.textContent = getInventoryEntryDisplayName(entry);
+          name.style.fontSize = "12px";
+          name.style.fontWeight = "800";
+          name.style.color = "#333";
+          name.style.textAlign = "center";
+          card.appendChild(name);
+
+          const meta = document.createElement("div");
+          meta.textContent = isNftInventoryEntry(entry) ? "NFT 전시" : `보유 ${getSlotItemCount(entry)}개`;
+          meta.style.fontSize = "11px";
+          meta.style.color = "#7a6550";
+          card.appendChild(meta);
+
+          card.addEventListener("click", () => {
+            assignFrontierDisplayEntry(parcelLabel, slotKey, entry);
+          });
+          grid.appendChild(card);
+        }
       }
+    } else if (!isDisplayOperator) {
+      const note = document.createElement("div");
+      note.textContent = displayAssignedWallet
+        ? "현재 로그인한 지갑은 이 전시 슬롯 사용자로 지정되어 있지 않습니다."
+        : "전시 사용자를 먼저 지정해야 전시 관리가 가능합니다.";
+      note.style.padding = "14px 12px";
+      note.style.borderRadius = "12px";
+      note.style.background = "rgba(0,0,0,0.05)";
+      note.style.fontSize = "13px";
+      note.style.color = "#666";
+      leftColumn.appendChild(note);
     }
 
     frontierBoothActionArea.appendChild(manageWrap);
@@ -11652,6 +12051,12 @@ function renderFrontierBoothDialog() {
       state.style.fontSize = "12px";
       state.style.color = "#6b6053";
       textWrap.appendChild(state);
+
+      const slotName = document.createElement("div");
+      slotName.textContent = `슬롯: ${boothTitle}`;
+      slotName.style.fontSize = "12px";
+      slotName.style.color = "#6b6053";
+      textWrap.appendChild(slotName);
     }
 
     frontierBoothActionArea.appendChild(viewCard);
@@ -11700,6 +12105,19 @@ hydrateWalletSessionFromServer();
 const followTargetOffset = new THREE.Vector3(0, 1.0, 0);
 const lastFollowPlayerPosition = new THREE.Vector3().copy(player.position);
 const framePlayerDelta = new THREE.Vector3();
+const CAMERA_OCCLUSION_MARGIN = 0.18;
+const CAMERA_OCCLUSION_MIN_DISTANCE = 4.2;
+const CAMERA_OCCLUSION_FADE_DISTANCE = 5.0;
+const CAMERA_OCCLUSION_FADE_OPACITY = 0.68;
+const CAMERA_OCCLUSION_RETURN_SPEED = 7.5;
+const cameraOcclusionRay = new THREE.Raycaster();
+const cameraOcclusionTarget = new THREE.Vector3();
+const cameraOcclusionDir = new THREE.Vector3();
+const cameraOcclusionResolvedPos = new THREE.Vector3();
+let cameraPreferredDistance = camera.position.distanceTo(controls.target);
+let cameraResolvedDistance = cameraPreferredDistance;
+let cameraWasOccludedLastFrame = false;
+const cameraOcclusionFadedMeshes = new Set();
 
 function snapCameraToPlayer() {
   const currentOffset = new THREE.Vector3().copy(camera.position).sub(controls.target);
@@ -11707,6 +12125,102 @@ function snapCameraToPlayer() {
   camera.position.copy(controls.target).add(currentOffset);
   lastFollowPlayerPosition.copy(player.position);
   controls.update();
+}
+
+function clearCameraOcclusionFades() {
+  if (!cameraOcclusionFadedMeshes.size) return;
+  for (const mesh of cameraOcclusionFadedMeshes) {
+    if (!mesh?.material || !mesh.userData?.cameraFadeOriginal) continue;
+    const original = mesh.userData.cameraFadeOriginal;
+    if (Array.isArray(mesh.material)) {
+      for (const mat of mesh.material) {
+        mat.transparent = original.transparent;
+        mat.opacity = original.opacity;
+      }
+    } else {
+      mesh.material.transparent = original.transparent;
+      mesh.material.opacity = original.opacity;
+    }
+  }
+  cameraOcclusionFadedMeshes.clear();
+}
+
+function markCameraOcclusionFade(root, opacity = CAMERA_OCCLUSION_FADE_OPACITY) {
+  if (!root) return;
+  root.traverse((child) => {
+    if (!child?.isMesh || !child.material) return;
+    const materials = Array.isArray(child.material) ? child.material : [child.material];
+    if (!materials.some((mat) => (mat?.opacity ?? 1) > 0.05)) return;
+    if (!child.userData.cameraFadeOriginal) {
+      child.userData.cameraFadeOriginal = {
+        transparent: materials[0].transparent,
+        opacity: materials[0].opacity,
+      };
+    }
+    for (const mat of materials) {
+      mat.transparent = true;
+      mat.opacity = Math.min(mat.opacity, opacity);
+    }
+    cameraOcclusionFadedMeshes.add(child);
+  });
+}
+
+function getCameraFadeRootFromHit(hitObject) {
+  if (!hitObject) return null;
+  const hitMaterial = hitObject.material;
+  const hitOpacity = Array.isArray(hitMaterial) ? (hitMaterial[0]?.opacity ?? 1) : (hitMaterial?.opacity ?? 1);
+  if (hitObject.isMesh && hitOpacity > 0.05) return hitObject;
+
+  let node = hitObject.parent;
+  while (node && node !== scene) {
+    if (node.isMesh || node.type === "Group") return node;
+    node = node.parent;
+  }
+  return hitObject.parent && hitObject.parent !== scene ? hitObject.parent : null;
+}
+
+function updateThirdPersonCameraOcclusion(dt) {
+  clearCameraOcclusionFades();
+
+  cameraOcclusionTarget.copy(controls.target).addScalar(0);
+  cameraOcclusionTarget.y += 0.22;
+
+  const currentOffset = new THREE.Vector3().copy(camera.position).sub(controls.target);
+  let currentDistance = currentOffset.length();
+  if (currentDistance < 0.001) return;
+
+  cameraOcclusionDir.copy(currentOffset).normalize();
+
+  if (!cameraWasOccludedLastFrame || currentDistance > cameraResolvedDistance + 0.2) {
+    cameraPreferredDistance = THREE.MathUtils.clamp(currentDistance, CAMERA_OCCLUSION_MIN_DISTANCE, controls.maxDistance);
+  }
+
+  let desiredDistance = cameraPreferredDistance;
+  let resolvedDistance = desiredDistance;
+  cameraOcclusionRay.far = desiredDistance;
+  cameraOcclusionRay.set(cameraOcclusionTarget, cameraOcclusionDir);
+  const hits = cameraOcclusionRay.intersectObjects(colliders, false);
+
+  let fadeRoot = null;
+  if (hits.length) {
+    const hit = hits[0];
+    resolvedDistance = Math.max(CAMERA_OCCLUSION_MIN_DISTANCE, hit.distance - CAMERA_OCCLUSION_MARGIN);
+    cameraWasOccludedLastFrame = true;
+    if (resolvedDistance <= CAMERA_OCCLUSION_FADE_DISTANCE) {
+      fadeRoot = getCameraFadeRootFromHit(hit.object);
+    }
+  } else {
+    cameraWasOccludedLastFrame = false;
+    resolvedDistance = THREE.MathUtils.lerp(currentDistance, desiredDistance, Math.min(1, dt * CAMERA_OCCLUSION_RETURN_SPEED));
+  }
+
+  cameraResolvedDistance = resolvedDistance;
+  if (fadeRoot) {
+    markCameraOcclusionFade(fadeRoot);
+  }
+
+  cameraOcclusionResolvedPos.copy(controls.target).addScaledVector(cameraOcclusionDir, resolvedDistance);
+  camera.position.copy(cameraOcclusionResolvedPos);
 }
 
 // Houses
@@ -12251,10 +12765,10 @@ function buildSingleBasicShoeModel() {
   });
 
   const sole = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.08, 0.44), soleMat);
-  sole.position.set(0, 0.04, 0.02);
+  sole.position.set(0, 0.04, 0.07);
   g.add(sole);
   const upper = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.12, 0.34), shoeMat);
-  upper.position.set(0, 0.12, 0.02);
+  upper.position.set(0, 0.11, 0.06);
   g.add(upper);
 
   return g;
@@ -14831,7 +15345,8 @@ window.addEventListener("keydown", (e) => {
 
   if (activeInteractable?.type === "frontierDisplayBooth") {
     const parcelLabel = activeInteractable.parcelLabel ?? getSelectedFrontierParcelLabel();
-    const mode = hasFrontierParcelAuthority(parcelLabel) ? "manage" : "view";
+    const slotKey = activeInteractable.slotKey ?? "displayA";
+    const mode = canManageFrontierDisplaySlot(parcelLabel, slotKey) || canUseFrontierDisplaySlot(parcelLabel, slotKey) ? "manage" : "view";
     openFrontierBoothDialog(parcelLabel, activeInteractable.slotKey ?? "displayA", activeInteractable.boothTitle ?? "전시", mode);
     return;
   }
@@ -15251,10 +15766,22 @@ function updateMovement(dt) {
       isPollutedMap(currentMapId) && getMapPurificationValue(currentMapId) < 100 && playerAirCurrent <= 0
         ? 0.12
         : 1;
+    // ===== 이동속도 튜닝값 =====
+    // 아래 숫자만 바꾸면 실제 이동 체감을 바로 확인할 수 있습니다.
+    // - 개발자모드(개발자1/개발자2): devMoveSpeed
+    // - 메타마스크/게스트 기본 걷기: normalWalkSpeed
+    // - 메타마스크/게스트 + 기본신발 착용 후 Shift 달리기: normalRunSpeed
+    const devMoveSpeed = 20.0;
+    const normalWalkSpeed = 4.0;
+    const normalRunSpeed = 5.5;
     const baseSpeed = isDevMovementMode ? 7.0 : 3.0;
     const runSpeed = isDevMovementMode ? 7.0 : 4.5;
     const isSprinting = keys.shift && (isDevMovementMode || hasShoesEquipped);
-    const speed = (isSprinting ? runSpeed : baseSpeed) * airMoveScalar;
+    const speed = (
+      isSprinting
+        ? (isDevMovementMode ? devMoveSpeed : normalRunSpeed)
+        : (isDevMovementMode ? devMoveSpeed : normalWalkSpeed)
+    ) * airMoveScalar;
      
     const prevPos = player.position.clone();
     const delta = move.clone().multiplyScalar(speed * dt);
@@ -15733,8 +16260,8 @@ if (!hintText && activeInteractable) {
     : activeInteractable.type === "frontierShopBooth"
       ? ((canManageFrontierShopSlot(activeInteractable.parcelLabel) || canUseFrontierShopSlot(activeInteractable.parcelLabel)) ? "E : 판매 관리" : "E : 판매 보기")
     : activeInteractable.type === "frontierDisplayBooth"
-      ? (hasFrontierParcelAuthority(activeInteractable.parcelLabel) ? "E : 전시 관리" : "E : 전시 보기")
-    : activeInteractable.type === "mansionEntry"
+      ? ((canManageFrontierDisplaySlot(activeInteractable.parcelLabel, activeInteractable.slotKey ?? "displayA") || canUseFrontierDisplaySlot(activeInteractable.parcelLabel, activeInteractable.slotKey ?? "displayA")) ? "E : 전시 관리" : "E : 전시 보기")
+      : activeInteractable.type === "mansionEntry"
       ? (hasMansionOneResidenceAuthority() ? `E : ${getOwnedMansionRoomPermitName()} 입장` : "")
     : activeInteractable.type === "mansionBed"
       ? "Space : 취침"
