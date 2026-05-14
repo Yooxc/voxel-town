@@ -1,7 +1,138 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import {
+  QUICK_USE_ALLOWED_KEYS,
+  INVENTORY_STACK_LIMIT,
+  FRONTIER_PARCEL_LABELS,
+  FRONTIER_AUTHORITY_ITEM_IDS,
+  DEV_MOCK_NFT_ITEMS,
+  createItemDefs,
+  getDevMaterialItemIds as getDevMaterialItemIdsFromDefs,
+  getDevBulkGrantItemIds as getDevBulkGrantItemIdsFromDefs,
+  createInventoryEntryInstanceId as createInventoryEntryInstanceIdFromItems,
+  getInventoryStackMax as getInventoryStackMaxFromItems,
+  createInventorySlotEntry as createInventorySlotEntryFromItems,
+  normalizeInventorySlotEntry as normalizeInventorySlotEntryFromItems,
+  createEquippedItemRef as createEquippedItemRefFromItems,
+  normalizeEquippedItemRef as normalizeEquippedItemRefFromItems,
+  getSlotItemId,
+  getSlotItemCount,
+  isNftInventoryEntry,
+  isSameInventoryEntryAsEquipped,
+  getInventoryEntryCategory as getInventoryEntryCategoryFromItems,
+  getInventoryEntryEquipSlot as getInventoryEntryEquipSlotFromItems,
+  getInventoryEntryDisplayName as getInventoryEntryDisplayNameFromItems,
+  getInventoryEntryDisplayIcon as getInventoryEntryDisplayIconFromItems,
+} from "./systems/items.js";
+import {
+  createDefaultSharedWorldSave as createDefaultSharedWorldSaveFromModule,
+  serializeSharedWorldStateData,
+  normalizeSharedWorldStateData,
+  createDefaultPlayerSave as createDefaultPlayerSaveFromModule,
+  serializePlayerSaveData,
+  buildNormalizedPlayerSaveSource,
+} from "./save/playerSave.js";
+import {
+  createInitialWalletAuthState,
+  createInitialWalletProfile,
+  shortenWalletAddress as shortenWalletAddressFromModule,
+  sanitizeDevProfileId as sanitizeDevProfileIdFromWallet,
+  getDevProfileDisplayName as getDevProfileDisplayNameFromWallet,
+  serializeWalletSession as serializeWalletSessionFromModule,
+  parseStoredWalletSession,
+  isGuestSessionState,
+  isDevSessionState,
+  isWalletAuthenticatedState,
+  isServerBackedWalletSessionState,
+  formatWalletChainLabel,
+} from "./auth/wallet.js";
+import {
+  createInitialInventoryState as createInitialInventoryStateFromModule,
+  createInitialPersonalStorageState as createInitialPersonalStorageStateFromModule,
+  createQuickUseBinding as createQuickUseBindingFromModule,
+  normalizeQuickUseBinding as normalizeQuickUseBindingFromModule,
+  getQuickUseBinding as getQuickUseBindingFromModule,
+  getQuickUseItemId as getQuickUseItemIdFromModule,
+  clearQuickUseBindingForItemId as clearQuickUseBindingForItemIdFromModule,
+  assignQuickUseKeyToItem as assignQuickUseKeyToItemFromModule,
+  getQuickUseKeyForItemId as getQuickUseKeyForItemIdFromModule,
+  findInventorySlotIndexByEntry as findInventorySlotIndexByEntryFromModule,
+  getInventorySlotEntryByEntry as getInventorySlotEntryByEntryFromModule,
+  findFirstEmptySlot as findFirstEmptySlotFromModule,
+  findFirstSlotWithItem as findFirstSlotWithItemFromModule,
+  getItemCount as getItemCountFromModule,
+  createPartialInventoryEntry as createPartialInventoryEntryFromModule,
+  addEntryToStorage as addEntryToStorageFromModule,
+  addEntryToInventory as addEntryToInventoryFromModule,
+  moveInventoryEntryToStorage as moveInventoryEntryToStorageFromModule,
+  moveStorageEntryToInventory as moveStorageEntryToInventoryFromModule,
+  addItem as addItemFromModule,
+  consumeItem as consumeItemFromModule,
+  hasItem as hasItemFromModule,
+  getEquippedItemRef as getEquippedItemRefFromModule,
+  getEquippedItemForSlot as getEquippedItemForSlotFromModule,
+  setEquippedItem as setEquippedItemFromModule,
+  equipFirstOwnedInventoryItem as equipFirstOwnedInventoryItemFromModule,
+} from "./systems/inventory.js";
+import {
+  createInventoryWindowUi,
+  makeInventorySlotElement,
+} from "./ui/inventoryWindow.js";
+import {
+  TREE_HARVEST_RESPAWN_MS,
+  PICKAXE_UPGRADE_LEVELS,
+  ROCK_SIZE_DEFS,
+  clampPickaxeLevel,
+  getCurrentPickaxeStats as getCurrentPickaxeStatsFromModule,
+  getNextPickaxeUpgrade as getNextPickaxeUpgradeFromModule,
+  getForgeUpgradeStateData,
+  getMiningPowerForTool,
+  getRockSizeDefById,
+  getRockDefaultResourceCount,
+  getHarvestTreeCooldownUntil,
+  isHarvestTreeReady,
+  getHarvestTreeShakeRotation,
+} from "./systems/mining.js";
+import {
+  AIR_GAUGE_MAX,
+  AIR_CANISTER_RESTORE_AMOUNT,
+  AIR_RECOVERY_PER_SECOND,
+  MAP_POLLUTION_CONFIG,
+  getMapPollutionConfig as getMapPollutionConfigFromModule,
+  isPollutedMap as isPollutedMapFromModule,
+  getMapPurificationValue as getMapPurificationValueFromModule,
+  setMapPurificationValue as setMapPurificationValueFromModule,
+  resetAllMapPurificationValues as resetAllMapPurificationValuesFromModule,
+  getCurrentAirDrainPerSecond as getCurrentAirDrainPerSecondFromModule,
+  canRecoverAirInMap as canRecoverAirInMapFromModule,
+  getMapPollutionVisualStrength as getMapPollutionVisualStrengthFromModule,
+  getAirOverlayVisualState,
+} from "./systems/air.js";
+import {
+  RESIDENCE_MAP_ID,
+  GROUND_SIZE,
+  FRONTIER_GROUND_SIZE,
+  START_X,
+  START_Z,
+  START_RING_OPEN_RATIO,
+  START_RING_OPEN_CENTER,
+  START_RING_THICKNESS,
+  CAMP_MAP_X,
+  CAMP_MAP_Z,
+  FRONTIER_MAP_X,
+  FRONTIER_MAP_Z,
+  MAP_GATE_RADIUS,
+  isInStartRingOpening as isInStartRingOpeningFromModule,
+  isBlockedByStartRingPosition,
+  isCrossingBlockedStartRingPosition,
+  resolveStartRingPenetrationPosition,
+  isStartRingTransitionBlocked as isStartRingTransitionBlockedFromModule,
+  isPositionInConnectorTunnel,
+  getEffectiveAirMapIdForPosition,
+  getCurrentMapIdFromPosition,
+} from "./systems/maps.js";
 
-const LAST_PATCHED_AT = "2026-05-13 19:22:11 KST";
+const LAST_PATCHED_AT = "2026-05-14 17:36:52 KST";
 
 const scene = new THREE.Scene();
 // ===== Atmosphere: Sky / Fog =====
@@ -14,35 +145,15 @@ const CAVE_DARKENING_ENABLED = false;
 const CAVE_FOG_EFFECT_ENABLED = false;
 scene.fog = new THREE.Fog(WORLD_FOG_COLOR, WORLD_FOG_NEAR, WORLD_FOG_FAR);
 
-const AIR_GAUGE_MAX = 100;
-const AIR_CANISTER_RESTORE_AMOUNT = 34;
-const AIR_RECOVERY_PER_SECOND = 1.1;
 const CAVE_POLLUTION_PARTICLE_COUNT = 360;
 const CAVE_POLLUTION_PARTICLE_SWAY = 0.12;
 const CAVE_POLLUTION_OVERLAY_MAX_OPACITY = 0.96;
 const LOW_AIR_EDGE_BLUR_MAX_PX = 26;
 const AIR_HUD_POSITION_KEY = "excit_air_hud_position_v1";
-const QUICK_USE_ALLOWED_KEYS = ["1", "2", "3", "4", "5"];
-const INVENTORY_STACK_LIMIT = 200;
 const SHIFT_CAMERA_ROTATE_SENSITIVITY = 0.0062;
 const FRONTIER_PARCEL_BORDER_COLOR = 0xf3b24e;
 const FRONTIER_BUILDING_HEIGHT = 4.4;
 const FRONTIER_BUILDING_SIGN_MAX_CHARS = 8;
-const MAP_POLLUTION_CONFIG = {
-  "폐광맵": {
-    displayName: "폐광",
-    drainPerSecondAtZeroPurify: 2.25,
-    purifierPowderCost: 1,
-    purifierGain: 12,
-  },
-  "개척지": {
-    displayName: "개척지",
-    drainPerSecondAtZeroPurify: 2.5,
-    purifierPowderCost: 1,
-    purifierGain: 12,
-  },
-};
-
 const REFINERY_RECIPES = {
   purifyPowder: {
     id: "purifyPowder",
@@ -68,7 +179,6 @@ const FRONTIER_BUILD_STAGE_CONFIG = [
   { from: 50, to: 75, wood: 18, stone: 12, label: "상단 골조 보강" },
   { from: 75, to: 100, wood: 24, stone: 16, label: "천장 완성" },
 ];
-const RESIDENCE_MAP_ID = "거주구역";
 const RESIDENCE_NOTICE_BOARD_KEYS = ["boardA", "boardB", "boardC"];
 
 // ===== Lighting =====
@@ -177,20 +287,8 @@ const NFT_EXHIBIT_TARGET = {
 };
 const NFT_BOARD_CANVAS_WIDTH = 1152;
 const NFT_BOARD_CANVAS_HEIGHT = 1000;
-const walletAuth = {
-  authenticated: false,
-  address: "",
-  signature: "",
-  nonce: "",
-  issuedAt: "",
-  chainId: "",
-  token: "",
-  sessionType: "",
-  providerBound: false,
-};
-const walletProfile = {
-  nickname: "",
-};
+const walletAuth = createInitialWalletAuthState();
+const walletProfile = createInitialWalletProfile();
 const PLAYER_CURRENCY_NAME = "개척 코인";
 const PLAYER_SAVE_VERSION = 1;
 const PLAYER_SAVE_INTERVAL_MS = 4000;
@@ -790,15 +888,15 @@ function shortenWalletAddress(address) {
   if (address === "dev_user_2") return "DEV-2";
   if (address === "dev-mode-local") return "DEV MODE";
   if (address === "guest-local") return "GUEST";
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  return shortenWalletAddressFromModule(address);
 }
 
 function getDevProfileDisplayName(profileId = activeDevProfileId) {
-  return profileId === "dev_user_2" ? "개발자2" : "개발자1";
+  return getDevProfileDisplayNameFromWallet(profileId, DEV_PROFILE_IDS, DEV_PROFILE_IDS[0]);
 }
 
 function sanitizeDevProfileId(profileId) {
-  return DEV_PROFILE_IDS.includes(profileId) ? profileId : DEV_PROFILE_IDS[0];
+  return sanitizeDevProfileIdFromWallet(profileId, DEV_PROFILE_IDS, DEV_PROFILE_IDS[0]);
 }
 
 function getKeyInputCode(event) {
@@ -1898,23 +1996,12 @@ async function refreshNftExhibitBoard() {
 }
 
 function saveWalletSession() {
-  if (!walletAuth.authenticated || !walletAuth.address) {
+  const serialized = serializeWalletSessionFromModule(walletAuth);
+  if (!serialized) {
     localStorage.removeItem(WALLET_SESSION_KEY);
     return;
   }
-  localStorage.setItem(
-    WALLET_SESSION_KEY,
-    JSON.stringify({
-      authenticated: walletAuth.authenticated,
-      address: walletAuth.address,
-      signature: walletAuth.signature,
-      nonce: walletAuth.nonce,
-      issuedAt: walletAuth.issuedAt,
-      chainId: walletAuth.chainId,
-      token: walletAuth.token,
-      sessionType: walletAuth.sessionType,
-    })
-  );
+  localStorage.setItem(WALLET_SESSION_KEY, JSON.stringify(serialized));
 }
 
 function hasNickname() {
@@ -1977,11 +2064,11 @@ function getAuthHeaders() {
 }
 
 function isGuestSession() {
-  return walletAuth.sessionType === "guest" || walletAuth.address === "guest-local";
+  return isGuestSessionState(walletAuth);
 }
 
 function isDevSession() {
-  return walletAuth.sessionType === "dev";
+  return isDevSessionState(walletAuth);
 }
 
 function isLocalProfileSession() {
@@ -1989,7 +2076,7 @@ function isLocalProfileSession() {
 }
 
 function isServerBackedWalletSession() {
-  return walletAuth.authenticated && walletAuth.sessionType === "wallet" && Boolean(walletAuth.token);
+  return isServerBackedWalletSessionState(walletAuth);
 }
 
 function getActivePlayerSaveKey() {
@@ -2003,42 +2090,31 @@ function getActivePlayerSaveKey() {
 }
 
 function createDefaultSharedWorldSave() {
-  return {
-    frontierBuild: createDefaultFrontierBuildState(),
-    abandonedMineUnlocked: false,
-    mapPurification: Object.fromEntries(
-      Object.keys(MAP_POLLUTION_CONFIG).map((mapId) => [mapId, 0])
-    ),
-    displayBoard: null,
-    residenceNoticeBoards: createDefaultResidenceNoticeBoardState(),
-  };
+  return createDefaultSharedWorldSaveFromModule({
+    createDefaultFrontierBuildState,
+    mapPollutionConfig: MAP_POLLUTION_CONFIG,
+    createDefaultResidenceNoticeBoardState,
+  });
 }
 
 function serializeSharedWorldState() {
-  return {
-    frontierBuild: structuredClone(frontierBuildState),
-    abandonedMineUnlocked: Boolean(inventory.abandonedMineUnlocked),
-    mapPurification: Object.fromEntries(
-      Object.keys(MAP_POLLUTION_CONFIG).map((mapId) => [mapId, getMapPurificationValue(mapId)])
-    ),
-    displayBoard: nftExhibitSelectedItem ? structuredClone(nftExhibitSelectedItem) : null,
-    residenceNoticeBoards: structuredClone(residenceNoticeBoardState),
-  };
+  return serializeSharedWorldStateData({
+    frontierBuildState,
+    abandonedMineUnlocked: inventory.abandonedMineUnlocked,
+    mapPollutionConfig: MAP_POLLUTION_CONFIG,
+    getMapPurificationValue,
+    nftExhibitSelectedItem,
+    residenceNoticeBoardState,
+  });
 }
 
 function normalizeSharedWorldState(rawWorld) {
-  return {
-    ...createDefaultSharedWorldSave(),
-    ...(rawWorld && typeof rawWorld === "object" ? rawWorld : {}),
-    frontierBuild: normalizeFrontierBuildState(rawWorld?.frontierBuild),
-    abandonedMineUnlocked: Boolean(rawWorld?.abandonedMineUnlocked),
-    mapPurification: {
-      ...createDefaultSharedWorldSave().mapPurification,
-      ...(rawWorld?.mapPurification ?? {}),
-    },
-    displayBoard: normalizeNftBoardSelection(rawWorld?.displayBoard),
-    residenceNoticeBoards: normalizeResidenceNoticeBoardState(rawWorld?.residenceNoticeBoards),
-  };
+  return normalizeSharedWorldStateData(rawWorld, {
+    createDefaultSharedWorldSave,
+    normalizeFrontierBuildState,
+    normalizeNftBoardSelection,
+    normalizeResidenceNoticeBoardState,
+  });
 }
 
 function applySharedWorldState(rawWorld) {
@@ -2246,32 +2322,6 @@ function updateWalletUi() {
   scheduleNftExhibitBoardRefresh();
 }
 
-function getChainDisplayName(chainId) {
-  const normalized = typeof chainId === "string" ? chainId.toLowerCase() : "";
-  switch (normalized) {
-    case "0x1":
-      return "Ethereum Mainnet";
-    case "0x89":
-      return "Polygon Mainnet";
-    case "0x2105":
-      return "Base";
-    case "0x38":
-      return "BNB Smart Chain";
-    case "0xa":
-      return "Optimism";
-    case "0xa4b1":
-      return "Arbitrum One";
-    default:
-      return null;
-  }
-}
-
-function formatWalletChainLabel(chainId) {
-  if (!chainId) return "체인: 확인 전";
-  const displayName = getChainDisplayName(chainId);
-  return displayName ? `체인: ${displayName} (${chainId})` : `체인: ${chainId}`;
-}
-
 async function copyWalletAddressToClipboard() {
   if (!walletAuth.address) return;
   try {
@@ -2350,7 +2400,7 @@ function clearWalletSession() {
 }
 
 function isWalletAuthenticated() {
-  return walletAuth.authenticated;
+  return isWalletAuthenticatedState(walletAuth);
 }
 
 function shouldResetAuthSessionOnLocalReload() {
@@ -2359,17 +2409,20 @@ function shouldResetAuthSessionOnLocalReload() {
 }
 
 function restoreWalletSession() {
+  const raw = localStorage.getItem(WALLET_SESSION_KEY);
+  const saved = parseStoredWalletSession(raw);
+  if (!saved) {
+    if (raw) {
+      localStorage.removeItem(WALLET_SESSION_KEY);
+    }
+    return;
+  }
   try {
-    const raw = localStorage.getItem(WALLET_SESSION_KEY);
-    if (!raw) return;
-    const saved = JSON.parse(raw);
-    const isGuestSaved = saved?.sessionType === "guest" || saved?.address === "guest-local";
-    if (!saved?.authenticated || !saved?.address || (!saved?.token && !isGuestSaved)) return;
     setWalletAuthState(saved, { persist: false });
     if (saved?.sessionType === "wallet") {
       beginPlayerSaveHydration();
       applyFreshPlayerStartState();
-    } else if (isGuestSaved) {
+    } else if (saved?.sessionType === "guest" || saved?.address === "guest-local") {
       applyFreshPlayerStartState();
     }
   } catch {
@@ -2912,43 +2965,6 @@ compassWrap.appendChild(compassText);
 uiLayer.appendChild(compassWrap);
 
 // ===== Inventory Window (Tabs + Grid) =====
-const invWin = document.createElement("div");
-invWin.id = "invWindow";
-invWin.style.position = "fixed";
-invWin.style.left = "12px";
-invWin.style.top = "12px";
-invWin.style.width = "340px";
-invWin.style.height = "500px";
-invWin.style.background = "rgba(235, 235, 235, 0.92)";
-invWin.style.border = "1px solid rgba(0,0,0,0.25)";
-invWin.style.borderRadius = "10px";
-invWin.style.boxShadow = "0 12px 30px rgba(0,0,0,0.25)";
-invWin.style.backdropFilter = "blur(6px)";
-invWin.style.display = "none"; // I 키로 열기
-invWin.style.pointerEvents = "auto"; // 클릭 가능
-invWin.style.userSelect = "none";
-invWin.style.zIndex = "1000000";
-uiLayer.appendChild(invWin);
-
-const equipWin = document.createElement("div");
-equipWin.id = "equipWindow";
-equipWin.style.position = "fixed";
-equipWin.style.left = "368px";
-equipWin.style.top = "12px";
-equipWin.style.width = "288px";
-equipWin.style.height = "520px";
-equipWin.style.background = "rgba(235, 235, 235, 0.92)";
-equipWin.style.border = "1px solid rgba(0,0,0,0.25)";
-equipWin.style.borderRadius = "10px";
-equipWin.style.boxShadow = "0 12px 30px rgba(0,0,0,0.25)";
-equipWin.style.backdropFilter = "blur(6px)";
-equipWin.style.display = "none";
-equipWin.style.pointerEvents = "auto";
-equipWin.style.userSelect = "none";
-equipWin.style.zIndex = "1000001";
-equipWin.style.overflow = "hidden";
-uiLayer.appendChild(equipWin);
-
 const questWin = document.createElement("div");
 questWin.id = "questWindow";
 questWin.style.position = "fixed";
@@ -3080,203 +3096,108 @@ pollutionOverlay.style.webkitMaskImage =
 pollutionOverlay.style.zIndex = "999998";
 uiLayer.appendChild(pollutionOverlay);
 
-const equipHeader = document.createElement("div");
-equipHeader.textContent = "EQUIPMENT";
-equipHeader.style.padding = "10px";
-equipHeader.style.fontFamily = "system-ui, -apple-system, sans-serif";
-equipHeader.style.fontSize = "14px";
-equipHeader.style.fontWeight = "700";
-equipHeader.style.letterSpacing = "0.04em";
-equipHeader.style.color = "#222";
-equipHeader.style.borderBottom = "1px solid rgba(0,0,0,0.15)";
-equipHeader.style.background = "rgba(255,255,255,0.7)";
-equipWin.appendChild(equipHeader);
-
-const equipBody = document.createElement("div");
-equipBody.style.padding = "12px";
-equipBody.style.height = "calc(100% - 44px)";
-equipBody.style.position = "relative";
-equipBody.style.boxSizing = "border-box";
-equipWin.appendChild(equipBody);
-
-const equipmentGrid = document.createElement("div");
-equipmentGrid.style.position = "absolute";
-equipmentGrid.style.left = "12px";
-equipmentGrid.style.right = "12px";
-equipmentGrid.style.top = "12px";
-equipmentGrid.style.bottom = "154px";
-equipmentGrid.style.display = "grid";
-equipmentGrid.style.gridTemplateColumns = "64px minmax(0, 1.45fr) 64px";
-equipmentGrid.style.gridTemplateRows = "76px 1fr 76px";
-equipmentGrid.style.gap = "10px";
-equipBody.appendChild(equipmentGrid);
-
-const previewWrap = document.createElement("div");
-previewWrap.style.gridColumn = "2";
-previewWrap.style.gridRow = "1 / span 3";
-previewWrap.style.borderRadius = "10px";
-previewWrap.style.background = "rgba(255,255,255,0.95)";
-previewWrap.style.border = "1px solid rgba(0,0,0,0.2)";
-previewWrap.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.8)";
-previewWrap.style.position = "relative";
-previewWrap.style.overflow = "hidden";
-equipmentGrid.appendChild(previewWrap);
-
-const previewLabel = document.createElement("div");
-previewLabel.textContent = "장착 미리보기";
-previewLabel.style.position = "absolute";
-previewLabel.style.left = "12px";
-previewLabel.style.top = "10px";
-previewLabel.style.fontFamily = "system-ui, -apple-system, sans-serif";
-previewLabel.style.fontSize = "12px";
-previewLabel.style.fontWeight = "700";
-previewLabel.style.color = "rgba(34,34,34,0.78)";
-previewWrap.appendChild(previewLabel);
-
-const previewCanvasWrap = document.createElement("div");
-previewCanvasWrap.style.position = "absolute";
-previewCanvasWrap.style.inset = "34px 8px 10px";
-previewWrap.appendChild(previewCanvasWrap);
-
-const equipmentSlotEls = {};
-
-function createEquipmentSlot(slotId, label, gridColumn, gridRow) {
-  const slot = document.createElement("div");
-  slot.style.gridColumn = String(gridColumn);
-  slot.style.gridRow = String(gridRow);
-  slot.style.borderRadius = "8px";
-  slot.style.background = "rgba(255,255,255,0.95)";
-  slot.style.border = "1px solid rgba(0,0,0,0.2)";
-  slot.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.8)";
-  slot.style.padding = "8px";
-  slot.style.boxSizing = "border-box";
-  slot.style.display = "flex";
-  slot.style.flexDirection = "column";
-  slot.style.justifyContent = "space-between";
-
-  const title = document.createElement("div");
-  title.textContent = label;
-  title.style.fontFamily = "system-ui, -apple-system, sans-serif";
-  title.style.fontSize = "11px";
-  title.style.fontWeight = "800";
-  title.style.letterSpacing = "0.04em";
-  title.style.color = "rgba(70,70,70,0.92)";
-
-  const content = document.createElement("div");
-  content.style.flex = "1";
-  content.style.display = "flex";
-  content.style.alignItems = "center";
-  content.style.justifyContent = "center";
-  content.style.textAlign = "center";
-  content.style.fontFamily = "system-ui, -apple-system, sans-serif";
-  content.style.color = "rgba(48,56,66,0.82)";
-
-  slot.appendChild(title);
-  slot.appendChild(content);
-  equipmentGrid.appendChild(slot);
-  equipmentSlotEls[slotId] = { slot, content, label };
-}
-
-createEquipmentSlot("head", "모자", 1, 1);
-createEquipmentSlot("body", "상의", 1, 2);
-createEquipmentSlot("shoes", "신발", 1, 3);
-createEquipmentSlot("tool", "무기", 3, 2);
-
-const equipProfileCard = document.createElement("div");
-equipProfileCard.style.position = "absolute";
-equipProfileCard.style.left = "12px";
-equipProfileCard.style.right = "12px";
-equipProfileCard.style.bottom = "12px";
-equipProfileCard.style.minHeight = "118px";
-equipProfileCard.style.borderRadius = "10px";
-equipProfileCard.style.background = "rgba(255,255,255,0.92)";
-equipProfileCard.style.border = "1px solid rgba(0,0,0,0.14)";
-equipProfileCard.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.8)";
-equipProfileCard.style.padding = "10px 12px";
-equipProfileCard.style.boxSizing = "border-box";
-equipProfileCard.style.fontFamily = "system-ui, -apple-system, sans-serif";
-equipProfileCard.style.display = "grid";
-equipProfileCard.style.gridTemplateColumns = "1fr auto";
-equipProfileCard.style.gap = "8px 12px";
-equipProfileCard.style.alignItems = "center";
-equipBody.appendChild(equipProfileCard);
-
-const equipProfileTitle = document.createElement("div");
-equipProfileTitle.textContent = "WALLET";
-equipProfileTitle.style.fontSize = "11px";
-equipProfileTitle.style.fontWeight = "800";
-equipProfileTitle.style.letterSpacing = "0.06em";
-equipProfileTitle.style.color = "rgba(70,70,70,0.88)";
-equipProfileCard.appendChild(equipProfileTitle);
-
-equipProfileLogoutBtn = document.createElement("button");
-equipProfileLogoutBtn.type = "button";
-equipProfileLogoutBtn.textContent = "로그아웃";
-equipProfileLogoutBtn.style.justifySelf = "end";
-equipProfileLogoutBtn.style.padding = "6px 10px";
-equipProfileLogoutBtn.style.borderRadius = "999px";
-equipProfileLogoutBtn.style.border = "1px solid rgba(0,0,0,0.14)";
-equipProfileLogoutBtn.style.background = "rgba(255,255,255,0.95)";
-equipProfileLogoutBtn.style.color = "#333";
-equipProfileLogoutBtn.style.cursor = "pointer";
-equipProfileLogoutBtn.style.fontSize = "12px";
-equipProfileLogoutBtn.style.fontWeight = "700";
-equipProfileCard.appendChild(equipProfileLogoutBtn);
-equipProfileLogoutBtn.addEventListener("click", handleWalletLogout);
-
-const equipProfileInfo = document.createElement("div");
-equipProfileInfo.style.gridColumn = "1 / span 2";
-equipProfileInfo.style.display = "grid";
-equipProfileInfo.style.gap = "4px";
-equipProfileCard.appendChild(equipProfileInfo);
-
-const equipProfileAddressRow = document.createElement("div");
-equipProfileAddressRow.style.display = "flex";
-equipProfileAddressRow.style.alignItems = "center";
-equipProfileAddressRow.style.justifyContent = "space-between";
-equipProfileAddressRow.style.gap = "8px";
-equipProfileInfo.appendChild(equipProfileAddressRow);
-
-equipProfileAddress = document.createElement("div");
-equipProfileAddress.style.fontSize = "14px";
-equipProfileAddress.style.fontWeight = "800";
-equipProfileAddress.style.color = "#222";
-equipProfileAddress.style.minWidth = "0";
-equipProfileAddressRow.appendChild(equipProfileAddress);
-
-equipProfileCopyBtn = document.createElement("button");
-equipProfileCopyBtn.type = "button";
-equipProfileCopyBtn.textContent = "복사";
-equipProfileCopyBtn.style.flex = "0 0 auto";
-equipProfileCopyBtn.style.padding = "5px 9px";
-equipProfileCopyBtn.style.borderRadius = "999px";
-equipProfileCopyBtn.style.border = "1px solid rgba(0,0,0,0.14)";
-equipProfileCopyBtn.style.background = "rgba(255,255,255,0.95)";
-equipProfileCopyBtn.style.color = "#333";
-equipProfileCopyBtn.style.cursor = "pointer";
-equipProfileCopyBtn.style.fontSize = "11px";
-equipProfileCopyBtn.style.fontWeight = "700";
-equipProfileAddressRow.appendChild(equipProfileCopyBtn);
-equipProfileCopyBtn.addEventListener("click", () => {
-  void copyWalletAddressToClipboard();
+let activeTab = "cons";
+const {
+  invWin,
+  equipWin,
+  previewCanvasWrap,
+  equipmentSlotEls,
+  equipProfileLogoutBtn: builtEquipProfileLogoutBtn,
+  equipProfileCopyBtn: builtEquipProfileCopyBtn,
+  equipProfileAddress: builtEquipProfileAddress,
+  equipProfileChain: builtEquipProfileChain,
+  equipProfileNickname: builtEquipProfileNickname,
+  equipProfileCredits: builtEquipProfileCredits,
+  tabButtons,
+  tabs,
+  invgrid,
+  inventoryTrashDropZone,
+  discardOverlay,
+  discardDialog,
+  discardItemLabel,
+  discardOwnedCount,
+  discardInputLabel,
+  discardCountInput,
+  discardError,
+  personalStorageOverlay: builtPersonalStorageOverlay,
+  personalStorageWin: builtPersonalStorageWin,
+  personalStorageMessage,
+  personalStorageTransferCurtain,
+  personalStorageTransferDialog,
+  personalStorageTransferTitle,
+  personalStorageTransferItemLabel,
+  personalStorageTransferOwnedCount,
+  personalStorageTransferCountInput,
+  personalStorageTransferError,
+  inventoryStoragePanel,
+  personalStoragePanel,
+} = createInventoryWindowUi({
+  uiLayer,
+  onWalletLogout: handleWalletLogout,
+  onWalletCopy: () => {
+    void copyWalletAddressToClipboard();
+  },
+  onTabChange: (tabId) => {
+    activeTab = tabId;
+    renderInventoryWindow();
+  },
+  onTrashDragOver: (event) => {
+    if (!inventoryDraggedEntry) return;
+    event.preventDefault();
+    inventoryTrashDropZone.style.background = "rgba(255,231,214,0.96)";
+    inventoryTrashDropZone.style.borderColor = "rgba(232,120,66,0.9)";
+    inventoryTrashDropZone.style.transform = "scale(1.01)";
+  },
+  onTrashDragLeave: () => {
+    inventoryTrashDropZone.style.background = "rgba(255,255,255,0.72)";
+    inventoryTrashDropZone.style.borderColor = "rgba(120,120,120,0.38)";
+    inventoryTrashDropZone.style.transform = "scale(1)";
+  },
+  onTrashDrop: (event) => {
+    event.preventDefault();
+    inventoryTrashDropZone.style.background = "rgba(255,255,255,0.72)";
+    inventoryTrashDropZone.style.borderColor = "rgba(120,120,120,0.38)";
+    inventoryTrashDropZone.style.transform = "scale(1)";
+    const entry = inventoryDraggedEntry;
+    inventoryDraggedEntry = null;
+    if (!entry) return;
+    openDiscardDialog(entry);
+  },
+  onDiscardOverlayClick: closeDiscardDialog,
+  onDiscardCancel: closeDiscardDialog,
+  onDiscardConfirm: commitDiscardDialog,
+  onDiscardKeyDown: (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      commitDiscardDialog();
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      closeDiscardDialog();
+    }
+  },
+  onPersonalStorageOverlayClick: () => setPersonalStorageOpen(false),
+  onPersonalStorageClose: () => setPersonalStorageOpen(false),
+  onPersonalStorageCurtainClick: () => closePersonalStorageTransferDialog(),
+  onPersonalStorageTransferCancel: () => closePersonalStorageTransferDialog(),
+  onPersonalStorageTransferConfirm: () => commitPersonalStorageTransferDialog(),
+  onPersonalStorageTransferKeyDown: (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      commitPersonalStorageTransferDialog();
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      closePersonalStorageTransferDialog();
+    }
+  },
 });
-
-equipProfileChain = document.createElement("div");
-equipProfileChain.style.fontSize = "12px";
-equipProfileChain.style.color = "rgba(70,70,70,0.82)";
-equipProfileInfo.appendChild(equipProfileChain);
-
-equipProfileNickname = document.createElement("div");
-equipProfileNickname.style.fontSize = "12px";
-equipProfileNickname.style.fontWeight = "700";
-equipProfileNickname.style.color = "#8b6b1b";
-equipProfileInfo.appendChild(equipProfileNickname);
-
-equipProfileCredits = document.createElement("div");
-equipProfileCredits.style.fontSize = "12px";
-equipProfileCredits.style.fontWeight = "700";
-equipProfileCredits.style.color = "#2d5f1f";
-equipProfileInfo.appendChild(equipProfileCredits);
+equipProfileLogoutBtn = builtEquipProfileLogoutBtn;
+equipProfileCopyBtn = builtEquipProfileCopyBtn;
+equipProfileAddress = builtEquipProfileAddress;
+equipProfileChain = builtEquipProfileChain;
+equipProfileNickname = builtEquipProfileNickname;
+equipProfileCredits = builtEquipProfileCredits;
+personalStorageOverlay = builtPersonalStorageOverlay;
+personalStorageWin = builtPersonalStorageWin;
 
 const forgeOverlay = document.createElement("div");
 forgeOverlay.id = "forgeOverlay";
@@ -3625,515 +3546,8 @@ refineryNotice.style.color = "#444";
 refineryDetailPanel.appendChild(refineryNotice);
 
 
-// 상단 탭 바
-const tabBar = document.createElement("div");
-tabBar.style.display = "flex";
-tabBar.style.gap = "6px";
-tabBar.style.padding = "10px";
-tabBar.style.borderBottom = "1px solid rgba(0,0,0,0.15)";
-tabBar.style.background = "rgba(255,255,255,0.7)";
-tabBar.style.borderTopLeftRadius = "10px";
-tabBar.style.borderTopRightRadius = "10px";
-invWin.appendChild(tabBar);
-
-const tabs = [
-  { id: "equip", label: "장비" },
-  { id: "cons", label: "소비" },
-  { id: "misc", label: "기타" },
-];
-
-let activeTab = "cons";
-
-function makeTabButton(t) {
-  const b = document.createElement("button");
-  b.textContent = t.label;
-  b.style.border = "1px solid rgba(0,0,0,0.2)";
-  b.style.borderRadius = "8px";
-  b.style.padding = "6px 10px";
-  b.style.fontSize = "14px";
-  b.style.cursor = "pointer";
-  b.style.background = "rgba(255,255,255,0.9)";
-  b.style.color = "#222";
-  b.addEventListener("click", () => {
-    activeTab = t.id;
-    renderInventoryWindow();
-  });
-  return b;
-}
-
-const tabButtons = {};
-for (const t of tabs) {
-  const btn = makeTabButton(t);
-  tabButtons[t.id] = btn;
-  tabBar.appendChild(btn);
-}
-
-// 본문(슬롯 영역)
-const invBody = document.createElement("div");
-invBody.style.padding = "12px";
-invBody.style.height = "calc(100% - 52px)";
-invBody.style.boxSizing = "border-box";
-invBody.style.display = "flex";
-invBody.style.flexDirection = "column";
-invBody.style.gap = "10px";
-invWin.appendChild(invBody);
-
-// 스크롤 영역(슬롯 그리드)
-const gridWrap = document.createElement("div");
-gridWrap.style.flex = "1";
-gridWrap.style.minHeight = "0";
-gridWrap.style.overflowY = "auto";
-gridWrap.style.overflowX = "hidden";
-gridWrap.style.paddingRight = "6px";
-invBody.appendChild(gridWrap);
-
-const invgrid = document.createElement("div");
-invgrid.style.display = "grid";
-invgrid.style.gridTemplateColumns = "repeat(5, 1fr)"; // 5칸 x 여러줄
-invgrid.style.gap = "10px";
-gridWrap.appendChild(invgrid);
-
-const inventoryTrashRow = document.createElement("div");
-inventoryTrashRow.style.display = "flex";
-inventoryTrashRow.style.alignItems = "center";
-inventoryTrashRow.style.justifyContent = "center";
-inventoryTrashRow.style.minHeight = "64px";
-inventoryTrashRow.style.paddingTop = "4px";
-invBody.appendChild(inventoryTrashRow);
-
-const inventoryTrashDropZone = document.createElement("div");
-inventoryTrashDropZone.style.width = "100%";
-inventoryTrashDropZone.style.minHeight = "52px";
-inventoryTrashDropZone.style.borderRadius = "12px";
-inventoryTrashDropZone.style.border = "2px dashed rgba(120,120,120,0.38)";
-inventoryTrashDropZone.style.background = "rgba(255,255,255,0.72)";
-inventoryTrashDropZone.style.display = "flex";
-inventoryTrashDropZone.style.alignItems = "center";
-inventoryTrashDropZone.style.justifyContent = "center";
-inventoryTrashDropZone.style.gap = "10px";
-inventoryTrashDropZone.style.fontFamily = "system-ui, -apple-system, sans-serif";
-inventoryTrashDropZone.style.fontSize = "13px";
-inventoryTrashDropZone.style.fontWeight = "800";
-inventoryTrashDropZone.style.color = "#555";
-inventoryTrashDropZone.style.transition = "background 120ms ease, border-color 120ms ease, transform 120ms ease";
-inventoryTrashDropZone.textContent = "🗑️ 아이템을 여기로 드래그해 버리기";
-inventoryTrashRow.appendChild(inventoryTrashDropZone);
-
-const discardOverlay = document.createElement("div");
-discardOverlay.style.position = "fixed";
-discardOverlay.style.inset = "0";
-discardOverlay.style.background = "rgba(16,18,22,0.28)";
-discardOverlay.style.backdropFilter = "blur(3px)";
-discardOverlay.style.display = "none";
-discardOverlay.style.pointerEvents = "auto";
-discardOverlay.style.zIndex = "1000003";
-uiLayer.appendChild(discardOverlay);
-
-const discardDialog = document.createElement("div");
-discardDialog.style.position = "fixed";
-discardDialog.style.left = "50%";
-discardDialog.style.top = "50%";
-discardDialog.style.transform = "translate(-50%, -50%)";
-discardDialog.style.width = "min(340px, calc(100vw - 36px))";
-discardDialog.style.background = "rgba(245,245,245,0.98)";
-discardDialog.style.border = "1px solid rgba(0,0,0,0.18)";
-discardDialog.style.borderRadius = "14px";
-discardDialog.style.boxShadow = "0 18px 42px rgba(0,0,0,0.28)";
-discardDialog.style.padding = "16px";
-discardDialog.style.display = "none";
-discardDialog.style.pointerEvents = "auto";
-discardDialog.style.zIndex = "1000004";
-discardDialog.style.boxSizing = "border-box";
-uiLayer.appendChild(discardDialog);
-
-const discardTitle = document.createElement("div");
-discardTitle.textContent = "아이템 버리기";
-discardTitle.style.fontFamily = "system-ui, -apple-system, sans-serif";
-discardTitle.style.fontSize = "18px";
-discardTitle.style.fontWeight = "800";
-discardTitle.style.color = "#222";
-discardDialog.appendChild(discardTitle);
-
-const discardItemLabel = document.createElement("div");
-discardItemLabel.style.marginTop = "10px";
-discardItemLabel.style.fontFamily = "system-ui, -apple-system, sans-serif";
-discardItemLabel.style.fontSize = "15px";
-discardItemLabel.style.fontWeight = "700";
-discardItemLabel.style.color = "#333";
-discardDialog.appendChild(discardItemLabel);
-
-const discardOwnedCount = document.createElement("div");
-discardOwnedCount.style.marginTop = "6px";
-discardOwnedCount.style.fontFamily = "system-ui, -apple-system, sans-serif";
-discardOwnedCount.style.fontSize = "13px";
-discardOwnedCount.style.color = "#666";
-discardDialog.appendChild(discardOwnedCount);
-
-const discardInputLabel = document.createElement("label");
-discardInputLabel.textContent = "버릴 개수";
-discardInputLabel.style.display = "block";
-discardInputLabel.style.marginTop = "14px";
-discardInputLabel.style.fontFamily = "system-ui, -apple-system, sans-serif";
-discardInputLabel.style.fontSize = "13px";
-discardInputLabel.style.fontWeight = "700";
-discardInputLabel.style.color = "#444";
-discardDialog.appendChild(discardInputLabel);
-
-const discardCountInput = document.createElement("input");
-discardCountInput.type = "number";
-discardCountInput.min = "1";
-discardCountInput.step = "1";
-discardCountInput.style.marginTop = "8px";
-discardCountInput.style.width = "100%";
-discardCountInput.style.boxSizing = "border-box";
-discardCountInput.style.padding = "10px 12px";
-discardCountInput.style.borderRadius = "10px";
-discardCountInput.style.border = "1px solid rgba(0,0,0,0.18)";
-discardCountInput.style.fontFamily = "system-ui, -apple-system, sans-serif";
-discardCountInput.style.fontSize = "15px";
-discardCountInput.style.background = "rgba(255,255,255,0.96)";
-discardDialog.appendChild(discardCountInput);
-
-const discardError = document.createElement("div");
-discardError.style.marginTop = "8px";
-discardError.style.minHeight = "18px";
-discardError.style.fontFamily = "system-ui, -apple-system, sans-serif";
-discardError.style.fontSize = "12px";
-discardError.style.fontWeight = "700";
-discardError.style.color = "#c24c24";
-discardDialog.appendChild(discardError);
-
-const discardButtonRow = document.createElement("div");
-discardButtonRow.style.display = "flex";
-discardButtonRow.style.justifyContent = "flex-end";
-discardButtonRow.style.gap = "10px";
-discardButtonRow.style.marginTop = "16px";
-discardDialog.appendChild(discardButtonRow);
-
-const discardCancelBtn = document.createElement("button");
-discardCancelBtn.type = "button";
-discardCancelBtn.textContent = "취소";
-discardCancelBtn.style.minWidth = "78px";
-discardCancelBtn.style.padding = "9px 12px";
-discardCancelBtn.style.borderRadius = "10px";
-discardCancelBtn.style.border = "1px solid rgba(0,0,0,0.18)";
-discardCancelBtn.style.background = "rgba(255,255,255,0.92)";
-discardCancelBtn.style.cursor = "pointer";
-discardCancelBtn.style.fontWeight = "700";
-discardButtonRow.appendChild(discardCancelBtn);
-
-const discardConfirmBtn = document.createElement("button");
-discardConfirmBtn.type = "button";
-discardConfirmBtn.textContent = "버리기";
-discardConfirmBtn.style.minWidth = "86px";
-discardConfirmBtn.style.padding = "9px 12px";
-discardConfirmBtn.style.borderRadius = "10px";
-discardConfirmBtn.style.border = "1px solid rgba(155,58,26,0.28)";
-discardConfirmBtn.style.background = "linear-gradient(180deg, rgba(255,161,115,0.95), rgba(240,118,72,0.95))";
-discardConfirmBtn.style.color = "white";
-discardConfirmBtn.style.cursor = "pointer";
-discardConfirmBtn.style.fontWeight = "800";
-discardButtonRow.appendChild(discardConfirmBtn);
-
-inventoryTrashDropZone.addEventListener("dragover", (event) => {
-  if (!inventoryDraggedEntry) return;
-  event.preventDefault();
-  inventoryTrashDropZone.style.background = "rgba(255,231,214,0.96)";
-  inventoryTrashDropZone.style.borderColor = "rgba(232,120,66,0.9)";
-  inventoryTrashDropZone.style.transform = "scale(1.01)";
-});
-
-inventoryTrashDropZone.addEventListener("dragleave", () => {
-  inventoryTrashDropZone.style.background = "rgba(255,255,255,0.72)";
-  inventoryTrashDropZone.style.borderColor = "rgba(120,120,120,0.38)";
-  inventoryTrashDropZone.style.transform = "scale(1)";
-});
-
-inventoryTrashDropZone.addEventListener("drop", (event) => {
-  event.preventDefault();
-  inventoryTrashDropZone.style.background = "rgba(255,255,255,0.72)";
-  inventoryTrashDropZone.style.borderColor = "rgba(120,120,120,0.38)";
-  inventoryTrashDropZone.style.transform = "scale(1)";
-  const entry = inventoryDraggedEntry;
-  inventoryDraggedEntry = null;
-  if (!entry) return;
-  openDiscardDialog(entry);
-});
-
-discardOverlay.addEventListener("click", closeDiscardDialog);
-discardCancelBtn.addEventListener("click", closeDiscardDialog);
-discardConfirmBtn.addEventListener("click", commitDiscardDialog);
-discardCountInput.addEventListener("keydown", (event) => {
-  if (event.key === "Enter") {
-    event.preventDefault();
-    commitDiscardDialog();
-  } else if (event.key === "Escape") {
-    event.preventDefault();
-    closeDiscardDialog();
-  }
-});
-
-personalStorageOverlay = document.createElement("div");
-personalStorageOverlay.style.position = "fixed";
-personalStorageOverlay.style.inset = "0";
-personalStorageOverlay.style.background = "rgba(16,18,22,0.34)";
-personalStorageOverlay.style.backdropFilter = "blur(3px)";
-personalStorageOverlay.style.display = "none";
-personalStorageOverlay.style.pointerEvents = "auto";
-personalStorageOverlay.style.zIndex = "1000003";
-uiLayer.appendChild(personalStorageOverlay);
-
-personalStorageWin = document.createElement("div");
-personalStorageWin.style.position = "fixed";
-personalStorageWin.style.left = "50%";
-personalStorageWin.style.top = "50%";
-personalStorageWin.style.transform = "translate(-50%, -50%)";
-personalStorageWin.style.width = "min(860px, calc(100vw - 30px))";
-personalStorageWin.style.height = "min(620px, calc(100vh - 40px))";
-personalStorageWin.style.background = "rgba(246,246,246,0.98)";
-personalStorageWin.style.border = "1px solid rgba(0,0,0,0.18)";
-personalStorageWin.style.borderRadius = "18px";
-personalStorageWin.style.boxShadow = "0 18px 42px rgba(0,0,0,0.28)";
-personalStorageWin.style.display = "none";
-personalStorageWin.style.pointerEvents = "auto";
-personalStorageWin.style.zIndex = "1000004";
-personalStorageWin.style.boxSizing = "border-box";
-personalStorageWin.style.padding = "18px";
-personalStorageWin.style.fontFamily = "system-ui, -apple-system, sans-serif";
-personalStorageWin.style.overflow = "hidden";
-uiLayer.appendChild(personalStorageWin);
-
-const personalStorageHeader = document.createElement("div");
-personalStorageHeader.style.display = "flex";
-personalStorageHeader.style.alignItems = "center";
-personalStorageHeader.style.justifyContent = "space-between";
-personalStorageHeader.style.gap = "12px";
-personalStorageWin.appendChild(personalStorageHeader);
-
-const personalStorageTitle = document.createElement("div");
-personalStorageTitle.textContent = "개인 창고";
-personalStorageTitle.style.fontSize = "26px";
-personalStorageTitle.style.fontWeight = "900";
-personalStorageTitle.style.color = "#222";
-personalStorageHeader.appendChild(personalStorageTitle);
-
-const personalStorageCloseBtn = document.createElement("button");
-personalStorageCloseBtn.type = "button";
-personalStorageCloseBtn.textContent = "닫기";
-personalStorageCloseBtn.style.padding = "8px 14px";
-personalStorageCloseBtn.style.borderRadius = "999px";
-personalStorageCloseBtn.style.border = "1px solid rgba(0,0,0,0.18)";
-personalStorageCloseBtn.style.background = "rgba(255,255,255,0.9)";
-personalStorageCloseBtn.style.fontWeight = "800";
-personalStorageCloseBtn.style.cursor = "pointer";
-personalStorageHeader.appendChild(personalStorageCloseBtn);
-
-const personalStorageGuide = document.createElement("div");
-personalStorageGuide.textContent = "아이템을 드래그해서 인벤토리와 개인 창고 사이로 옮길 수 있습니다.";
-personalStorageGuide.style.marginTop = "8px";
-personalStorageGuide.style.fontSize = "13px";
-personalStorageGuide.style.fontWeight = "700";
-personalStorageGuide.style.color = "#6a6a6a";
-personalStorageWin.appendChild(personalStorageGuide);
-
-const personalStorageMessage = document.createElement("div");
-personalStorageMessage.style.marginTop = "8px";
-personalStorageMessage.style.minHeight = "18px";
-personalStorageMessage.style.fontSize = "12px";
-personalStorageMessage.style.fontWeight = "800";
-personalStorageMessage.style.color = "#c24c24";
-personalStorageWin.appendChild(personalStorageMessage);
-
-const personalStorageColumns = document.createElement("div");
-personalStorageColumns.style.display = "grid";
-personalStorageColumns.style.gridTemplateColumns = "1fr 1fr";
-personalStorageColumns.style.gap = "16px";
-personalStorageColumns.style.marginTop = "14px";
-personalStorageColumns.style.height = "calc(100% - 100px)";
-personalStorageWin.appendChild(personalStorageColumns);
-
-const personalStorageTransferCurtain = document.createElement("div");
-personalStorageTransferCurtain.style.position = "absolute";
-personalStorageTransferCurtain.style.inset = "0";
-personalStorageTransferCurtain.style.background = "rgba(18,22,28,0.32)";
-personalStorageTransferCurtain.style.backdropFilter = "blur(2px)";
-personalStorageTransferCurtain.style.display = "none";
-personalStorageTransferCurtain.style.zIndex = "5";
-personalStorageTransferCurtain.style.borderRadius = "18px";
-personalStorageWin.appendChild(personalStorageTransferCurtain);
-
-const personalStorageTransferDialog = document.createElement("div");
-personalStorageTransferDialog.style.position = "absolute";
-personalStorageTransferDialog.style.left = "50%";
-personalStorageTransferDialog.style.top = "50%";
-personalStorageTransferDialog.style.transform = "translate(-50%, -50%)";
-personalStorageTransferDialog.style.width = "min(340px, calc(100% - 30px))";
-personalStorageTransferDialog.style.padding = "18px";
-personalStorageTransferDialog.style.borderRadius = "16px";
-personalStorageTransferDialog.style.background = "rgba(255,255,255,0.98)";
-personalStorageTransferDialog.style.border = "1px solid rgba(0,0,0,0.14)";
-personalStorageTransferDialog.style.boxShadow = "0 14px 30px rgba(0,0,0,0.2)";
-personalStorageTransferDialog.style.display = "none";
-personalStorageTransferDialog.style.zIndex = "6";
-personalStorageTransferDialog.style.pointerEvents = "auto";
-personalStorageTransferDialog.style.boxSizing = "border-box";
-personalStorageWin.appendChild(personalStorageTransferDialog);
-
-const personalStorageTransferTitle = document.createElement("div");
-personalStorageTransferTitle.style.fontSize = "22px";
-personalStorageTransferTitle.style.fontWeight = "900";
-personalStorageTransferTitle.style.color = "#232323";
-personalStorageTransferDialog.appendChild(personalStorageTransferTitle);
-
-const personalStorageTransferItemLabel = document.createElement("div");
-personalStorageTransferItemLabel.style.marginTop = "8px";
-personalStorageTransferItemLabel.style.fontSize = "15px";
-personalStorageTransferItemLabel.style.fontWeight = "800";
-personalStorageTransferItemLabel.style.color = "#444";
-personalStorageTransferDialog.appendChild(personalStorageTransferItemLabel);
-
-const personalStorageTransferOwnedCount = document.createElement("div");
-personalStorageTransferOwnedCount.style.marginTop = "4px";
-personalStorageTransferOwnedCount.style.fontSize = "12px";
-personalStorageTransferOwnedCount.style.fontWeight = "700";
-personalStorageTransferOwnedCount.style.color = "#767676";
-personalStorageTransferDialog.appendChild(personalStorageTransferOwnedCount);
-
-const personalStorageTransferInputLabel = document.createElement("label");
-personalStorageTransferInputLabel.style.display = "block";
-personalStorageTransferInputLabel.style.marginTop = "12px";
-personalStorageTransferInputLabel.style.fontSize = "12px";
-personalStorageTransferInputLabel.style.fontWeight = "800";
-personalStorageTransferInputLabel.style.color = "#5f5f5f";
-personalStorageTransferInputLabel.textContent = "옮길 개수";
-personalStorageTransferDialog.appendChild(personalStorageTransferInputLabel);
-
-const personalStorageTransferCountInput = document.createElement("input");
-personalStorageTransferCountInput.type = "number";
-personalStorageTransferCountInput.min = "1";
-personalStorageTransferCountInput.step = "1";
-personalStorageTransferCountInput.style.width = "100%";
-personalStorageTransferCountInput.style.marginTop = "6px";
-personalStorageTransferCountInput.style.padding = "10px 12px";
-personalStorageTransferCountInput.style.borderRadius = "12px";
-personalStorageTransferCountInput.style.border = "1px solid rgba(0,0,0,0.18)";
-personalStorageTransferCountInput.style.fontSize = "16px";
-personalStorageTransferCountInput.style.fontWeight = "800";
-personalStorageTransferCountInput.style.boxSizing = "border-box";
-personalStorageTransferDialog.appendChild(personalStorageTransferCountInput);
-
-const personalStorageTransferError = document.createElement("div");
-personalStorageTransferError.style.marginTop = "8px";
-personalStorageTransferError.style.minHeight = "16px";
-personalStorageTransferError.style.fontSize = "12px";
-personalStorageTransferError.style.fontWeight = "800";
-personalStorageTransferError.style.color = "#c24c24";
-personalStorageTransferDialog.appendChild(personalStorageTransferError);
-
-const personalStorageTransferActions = document.createElement("div");
-personalStorageTransferActions.style.display = "flex";
-personalStorageTransferActions.style.justifyContent = "flex-end";
-personalStorageTransferActions.style.gap = "10px";
-personalStorageTransferActions.style.marginTop = "14px";
-personalStorageTransferDialog.appendChild(personalStorageTransferActions);
-
-const personalStorageTransferCancelBtn = document.createElement("button");
-personalStorageTransferCancelBtn.type = "button";
-personalStorageTransferCancelBtn.textContent = "취소";
-personalStorageTransferCancelBtn.style.padding = "10px 14px";
-personalStorageTransferCancelBtn.style.borderRadius = "999px";
-personalStorageTransferCancelBtn.style.border = "1px solid rgba(0,0,0,0.18)";
-personalStorageTransferCancelBtn.style.background = "rgba(255,255,255,0.94)";
-personalStorageTransferCancelBtn.style.fontWeight = "800";
-personalStorageTransferCancelBtn.style.cursor = "pointer";
-personalStorageTransferActions.appendChild(personalStorageTransferCancelBtn);
-
-const personalStorageTransferConfirmBtn = document.createElement("button");
-personalStorageTransferConfirmBtn.type = "button";
-personalStorageTransferConfirmBtn.textContent = "이동";
-personalStorageTransferConfirmBtn.style.padding = "10px 16px";
-personalStorageTransferConfirmBtn.style.borderRadius = "999px";
-personalStorageTransferConfirmBtn.style.border = "1px solid rgba(204,110,50,0.34)";
-personalStorageTransferConfirmBtn.style.background = "rgba(255,166,82,0.96)";
-personalStorageTransferConfirmBtn.style.color = "#2a1804";
-personalStorageTransferConfirmBtn.style.fontWeight = "900";
-personalStorageTransferConfirmBtn.style.cursor = "pointer";
-personalStorageTransferActions.appendChild(personalStorageTransferConfirmBtn);
-
-function createPersonalStoragePanel(titleText) {
-  const panel = document.createElement("div");
-  panel.style.display = "flex";
-  panel.style.flexDirection = "column";
-  panel.style.minHeight = "0";
-  panel.style.padding = "14px";
-  panel.style.borderRadius = "16px";
-  panel.style.background = "rgba(255,255,255,0.92)";
-  panel.style.border = "1px solid rgba(0,0,0,0.12)";
-
-  const title = document.createElement("div");
-  title.textContent = titleText;
-  title.style.fontSize = "18px";
-  title.style.fontWeight = "900";
-  title.style.color = "#2b2b2b";
-  panel.appendChild(title);
-
-  const subtitle = document.createElement("div");
-  subtitle.style.marginTop = "4px";
-  subtitle.style.fontSize = "12px";
-  subtitle.style.fontWeight = "700";
-  subtitle.style.color = "#777";
-  panel.appendChild(subtitle);
-
-  const wrap = document.createElement("div");
-  wrap.style.flex = "1";
-  wrap.style.minHeight = "0";
-  wrap.style.overflowY = "auto";
-  wrap.style.marginTop = "12px";
-  panel.appendChild(wrap);
-
-  const grid = document.createElement("div");
-  grid.style.display = "grid";
-  grid.style.gridTemplateColumns = "repeat(5, 1fr)";
-  grid.style.gap = "10px";
-  wrap.appendChild(grid);
-
-  return { panel, subtitle, grid };
-}
-
-const inventoryStoragePanel = createPersonalStoragePanel("인벤토리");
-const personalStoragePanel = createPersonalStoragePanel("개인 창고");
-personalStorageColumns.appendChild(inventoryStoragePanel.panel);
-personalStorageColumns.appendChild(personalStoragePanel.panel);
-
-personalStorageOverlay.addEventListener("click", () => setPersonalStorageOpen(false));
-personalStorageCloseBtn.addEventListener("click", () => setPersonalStorageOpen(false));
-personalStorageTransferCurtain.addEventListener("click", () => closePersonalStorageTransferDialog());
-personalStorageTransferCancelBtn.addEventListener("click", () => closePersonalStorageTransferDialog());
-personalStorageTransferConfirmBtn.addEventListener("click", () => commitPersonalStorageTransferDialog());
-personalStorageTransferCountInput.addEventListener("keydown", (event) => {
-  if (event.key === "Enter") {
-    event.preventDefault();
-    commitPersonalStorageTransferDialog();
-  } else if (event.key === "Escape") {
-    event.preventDefault();
-    closePersonalStorageTransferDialog();
-  }
-});
-
-// 슬롯 크기/스타일
 function makeSlot() {
-  const s = document.createElement("div");
-  s.style.width = "52px";
-  s.style.height = "52px";
-  s.style.background = "rgba(255,255,255,0.95)";
-  s.style.border = "1px solid rgba(0,0,0,0.2)";
-  s.style.borderRadius = "8px";
-  s.style.display = "flex";
-  s.style.alignItems = "center";
-  s.style.justifyContent = "center";
-  s.style.position = "relative";
-  s.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.8)";
-  return s;
+  return makeInventorySlotElement();
 }
 
 const itemPreviewCache = new Map();
@@ -5370,30 +4784,18 @@ dir.position.set(10, 20, 10);
 scene.add(dir);
 
 // ===== Ground (mine-like bumpy terrain) =====
-const GROUND_SIZE = 100;      // 맵 크기(100 x 100)
-const FRONTIER_GROUND_SIZE = 50;
 const GROUND_SEG = 80;       // 세그먼트가 많을수록 울퉁불퉁이 자연스러움
 const HEIGHT = 0.8;          // 울퉁불퉁 강도 (너무 크면 걸을 때 어색해짐)
 
 // ===== Starting Zone =====
-const START_X = 0;
-const START_Z = 0;
 const START_RADIUS = 5.0;     // 네가 말한 반경 5m
 const START_SMOOTH = 1.8;     // 경계 부드럽게 이어지는 폭(1~3 추천)
 const START_FLAT_Y = 0.0;     // 스타팅 존 바닥 높이
 const START_WALL_ON = false;  // start ring 비활성화
 const START_WALL_VISIBLE = true; // 띠를 실제로 보이게
 const START_HARD_CLAMP = false; // 하드 클램프는 끄고 벽 충돌로만 제어
-const START_RING_OPEN_RATIO = 0.20; // 20% 개방
-const START_RING_OPEN_CENTER = Math.PI / 2; // +Z 방향에 개방 구간 중심
 const START_RING_SEG = 36;
 const START_RING_HEIGHT = 1.1; // 허리춤 정도
-const START_RING_THICKNESS = 1.275; // 기존 대비 50% 두껍게
-const CAMP_MAP_X = 0;
-const CAMP_MAP_Z = -126;
-const FRONTIER_MAP_X = 0;
-const FRONTIER_MAP_Z = -218;
-const MAP_GATE_RADIUS = 1.15;
 const DEV_PRESET_ENABLED = true;
 patchInfoWrap.style.display = DEV_PRESET_ENABLED ? "block" : "none";
 const DEV_PRESET = {
@@ -5586,7 +4988,6 @@ const mineRocks = []; // 채집 가능한 돌 목록
 const harvestTrees = [];
 const connectorTunnelZones = [];
 const ROCK_RESPAWN_MS = 10000;
-const TREE_HARVEST_RESPAWN_MS = 10000;
 const ROCK_COUNT = 50;
 const CAVE_STONE_COUNT = 16;
 const ROCK_SPAWN_MARGIN = 6;
@@ -5781,172 +5182,33 @@ function updateParticles(dt) {
 
 // ===== Inventory (slot-based) =====
 // 아이템 정의(나중에 계속 늘릴 예정)
-const FRONTIER_PARCEL_LABELS = ["P1", "P2", "P3", "P4", "P5", "P6"];
-const FRONTIER_AUTHORITY_ITEM_IDS = {
-  P1: "frontierP1Permit",
-  P2: "frontierP2Permit",
-  P3: "frontierP3Permit",
-  P4: "frontierP4Permit",
-  P5: "frontierP5Permit",
-  P6: "frontierP6Permit",
-};
-
-const ITEM_DEFS = {
-  pickaxe: {
-    name: "곡괭이",
-    icon: "⛏️",
-    stackMax: 1,
-    category: "equip",
-    equipSlot: "tool",
-    upgradeKey: "pickaxe",
-    miningPowerMin: 0.9,
-    miningPowerMax: 1.1,
-    makeInventoryModel: () => buildPickaxeModel(inventory?.pickaxeLevel ?? 0),
-  },
-  safetyHelmet: {
-    name: "안전모",
-    icon: "🪖",
-    stackMax: 1,
-    category: "equip",
-    equipSlot: "head",
-    makeInventoryModel: () => buildSafetyHelmetModel(),
-  },
-  basicShoes: {
-    name: "기본신발",
-    icon: "👞",
-    stackMax: 1,
-    category: "equip",
-    equipSlot: "shoes",
-    makeInventoryModel: () => buildBasicShoesModel(),
-  },
-  abandonedMineKey: {
-    name: "폐광 열쇠",
-    icon: "🗝️",
-    stackMax: 1,
-    category: "misc",
-  },
-  frontierP1Permit: { name: "개척지 P1 개발권", icon: "📜", stackMax: 1, category: "misc", isAuthorityItem: true },
-  frontierP2Permit: { name: "개척지 P2 개발권", icon: "📜", stackMax: 1, category: "misc", isAuthorityItem: true },
-  frontierP3Permit: { name: "개척지 P3 개발권", icon: "📜", stackMax: 1, category: "misc", isAuthorityItem: true },
-  frontierP4Permit: { name: "개척지 P4 개발권", icon: "📜", stackMax: 1, category: "misc", isAuthorityItem: true },
-  frontierP5Permit: { name: "개척지 P5 개발권", icon: "📜", stackMax: 1, category: "misc", isAuthorityItem: true },
-  frontierP6Permit: { name: "개척지 P6 개발권", icon: "📜", stackMax: 1, category: "misc", isAuthorityItem: true },
-  mansionOneRoom101Permit: {
-    name: "Mansion ONE 101호",
-    icon: "🪪",
-    stackMax: 1,
-    category: "misc",
-    isAuthorityItem: true,
-  },
-  mansionOneRoom102Permit: {
-    name: "Mansion ONE 102호",
-    icon: "🪪",
-    stackMax: 1,
-    category: "misc",
-    isAuthorityItem: true,
-  },
-  freshAirCanister: {
-    name: "신선한 공기 캔",
-    icon: "🫧",
-    stackMax: 200,
-    category: "cons",
-    makeInventoryModel: () => buildFreshAirCanisterModel(),
-  },
-  woodChip: {
-    name: "나무조각",
-    icon: "🪹",
-    stackMax: 200,
-    category: "misc",
-    isMaterial: true,
-  },
-  woodPlank: {
-    name: "목재",
-    icon: "🟫",
-    stackMax: 200,
-    category: "misc",
-    isMaterial: true,
-  },
-  purifyPowder: {
-    name: "정화 가루",
-    icon: "✨",
-    stackMax: 200,
-    category: "misc",
-    isMaterial: true,
-    makeInventoryModel: () => buildPurifyPowderModel(),
-  },
-  stoneDust: { name: "돌가루", icon: "🪨", stackMax: 200, category: "misc", isMaterial: true },
-  masonryStone: { name: "석재", icon: "🧱", stackMax: 200, category: "misc", isMaterial: true },
-};
-
-const DEV_BULK_GRANT_ITEM_IDS = [
-  "freshAirCanister",
-  "woodChip",
-  "woodPlank",
-  "purifyPowder",
-  "stoneDust",
-  "masonryStone",
-];
-
-const DEV_MOCK_NFT_ITEMS = [
-  {
-    kind: "nft",
-    contractAddress: "0xMockHelmetCollection",
-    tokenId: "1",
-    nftType: "head",
-    name: "황금 안전모 NFT",
-    rarity: "legendary",
-    icon: "👑",
-  },
-];
+const ITEM_DEFS = createItemDefs({
+  buildPickaxeModel,
+  buildSafetyHelmetModel,
+  buildBasicShoesModel,
+  buildFreshAirCanisterModel,
+  buildPurifyPowderModel,
+  getPickaxeLevel: () => inventory?.pickaxeLevel ?? 0,
+});
 
 function getDevMaterialItemIds() {
-  return Object.entries(ITEM_DEFS)
-    .filter(([, def]) => def?.isMaterial)
-    .map(([itemId]) => itemId);
+  return getDevMaterialItemIdsFromDefs(ITEM_DEFS);
 }
 
 function getDevBulkGrantItemIds() {
-  return DEV_BULK_GRANT_ITEM_IDS.filter((itemId) => {
-    const def = ITEM_DEFS[itemId];
-    return (
-      def &&
-      (def.category === "cons" || def.category === "misc") &&
-      !def.isAuthorityItem &&
-      getInventoryStackMax(itemId) > 1
-    );
-  });
+  return getDevBulkGrantItemIdsFromDefs(ITEM_DEFS, INVENTORY_STACK_LIMIT);
 }
 
-let inventoryEntryInstanceSeq = 1;
-
 function createInventoryEntryInstanceId() {
-  const seq = inventoryEntryInstanceSeq++;
-  return `inv_${Date.now().toString(36)}_${seq.toString(36)}`;
+  return createInventoryEntryInstanceIdFromItems();
 }
 
 function getInventoryStackMax(itemId) {
-  const def = ITEM_DEFS[itemId];
-  if (!def) return 1;
-  const rawStackMax = Math.max(1, def.stackMax ?? 1);
-  if (def.category === "cons" || def.category === "misc") {
-    return Math.min(rawStackMax, INVENTORY_STACK_LIMIT);
-  }
-  return rawStackMax;
+  return getInventoryStackMaxFromItems(ITEM_DEFS, itemId, INVENTORY_STACK_LIMIT);
 }
 
 function createInventorySlotEntry(itemId, count = 1, extra = {}) {
-  const stackMax = getInventoryStackMax(itemId);
-  const instanceId =
-    typeof extra.instanceId === "string" && extra.instanceId.trim()
-      ? extra.instanceId
-      : createInventoryEntryInstanceId();
-  return {
-    kind: "item",
-    itemId,
-    count: Math.max(1, Math.min(count, stackMax)),
-    instanceId,
-    ...extra,
-  };
+  return createInventorySlotEntryFromItems(ITEM_DEFS, itemId, count, extra);
 }
 
 function addInventoryEntry(entry) {
@@ -5959,145 +5221,31 @@ function addInventoryEntry(entry) {
 }
 
 function normalizeInventorySlotEntry(rawSlot) {
-  if (!rawSlot) return null;
-  if (typeof rawSlot === "string") {
-    return createInventorySlotEntry(rawSlot, 1);
-  }
-  if (typeof rawSlot === "object") {
-    if (rawSlot.kind === "nft" && rawSlot.contractAddress && rawSlot.tokenId) {
-      return {
-        ...rawSlot,
-        kind: "nft",
-        tokenId: String(rawSlot.tokenId),
-        count: 1,
-      };
-    }
-    if (rawSlot.kind === "item" && rawSlot.itemId) {
-      const stackMax = getInventoryStackMax(rawSlot.itemId);
-      return {
-        ...rawSlot,
-        kind: "item",
-        itemId: rawSlot.itemId,
-        count: Math.max(1, Math.min(Number.isFinite(rawSlot.count) ? rawSlot.count : 1, stackMax)),
-        instanceId:
-          typeof rawSlot.instanceId === "string" && rawSlot.instanceId.trim()
-            ? rawSlot.instanceId
-            : createInventoryEntryInstanceId(),
-      };
-    }
-    if (rawSlot.id) {
-      return createInventorySlotEntry(rawSlot.id, Number.isFinite(rawSlot.count) ? rawSlot.count : 1);
-    }
-  }
-  return null;
+  return normalizeInventorySlotEntryFromItems(ITEM_DEFS, rawSlot);
 }
 
 function createEquippedItemRef(itemId, extra = {}) {
-  return itemId
-    ? {
-        kind: "item",
-        itemId,
-        ...extra,
-      }
-    : null;
+  return createEquippedItemRefFromItems(itemId, extra);
 }
 
 function normalizeEquippedItemRef(rawRef) {
-  if (!rawRef) return null;
-  if (typeof rawRef === "string") {
-    return createEquippedItemRef(rawRef);
-  }
-  if (typeof rawRef === "object") {
-    if (rawRef.kind === "nft" && rawRef.contractAddress && rawRef.tokenId) {
-      return {
-        ...rawRef,
-        kind: "nft",
-        tokenId: String(rawRef.tokenId),
-      };
-    }
-    if (rawRef.kind === "item" && rawRef.itemId) {
-      return {
-        ...rawRef,
-        kind: "item",
-        itemId: rawRef.itemId,
-        instanceId:
-          typeof rawRef.instanceId === "string" && rawRef.instanceId.trim()
-            ? rawRef.instanceId
-            : null,
-      };
-    }
-    if (rawRef.itemId) {
-      return createEquippedItemRef(rawRef.itemId);
-    }
-  }
-  return null;
-}
-
-function getSlotItemId(slot) {
-  return slot?.itemId ?? slot?.id ?? null;
-}
-
-function getSlotItemCount(slot) {
-  return Number.isFinite(slot?.count) ? slot.count : 0;
-}
-
-function isNftInventoryEntry(entry) {
-  return entry?.kind === "nft";
-}
-
-function isSameInventoryEntryAsEquipped(entry, equippedRef) {
-  if (!entry || !equippedRef) return false;
-  if (isNftInventoryEntry(entry)) {
-    return (
-      equippedRef.kind === "nft" &&
-      equippedRef.contractAddress === entry.contractAddress &&
-      String(equippedRef.tokenId) === String(entry.tokenId)
-    );
-  }
-
-  if (equippedRef.kind !== "item") return false;
-  if (entry.instanceId && equippedRef.instanceId) {
-    return entry.instanceId === equippedRef.instanceId;
-  }
-  return equippedRef.itemId === getSlotItemId(entry);
+  return normalizeEquippedItemRefFromItems(rawRef);
 }
 
 function getInventoryEntryCategory(entry) {
-  if (!entry) return null;
-  if (isNftInventoryEntry(entry)) {
-    const nftType = entry.nftType ?? "";
-    return ["tool", "head", "body", "shoes"].includes(nftType) ? "equip" : "misc";
-  }
-  const itemId = getSlotItemId(entry);
-  return ITEM_DEFS[itemId]?.category ?? null;
+  return getInventoryEntryCategoryFromItems(ITEM_DEFS, entry);
 }
 
 function getInventoryEntryEquipSlot(entry) {
-  if (!entry) return null;
-  if (isNftInventoryEntry(entry)) {
-    return entry.nftType ?? null;
-  }
-  const itemId = getSlotItemId(entry);
-  return ITEM_DEFS[itemId]?.equipSlot ?? null;
+  return getInventoryEntryEquipSlotFromItems(ITEM_DEFS, entry);
 }
 
 function getInventoryEntryDisplayName(entry) {
-  if (!entry) return "";
-  if (isNftInventoryEntry(entry)) {
-    return entry.name ?? `NFT #${entry.tokenId}`;
-  }
-  const itemId = getSlotItemId(entry);
-  const def = ITEM_DEFS[itemId];
-  return def?.name ?? itemId ?? "";
+  return getInventoryEntryDisplayNameFromItems(ITEM_DEFS, entry);
 }
 
 function getInventoryEntryDisplayIcon(entry) {
-  if (!entry) return "?";
-  if (isNftInventoryEntry(entry)) {
-    return entry.icon ?? "🧿";
-  }
-  const itemId = getSlotItemId(entry);
-  return ITEM_DEFS[itemId]?.icon ?? "?";
+  return getInventoryEntryDisplayIconFromItems(ITEM_DEFS, entry);
 }
 
 function getInventoryEntryTooltipText(entry) {
@@ -6120,32 +5268,19 @@ function getInventoryEntryTooltipText(entry) {
 }
 
 function createQuickUseBinding(itemId, extra = {}) {
-  return itemId
-    ? {
-        kind: "item",
-        itemId,
-        ...extra,
-      }
-    : null;
+  return createQuickUseBindingFromModule(itemId, extra);
 }
 
 function normalizeQuickUseBinding(rawBinding) {
-  if (!rawBinding) return null;
-  if (typeof rawBinding === "string") {
-    return createQuickUseBinding(rawBinding);
-  }
-  if (typeof rawBinding === "object" && rawBinding.itemId) {
-    return createQuickUseBinding(rawBinding.itemId, rawBinding);
-  }
-  return null;
+  return normalizeQuickUseBindingFromModule(rawBinding);
 }
 
 function getQuickUseBinding(key) {
-  return inventory.quickUse[key] ?? null;
+  return getQuickUseBindingFromModule(inventory, key);
 }
 
 function getQuickUseItemId(key) {
-  return getQuickUseBinding(key)?.itemId ?? null;
+  return getQuickUseItemIdFromModule(inventory, key);
 }
 
 function isQuickUseAssignableItemId(itemId) {
@@ -6170,25 +5305,15 @@ function getAssignedQuickUseKeyForEntry(entry) {
 }
 
 function clearQuickUseBindingForItemId(itemId) {
-  for (const key of QUICK_USE_ALLOWED_KEYS) {
-    if (getQuickUseItemId(key) === itemId) {
-      inventory.quickUse[key] = null;
-    }
-  }
+  clearQuickUseBindingForItemIdFromModule(inventory, itemId, QUICK_USE_ALLOWED_KEYS);
 }
 
 function assignQuickUseKeyToItem(itemId, key) {
-  if (!itemId || !QUICK_USE_ALLOWED_KEYS.includes(key)) return false;
-  clearQuickUseBindingForItemId(itemId);
-  inventory.quickUse[key] = createQuickUseBinding(itemId);
-  return true;
+  return assignQuickUseKeyToItemFromModule(inventory, itemId, key, QUICK_USE_ALLOWED_KEYS);
 }
 
 function getQuickUseKeyForItemId(itemId) {
-  for (const key of QUICK_USE_ALLOWED_KEYS) {
-    if (getQuickUseItemId(key) === itemId) return key;
-  }
-  return "";
+  return getQuickUseKeyForItemIdFromModule(inventory, itemId, QUICK_USE_ALLOWED_KEYS);
 }
 
 function isQuickUseAssignPendingForEntry(entry) {
@@ -6206,21 +5331,6 @@ function pruneQuickUseBindings() {
     quickUseAssignState = null;
   }
 }
-
-const PICKAXE_UPGRADE_LEVELS = [
-  { level: 0, miningPowerMin: 0.9, miningPowerMax: 1.1, bonusDropChance: 0.0, swingDuration: 0.28, cost: 0, successChance: 1.0 },
-  { level: 1, miningPowerMin: 1.0, miningPowerMax: 1.15, bonusDropChance: 0.0, swingDuration: 0.265, cost: 3, successChance: 1.0 },
-  { level: 2, miningPowerMin: 1.05, miningPowerMax: 1.2, bonusDropChance: 0.05, swingDuration: 0.25, cost: 6, successChance: 0.9 },
-  { level: 3, miningPowerMin: 1.15, miningPowerMax: 1.25, bonusDropChance: 0.1, swingDuration: 0.235, cost: 10, successChance: 0.75 },
-  { level: 4, miningPowerMin: 1.2, miningPowerMax: 1.35, bonusDropChance: 0.15, swingDuration: 0.22, cost: 15, successChance: 0.55 },
-  { level: 5, miningPowerMin: 1.3, miningPowerMax: 1.45, bonusDropChance: 0.2, swingDuration: 0.205, cost: 22, successChance: 0.35 },
-];
-
-const ROCK_SIZE_DEFS = [
-  { id: "small", label: "작은 돌", scale: 0.8, maxHp: 1, stoneDustDropCount: 1 },
-  { id: "medium", label: "중간 돌", scale: 1.05, maxHp: 2, stoneDustDropCount: 2 },
-  { id: "large", label: "큰 돌", scale: 1.3, maxHp: 3, stoneDustDropCount: 3 },
-];
 
 function getItemTooltipText(itemId, count = null) {
   const def = ITEM_DEFS[itemId];
@@ -6244,13 +5354,11 @@ function getItemTooltipText(itemId, count = null) {
 }
 
 function getCurrentPickaxeStats() {
-  const level = inventory?.pickaxeLevel ?? 0;
-  return PICKAXE_UPGRADE_LEVELS[Math.min(level, PICKAXE_UPGRADE_LEVELS.length - 1)];
+  return getCurrentPickaxeStatsFromModule(inventory?.pickaxeLevel ?? 0, PICKAXE_UPGRADE_LEVELS);
 }
 
 function getNextPickaxeUpgrade() {
-  const nextLevel = (inventory?.pickaxeLevel ?? 0) + 1;
-  return PICKAXE_UPGRADE_LEVELS[nextLevel] ?? null;
+  return getNextPickaxeUpgradeFromModule(inventory?.pickaxeLevel ?? 0, PICKAXE_UPGRADE_LEVELS);
 }
 
 function getForgeTargetItemId() {
@@ -6268,53 +5376,30 @@ function getForgeUpgradeState() {
   if (!itemId) return null;
 
   if (itemId === "pickaxe") {
-    return {
-      itemId,
-      name: ITEM_DEFS[itemId].name,
-      level: inventory.pickaxeLevel,
-      current: getCurrentPickaxeStats(),
-      next: getNextPickaxeUpgrade(),
-    };
+    return getForgeUpgradeStateData({
+      targetItemId: itemId,
+      pickaxeLevel: inventory.pickaxeLevel,
+      itemDefs: ITEM_DEFS,
+    });
   }
 
   return null;
 }
 
 function getEquippedMiningPower() {
-  const toolId = getEquippedItemForSlot("tool");
-  if (toolId === "pickaxe") {
-    const stats = getCurrentPickaxeStats();
-    return randRange(stats.miningPowerMin, stats.miningPowerMax);
-  }
-  const def = toolId ? ITEM_DEFS[toolId] : null;
-  return def?.miningPower ?? 0;
+  return getMiningPowerForTool({
+    toolId: getEquippedItemForSlot("tool"),
+    pickaxeLevel: inventory.pickaxeLevel,
+    itemDefs: ITEM_DEFS,
+    randRange,
+  });
 }
 
     // 인벤토리 데이터: 슬롯 + 장착 상태
-	    const inventory = {
-  slots: Array.from({ length: 30 }, () => null), // 30칸(원하면 늘림)
-  pickaxeLevel: 1,
-  mineKeyIssued: false,
-  abandonedMineUnlocked: false,
-  quickUse: {
-    "1": null,
-    "2": null,
-    "3": null,
-    "4": null,
-    "5": null,
-  },
-  equipped: {
-    head: null,
-    body: null,
-    shoes: null,
-    tool: null,
-  },
-    };
+	    const inventory = createInitialInventoryStateFromModule();
 let playerCredits = 0;
 
-const personalStorage = {
-  slots: Array.from({ length: 20 }, () => null),
-};
+const personalStorage = createInitialPersonalStorageStateFromModule();
 
 let inventoryDraggedEntry = null;
 let inventoryDiscardTargetEntry = null;
@@ -6325,25 +5410,17 @@ const ALWAYS_DROP_BLOCKED_ITEM_IDS = new Set(["abandonedMineKey"]);
 const TUTORIAL_DROP_BLOCKED_ITEM_IDS = new Set(["pickaxe", "safetyHelmet"]);
 
 function findInventorySlotIndexByEntry(entry) {
-  if (!entry) return -1;
-  if (isNftInventoryEntry(entry)) {
-    return inventory.slots.findIndex((slot) =>
-      slot &&
-      slot.kind === "nft" &&
-      slot.contractAddress === entry.contractAddress &&
-      String(slot.tokenId) === String(entry.tokenId)
-    );
-  }
-  if (entry.instanceId) {
-    return inventory.slots.findIndex((slot) => slot?.instanceId === entry.instanceId);
-  }
-  const itemId = getSlotItemId(entry);
-  return inventory.slots.findIndex((slot) => slot && getSlotItemId(slot) === itemId);
+  return findInventorySlotIndexByEntryFromModule(inventory.slots, entry, {
+    isNftInventoryEntry,
+    getSlotItemId,
+  });
 }
 
 function getInventorySlotEntryByEntry(entry) {
-  const idx = findInventorySlotIndexByEntry(entry);
-  return idx >= 0 ? inventory.slots[idx] : null;
+  return getInventorySlotEntryByEntryFromModule(inventory.slots, entry, {
+    isNftInventoryEntry,
+    getSlotItemId,
+  });
 }
 
 function clampPlayerCredits(value) {
@@ -6433,128 +5510,61 @@ function canMoveInventoryEntryToPersonalStorage(entry) {
 }
 
 function findFirstEmptyStorageSlot() {
-  for (let i = 0; i < personalStorage.slots.length; i += 1) {
-    if (!personalStorage.slots[i]) return i;
-  }
-  return -1;
+  return findFirstEmptySlotFromModule(personalStorage.slots);
 }
 
 function createPartialInventoryEntry(entry, count) {
-  const normalizedEntry = normalizeInventorySlotEntry(entry);
-  if (!normalizedEntry) return null;
-  if (isNftInventoryEntry(normalizedEntry)) return structuredClone(normalizedEntry);
-  const safeCount = Math.max(1, Math.min(getSlotItemCount(normalizedEntry), Math.floor(count || 1)));
-  const { count: _ignoredCount, itemId, instanceId: _ignoredInstanceId, ...extra } = normalizedEntry;
-  return createInventorySlotEntry(itemId, safeCount, extra);
+  return createPartialInventoryEntryFromModule(entry, count, {
+    normalizeInventorySlotEntry,
+    isNftInventoryEntry,
+    getSlotItemCount,
+    createInventorySlotEntry,
+  });
 }
 
 function addEntryToStorage(entry, count = getSlotItemCount(entry)) {
-  const normalizedEntry = createPartialInventoryEntry(entry, count);
-  if (!normalizedEntry) return false;
-  const snapshot = personalStorage.slots.map((slot) => (slot ? structuredClone(slot) : null));
-  const itemId = getSlotItemId(normalizedEntry);
-  const stackMax = getInventoryStackMax(itemId);
-  let remaining = getSlotItemCount(normalizedEntry);
-
-  if (stackMax > 1) {
-    for (let i = 0; i < personalStorage.slots.length && remaining > 0; i += 1) {
-      const slot = personalStorage.slots[i];
-      if (!slot || getSlotItemId(slot) !== itemId || isNftInventoryEntry(slot)) continue;
-      const currentCount = getSlotItemCount(slot);
-      if (currentCount >= stackMax) continue;
-      const addedCount = Math.min(stackMax - currentCount, remaining);
-      slot.count += addedCount;
-      remaining -= addedCount;
-    }
-  }
-
-  while (remaining > 0) {
-    const empty = findFirstEmptyStorageSlot();
-    if (empty === -1) {
-      for (let i = 0; i < personalStorage.slots.length; i += 1) {
-        personalStorage.slots[i] = snapshot[i];
-      }
-      return false;
-    }
-    const countToPlace = Math.min(remaining, stackMax);
-    const { count: _ignoredCount, itemId: _ignoredItemId, instanceId: _ignoredInstanceId, ...extra } = normalizedEntry;
-    personalStorage.slots[empty] = createInventorySlotEntry(itemId, countToPlace, extra);
-    remaining -= countToPlace;
-  }
-
-  return true;
+  return addEntryToStorageFromModule(personalStorage.slots, entry, count, {
+    createPartialInventoryEntry,
+    getSlotItemId,
+    getInventoryStackMax,
+    getSlotItemCount,
+    isNftInventoryEntry,
+    createInventorySlotEntry,
+  });
 }
 
 function addEntryToInventory(entry, count = getSlotItemCount(entry)) {
-  const normalizedEntry = createPartialInventoryEntry(entry, count);
-  if (!normalizedEntry) return false;
-  const itemId = getSlotItemId(normalizedEntry);
-  const stackMax = getInventoryStackMax(itemId);
-  let remaining = getSlotItemCount(normalizedEntry);
-
-  if (stackMax > 1) {
-    for (let i = 0; i < inventory.slots.length && remaining > 0; i += 1) {
-      const slot = inventory.slots[i];
-      if (!slot || getSlotItemId(slot) !== itemId || isNftInventoryEntry(slot)) continue;
-      const currentCount = getSlotItemCount(slot);
-      if (currentCount >= stackMax) continue;
-      const addedCount = Math.min(stackMax - currentCount, remaining);
-      slot.count += addedCount;
-      remaining -= addedCount;
-    }
-  }
-
-  while (remaining > 0) {
-    const empty = findFirstEmptySlot();
-    if (empty === -1) return false;
-    const countToPlace = Math.min(remaining, stackMax);
-    const { count: _ignoredCount, itemId: _ignoredItemId, instanceId: _ignoredInstanceId, ...extra } = normalizedEntry;
-    inventory.slots[empty] = createInventorySlotEntry(itemId, countToPlace, extra);
-    remaining -= countToPlace;
-  }
-
-  return true;
+  return addEntryToInventoryFromModule(inventory.slots, entry, count, {
+    createPartialInventoryEntry,
+    getSlotItemId,
+    getInventoryStackMax,
+    getSlotItemCount,
+    isNftInventoryEntry,
+    createInventorySlotEntry,
+  });
 }
 
 function moveInventoryEntryToStorage(entry, count = getSlotItemCount(entry)) {
-  const slotIndex = findInventorySlotIndexByEntry(entry);
-  if (slotIndex < 0) return { ok: false, reason: "인벤토리에서 아이템을 찾을 수 없습니다." };
-  const liveEntry = inventory.slots[slotIndex];
-  const check = canMoveInventoryEntryToPersonalStorage(liveEntry);
-  if (!check.ok) return check;
-  const moveCount = Math.max(1, Math.min(getSlotItemCount(liveEntry), Math.floor(count || 1)));
-  if (!addEntryToStorage(structuredClone(liveEntry), moveCount)) {
-    return { ok: false, reason: "개인 창고가 가득 찼습니다." };
-  }
-  if (getSlotItemCount(liveEntry) <= moveCount) {
-    inventory.slots[slotIndex] = null;
-  } else {
-    liveEntry.count -= moveCount;
-  }
-  pruneQuickUseBindings();
-  return { ok: true };
+  return moveInventoryEntryToStorageFromModule(inventory.slots, personalStorage.slots, entry, count, {
+    findInventorySlotIndexByEntry,
+    canMoveInventoryEntryToPersonalStorage,
+    addEntryToStorage,
+    getSlotItemCount,
+    pruneQuickUseBindings,
+  });
 }
 
 function moveStorageEntryToInventory(storageIndex, count = null) {
-  if (storageIndex < 0 || storageIndex >= personalStorage.slots.length) {
-    return { ok: false, reason: "창고 슬롯을 찾을 수 없습니다." };
-  }
-  const liveEntry = personalStorage.slots[storageIndex];
-  if (!liveEntry) return { ok: false, reason: "비어 있는 창고 슬롯입니다." };
-  const moveCount = Math.max(1, Math.min(getSlotItemCount(liveEntry), Math.floor(count ?? getSlotItemCount(liveEntry))));
-  const inventorySnapshot = inventory.slots.map((slot) => (slot ? structuredClone(slot) : null));
-  if (!addEntryToInventory(structuredClone(liveEntry), moveCount)) {
-    for (let i = 0; i < inventory.slots.length; i += 1) {
-      inventory.slots[i] = inventorySnapshot[i];
+  return moveStorageEntryToInventoryFromModule(
+    inventory.slots,
+    personalStorage.slots,
+    storageIndex,
+    count,
+    {
+      addEntryToInventory,
+      getSlotItemCount,
     }
-    return { ok: false, reason: "인벤토리가 가득 찼습니다." };
-  }
-  if (getSlotItemCount(liveEntry) <= moveCount) {
-    personalStorage.slots[storageIndex] = null;
-  } else {
-    liveEntry.count -= moveCount;
-  }
-  return { ok: true };
+  );
 }
 
 function closeDiscardDialog() {
@@ -6631,73 +5641,35 @@ function commitDiscardDialog() {
 }
 
 	    function findFirstSlotWithItem(id) {
-  for (let i = 0; i < inventory.slots.length; i++) {
-    const s = inventory.slots[i];
-    if (s && getSlotItemId(s) === id) return i;
-  }
-  return -1;
+  return findFirstSlotWithItemFromModule(inventory.slots, id, { getSlotItemId });
 	    }
 
     function getItemCount(id) {
-  let total = 0;
-  for (const slot of inventory.slots) {
-    if (!slot || getSlotItemId(slot) !== id) continue;
-    total += getSlotItemCount(slot);
-  }
-  return total;
+  return getItemCountFromModule(inventory.slots, id, { getSlotItemId, getSlotItemCount });
     }
 
 	    function findFirstEmptySlot() {
-  for (let i = 0; i < inventory.slots.length; i++) {
-    if (!inventory.slots[i]) return i;
-  }
-  return -1;
+  return findFirstEmptySlotFromModule(inventory.slots);
     }
 
     function addItem(id, count = 1) {
-  const def = ITEM_DEFS[id];
-  if (!def) return false;
-  let remaining = Math.max(0, Math.floor(count));
-  if (remaining <= 0) return false;
-  const stackMax = getInventoryStackMax(id);
-
-  if (stackMax > 1) {
-    for (let i = 0; i < inventory.slots.length && remaining > 0; i += 1) {
-      const slot = inventory.slots[i];
-      if (!slot || getSlotItemId(slot) !== id || isNftInventoryEntry(slot)) continue;
-      const currentCount = getSlotItemCount(slot);
-      if (currentCount >= stackMax) continue;
-      const addedCount = Math.min(stackMax - currentCount, remaining);
-      slot.count += addedCount;
-      remaining -= addedCount;
-    }
-  }
-
-  while (remaining > 0) {
-    const empty = findFirstEmptySlot();
-    if (empty === -1) return false;
-
-	    inventory.slots[empty] = createInventorySlotEntry(id, Math.min(remaining, stackMax));
-    remaining -= Math.min(remaining, stackMax);
-  }
-	  return true;
+  return addItemFromModule(inventory.slots, ITEM_DEFS, id, count, {
+    getSlotItemId,
+    getInventoryStackMax,
+    isNftInventoryEntry,
+    getSlotItemCount,
+    createInventorySlotEntry,
+  });
 	    }
 
     function consumeItem(id, count = 1) {
-  let remaining = Math.max(0, Math.floor(count));
-  if (remaining <= 0) return false;
-  if (getItemCount(id) < remaining) return false;
-
-  for (let i = 0; i < inventory.slots.length && remaining > 0; i += 1) {
-    const slot = inventory.slots[i];
-    if (!slot || getSlotItemId(slot) !== id || isNftInventoryEntry(slot)) continue;
-    const consumeCount = Math.min(getSlotItemCount(slot), remaining);
-    slot.count -= consumeCount;
-    remaining -= consumeCount;
-    if (slot.count <= 0) inventory.slots[i] = null;
-  }
-  pruneQuickUseBindings();
-  return true;
+  return consumeItemFromModule(inventory.slots, id, count, {
+    getItemCount,
+    getSlotItemId,
+    isNftInventoryEntry,
+    getSlotItemCount,
+    pruneQuickUseBindings,
+  });
     }
 
     function hasEquippedTool(id) {
@@ -6705,7 +5677,7 @@ function commitDiscardDialog() {
     }
 
     function hasItem(id) {
-  return getItemCount(id) > 0;
+  return hasItemFromModule(inventory.slots, id, { getItemCount });
     }
 
     const equippedPickaxe = new THREE.Group();
@@ -6793,35 +5765,24 @@ function commitDiscardDialog() {
     }
 
     function getEquippedItemRef(slotId) {
-  return inventory.equipped[slotId] ?? null;
+  return getEquippedItemRefFromModule(inventory.equipped, slotId);
     }
 
     function getEquippedItemForSlot(slotId) {
-  return getEquippedItemRef(slotId)?.itemId ?? getEquippedItemRef(slotId)?.id ?? null;
+  return getEquippedItemForSlotFromModule(inventory.equipped, slotId);
     }
 
     function setEquippedItem(slotId, itemOrRef) {
-  inventory.equipped[slotId] = normalizeEquippedItemRef(itemOrRef);
+  setEquippedItemFromModule(inventory.equipped, slotId, itemOrRef, normalizeEquippedItemRef);
     }
 
     function equipFirstOwnedInventoryItem(slotId, itemId) {
-  const slotIndex = findFirstSlotWithItem(itemId);
-  if (slotIndex === -1) {
-    setEquippedItem(slotId, itemId);
-    return false;
-  }
-  const entry = normalizeInventorySlotEntry(inventory.slots[slotIndex]);
-  if (!entry) {
-    setEquippedItem(slotId, itemId);
-    return false;
-  }
-  setEquippedItem(
-    slotId,
-    createEquippedItemRef(itemId, {
-      instanceId: entry.instanceId ?? null,
-    })
-  );
-  return true;
+  return equipFirstOwnedInventoryItemFromModule(inventory, slotId, itemId, {
+    findFirstSlotWithItem,
+    normalizeInventorySlotEntry,
+    setEquippedItem,
+    createEquippedItemRef,
+  });
     }
 
     function toggleEquipItem(itemOrId) {
@@ -9080,40 +8041,36 @@ function updateSceneFogForCurrentMap() {
 }
 
 function getMapPollutionConfig(mapId = currentMapId) {
-  return MAP_POLLUTION_CONFIG[mapId] ?? null;
+  return getMapPollutionConfigFromModule(mapId, MAP_POLLUTION_CONFIG);
 }
 
 function isPollutedMap(mapId = currentMapId) {
-  return Boolean(getMapPollutionConfig(mapId));
+  return isPollutedMapFromModule(mapId, MAP_POLLUTION_CONFIG);
 }
 
 function getMapPurificationValue(mapId = currentMapId) {
-  return Math.max(0, Math.min(100, mapPurificationProgress[mapId] ?? 0));
+  return getMapPurificationValueFromModule(mapId, mapPurificationProgress, MAP_POLLUTION_CONFIG);
 }
 
 function setMapPurificationValue(mapId, value) {
-  if (!getMapPollutionConfig(mapId)) return;
-  mapPurificationProgress[mapId] = Math.max(0, Math.min(100, value));
+  setMapPurificationValueFromModule(mapId, value, mapPurificationProgress, MAP_POLLUTION_CONFIG);
 }
 
 function resetAllMapPurificationValues() {
-  for (const mapId of Object.keys(MAP_POLLUTION_CONFIG)) {
-    setMapPurificationValue(mapId, 0);
-  }
+  resetAllMapPurificationValuesFromModule(mapPurificationProgress, MAP_POLLUTION_CONFIG);
 }
 
 function getCurrentAirDrainPerSecond() {
   const effectiveMapId = getEffectiveAirMapId();
-  const cfg = getMapPollutionConfig(effectiveMapId);
-  if (!cfg) return 0;
-  const purifyRatio = getMapPurificationValue(effectiveMapId) / 100;
-  return cfg.drainPerSecondAtZeroPurify * Math.pow(1 - purifyRatio, 1.1);
+  return getCurrentAirDrainPerSecondFromModule(
+    effectiveMapId,
+    mapPurificationProgress,
+    MAP_POLLUTION_CONFIG
+  );
 }
 
 function canRecoverAirInMap(mapId = currentMapId) {
-  if (mapId == null) return true;
-  if (!isPollutedMap(mapId)) return true;
-  return getMapPurificationValue(mapId) >= 100;
+  return canRecoverAirInMapFromModule(mapId, mapPurificationProgress, MAP_POLLUTION_CONFIG);
 }
 
 function updateAirHud() {
@@ -9221,9 +8178,11 @@ function buildCavePollutionField() {
 }
 
 function getMapPollutionVisualStrength(mapId = currentMapId) {
-  if (!isPollutedMap(mapId)) return 0;
-  const purifyRatio = getMapPurificationValue(mapId) / 100;
-  return Math.pow(1 - purifyRatio, 1.08);
+  return getMapPollutionVisualStrengthFromModule(
+    mapId,
+    mapPurificationProgress,
+    MAP_POLLUTION_CONFIG
+  );
 }
 
 function updateCavePollutionVisuals(dt) {
@@ -9261,25 +8220,14 @@ function updateCavePollutionVisuals(dt) {
     }
   }
 
-  const airRatio = playerAirMax > 0 ? Math.max(0, Math.min(1, playerAirCurrent / playerAirMax)) : 1;
-  let lowAirBlurStrength = 0;
-  if (airRatio < 0.5) {
-    if (airRatio >= 0.2) {
-      lowAirBlurStrength = ((0.5 - airRatio) / 0.3) * 0.6;
-    } else {
-      const severeFactor = Math.max(0, (0.2 - airRatio) / 0.2);
-      lowAirBlurStrength = 0.6 + Math.pow(severeFactor, 1.16) * 1.3;
-    }
-  }
-  const overlayOpacity = Math.min(
-    CAVE_POLLUTION_OVERLAY_MAX_OPACITY,
-    localPollutionStrength * 0.12 + lowAirBlurStrength * 0.96
-  );
+  const { overlayOpacity, blurPx } = getAirOverlayVisualState({
+    localPollutionStrength,
+    playerAirCurrent,
+    playerAirMax,
+    overlayMaxOpacity: CAVE_POLLUTION_OVERLAY_MAX_OPACITY,
+    lowAirEdgeBlurMaxPx: LOW_AIR_EDGE_BLUR_MAX_PX,
+  });
   pollutionOverlay.style.opacity = overlayOpacity.toFixed(3);
-  const blurPx = Math.min(
-    LOW_AIR_EDGE_BLUR_MAX_PX,
-    localPollutionStrength * 2.4 + lowAirBlurStrength * LOW_AIR_EDGE_BLUR_MAX_PX
-  );
   pollutionOverlay.style.backdropFilter = `blur(${blurPx.toFixed(2)}px)`;
   pollutionOverlay.style.webkitBackdropFilter = `blur(${blurPx.toFixed(2)}px)`;
 }
@@ -9671,43 +8619,29 @@ function updateCurrentMapFromPlayerPosition() {
   const campDoorThresholdZ = campGate.position.z + 0.35;
   const campNorthDoorThresholdZ = frontierCampGate.position.z - 0.35;
   const frontierDoorThresholdZ = frontierGate.position.z + 0.35;
-
-  if (isPlayerInResidenceMapZone()) {
-    currentMapId = RESIDENCE_MAP_ID;
-    return;
-  }
-
-  if (player.position.z <= frontierDoorThresholdZ) {
-    currentMapId = "개척지";
-    return;
-  }
-
-  if (player.position.z <= campDoorThresholdZ && player.position.z > campNorthDoorThresholdZ) {
-    currentMapId = "폐광맵";
-    return;
-  }
-
-  if (player.position.z >= mineDoorThresholdZ) {
-    currentMapId = "광산맵";
-  }
+  currentMapId = getCurrentMapIdFromPosition({
+    playerZ: player.position.z,
+    isInResidenceZone: isPlayerInResidenceMapZone(),
+    mineDoorThresholdZ,
+    campDoorThresholdZ,
+    campNorthDoorThresholdZ,
+    frontierDoorThresholdZ,
+    currentMapId,
+    residenceMapId: RESIDENCE_MAP_ID,
+  });
 }
 
 function isPlayerInConnectorTunnel() {
-  for (const zone of connectorTunnelZones) {
-    if (
-      player.position.z < zone.maxZ &&
-      player.position.z > zone.minZ &&
-      Math.abs(player.position.x - zone.centerX) <= zone.halfWidth
-    ) {
-      return true;
-    }
-  }
-  return false;
+  return isPositionInConnectorTunnel(player.position.x, player.position.z, connectorTunnelZones);
 }
 
 function getEffectiveAirMapId() {
-  if (isPlayerInConnectorTunnel()) return null;
-  return currentMapId;
+  return getEffectiveAirMapIdForPosition(
+    currentMapId,
+    player.position.x,
+    player.position.z,
+    connectorTunnelZones
+  );
 }
 
 function isPlayerInsideFrontierParcel(parcelLabel) {
@@ -12300,10 +11234,7 @@ function makeTree(x, z) {
 function makeRock(x, z, rockSizeDef = ROCK_SIZE_DEFS[1], fadeIn = false, options = {}) {
   const scale = rockSizeDef.scale;
   const rockColor = options.color ?? 0x6f6f72;
-  const defaultResourceCount =
-    options.resourceItemId === "stoneDust" || (!options.resourceItemId && !options.resourceCount)
-      ? rockSizeDef.stoneDustDropCount ?? 1
-      : 1;
+  const defaultResourceCount = getRockDefaultResourceCount(rockSizeDef, options);
   const rockMat = new THREE.MeshStandardMaterial({
     color: rockColor,
     roughness: 1.0,
@@ -12360,7 +11291,7 @@ function makeRock(x, z, rockSizeDef = ROCK_SIZE_DEFS[1], fadeIn = false, options
 function scheduleRockRespawn(spawn) {
   setTimeout(() => {
     const rockSizeDef =
-      ROCK_SIZE_DEFS.find((entry) => entry.id === spawn?.rockSize) ??
+      getRockSizeDefById(spawn?.rockSize, ROCK_SIZE_DEFS) ??
       ROCK_SIZE_DEFS[Math.floor(Math.random() * ROCK_SIZE_DEFS.length)];
     const next = spawn?.mapId === "폐광맵"
       ? findCampStoneSpawnPosition(rockSizeDef.scale, 120)
@@ -12388,7 +11319,7 @@ function unregisterMineRock(rock) {
 function setHarvestTreeActive(tree, active) {
   if (!tree?.userData) return;
   tree.userData.harvestDisabled = !active;
-  tree.userData.harvestCooldownUntil = active ? 0 : performance.now() + TREE_HARVEST_RESPAWN_MS;
+  tree.userData.harvestCooldownUntil = active ? 0 : getHarvestTreeCooldownUntil(performance.now(), TREE_HARVEST_RESPAWN_MS);
   const trunk = tree.userData.trunk;
   const leaves = tree.userData.leaves;
   for (const mesh of [trunk, leaves]) {
@@ -12405,16 +11336,19 @@ function updateHarvestTrees() {
     const shakeUntil = tree.userData.harvestShakeUntil ?? 0;
     if (shakeUntil > now) {
       const startedAt = tree.userData.harvestShakeStartedAt ?? now;
-      const duration = Math.max(1, shakeUntil - startedAt);
-      const progress = THREE.MathUtils.clamp((now - startedAt) / duration, 0, 1);
-      const damping = 1 - progress;
-      tree.rotation.z = (tree.userData.baseRotationZ ?? 0) + Math.sin(progress * Math.PI * 7) * 0.12 * damping;
+      tree.rotation.z = getHarvestTreeShakeRotation(
+        now,
+        startedAt,
+        shakeUntil,
+        tree.userData.baseRotationZ ?? 0,
+        THREE.MathUtils
+      );
     } else {
       tree.rotation.z = THREE.MathUtils.lerp(tree.rotation.z, tree.userData.baseRotationZ ?? 0, 0.24);
     }
 
     if (!tree.userData.harvestDisabled) continue;
-    if (now >= (tree.userData.harvestCooldownUntil ?? 0)) {
+    if (isHarvestTreeReady(now, tree.userData.harvestCooldownUntil ?? 0)) {
       setHarvestTreeActive(tree, true);
     }
   }
@@ -13181,7 +12115,7 @@ function applyDevPreset() {
 
   inventory.pickaxeLevel = Math.max(
     0,
-    Math.min(isBuyerProfile ? 1 : 5, PICKAXE_UPGRADE_LEVELS.length - 1)
+    clampPickaxeLevel(isBuyerProfile ? 1 : 5, PICKAXE_UPGRADE_LEVELS)
   );
   inventory.mineKeyIssued = Boolean(DEV_PRESET.unlockAbandonedMine);
   inventory.abandonedMineUnlocked = Boolean(DEV_PRESET.unlockAbandonedMine);
@@ -13311,166 +12245,48 @@ function applyFreshPlayerStartState() {
 }
 
 function createDefaultPlayerSave() {
-  return {
-    version: PLAYER_SAVE_VERSION,
-    mapId: "광산맵",
-    position: {
-      x: START_X,
-      y: player.position.y,
-      z: START_Z,
-    },
-    rotationY: 0,
-    economy: {
-      credits: 0,
-    },
-    inventory: {
-      slots: Array.from({ length: inventory.slots.length }, () => null),
-      pickaxeLevel: 1,
-      mineKeyIssued: false,
-      abandonedMineUnlocked: false,
-      quickUse: {
-        "1": null,
-        "2": null,
-        "3": null,
-        "4": null,
-        "5": null,
-      },
-      equipped: {
-        head: null,
-        body: null,
-        shoes: null,
-        tool: null,
-      },
-    },
-    tutorial: {
-      currentStep: 0,
-      minedRockCount: 0,
-      upgradeCount: 0,
-      completed: false,
-      archivedSteps: [],
-    },
-    airSystem: {
-      current: AIR_GAUGE_MAX,
-      max: AIR_GAUGE_MAX,
-      mapPurification: {
-        "폐광맵": 0,
-        "개척지": 0,
-      },
-    },
-    personalStorage: {
-      slots: Array.from({ length: personalStorage.slots.length }, () => null),
-    },
-    residence: {
-      activeRoomKey: "101",
-    },
-    frontierBuild: createDefaultFrontierBuildState(),
-    displayBoard: null,
-  };
+  return createDefaultPlayerSaveFromModule({
+    playerSaveVersion: PLAYER_SAVE_VERSION,
+    startX: START_X,
+    startY: player.position.y,
+    startZ: START_Z,
+    airGaugeMax: AIR_GAUGE_MAX,
+    inventorySlotCount: inventory.slots.length,
+    personalStorageSlotCount: personalStorage.slots.length,
+    createDefaultFrontierBuildState,
+  });
 }
 
 function serializePlayerSave() {
-  return {
-    version: PLAYER_SAVE_VERSION,
-    mapId: currentMapId,
-    position: {
-      x: Number(player.position.x.toFixed(3)),
-      y: Number(player.position.y.toFixed(3)),
-      z: Number(player.position.z.toFixed(3)),
-    },
-    rotationY: Number(player.rotation.y.toFixed(4)),
-    economy: {
-      credits: clampPlayerCredits(playerCredits),
-    },
-    inventory: {
-      slots: inventory.slots.map((slot) => (slot ? structuredClone(slot) : null)),
-      pickaxeLevel: inventory.pickaxeLevel,
-      mineKeyIssued: inventory.mineKeyIssued,
-      abandonedMineUnlocked: inventory.abandonedMineUnlocked,
-      quickUse: Object.fromEntries(
-        QUICK_USE_ALLOWED_KEYS.map((key) => [
-          key,
-          inventory.quickUse[key] ? structuredClone(inventory.quickUse[key]) : null,
-        ])
-      ),
-      equipped: {
-        head: inventory.equipped.head ? structuredClone(inventory.equipped.head) : null,
-        body: inventory.equipped.body ? structuredClone(inventory.equipped.body) : null,
-        shoes: inventory.equipped.shoes ? structuredClone(inventory.equipped.shoes) : null,
-        tool: inventory.equipped.tool ? structuredClone(inventory.equipped.tool) : null,
-      },
-    },
-    tutorial: {
-      currentStep: tutorialQuest.currentStep,
-      minedRockCount: tutorialQuest.minedRockCount,
-      upgradeCount: tutorialQuest.upgradeCount,
-      completed: tutorialQuest.completed,
-      archivedSteps: [...tutorialQuest.archivedSteps],
-    },
-    airSystem: {
-      current: Number(playerAirCurrent.toFixed(2)),
-      max: playerAirMax,
-      mapPurification: {
-        "폐광맵": getMapPurificationValue("폐광맵"),
-        "개척지": getMapPurificationValue("개척지"),
-      },
-    },
-    personalStorage: {
-      slots: personalStorage.slots.map((slot) => (slot ? structuredClone(slot) : null)),
-    },
-    residence: {
-      activeRoomKey: mansionOneActiveRoomKey === "102" ? "102" : "101",
-    },
-    frontierBuild: structuredClone(frontierBuildState),
-    displayBoard: nftExhibitSelectedItem ? structuredClone(nftExhibitSelectedItem) : null,
-  };
+  return serializePlayerSaveData({
+    playerSaveVersion: PLAYER_SAVE_VERSION,
+    currentMapId,
+    playerPosition: player.position,
+    playerRotationY: player.rotation.y,
+    clampPlayerCredits,
+    playerCredits,
+    inventory,
+    tutorialQuest,
+    playerAirCurrent,
+    playerAirMax,
+    getMapPurificationValue,
+    personalStorage,
+    mansionOneActiveRoomKey,
+    frontierBuildState,
+    nftExhibitSelectedItem,
+    quickUseAllowedKeys: QUICK_USE_ALLOWED_KEYS,
+  });
 }
 
 function applySerializedPlayerSave(rawSave, { preserveSharedWorld = false } = {}) {
-  const save = rawSave && typeof rawSave === "object" ? rawSave : createDefaultPlayerSave();
-  const source = {
-    ...createDefaultPlayerSave(),
-    ...save,
-    inventory: {
-      ...createDefaultPlayerSave().inventory,
-      ...(save.inventory ?? {}),
-      quickUse: {
-        ...createDefaultPlayerSave().inventory.quickUse,
-        ...(save.inventory?.quickUse ?? {}),
-      },
-      equipped: {
-        ...createDefaultPlayerSave().inventory.equipped,
-        ...(save.inventory?.equipped ?? {}),
-      },
-    },
-    tutorial: {
-      ...createDefaultPlayerSave().tutorial,
-      ...(save.tutorial ?? {}),
-    },
-    economy: {
-      ...createDefaultPlayerSave().economy,
-      ...(save.economy ?? {}),
-    },
-    airSystem: {
-      ...createDefaultPlayerSave().airSystem,
-      ...(save.airSystem ?? {}),
-      mapPurification: {
-        ...createDefaultPlayerSave().airSystem.mapPurification,
-        ...(save.airSystem?.mapPurification ?? {}),
-      },
-    },
-    personalStorage: {
-      ...createDefaultPlayerSave().personalStorage,
-      ...(save.personalStorage ?? {}),
-    },
-    residence: {
-      ...createDefaultPlayerSave().residence,
-      ...(save.residence ?? {}),
-    },
-    frontierBuild: preserveSharedWorld
-      ? normalizeFrontierBuildState(frontierBuildState)
-      : normalizeFrontierBuildState(save.frontierBuild),
-    displayBoard: save.displayBoard ?? null,
-  };
+  const source = buildNormalizedPlayerSaveSource(rawSave, {
+    createDefaultPlayerSave,
+    normalizeFrontierBuildState,
+    normalizeNftBoardSelection,
+  });
+  if (preserveSharedWorld) {
+    source.frontierBuild = normalizeFrontierBuildState(frontierBuildState);
+  }
 
   for (let i = 0; i < inventory.slots.length; i++) {
     const slot = source.inventory.slots[i] ?? null;
@@ -13479,7 +12295,7 @@ function applySerializedPlayerSave(rawSave, { preserveSharedWorld = false } = {}
 
   inventory.pickaxeLevel = Math.max(
     0,
-    Math.min(source.inventory.pickaxeLevel ?? 0, PICKAXE_UPGRADE_LEVELS.length - 1)
+    clampPickaxeLevel(source.inventory.pickaxeLevel ?? 0, PICKAXE_UPGRADE_LEVELS)
   );
   inventory.mineKeyIssued = Boolean(source.inventory.mineKeyIssued);
   inventory.abandonedMineUnlocked = preserveSharedWorld
@@ -15495,114 +14311,66 @@ function intersectsAnyCollider(playerBox) {
 }
 
 function isBlockedByStartRing(x, z) {
-  if (!START_WALL_ON) return false;
-
-  const dx = x - START_X;
-  const dz = z - START_Z;
-  const dist = Math.hypot(dx, dz);
-  const playerRadius = 0.55;
-  const inner = START_RADIUS - START_RING_THICKNESS * 0.5 - playerRadius;
-  const outer = START_RADIUS + START_RING_THICKNESS * 0.5 + playerRadius;
-
-  if (dist < inner || dist > outer) return false;
-
-  const angle = Math.atan2(dz, dx);
-  const d = Math.atan2(
-    Math.sin(angle - START_RING_OPEN_CENTER),
-    Math.cos(angle - START_RING_OPEN_CENTER)
-  );
-  const openHalf = Math.PI * START_RING_OPEN_RATIO;
-  const inOpening = Math.abs(d) <= openHalf;
-  return !inOpening;
+  return isBlockedByStartRingPosition({
+    x,
+    z,
+    startWallOn: START_WALL_ON,
+    startX: START_X,
+    startZ: START_Z,
+    startRadius: START_RADIUS,
+    startRingThickness: START_RING_THICKNESS,
+    openCenter: START_RING_OPEN_CENTER,
+    openRatio: START_RING_OPEN_RATIO,
+  });
 }
 
 function isInStartRingOpening(angle) {
-  const d = Math.atan2(
-    Math.sin(angle - START_RING_OPEN_CENTER),
-    Math.cos(angle - START_RING_OPEN_CENTER)
-  );
-  const openHalf = Math.PI * START_RING_OPEN_RATIO;
-  return Math.abs(d) <= openHalf;
+  return isInStartRingOpeningFromModule(angle, START_RING_OPEN_CENTER, START_RING_OPEN_RATIO);
 }
 
 function isCrossingBlockedStartRing(prevX, prevZ, nextX, nextZ) {
-  if (!START_WALL_ON) return false;
-
-  const pdx = prevX - START_X;
-  const pdz = prevZ - START_Z;
-  const ndx = nextX - START_X;
-  const ndz = nextZ - START_Z;
-  const prevDist = Math.hypot(pdx, pdz);
-  const nextDist = Math.hypot(ndx, ndz);
-
-  const wasInside = prevDist < START_RADIUS;
-  const isInside = nextDist < START_RADIUS;
-  if (wasInside === isInside) return false;
-
-  // 반경 경계 교차 지점(선형 보간)에서 개방 구간 여부 판정
-  const denom = nextDist - prevDist;
-  let t = 0.5;
-  if (Math.abs(denom) > 1e-6) {
-    t = (START_RADIUS - prevDist) / denom;
-    t = Math.max(0, Math.min(1, t));
-  }
-  const cx = prevX + (nextX - prevX) * t;
-  const cz = prevZ + (nextZ - prevZ) * t;
-  const crossingAngle = Math.atan2(cz - START_Z, cx - START_X);
-
-  return !isInStartRingOpening(crossingAngle);
+  return isCrossingBlockedStartRingPosition({
+    prevX,
+    prevZ,
+    nextX,
+    nextZ,
+    startWallOn: START_WALL_ON,
+    startX: START_X,
+    startZ: START_Z,
+    startRadius: START_RADIUS,
+    openCenter: START_RING_OPEN_CENTER,
+    openRatio: START_RING_OPEN_RATIO,
+  });
 }
 
 function resolveStartRingPenetration(currentPos, prevPos = null) {
-  if (!START_WALL_ON) return;
-
-  const dx = currentPos.x - START_X;
-  const dz = currentPos.z - START_Z;
-  const dist = Math.hypot(dx, dz);
-  const playerRadius = 0.55;
-  const inner = START_RADIUS - START_RING_THICKNESS * 0.5 - playerRadius;
-  const outer = START_RADIUS + START_RING_THICKNESS * 0.5 + playerRadius;
-  if (dist < inner || dist > outer) return;
-
-  const angle = Math.atan2(dz, dx);
-  const d = Math.atan2(
-    Math.sin(angle - START_RING_OPEN_CENTER),
-    Math.cos(angle - START_RING_OPEN_CENTER)
-  );
-  const openHalf = Math.PI * START_RING_OPEN_RATIO;
-  const inOpening = Math.abs(d) <= openHalf;
-  if (inOpening) return;
-
-  const eps = 0.02;
-  const nx = dist > 1e-5 ? dx / dist : 1;
-  const nz = dist > 1e-5 ? dz / dist : 0;
-
-  // 이전 위치 기준으로 안쪽/바깥쪽 중 원래 있던 쪽으로 되돌린다.
-  const prevDist = prevPos
-    ? Math.hypot(prevPos.x - START_X, prevPos.z - START_Z)
-    : dist;
-
-  if (prevDist <= START_RADIUS) {
-    currentPos.x = START_X + nx * (inner - eps);
-    currentPos.z = START_Z + nz * (inner - eps);
-  } else {
-    currentPos.x = START_X + nx * (outer + eps);
-    currentPos.z = START_Z + nz * (outer + eps);
-  }
+  resolveStartRingPenetrationPosition({
+    currentPos,
+    prevPos,
+    startWallOn: START_WALL_ON,
+    startX: START_X,
+    startZ: START_Z,
+    startRadius: START_RADIUS,
+    startRingThickness: START_RING_THICKNESS,
+    openCenter: START_RING_OPEN_CENTER,
+    openRatio: START_RING_OPEN_RATIO,
+  });
 }
 
 function isStartRingTransitionBlocked(x0, z0, x1, z1) {
-  if (!START_WALL_ON) return false;
-
-  const dist = Math.hypot(x1 - x0, z1 - z0);
-  const steps = Math.max(2, Math.ceil(dist / 0.08));
-  for (let i = 1; i <= steps; i++) {
-    const t = i / steps;
-    const x = x0 + (x1 - x0) * t;
-    const z = z0 + (z1 - z0) * t;
-    if (isBlockedByStartRing(x, z)) return true;
-  }
-  return false;
+  return isStartRingTransitionBlockedFromModule({
+    x0,
+    z0,
+    x1,
+    z1,
+    startWallOn: START_WALL_ON,
+    startX: START_X,
+    startZ: START_Z,
+    startRadius: START_RADIUS,
+    startRingThickness: START_RING_THICKNESS,
+    openCenter: START_RING_OPEN_CENTER,
+    openRatio: START_RING_OPEN_RATIO,
+  });
 }
 
 function getCurrentMapBounds() {
