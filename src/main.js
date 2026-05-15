@@ -79,6 +79,53 @@ import {
   makeInventorySlotElement,
 } from "./ui/inventoryWindow.js";
 import {
+  renderFrontierBuildWindowUi,
+  renderFrontierBoothDialogUi,
+} from "./ui/frontierUi.js";
+import { createHudUi } from "./ui/hud.js";
+import {
+  getKeyInputCode,
+  getLogicalInputKey,
+  getMovementSpeed,
+  getWalkAnimationSpeed,
+  buildMoveVector,
+  isMoveVectorActive,
+  normalizeMoveVector,
+  updateLatestMoveDirection,
+  getMovementDelta,
+  getMovementYaw,
+  getMovementBasisVectors,
+  getFacingDirectionFromYaw,
+  getCompassDirection,
+} from "./core/movement.js";
+import {
+  getPlayerBoxFromPosition,
+  intersectsAnyColliderBox,
+  hasPlayerOverlapWithColliderObjects,
+  getCurrentMapBoundsFromSurfaces,
+  isInsideMapBoundsFromSurfaces,
+  applyMovementCollisionStep,
+} from "./core/collisions.js";
+import {
+  createPlayerRig,
+  getPlayerRigParts,
+  createPlayerEquipmentVisuals,
+  updatePlayerEquipmentVisualsVisibility,
+  applySleepPose,
+  applyWalkIdlePose,
+  applyMiningSwingPose,
+  applyPickupReachPose,
+  syncPreviewPlayerPose,
+} from "./core/player.js";
+import {
+  createMainScene,
+  applyMainSceneAtmosphere,
+  createMainLights,
+  createMainCamera,
+  createMainRenderer,
+  createMainGridHelper,
+} from "./core/scene.js";
+import {
   TREE_HARVEST_RESPAWN_MS,
   PICKAXE_UPGRADE_LEVELS,
   ROCK_SIZE_DEFS,
@@ -131,19 +178,76 @@ import {
   getEffectiveAirMapIdForPosition,
   getCurrentMapIdFromPosition,
 } from "./systems/maps.js";
+import {
+  FRONTIER_BUILDING_HEIGHT,
+  FRONTIER_BUILDING_SIGN_MAX_CHARS,
+  FRONTIER_BUILD_STAGE_CONFIG,
+  getFrontierParcelAuthorityItemId as getFrontierParcelAuthorityItemIdFromModule,
+  createDefaultFrontierBuildState as createDefaultFrontierBuildStateFromModule,
+  createDefaultFrontierParcelBuildEntry as createDefaultFrontierParcelBuildEntryFromModule,
+  createDefaultFrontierParcelOperationsState as createDefaultFrontierParcelOperationsStateFromModule,
+  createDefaultFrontierShopState as createDefaultFrontierShopStateFromModule,
+  createDefaultFrontierDisplayState as createDefaultFrontierDisplayStateFromModule,
+  normalizeFrontierWalletAddress as normalizeFrontierWalletAddressFromModule,
+  formatFrontierShopStatusText as formatFrontierShopStatusTextFromModule,
+  formatFrontierDisplayStatusText as formatFrontierDisplayStatusTextFromModule,
+  getFrontierDisplaySummary as getFrontierDisplaySummaryFromModule,
+  getFrontierShopListingSummary as getFrontierShopListingSummaryFromModule,
+  normalizeFrontierBuildState as normalizeFrontierBuildStateFromModule,
+  getFrontierNextStageConfig as getFrontierNextStageConfigFromModule,
+  isFrontierShopSlotUser as isFrontierShopSlotUserFromModule,
+  isFrontierShopSeller as isFrontierShopSellerFromModule,
+  canManageFrontierShopSellerTools as canManageFrontierShopSellerToolsFromModule,
+  canRegisterFrontierShopListing as canRegisterFrontierShopListingFromModule,
+  canCollectFrontierShopSettlement as canCollectFrontierShopSettlementFromModule,
+  isFrontierDisplaySlotUser as isFrontierDisplaySlotUserFromModule,
+  getFrontierCurrentParcelLabel as getFrontierCurrentParcelLabelFromModule,
+  getFrontierSelectedParcelLabel as getFrontierSelectedParcelLabelFromModule,
+  getFrontierBuildStateEntry as getFrontierBuildStateEntryFromModule,
+  getFrontierShopOperation as getFrontierShopOperationFromModule,
+  getFrontierDisplayOperation as getFrontierDisplayOperationFromModule,
+  getFrontierShopAssignedWallet as getFrontierShopAssignedWalletFromModule,
+  getFrontierShopSellerWallet as getFrontierShopSellerWalletFromModule,
+  getFrontierDisplayAssignedWallet as getFrontierDisplayAssignedWalletFromModule,
+  canManageFrontierShopSlot as canManageFrontierShopSlotFromModule,
+  canUseFrontierShopSlot as canUseFrontierShopSlotFromModule,
+  canEditFrontierShopListing as canEditFrontierShopListingFromModule,
+  canManageFrontierDisplaySlot as canManageFrontierDisplaySlotFromModule,
+  canUseFrontierDisplaySlot as canUseFrontierDisplaySlotFromModule,
+  isFrontierDisplayableEntry as isFrontierDisplayableEntryFromModule,
+  getDisplayableFrontierEntries as getDisplayableFrontierEntriesFromModule,
+  getFrontierShopPurchaseFeedback as getFrontierShopPurchaseFeedbackFromModule,
+  formatFrontierShopUserDisplay as formatFrontierShopUserDisplayFromModule,
+  canAssignFrontierDisplayEntryState as canAssignFrontierDisplayEntryStateFromModule,
+  assignFrontierDisplayEntryState as assignFrontierDisplayEntryStateFromModule,
+  canClearFrontierDisplayEntryState as canClearFrontierDisplayEntryStateFromModule,
+  clearFrontierDisplayEntryState as clearFrontierDisplayEntryStateFromModule,
+  canAssignFrontierDisplaySlotUserState as canAssignFrontierDisplaySlotUserStateFromModule,
+  assignFrontierDisplaySlotUserState as assignFrontierDisplaySlotUserStateFromModule,
+  canClearFrontierDisplaySlotUserState as canClearFrontierDisplaySlotUserStateFromModule,
+  clearFrontierDisplaySlotUserState as clearFrontierDisplaySlotUserStateFromModule,
+  getCollectFrontierShopSettlementState as getCollectFrontierShopSettlementStateFromModule,
+  applyCollectedFrontierShopSettlementState as applyCollectedFrontierShopSettlementStateFromModule,
+  getFrontierParcelSafeStandingPoint as getFrontierParcelSafeStandingPointFromModule,
+} from "./systems/frontier.js";
 
-const LAST_PATCHED_AT = "2026-05-14 17:36:52 KST";
+const LAST_PATCHED_AT = "2026-05-15 18:13:08 KST";
 
-const scene = new THREE.Scene();
+const scene = createMainScene();
 // ===== Atmosphere: Sky / Fog =====
-scene.background = new THREE.Color(0xd6d8db); // 밝은 회색 하늘
 const WORLD_FOG_COLOR = 0xd6d8db;
 const CAVE_FOG_COLOR = 0x120e0b;
 const WORLD_FOG_NEAR = 15;
 const WORLD_FOG_FAR = 60;
 const CAVE_DARKENING_ENABLED = false;
 const CAVE_FOG_EFFECT_ENABLED = false;
-scene.fog = new THREE.Fog(WORLD_FOG_COLOR, WORLD_FOG_NEAR, WORLD_FOG_FAR);
+applyMainSceneAtmosphere(scene, {
+  initialBackgroundColor: 0xd6d8db,
+  fogColor: WORLD_FOG_COLOR,
+  fogNear: WORLD_FOG_NEAR,
+  fogFar: WORLD_FOG_FAR,
+  finalBackgroundColor: 0xaad7ff,
+});
 
 const CAVE_POLLUTION_PARTICLE_COUNT = 360;
 const CAVE_POLLUTION_PARTICLE_SWAY = 0.12;
@@ -152,8 +256,6 @@ const LOW_AIR_EDGE_BLUR_MAX_PX = 26;
 const AIR_HUD_POSITION_KEY = "excit_air_hud_position_v1";
 const SHIFT_CAMERA_ROTATE_SENSITIVITY = 0.0062;
 const FRONTIER_PARCEL_BORDER_COLOR = 0xf3b24e;
-const FRONTIER_BUILDING_HEIGHT = 4.4;
-const FRONTIER_BUILDING_SIGN_MAX_CHARS = 8;
 const REFINERY_RECIPES = {
   purifyPowder: {
     id: "purifyPowder",
@@ -173,30 +275,10 @@ const REFINERY_RECIPES = {
   },
 };
 
-const FRONTIER_BUILD_STAGE_CONFIG = [
-  { from: 0, to: 25, wood: 10, stone: 6, label: "기둥 설치" },
-  { from: 25, to: 50, wood: 14, stone: 9, label: "하단 벽면 시공" },
-  { from: 50, to: 75, wood: 18, stone: 12, label: "상단 골조 보강" },
-  { from: 75, to: 100, wood: 24, stone: 16, label: "천장 완성" },
-];
 const RESIDENCE_NOTICE_BOARD_KEYS = ["boardA", "boardB", "boardC"];
 
 // ===== Lighting =====
-// 전체 밝기 (부드럽게)
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-scene.add(ambientLight);
-
-// 방향광 (태양 역할, 그림자 약하게)
-const sunLight = new THREE.DirectionalLight(0xffffff, 0.4);
-sunLight.position.set(30, 50, 30);
-sunLight.castShadow = false; // 강한 그림자 제거
-scene.add(sunLight);
-
-const torchLight = new THREE.PointLight(0xffc46b, 0, 14, 2);
-torchLight.visible = false;
-scene.add(torchLight);
-
-scene.background = new THREE.Color(0xaad7ff);
+const { ambientLight, sunLight, torchLight } = createMainLights(scene);
 
 const caveDarkenableMaterials = [];
 
@@ -210,21 +292,10 @@ function registerCaveDarkMaterial(material, minScalar = 0.28) {
   return material;
 }
 
-const camera = new THREE.PerspectiveCamera(
-  60,
-  window.innerWidth / window.innerHeight,
-  0.1,
-  500
-);
-
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const camera = createMainCamera();
+const renderer = createMainRenderer();
 document.body.style.margin = "0";
 // === Three.js 캔버스 (바닥 레이어) ===
-renderer.domElement.style.position = "fixed";
-renderer.domElement.style.inset = "0";
-renderer.domElement.style.zIndex = "0";
 document.body.appendChild(renderer.domElement);
 
 // === UI 레이어 (항상 화면 위) ===
@@ -251,27 +322,27 @@ let frontierShopRegisterParcelLabel = "";
 let frontierShopRegisterSelectedItemId = "";
 let frontierShopRegisterSelectedAvailable = 0;
 
-const patchInfoWrap = document.createElement("div");
-patchInfoWrap.id = "patchInfoWrap";
-patchInfoWrap.style.position = "fixed";
-patchInfoWrap.style.right = "12px";
-patchInfoWrap.style.top = "12px";
-patchInfoWrap.style.padding = "10px 12px";
-patchInfoWrap.style.background = "rgba(20,20,20,0.52)";
-patchInfoWrap.style.border = "1px solid rgba(255,255,255,0.18)";
-patchInfoWrap.style.borderRadius = "12px";
-patchInfoWrap.style.backdropFilter = "blur(4px)";
-patchInfoWrap.style.color = "white";
-patchInfoWrap.style.fontFamily = "system-ui, -apple-system, sans-serif";
-patchInfoWrap.style.fontSize = "12px";
-patchInfoWrap.style.lineHeight = "1.45";
-patchInfoWrap.style.whiteSpace = "pre-line";
-patchInfoWrap.style.userSelect = "none";
-patchInfoWrap.style.pointerEvents = "none";
-patchInfoWrap.style.zIndex = "999999";
-patchInfoWrap.style.display = "none";
-patchInfoWrap.textContent = `마지막 패치\n${LAST_PATCHED_AT}`;
-uiLayer.appendChild(patchInfoWrap);
+const {
+  patchInfoWrap,
+  airHudWrap,
+  airHudTitle,
+  airHudValue,
+  airHudBarTrack,
+  airHudBarFill,
+  airHudStatus,
+  airHudPurify,
+  playerSaveStatusBadge,
+  compassWrap,
+  compassTitle,
+  compassFace,
+  compassNeedle,
+  compassText,
+  ui,
+  mapArrivalBanner,
+} = createHudUi({
+  uiLayer,
+  lastPatchedAt: LAST_PATCHED_AT,
+});
 
 const WALLET_SESSION_KEY = "voxel-town.wallet-auth.v1";
 const DEV_ACTIVE_PROFILE_KEY = "voxel-town.dev-active-profile.v1";
@@ -388,93 +459,6 @@ let equipProfileNickname = null;
 let equipProfileCredits = null;
 let equipProfileLogoutBtn = null;
 let equipProfileCopyBtn = null;
-
-const airHudWrap = document.createElement("div");
-airHudWrap.id = "airHudWrap";
-airHudWrap.style.position = "fixed";
-airHudWrap.style.left = "16px";
-airHudWrap.style.top = "214px";
-airHudWrap.style.width = "214px";
-airHudWrap.style.padding = "12px 14px";
-airHudWrap.style.background = "rgba(20,20,20,0.56)";
-airHudWrap.style.border = "1px solid rgba(255,255,255,0.16)";
-airHudWrap.style.borderRadius = "14px";
-airHudWrap.style.backdropFilter = "blur(4px)";
-airHudWrap.style.color = "white";
-airHudWrap.style.fontFamily = "system-ui, -apple-system, sans-serif";
-airHudWrap.style.fontSize = "12px";
-airHudWrap.style.lineHeight = "1.45";
-airHudWrap.style.userSelect = "none";
-airHudWrap.style.pointerEvents = "auto";
-airHudWrap.style.zIndex = "1000001";
-airHudWrap.style.display = "none";
-uiLayer.appendChild(airHudWrap);
-
-const airHudTitle = document.createElement("div");
-airHudTitle.textContent = "AIR SUPPORT";
-airHudTitle.style.fontWeight = "800";
-airHudTitle.style.letterSpacing = "0.06em";
-airHudTitle.style.opacity = "0.84";
-airHudTitle.style.marginBottom = "8px";
-airHudTitle.style.cursor = "grab";
-airHudWrap.appendChild(airHudTitle);
-
-const airHudValue = document.createElement("div");
-airHudValue.style.fontWeight = "800";
-airHudValue.style.fontSize = "18px";
-airHudValue.style.color = "#f4fbff";
-airHudWrap.appendChild(airHudValue);
-
-const airHudBarTrack = document.createElement("div");
-airHudBarTrack.style.position = "relative";
-airHudBarTrack.style.height = "10px";
-airHudBarTrack.style.marginTop = "8px";
-airHudBarTrack.style.borderRadius = "999px";
-airHudBarTrack.style.background = "rgba(255,255,255,0.14)";
-airHudBarTrack.style.overflow = "hidden";
-airHudWrap.appendChild(airHudBarTrack);
-
-const airHudBarFill = document.createElement("div");
-airHudBarFill.style.width = "100%";
-airHudBarFill.style.height = "100%";
-airHudBarFill.style.background = "linear-gradient(90deg, #5be7ff 0%, #a2fff0 100%)";
-airHudBarFill.style.borderRadius = "inherit";
-airHudBarTrack.appendChild(airHudBarFill);
-
-const airHudStatus = document.createElement("div");
-airHudStatus.style.marginTop = "8px";
-airHudStatus.style.opacity = "0.8";
-airHudWrap.appendChild(airHudStatus);
-
-const airHudPurify = document.createElement("div");
-airHudPurify.style.marginTop = "6px";
-airHudPurify.style.fontWeight = "700";
-airHudPurify.style.color = "#fff2bf";
-airHudWrap.appendChild(airHudPurify);
-
-const playerSaveStatusBadge = document.createElement("div");
-playerSaveStatusBadge.id = "playerSaveStatus";
-playerSaveStatusBadge.style.position = "fixed";
-playerSaveStatusBadge.style.left = "12px";
-playerSaveStatusBadge.style.bottom = "12px";
-playerSaveStatusBadge.style.padding = "8px 12px";
-playerSaveStatusBadge.style.borderRadius = "12px";
-playerSaveStatusBadge.style.background = "rgba(20,20,20,0.52)";
-playerSaveStatusBadge.style.border = "1px solid rgba(255,255,255,0.18)";
-playerSaveStatusBadge.style.backdropFilter = "blur(4px)";
-playerSaveStatusBadge.style.color = "white";
-playerSaveStatusBadge.style.fontFamily = "system-ui, -apple-system, sans-serif";
-playerSaveStatusBadge.style.fontSize = "12px";
-playerSaveStatusBadge.style.fontWeight = "700";
-playerSaveStatusBadge.style.lineHeight = "1.4";
-playerSaveStatusBadge.style.userSelect = "none";
-playerSaveStatusBadge.style.pointerEvents = "none";
-playerSaveStatusBadge.style.zIndex = "1000002";
-playerSaveStatusBadge.style.opacity = "0";
-playerSaveStatusBadge.style.transform = "translateY(4px)";
-playerSaveStatusBadge.style.transition = "opacity 180ms ease, transform 180ms ease, border-color 180ms ease";
-playerSaveStatusBadge.textContent = "";
-uiLayer.appendChild(playerSaveStatusBadge);
 
 let airHudDragState = null;
 
@@ -897,37 +881,6 @@ function getDevProfileDisplayName(profileId = activeDevProfileId) {
 
 function sanitizeDevProfileId(profileId) {
   return sanitizeDevProfileIdFromWallet(profileId, DEV_PROFILE_IDS, DEV_PROFILE_IDS[0]);
-}
-
-function getKeyInputCode(event) {
-  return String(event?.code || "");
-}
-
-function getLogicalInputKey(event) {
-  const code = getKeyInputCode(event);
-  const codeMap = {
-    KeyE: "e",
-    KeyI: "i",
-    KeyQ: "q",
-    KeyR: "r",
-    KeyT: "t",
-    KeyB: "b",
-    KeyW: "w",
-    KeyA: "a",
-    KeyS: "s",
-    KeyD: "d",
-    ShiftLeft: "shift",
-    ShiftRight: "shift",
-    Escape: "escape",
-    Tab: "tab",
-    Digit1: "1",
-    Digit2: "2",
-    Digit3: "3",
-    Digit4: "4",
-    Digit5: "5",
-  };
-  if (codeMap[code]) return codeMap[code];
-  return String(event?.key || "").toLowerCase();
 }
 
 function isUiEscapeCloseHandled() {
@@ -2906,64 +2859,6 @@ async function handleWalletLogout() {
 
 walletHudLogoutBtn.addEventListener("click", handleWalletLogout);
 
-// ===== Compass UI =====
-const compassWrap = document.createElement("div");
-compassWrap.id = "compassWrap";
-compassWrap.style.position = "fixed";
-compassWrap.style.left = "12px";
-compassWrap.style.top = "12px";
-compassWrap.style.width = "126px";
-compassWrap.style.padding = "10px 10px 8px";
-compassWrap.style.background = "rgba(20,20,20,0.52)";
-compassWrap.style.border = "1px solid rgba(255,255,255,0.18)";
-compassWrap.style.borderRadius = "12px";
-compassWrap.style.backdropFilter = "blur(4px)";
-compassWrap.style.color = "white";
-compassWrap.style.fontFamily = "system-ui, -apple-system, sans-serif";
-compassWrap.style.fontSize = "12px";
-compassWrap.style.userSelect = "none";
-compassWrap.style.pointerEvents = "none";
-compassWrap.style.zIndex = "999999";
-
-const compassTitle = document.createElement("div");
-compassTitle.textContent = "나침반";
-compassTitle.style.opacity = "0.85";
-compassTitle.style.marginBottom = "6px";
-
-const compassFace = document.createElement("div");
-compassFace.style.width = "56px";
-compassFace.style.height = "56px";
-compassFace.style.margin = "0 auto";
-compassFace.style.borderRadius = "999px";
-compassFace.style.border = "2px solid rgba(255,255,255,0.45)";
-compassFace.style.position = "relative";
-compassFace.style.background = "rgba(255,255,255,0.08)";
-
-const compassNeedle = document.createElement("div");
-compassNeedle.style.position = "absolute";
-compassNeedle.style.left = "50%";
-compassNeedle.style.top = "50%";
-compassNeedle.style.transform = "translate(-50%, -50%)";
-compassNeedle.style.transformOrigin = "50% 72%";
-compassNeedle.style.width = "0";
-compassNeedle.style.height = "0";
-compassNeedle.style.borderLeft = "7px solid transparent";
-compassNeedle.style.borderRight = "7px solid transparent";
-compassNeedle.style.borderBottom = "18px solid #ffde7a";
-compassNeedle.style.filter = "drop-shadow(0 1px 2px rgba(0,0,0,0.35))";
-compassFace.appendChild(compassNeedle);
-
-const compassText = document.createElement("div");
-compassText.textContent = "북 0°";
-compassText.style.marginTop = "7px";
-compassText.style.textAlign = "center";
-compassText.style.fontWeight = "700";
-
-compassWrap.appendChild(compassTitle);
-compassWrap.appendChild(compassFace);
-compassWrap.appendChild(compassText);
-uiLayer.appendChild(compassWrap);
-
 // ===== Inventory Window (Tabs + Grid) =====
 const questWin = document.createElement("div");
 questWin.id = "questWindow";
@@ -4255,27 +4150,6 @@ window.addEventListener("beforeunload", () => {
 
 
 // ===== UI (간단 텍스트) =====
-const ui = document.createElement("div");
-ui.style.position = "fixed";
-ui.style.left = "50%";
-ui.style.bottom = "56px";  // 하단 중앙
-ui.style.transform = "translateX(-50%) translateY(8px)";
-ui.style.padding = "8px 10px";
-ui.style.background = "rgba(0,0,0,0.62)";
-ui.style.color = "white";
-ui.style.fontFamily = "system-ui, -apple-system, sans-serif";
-ui.style.fontSize = "13px";
-ui.style.borderRadius = "10px";
-ui.style.pointerEvents = "none";
-uiLayer.appendChild(ui);
-
-// 페이드/툭 애니메이션
-ui.style.opacity = "0";
-ui.style.transition = "opacity 160ms ease, transform 160ms ease";
-ui.style.willChange = "opacity, transform";
-
-// display는 이제 항상 block로 두고, opacity로만 숨김/표시
-ui.style.display = "block";
 
 const itemTooltip = document.createElement("div");
 itemTooltip.id = "itemTooltip";
@@ -4341,28 +4215,6 @@ function hideUI() {
   ui.style.opacity = "0";
   ui.style.transform = "translateX(-50%) translateY(8px)";
 }
-
-const mapArrivalBanner = document.createElement("div");
-mapArrivalBanner.style.position = "fixed";
-mapArrivalBanner.style.left = "50%";
-mapArrivalBanner.style.top = "36px";
-mapArrivalBanner.style.transform = "translateX(-50%) translateY(-10px)";
-mapArrivalBanner.style.padding = "12px 22px";
-mapArrivalBanner.style.borderRadius = "14px";
-mapArrivalBanner.style.background = "rgba(18,22,28,0.62)";
-mapArrivalBanner.style.border = "1px solid rgba(255,255,255,0.16)";
-mapArrivalBanner.style.backdropFilter = "blur(5px)";
-mapArrivalBanner.style.boxShadow = "0 14px 32px rgba(0,0,0,0.22)";
-mapArrivalBanner.style.color = "#fff6dc";
-mapArrivalBanner.style.fontFamily = "system-ui, -apple-system, sans-serif";
-mapArrivalBanner.style.fontSize = "28px";
-mapArrivalBanner.style.fontWeight = "900";
-mapArrivalBanner.style.letterSpacing = "0.04em";
-mapArrivalBanner.style.pointerEvents = "none";
-mapArrivalBanner.style.zIndex = "1000002";
-mapArrivalBanner.style.opacity = "0";
-mapArrivalBanner.style.transition = "opacity 260ms ease, transform 260ms ease";
-uiLayer.appendChild(mapArrivalBanner);
 
 let mapArrivalTimer = null;
 
@@ -4903,63 +4755,23 @@ scene.add(startFloor);
 registerWalkableSurface("광산맵", ground, 1.4);
 
 
-const gridHelper = new THREE.GridHelper(200, 200);
-gridHelper.material.opacity = 0.25;
-gridHelper.material.transparent = true;
+const gridHelper = createMainGridHelper();
 scene.add(gridHelper);
 
 // Player
-const player = new THREE.Group();
-player.name = "playerRoot";
-const bodyMat = new THREE.MeshStandardMaterial({ color: 0xcfcfcf, roughness: 0.9 });
-const limbMat = new THREE.MeshStandardMaterial({ color: 0xb5b5b5, roughness: 0.95 });
-
-const torso = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.95, 0.36), bodyMat);
-torso.name = "torso";
-torso.position.y = 1.35;
-
-// 얼굴은 타원형 1개만 사용
-const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 24, 18), bodyMat);
-head.name = "head";
-head.scale.set(0.85, 1.2, 0.82);
-head.position.y = 2.1;
-
-// 어깨 피벗(회전축)
-const leftArmPivot = new THREE.Group();
-leftArmPivot.name = "leftArmPivot";
-leftArmPivot.position.set(-0.47, 1.8, 0);
-const rightArmPivot = new THREE.Group();
-rightArmPivot.name = "rightArmPivot";
-rightArmPivot.position.set(0.47, 1.8, 0);
-
-const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.85, 0.22), limbMat);
-leftArm.name = "leftArm";
-leftArm.position.set(0, -0.42, 0);
-const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.85, 0.22), limbMat);
-rightArm.name = "rightArm";
-rightArm.position.set(0, -0.42, 0);
-leftArmPivot.add(leftArm);
-rightArmPivot.add(rightArm);
-
-// 허벅지(힙) 피벗
-const leftLegPivot = new THREE.Group();
-leftLegPivot.name = "leftLegPivot";
-leftLegPivot.position.set(-0.18, 0.9, 0);
-const rightLegPivot = new THREE.Group();
-rightLegPivot.name = "rightLegPivot";
-rightLegPivot.position.set(0.18, 0.9, 0);
-
-const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.9, 0.26), limbMat);
-leftLeg.name = "leftLeg";
-leftLeg.position.set(0, -0.45, 0);
-const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.9, 0.26), limbMat);
-rightLeg.name = "rightLeg";
-rightLeg.position.set(0, -0.45, 0);
-leftLegPivot.add(leftLeg);
-rightLegPivot.add(rightLeg);
-
-player.add(torso, head, leftArmPivot, rightArmPivot, leftLegPivot, rightLegPivot);
-player.position.set(0, 0, 0);
+const player = createPlayerRig();
+const {
+  torso,
+  head,
+  leftArmPivot,
+  rightArmPivot,
+  leftArm,
+  rightArm,
+  leftLegPivot,
+  rightLegPivot,
+  leftLeg,
+  rightLeg,
+} = getPlayerRigParts(player);
 scene.add(player);
 
 
@@ -5680,15 +5492,25 @@ function commitDiscardDialog() {
   return hasItemFromModule(inventory.slots, id, { getItemCount });
     }
 
-    const equippedPickaxe = new THREE.Group();
-    equippedPickaxe.name = "equippedPickaxe";
-    equippedPickaxe.scale.setScalar(0.8);
-    // 캐릭터 기준 오른손(rightArm) 기준 위치
-    equippedPickaxe.position.set(0.01, -0.44, 0.07);
-    // +Y(헤드 방향)를 +Z(진행 방향 앞)로 보내기 위해 +90도 회전
-    equippedPickaxe.rotation.set(Math.PI * 0.5, Math.PI * 0.03, -Math.PI * 0.08);
-    equippedPickaxe.visible = false;
-    leftArm.add(equippedPickaxe);
+    const {
+  equippedPickaxe,
+  equippedSafetyHelmet,
+  equippedNftHelmet,
+  equippedLeftShoe,
+  equippedRightShoe,
+    } = createPlayerEquipmentVisuals(
+  {
+    head,
+    leftArm,
+    leftLegPivot,
+    rightLegPivot,
+  },
+  {
+    buildSafetyHelmetModel,
+    buildSingleBasicShoeModel,
+    alignWearableOnHead,
+  }
+    );
 
     function syncPickaxeGroupModel(group, level) {
   while (group.children.length) {
@@ -5706,62 +5528,28 @@ function commitDiscardDialog() {
 
     refreshEquippedPickaxeModel();
 
-    const equippedSafetyHelmet = buildSafetyHelmetModel();
-    equippedSafetyHelmet.name = "equippedSafetyHelmet";
-    equippedSafetyHelmet.scale.setScalar(0.72);
-    equippedSafetyHelmet.visible = false;
-    head.add(equippedSafetyHelmet);
-    alignWearableOnHead(head, equippedSafetyHelmet, {
-  verticalInset: 0.36,
-  forwardBias: 0.06,
-    });
-
-    const equippedNftHelmet = buildSafetyHelmetModel("gold");
-    equippedNftHelmet.name = "equippedNftHelmet";
-    equippedNftHelmet.scale.setScalar(0.72);
-    equippedNftHelmet.visible = false;
-    head.add(equippedNftHelmet);
-    alignWearableOnHead(head, equippedNftHelmet, {
-  verticalInset: 0.36,
-  forwardBias: 0.06,
-    });
-
-    const leftFootAnchor = new THREE.Group();
-    leftFootAnchor.name = "leftFootAnchor";
-    leftFootAnchor.position.set(0, -0.9, 0.05);
-    leftLegPivot.add(leftFootAnchor);
-
-    const rightFootAnchor = new THREE.Group();
-    rightFootAnchor.name = "rightFootAnchor";
-    rightFootAnchor.position.set(0, -0.9, 0.05);
-    rightLegPivot.add(rightFootAnchor);
-
-    const equippedLeftShoe = buildSingleBasicShoeModel();
-    equippedLeftShoe.name = "equippedBasicShoeLeft";
-    equippedLeftShoe.scale.setScalar(0.96);
-    equippedLeftShoe.visible = false;
-    leftFootAnchor.add(equippedLeftShoe);
-    equippedLeftShoe.position.set(0, 0, 0);
-
-    const equippedRightShoe = buildSingleBasicShoeModel();
-    equippedRightShoe.name = "equippedBasicShoeRight";
-    equippedRightShoe.scale.setScalar(0.96);
-    equippedRightShoe.visible = false;
-    rightFootAnchor.add(equippedRightShoe);
-    equippedRightShoe.position.set(0, 0, 0);
-
     function updateEquippedVisual() {
   const headRef = getEquippedItemRef("head");
   const isNftHelmetEquipped =
     headRef?.kind === "nft" &&
     headRef?.contractAddress === "0xMockHelmetCollection" &&
     String(headRef?.tokenId) === "1";
-  equippedPickaxe.visible = hasEquippedTool("pickaxe");
-  equippedSafetyHelmet.visible = !isNftHelmetEquipped && getEquippedItemForSlot("head") === "safetyHelmet";
-  equippedNftHelmet.visible = isNftHelmetEquipped;
-  const shoesVisible = getEquippedItemForSlot("shoes") === "basicShoes";
-  equippedLeftShoe.visible = shoesVisible;
-  equippedRightShoe.visible = shoesVisible;
+  updatePlayerEquipmentVisualsVisibility(
+    {
+      equippedPickaxe,
+      equippedSafetyHelmet,
+      equippedNftHelmet,
+      equippedLeftShoe,
+      equippedRightShoe,
+    },
+    {
+      hasPickaxeEquipped: hasEquippedTool("pickaxe"),
+      isSafetyHelmetEquipped:
+        !isNftHelmetEquipped && getEquippedItemForSlot("head") === "safetyHelmet",
+      isNftHelmetEquipped,
+      shoesVisible: getEquippedItemForSlot("shoes") === "basicShoes",
+    }
+  );
     }
 
     function getEquippedItemRef(slotId) {
@@ -5906,17 +5694,7 @@ function commitQuickUseAssignment(key) {
     previewPlayer.rotation.y = Math.PI * 0.08;
     equipPreviewScene.add(previewPlayer);
 
-    const previewParts = {
-  torso: previewPlayer.getObjectByName("torso"),
-  head: previewPlayer.getObjectByName("head"),
-  leftArmPivot: previewPlayer.getObjectByName("leftArmPivot"),
-  rightArmPivot: previewPlayer.getObjectByName("rightArmPivot"),
-  leftLegPivot: previewPlayer.getObjectByName("leftLegPivot"),
-  rightLegPivot: previewPlayer.getObjectByName("rightLegPivot"),
-  equippedPickaxe: previewPlayer.getObjectByName("equippedPickaxe"),
-  equippedSafetyHelmet: previewPlayer.getObjectByName("equippedSafetyHelmet"),
-  equippedNftHelmet: previewPlayer.getObjectByName("equippedNftHelmet"),
-    };
+    const previewParts = getPlayerRigParts(previewPlayer);
 
     function resizeEquipmentPreview() {
   const width = Math.max(1, previewCanvasWrap.clientWidth);
@@ -5927,23 +5705,27 @@ function commitQuickUseAssignment(key) {
     }
 
     function renderEquipmentPreview() {
-  previewPlayer.rotation.y = player.rotation.y;
-  previewParts.torso.rotation.x = torso.rotation.x;
-  previewParts.leftArmPivot.rotation.x = leftArmPivot.rotation.x;
-  previewParts.rightArmPivot.rotation.x = rightArmPivot.rotation.x;
-  previewParts.leftLegPivot.rotation.x = leftLegPivot.rotation.x;
-  previewParts.rightLegPivot.rotation.x = rightLegPivot.rotation.x;
+  syncPreviewPlayerPose({
+    previewPlayer,
+    previewParts,
+    player,
+    sourceParts: {
+      torso,
+      leftArmPivot,
+      rightArmPivot,
+      leftLegPivot,
+      rightLegPivot,
+    },
+    equipmentVisibility: {
+      equippedPickaxeVisible: equippedPickaxe.visible,
+      equippedSafetyHelmetVisible: equippedSafetyHelmet.visible,
+      equippedNftHelmetVisible: equippedNftHelmet.visible,
+    },
+  });
   if (previewParts.equippedPickaxe) {
     if (previewParts.equippedPickaxe.userData.pickaxeLevel !== inventory.pickaxeLevel) {
       syncPickaxeGroupModel(previewParts.equippedPickaxe, inventory.pickaxeLevel);
     }
-    previewParts.equippedPickaxe.visible = equippedPickaxe.visible;
-  }
-  if (previewParts.equippedSafetyHelmet) {
-    previewParts.equippedSafetyHelmet.visible = equippedSafetyHelmet.visible;
-  }
-  if (previewParts.equippedNftHelmet) {
-    previewParts.equippedNftHelmet.visible = equippedNftHelmet.visible;
   }
   equipPreviewRenderer.render(equipPreviewScene, equipPreviewCamera);
 }
@@ -6578,16 +6360,11 @@ const mapPurificationProgress = {
 let frontierBuildState = createDefaultFrontierBuildState();
 
 function createDefaultFrontierBuildState() {
-  return Object.fromEntries(
-    FRONTIER_PARCEL_LABELS.map((label) => [
-      label.toLowerCase(),
-      createDefaultFrontierParcelBuildEntry(label),
-    ])
-  );
+  return createDefaultFrontierBuildStateFromModule(FRONTIER_PARCEL_LABELS);
 }
 
 function getFrontierParcelAuthorityItemId(parcelLabel) {
-  return FRONTIER_AUTHORITY_ITEM_IDS[parcelLabel] ?? null;
+  return getFrontierParcelAuthorityItemIdFromModule(parcelLabel, FRONTIER_AUTHORITY_ITEM_IDS);
 }
 
 function getFrontierParcelAuthorityName(parcelLabel) {
@@ -6897,40 +6674,19 @@ function applyDevProfileRoleOverrides() {
 }
 
 function createDefaultFrontierParcelBuildEntry(label) {
-  return {
-    stage: 0,
-    signText: label,
-    operations: createDefaultFrontierParcelOperationsState(),
-  };
+  return createDefaultFrontierParcelBuildEntryFromModule(label);
 }
 
 function createDefaultFrontierParcelOperationsState() {
-  return {
-    shop: createDefaultFrontierShopState(),
-    displayA: createDefaultFrontierDisplayState(),
-    displayB: createDefaultFrontierDisplayState(),
-  };
+  return createDefaultFrontierParcelOperationsStateFromModule();
 }
 
 function createDefaultFrontierShopState() {
-  return {
-    statusText: "비어 있음",
-    itemId: "",
-    quantity: 0,
-    price: 0,
-    userWallet: "",
-    sellerWallet: "",
-    pendingCredits: 0,
-    lifetimeCredits: 0,
-  };
+  return createDefaultFrontierShopStateFromModule();
 }
 
 function createDefaultFrontierDisplayState() {
-  return {
-    statusText: "비어 있음",
-    entry: null,
-    userWallet: "",
-  };
+  return createDefaultFrontierDisplayStateFromModule();
 }
 
 function createDefaultResidenceNoticeBoardEntry(key) {
@@ -6973,100 +6729,49 @@ function normalizeResidenceNoticeBoardState(rawState) {
 }
 
 function formatFrontierShopStatusText(itemId, quantity, price) {
-  if (!itemId || quantity <= 0) return "비어 있음";
-  const itemName = ITEM_DEFS[itemId]?.name ?? itemId;
-  return `${itemName} x${quantity} / ${price}원`;
+  return formatFrontierShopStatusTextFromModule(itemId, quantity, price, ITEM_DEFS);
 }
 
 function formatFrontierDisplayStatusText(entry) {
-  if (!entry) return "비어 있음";
-  return `${getInventoryEntryDisplayName(entry)} 전시 중`;
+  return formatFrontierDisplayStatusTextFromModule(entry, getInventoryEntryDisplayName);
 }
 
 function getFrontierDisplaySummary(displayState) {
-  const entry = normalizeInventorySlotEntry(displayState?.entry);
-  if (!entry) {
-    return {
-      active: false,
-      itemName: "없음",
-      statusText: "비어 있음",
-      entry: null,
-    };
-  }
-  return {
-    active: true,
-    itemName: getInventoryEntryDisplayName(entry),
-    statusText: formatFrontierDisplayStatusText(entry),
-    entry,
-  };
+  return getFrontierDisplaySummaryFromModule(displayState, {
+    normalizeInventorySlotEntry,
+    getInventoryEntryDisplayName,
+  });
 }
 
 function getFrontierShopListingSummary(shopState) {
-  if (!shopState?.itemId || shopState.quantity <= 0) {
-    return {
-      active: false,
-      itemName: "없음",
-      quantity: 0,
-      price: 0,
-      totalPrice: 0,
-      statusText: "비어 있음",
-      pendingCredits: clampPlayerCredits(shopState?.pendingCredits || 0),
-      lifetimeCredits: clampPlayerCredits(shopState?.lifetimeCredits || 0),
-    };
-  }
-  return {
-    active: true,
-    itemName: ITEM_DEFS[shopState.itemId]?.name ?? shopState.itemId,
-    quantity: shopState.quantity,
-    price: shopState.price,
-    totalPrice: clampPlayerCredits(shopState.quantity * shopState.price),
-    statusText: formatFrontierShopStatusText(shopState.itemId, shopState.quantity, shopState.price),
-    pendingCredits: clampPlayerCredits(shopState.pendingCredits || 0),
-    lifetimeCredits: clampPlayerCredits(shopState.lifetimeCredits || 0),
-  };
+  return getFrontierShopListingSummaryFromModule(shopState, {
+    itemDefs: ITEM_DEFS,
+    clampPlayerCredits,
+  });
 }
 
 function getFrontierShopPurchaseFeedback(parcelLabel, quantity) {
   const shopState = getFrontierShopOperation(parcelLabel);
-  const purchaseQty = Math.max(1, Math.floor(Number(quantity) || 0));
-  const totalPrice = clampPlayerCredits((shopState.price || 0) * purchaseQty);
-  let purchaseResult = { ok: true, reason: "" };
-  if (!parcelLabel) {
-    purchaseResult = { ok: false, reason: "상점 정보를 찾을 수 없습니다." };
-  } else if (!shopState.itemId || shopState.quantity <= 0) {
-    purchaseResult = { ok: false, reason: "등록된 판매 물품이 없습니다." };
-  } else if (purchaseQty <= 0) {
-    purchaseResult = { ok: false, reason: "구매 수량을 확인해주세요." };
-  } else if (purchaseQty > shopState.quantity) {
-    purchaseResult = { ok: false, reason: "재고가 부족합니다." };
-  } else {
-    const sellerWallet = normalizeFrontierWalletAddress(shopState.sellerWallet || shopState.userWallet);
-    const currentWallet = getCurrentFrontierWalletAddress();
-    if (sellerWallet && sellerWallet === currentWallet) {
-      purchaseResult = { ok: false, reason: "자신이 등록한 상품은 구매할 수 없습니다." };
-    } else if (!canAffordPlayerCredits(totalPrice)) {
-      purchaseResult = { ok: false, reason: "개척 코인이 부족합니다." };
-    } else {
+  return getFrontierShopPurchaseFeedbackFromModule({
+    parcelLabel,
+    shopState,
+    quantity,
+    currentWallet: getCurrentFrontierWalletAddress(),
+    canAffordPlayerCredits,
+    clampPlayerCredits,
+    validateInventorySpace: () => {
       const inventorySnapshot = inventory.slots.map((slot) => (slot ? structuredClone(slot) : null));
-      const canAdd = addEntryToInventory(createInventorySlotEntry(shopState.itemId, purchaseQty), purchaseQty);
+      const canAdd = addEntryToInventory(createInventorySlotEntry(shopState.itemId, Math.max(1, Math.floor(Number(quantity) || 0))), Math.max(1, Math.floor(Number(quantity) || 0)));
       for (let i = 0; i < inventory.slots.length; i += 1) {
         inventory.slots[i] = inventorySnapshot[i];
       }
-      if (!canAdd) {
-        purchaseResult = { ok: false, reason: "인벤토리 공간이 부족합니다." };
-      }
-    }
-  }
-  return {
-    ok: purchaseResult.ok,
-    reason: purchaseResult.ok ? "바로 구매할 수 있습니다." : purchaseResult.reason,
-    totalPrice,
-    purchaseQty,
-  };
+      return canAdd;
+    },
+  });
 }
 
 function normalizeFrontierWalletAddress(rawAddress) {
-  return String(rawAddress || "").trim().toLowerCase();
+  return normalizeFrontierWalletAddressFromModule(rawAddress);
 }
 
 function getCurrentFrontierWalletAddress() {
@@ -7131,40 +6836,50 @@ function normalizeFrontierParcelBuildEntry(label, rawEntry) {
 }
 
 function getFrontierShopOperation(parcelLabel = getSelectedFrontierParcelLabel()) {
-  return getFrontierBuildState(parcelLabel).operations.shop;
+  return getFrontierShopOperationFromModule(
+    frontierBuildState,
+    parcelLabel,
+    createDefaultFrontierParcelBuildEntry
+  );
 }
 
 function getFrontierDisplayOperation(parcelLabel = getSelectedFrontierParcelLabel(), slotKey = "displayA") {
-  return getFrontierBuildState(parcelLabel).operations[slotKey];
+  return getFrontierDisplayOperationFromModule(
+    frontierBuildState,
+    parcelLabel,
+    slotKey,
+    createDefaultFrontierParcelBuildEntry
+  );
 }
 
 function isFrontierDisplayableEntry(entry) {
-  if (!entry) return { ok: false, reason: "전시할 아이템이 없습니다." };
-  if (isQuestCriticalItemBlockedFromDiscard(entry)) {
-    return { ok: false, reason: "퀘스트 아이템은 전시할 수 없습니다." };
-  }
-  return { ok: true };
+  return isFrontierDisplayableEntryFromModule(entry, isQuestCriticalItemBlockedFromDiscard);
 }
 
 function getDisplayableFrontierEntries() {
-  return inventory.slots
-    .map((entry, index) => ({ entry, index }))
-    .filter(({ entry }) => entry)
-    .filter(({ entry }) => isFrontierDisplayableEntry(entry).ok);
+  return getDisplayableFrontierEntriesFromModule(
+    inventory.slots,
+    isQuestCriticalItemBlockedFromDiscard
+  );
 }
 
 function assignFrontierDisplayEntry(parcelLabel, slotKey, entry) {
-  if (!parcelLabel || !["displayA", "displayB"].includes(slotKey)) return false;
-  if (!canUseFrontierDisplaySlot(parcelLabel, slotKey)) return false;
   const validation = isFrontierDisplayableEntry(entry);
-  if (!validation.ok) {
-    showUI(validation.reason, 1000);
+  const canAssign = canAssignFrontierDisplayEntryStateFromModule(
+    slotKey,
+    Boolean(parcelLabel) && canUseFrontierDisplaySlot(parcelLabel, slotKey),
+    validation
+  );
+  if (!canAssign.ok) {
+    if (canAssign.reason) showUI(canAssign.reason, 1000);
     lastMessageUntil = performance.now() + 1000;
     return false;
   }
   const displayState = getFrontierDisplayOperation(parcelLabel, slotKey);
-  displayState.entry = normalizeInventorySlotEntry(entry);
-  displayState.statusText = formatFrontierDisplayStatusText(displayState.entry);
+  assignFrontierDisplayEntryStateFromModule(displayState, entry, {
+    normalizeInventorySlotEntry,
+    getInventoryEntryDisplayName,
+  });
   rebuildFrontierParcelConstructionVisual(parcelLabel);
   schedulePlayerSaveSync(true);
   renderFrontierBoothDialog();
@@ -7175,16 +6890,18 @@ function assignFrontierDisplayEntry(parcelLabel, slotKey, entry) {
 }
 
 function clearFrontierDisplayEntry(parcelLabel, slotKey) {
-  if (!parcelLabel || !["displayA", "displayB"].includes(slotKey)) return false;
-  if (!canUseFrontierDisplaySlot(parcelLabel, slotKey)) return false;
   const displayState = getFrontierDisplayOperation(parcelLabel, slotKey);
-  if (!displayState.entry) {
-    showUI("현재 전시 중인 대상이 없습니다.", 900);
+  const canClear = canClearFrontierDisplayEntryStateFromModule(
+    slotKey,
+    Boolean(parcelLabel) && canUseFrontierDisplaySlot(parcelLabel, slotKey),
+    displayState
+  );
+  if (!canClear.ok) {
+    if (canClear.reason) showUI(canClear.reason, 900);
     lastMessageUntil = performance.now() + 900;
     return false;
   }
-  displayState.entry = null;
-  displayState.statusText = "비어 있음";
+  clearFrontierDisplayEntryStateFromModule(displayState);
   rebuildFrontierParcelConstructionVisual(parcelLabel);
   schedulePlayerSaveSync(true);
   renderFrontierBoothDialog();
@@ -7195,75 +6912,91 @@ function clearFrontierDisplayEntry(parcelLabel, slotKey) {
 }
 
 function getFrontierShopAssignedWallet(parcelLabel = getSelectedFrontierParcelLabel()) {
-  return normalizeFrontierWalletAddress(getFrontierShopOperation(parcelLabel).userWallet);
+  return getFrontierShopAssignedWalletFromModule(getFrontierShopOperation(parcelLabel));
 }
 
 function getFrontierShopSellerWallet(parcelLabel = getSelectedFrontierParcelLabel()) {
-  return normalizeFrontierWalletAddress(getFrontierShopOperation(parcelLabel).sellerWallet);
+  return getFrontierShopSellerWalletFromModule(getFrontierShopOperation(parcelLabel));
 }
 
 function isFrontierShopSlotUser(parcelLabel = getSelectedFrontierParcelLabel(), walletAddress = getCurrentFrontierWalletAddress()) {
-  const currentWallet = normalizeFrontierWalletAddress(walletAddress);
-  if (!currentWallet) return false;
-  return getFrontierShopAssignedWallet(parcelLabel) === currentWallet;
+  return isFrontierShopSlotUserFromModule(
+    getFrontierShopAssignedWallet(parcelLabel),
+    walletAddress
+  );
 }
 
 function isFrontierShopSeller(parcelLabel = getSelectedFrontierParcelLabel(), walletAddress = getCurrentFrontierWalletAddress()) {
-  const currentWallet = normalizeFrontierWalletAddress(walletAddress);
-  if (!currentWallet) return false;
-  return getFrontierShopSellerWallet(parcelLabel) === currentWallet;
+  return isFrontierShopSellerFromModule(
+    getFrontierShopSellerWallet(parcelLabel),
+    walletAddress
+  );
 }
 
 function canManageFrontierShopSlot(parcelLabel = getSelectedFrontierParcelLabel()) {
-  return hasFrontierParcelAuthority(parcelLabel);
+  return canManageFrontierShopSlotFromModule(hasFrontierParcelAuthority, parcelLabel);
 }
 
 function canUseFrontierShopSlot(parcelLabel = getSelectedFrontierParcelLabel()) {
-  return isFrontierShopSlotUser(parcelLabel);
+  return canUseFrontierShopSlotFromModule(
+    getFrontierShopOperation(parcelLabel),
+    getCurrentFrontierWalletAddress()
+  );
 }
 
 function canEditFrontierShopListing(parcelLabel = getSelectedFrontierParcelLabel()) {
-  const shopState = getFrontierShopOperation(parcelLabel);
-  if (!shopState.itemId || shopState.quantity <= 0) return false;
-  return isFrontierShopSeller(parcelLabel);
+  return canEditFrontierShopListingFromModule(
+    getFrontierShopOperation(parcelLabel),
+    getCurrentFrontierWalletAddress()
+  );
 }
 
 function canManageFrontierShopSellerTools(parcelLabel = getSelectedFrontierParcelLabel()) {
-  const shopState = getFrontierShopOperation(parcelLabel);
-  return isFrontierShopSeller(parcelLabel) && (
-    (shopState.itemId && shopState.quantity > 0) ||
-    clampPlayerCredits(shopState.pendingCredits || 0) > 0
+  return canManageFrontierShopSellerToolsFromModule(
+    getFrontierShopOperation(parcelLabel),
+    getCurrentFrontierWalletAddress(),
+    clampPlayerCredits
   );
 }
 
 function canRegisterFrontierShopListing(parcelLabel = getSelectedFrontierParcelLabel()) {
-  if (!canUseFrontierShopSlot(parcelLabel)) return false;
-  const shopState = getFrontierShopOperation(parcelLabel);
-  if (!shopState.itemId || shopState.quantity <= 0) return true;
-  return isFrontierShopSeller(parcelLabel);
+  return canRegisterFrontierShopListingFromModule(
+    getFrontierShopOperation(parcelLabel),
+    getFrontierShopAssignedWallet(parcelLabel),
+    getCurrentFrontierWalletAddress()
+  );
 }
 
 function canCollectFrontierShopSettlement(parcelLabel = getSelectedFrontierParcelLabel()) {
-  const shopState = getFrontierShopOperation(parcelLabel);
-  return isFrontierShopSeller(parcelLabel) && clampPlayerCredits(shopState.pendingCredits || 0) > 0;
+  return canCollectFrontierShopSettlementFromModule(
+    getFrontierShopOperation(parcelLabel),
+    getCurrentFrontierWalletAddress(),
+    clampPlayerCredits
+  );
 }
 
 function getFrontierDisplayAssignedWallet(parcelLabel = getSelectedFrontierParcelLabel(), slotKey = "displayA") {
-  return normalizeFrontierWalletAddress(getFrontierDisplayOperation(parcelLabel, slotKey).userWallet);
+  return getFrontierDisplayAssignedWalletFromModule(
+    getFrontierDisplayOperation(parcelLabel, slotKey)
+  );
 }
 
 function isFrontierDisplaySlotUser(parcelLabel = getSelectedFrontierParcelLabel(), slotKey = "displayA", walletAddress = getCurrentFrontierWalletAddress()) {
-  const currentWallet = normalizeFrontierWalletAddress(walletAddress);
-  if (!currentWallet) return false;
-  return getFrontierDisplayAssignedWallet(parcelLabel, slotKey) === currentWallet;
+  return isFrontierDisplaySlotUserFromModule(
+    getFrontierDisplayAssignedWallet(parcelLabel, slotKey),
+    walletAddress
+  );
 }
 
 function canManageFrontierDisplaySlot(parcelLabel = getSelectedFrontierParcelLabel(), slotKey = "displayA") {
-  return hasFrontierParcelAuthority(parcelLabel);
+  return canManageFrontierDisplaySlotFromModule(hasFrontierParcelAuthority, parcelLabel);
 }
 
 function canUseFrontierDisplaySlot(parcelLabel = getSelectedFrontierParcelLabel(), slotKey = "displayA") {
-  return isFrontierDisplaySlotUser(parcelLabel, slotKey);
+  return canUseFrontierDisplaySlotFromModule(
+    getFrontierDisplayOperation(parcelLabel, slotKey),
+    getCurrentFrontierWalletAddress()
+  );
 }
 
 function getDevProfileSaveKey(profileId) {
@@ -7319,15 +7052,16 @@ function collectFrontierShopSettlement(parcelLabel = getSelectedFrontierParcelLa
     return false;
   }
   const shopState = getFrontierShopOperation(parcelLabel);
-  const amount = clampPlayerCredits(shopState.pendingCredits || 0);
-  if (amount <= 0) return false;
-  const sellerWallet = normalizeFrontierWalletAddress(shopState.sellerWallet);
+  const settlement = getCollectFrontierShopSettlementStateFromModule(shopState, clampPlayerCredits);
+  if (!settlement.canCollect) return false;
+  const amount = settlement.amount;
+  const sellerWallet = settlement.sellerWallet;
   if (!grantFrontierShopSellerCredits(sellerWallet, amount)) {
     showUI("정산금 회수에 실패했습니다.", 1100);
     lastMessageUntil = performance.now() + 1100;
     return false;
   }
-  shopState.pendingCredits = 0;
+  applyCollectedFrontierShopSettlementStateFromModule(shopState);
   schedulePlayerSaveSync(true);
   renderFrontierBoothDialog();
   if (frontierBuildOpen) renderFrontierBuildWindow();
@@ -7338,38 +7072,40 @@ function collectFrontierShopSettlement(parcelLabel = getSelectedFrontierParcelLa
 }
 
 function assignFrontierDisplaySlotUser(parcelLabel, slotKey, walletAddress) {
-  if (!parcelLabel || !["displayA", "displayB"].includes(slotKey)) return false;
-  if (!canManageFrontierDisplaySlot(parcelLabel, slotKey)) return false;
   const displayState = getFrontierDisplayOperation(parcelLabel, slotKey);
-  if (displayState.entry) {
-    showUI("전시 중인 대상이 있을 때는 사용자를 변경할 수 없습니다.", 1100);
-    lastMessageUntil = performance.now() + 1100;
+  const assignment = canAssignFrontierDisplaySlotUserStateFromModule(
+    slotKey,
+    Boolean(parcelLabel) && canManageFrontierDisplaySlot(parcelLabel, slotKey),
+    displayState,
+    walletAddress
+  );
+  if (!assignment.ok) {
+    const duration = assignment.reason && assignment.reason.includes("입력") ? 1000 : 1100;
+    if (assignment.reason) showUI(assignment.reason, duration);
+    lastMessageUntil = performance.now() + duration;
     return false;
   }
-  const normalizedWallet = normalizeFrontierWalletAddress(walletAddress);
-  if (!normalizedWallet) {
-    showUI("지갑 주소를 입력해주세요.", 1000);
-    lastMessageUntil = performance.now() + 1000;
-    return false;
-  }
-  displayState.userWallet = normalizedWallet;
+  assignFrontierDisplaySlotUserStateFromModule(displayState, assignment.wallet);
   schedulePlayerSaveSync(true);
   if (frontierBuildOpen) renderFrontierBuildWindow();
-  showUI(`${slotKey === "displayA" ? "전시 A" : "전시 B"} 사용자를 ${shortenWalletAddress(normalizedWallet)}(으)로 지정했습니다.`, 1100);
+  showUI(`${slotKey === "displayA" ? "전시 A" : "전시 B"} 사용자를 ${shortenWalletAddress(assignment.wallet)}(으)로 지정했습니다.`, 1100);
   lastMessageUntil = performance.now() + 1100;
   return true;
 }
 
 function clearFrontierDisplaySlotUser(parcelLabel, slotKey) {
-  if (!parcelLabel || !["displayA", "displayB"].includes(slotKey)) return false;
-  if (!canManageFrontierDisplaySlot(parcelLabel, slotKey)) return false;
   const displayState = getFrontierDisplayOperation(parcelLabel, slotKey);
-  if (displayState.entry) {
-    showUI("전시 중인 대상이 있을 때는 사용자를 해제할 수 없습니다.", 1100);
+  const canClear = canClearFrontierDisplaySlotUserStateFromModule(
+    slotKey,
+    Boolean(parcelLabel) && canManageFrontierDisplaySlot(parcelLabel, slotKey),
+    displayState
+  );
+  if (!canClear.ok) {
+    if (canClear.reason) showUI(canClear.reason, 1100);
     lastMessageUntil = performance.now() + 1100;
     return false;
   }
-  displayState.userWallet = "";
+  clearFrontierDisplaySlotUserStateFromModule(displayState);
   schedulePlayerSaveSync(true);
   if (frontierBuildOpen) renderFrontierBuildWindow();
   showUI(`${slotKey === "displayA" ? "전시 A" : "전시 B"} 사용자를 해제했습니다.`, 1000);
@@ -7378,29 +7114,31 @@ function clearFrontierDisplaySlotUser(parcelLabel, slotKey) {
 }
 
 function formatFrontierShopUserDisplay(parcelLabel = getSelectedFrontierParcelLabel()) {
-  const assignedWallet = getFrontierShopAssignedWallet(parcelLabel);
-  return assignedWallet ? shortenWalletAddress(assignedWallet) : "미지정";
+  return formatFrontierShopUserDisplayFromModule(
+    getFrontierShopAssignedWallet(parcelLabel),
+    shortenWalletAddress
+  );
 }
 
 function getCurrentFrontierParcelLabel() {
-  for (const label of FRONTIER_PARCEL_LABELS) {
-    if (isPlayerInsideFrontierParcel(label)) return label;
-  }
-  return "";
+  return getFrontierCurrentParcelLabelFromModule(
+    FRONTIER_PARCEL_LABELS,
+    isPlayerInsideFrontierParcel
+  );
 }
 
 function getSelectedFrontierParcelLabel() {
   const currentLabel = getCurrentFrontierParcelLabel();
   if (currentLabel) frontierActiveParcelLabel = currentLabel;
-  return frontierActiveParcelLabel || "P6";
+  return getFrontierSelectedParcelLabelFromModule(currentLabel, frontierActiveParcelLabel, "P6");
 }
 
 function getFrontierBuildState(parcelLabel = getSelectedFrontierParcelLabel()) {
-  const key = String(parcelLabel || "P6").toLowerCase();
-  if (!frontierBuildState[key]) {
-    frontierBuildState[key] = createDefaultFrontierParcelBuildEntry(parcelLabel || "P6");
-  }
-  return frontierBuildState[key];
+  return getFrontierBuildStateEntryFromModule(
+    frontierBuildState,
+    parcelLabel,
+    createDefaultFrontierParcelBuildEntry
+  );
 }
 
 function getFrontierConstructionRoot(parcelLabel) {
@@ -7427,15 +7165,11 @@ function getFrontierParcelBoothInteractables(parcelLabel) {
 
 function getFrontierParcelSafeStandingPoint(parcelLabel) {
   const parcel = frontierParcelDefs.find((entry) => entry.label === parcelLabel);
-  if (!parcel) {
-    return { x: player.position.x, z: player.position.z, rotationY: player.rotation.y };
-  }
-  const facesCenterLaneFromLeft = parcel.x < FRONTIER_MAP_X;
-  return {
-    x: parcel.x + (facesCenterLaneFromLeft ? parcel.width * 0.28 : -parcel.width * 0.28),
-    z: parcel.z,
-    rotationY: facesCenterLaneFromLeft ? Math.PI * 0.5 : -Math.PI * 0.5,
-  };
+  return getFrontierParcelSafeStandingPointFromModule(parcel, FRONTIER_MAP_X, {
+    x: player.position.x,
+    z: player.position.z,
+    rotationY: player.rotation.y,
+  });
 }
 
 function clearFrontierConstructionColliders(parcelLabel) {
@@ -7467,18 +7201,17 @@ function rebuildAllFrontierConstructionVisuals() {
 }
 
 function normalizeFrontierBuildState(rawState) {
-  const source = rawState && typeof rawState === "object" ? rawState : {};
-  const normalized = {};
-  for (const label of FRONTIER_PARCEL_LABELS) {
-    const key = label.toLowerCase();
-    const legacyRaw = label === "P6" ? source.p6 : null;
-    normalized[key] = normalizeFrontierParcelBuildEntry(label, source[key] ?? legacyRaw);
-  }
-  return normalized;
+  return normalizeFrontierBuildStateFromModule(rawState, {
+    parcelLabels: FRONTIER_PARCEL_LABELS,
+    normalizeInventorySlotEntry,
+    getInventoryEntryDisplayName,
+    itemDefs: ITEM_DEFS,
+    clampPlayerCredits,
+  });
 }
 
 function getFrontierNextStageConfig(stage = getFrontierBuildState().stage) {
-  return FRONTIER_BUILD_STAGE_CONFIG.find((entry) => entry.from === stage) ?? null;
+  return getFrontierNextStageConfigFromModule(stage, FRONTIER_BUILD_STAGE_CONFIG);
 }
 
 function buildFrontierBuildingSign(text) {
@@ -8396,7 +8129,7 @@ function enterMansionOneRoom(roomKey = getOwnedMansionRoomKey()) {
     targetRoomRoot.position.z + 4.2
   );
   player.rotation.y = Math.PI;
-  latestMoveDir.set(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
+  latestMoveDir.copy(getFacingDirectionFromYaw(player.rotation.y));
   snapCameraToPlayer();
   showUI(`Mansion ONE ${mansionOneActiveRoomKey}호 입장`, 1000);
   return true;
@@ -8413,7 +8146,7 @@ function exitMansionOneRoom() {
     mansionOneExteriorReturn.z
   );
   player.rotation.y = mansionOneExteriorReturn.rotationY;
-  latestMoveDir.set(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
+  latestMoveDir.copy(getFacingDirectionFromYaw(player.rotation.y));
   snapCameraToPlayer();
   destroyMansionRoomInstance(activeRoomKey);
   showUI("Mansion ONE 외부로 나왔습니다.", 1000);
@@ -8442,7 +8175,7 @@ function openMansionSleepDialog() {
     bedInteractable.obj.position.z
   );
   player.rotation.y = Math.PI * -0.5;
-  latestMoveDir.set(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
+  latestMoveDir.copy(getFacingDirectionFromYaw(player.rotation.y));
   mansionSleepPoseActive = true;
   snapCameraToPlayer();
   setMansionSleepOpen(true);
@@ -8457,7 +8190,7 @@ function closeMansionSleepDialog() {
     mansionSleepWakePoint.z
   );
   player.rotation.y = mansionSleepWakePoint.rotationY;
-  latestMoveDir.set(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
+  latestMoveDir.copy(getFacingDirectionFromYaw(player.rotation.y));
   snapCameraToPlayer();
 }
 
@@ -8657,98 +8390,32 @@ function renderFrontierBuildWindow() {
   const buildState = getFrontierBuildState(parcelLabel);
   const isCompleted = buildState.stage >= 100;
   const hasAuthority = hasFrontierParcelAuthority(parcelLabel);
-  const canManageShop = canManageFrontierShopSlot(parcelLabel);
-  const canUseShop = canUseFrontierShopSlot(parcelLabel);
-  const assignedWallet = getFrontierShopAssignedWallet(parcelLabel);
   const nextStage = getFrontierNextStageConfig(buildState.stage);
   const woodOwned = getItemCount("woodPlank");
   const stoneOwned = getItemCount("masonryStone");
-
-  frontierBuildTitle.textContent = `${parcelLabel} 건축 진행`;
-  frontierBuildHeaderNote.textContent = isCompleted ? "개척지 건축 완료" : "개척지 건축 예정지";
-  frontierBuildStageCard.innerHTML = "";
-  frontierBuildRequirementCard.innerHTML = "";
-  frontierBuildOwnedCard.innerHTML = "";
-
-  const stageTitle = document.createElement("div");
-  stageTitle.textContent = `현재 진척도 ${buildState.stage}%`;
-  stageTitle.style.fontSize = "24px";
-  stageTitle.style.fontWeight = "900";
-  stageTitle.style.color = "#222";
-  frontierBuildStageCard.appendChild(stageTitle);
-
-  const stageDesc = document.createElement("div");
-  stageDesc.style.marginTop = "10px";
-  stageDesc.style.fontSize = "13px";
-  stageDesc.style.lineHeight = "1.65";
-  stageDesc.style.color = "#555";
-  stageDesc.textContent =
-    isCompleted
-      ? "건축이 완료되었습니다. 이 필지의 상점 슬롯 1개와 전시 슬롯 2개의 운영 상태를 여기서 확인할 수 있습니다."
-      : nextStage
-        ? `${nextStage.label} 단계로 올리려면 목재 ${nextStage.wood}개와 석재 ${nextStage.stone}개가 필요합니다.`
-        : "건축 대기 중";
-  frontierBuildStageCard.appendChild(stageDesc);
-
-  if (isCompleted) {
-    frontierBuildRequirementCard.innerHTML = `
-      <div style="font-size:13px;font-weight:800;color:#222;">건축 상태</div>
-      <div style="margin-top:10px;font-size:14px;line-height:1.8;color:#444;">
-        <div>현재 상태: <strong>건축 완료</strong></div>
-        <div>건물 운영은 내부 부스 앞에서 <strong>E</strong>키로 진행할 수 있습니다.</div>
-        <div style="margin-top:6px;opacity:0.72;">상점은 판매 관리/보기, 전시는 관리/보기로 분리됩니다.</div>
-      </div>
-    `;
-
-    frontierBuildOwnedCard.innerHTML = `
-      <div style="font-size:13px;font-weight:800;color:#222;">운영 슬롯 요약</div>
-      <div style="margin-top:10px;font-size:14px;line-height:1.8;color:#444;">
-        <div>상점 슬롯 1: <strong>${buildState.operations.shop.statusText}</strong></div>
-        <div>전시 슬롯 A: <strong>${buildState.operations.displayA.statusText}</strong></div>
-        <div>전시 슬롯 B: <strong>${buildState.operations.displayB.statusText}</strong></div>
-      </div>
-    `;
-    frontierBuildShopManagerCard.style.display = "none";
-  } else {
-    frontierBuildRequirementCard.innerHTML = `
-      <div style="font-size:13px;font-weight:800;color:#222;">다음 단계 필요 재료</div>
-      <div style="margin-top:10px;font-size:14px;line-height:1.8;color:#444;">
-        <div>목재: <strong>${nextStage ? nextStage.wood : 0}</strong></div>
-        <div>석재: <strong>${nextStage ? nextStage.stone : 0}</strong></div>
-      </div>
-    `;
-
-    frontierBuildOwnedCard.innerHTML = `
-      <div style="font-size:13px;font-weight:800;color:#222;">현재 보유 재료</div>
-      <div style="margin-top:10px;font-size:14px;line-height:1.8;color:#444;">
-        <div>목재: <strong>${woodOwned}</strong></div>
-        <div>석재: <strong>${stoneOwned}</strong></div>
-      </div>
-    `;
-    frontierBuildShopManagerCard.style.display = "none";
-  }
-
-  const canAdvance = Boolean(
-    nextStage &&
-    woodOwned >= nextStage.wood &&
-    stoneOwned >= nextStage.stone
-  );
-  frontierBuildActionBtn.disabled = isCompleted ? true : !nextStage || !canAdvance;
-  frontierBuildActionBtn.textContent = isCompleted ? "건축 완료" : nextStage ? "건축 진행" : "완공";
-  frontierBuildActionBtn.style.opacity = frontierBuildActionBtn.disabled ? "0.58" : "1";
-  frontierBuildActionBtn.style.cursor = frontierBuildActionBtn.disabled ? "default" : "pointer";
-
-  frontierBuildNotice.textContent =
-    isCompleted
-      ? "건축은 완료되었습니다. 상점/전시 운영은 각 부스 앞에서 E키로 관리하거나 볼 수 있습니다."
-      : canAdvance
-        ? "재료가 충분합니다. 건축 진행을 누르면 다음 단계로 즉시 상승합니다."
-        : "다음 단계를 올리려면 필요한 목재와 석재를 먼저 준비해야 합니다.";
-
-  frontierBuildSignCard.style.display = isCompleted ? "block" : "none";
-  frontierBuildSignInput.value = buildState.signText;
-  frontierBuildSignInput.disabled = !isCompleted || !hasAuthority;
-  frontierBuildSignSaveBtn.disabled = !isCompleted || !hasAuthority;
+  renderFrontierBuildWindowUi({
+    parcelLabel,
+    buildState,
+    isCompleted,
+    hasAuthority,
+    nextStage,
+    woodOwned,
+    stoneOwned,
+    getShopStatusText: () => buildState.operations.shop.statusText,
+    getDisplayStatusText: (slotKey) => buildState.operations[slotKey].statusText,
+  }, {
+    title: frontierBuildTitle,
+    headerNote: frontierBuildHeaderNote,
+    stageCard: frontierBuildStageCard,
+    requirementCard: frontierBuildRequirementCard,
+    ownedCard: frontierBuildOwnedCard,
+    shopManagerCard: frontierBuildShopManagerCard,
+    actionBtn: frontierBuildActionBtn,
+    notice: frontierBuildNotice,
+    signCard: frontierBuildSignCard,
+    signInput: frontierBuildSignInput,
+    signSaveBtn: frontierBuildSignSaveBtn,
+  });
 }
 
 function setFrontierBuildOpen(v) {
@@ -10343,658 +10010,60 @@ function renderFrontierBoothDialog() {
   const { parcelLabel, slotKey, boothTitle, mode } = frontierBoothContext;
   const buildState = getFrontierBuildState(parcelLabel);
   const slotState = slotKey === "shop" ? buildState.operations.shop : buildState.operations[slotKey];
-  const isDisplayManageMode = slotKey !== "shop" && mode === "manage";
-  frontierBoothWin.style.width = isDisplayManageMode
-    ? "min(1040px, calc(100vw - 48px))"
-    : frontierBoothWin.dataset.defaultWidth;
-  frontierBoothTitle.textContent = `${parcelLabel} ${boothTitle} ${mode === "manage" ? "관리" : "보기"}`;
-  frontierBoothActionArea.innerHTML = "";
-
-  if (slotKey === "shop") {
-    const assignedWallet = getFrontierShopAssignedWallet(parcelLabel);
-    const listingSummary = getFrontierShopListingSummary(slotState);
-    const sellerWallet = getFrontierShopSellerWallet(parcelLabel);
-    const isOperator = canManageFrontierShopSlot(parcelLabel);
-    const isSeller = isFrontierShopSeller(parcelLabel);
-    const isAssignedUser = canUseFrontierShopSlot(parcelLabel);
-    const makeManageBtn = (label) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.textContent = label;
-      btn.style.padding = "10px 12px";
-      btn.style.borderRadius = "10px";
-      btn.style.border = "1px solid rgba(0,0,0,0.14)";
-      btn.style.background = "rgba(255,255,255,0.94)";
-      btn.style.fontSize = "13px";
-      btn.style.fontWeight = "800";
-      btn.style.cursor = "pointer";
-      return btn;
-    };
-    const appendShopBuyerView = (targetWrap) => {
-      const viewWrap = document.createElement("div");
-      viewWrap.style.display = "grid";
-      viewWrap.style.gap = "12px";
-
-      const slotsGrid = document.createElement("div");
-      slotsGrid.style.display = "grid";
-      slotsGrid.style.gridTemplateColumns = "repeat(3, minmax(0, 1fr))";
-      slotsGrid.style.gap = "10px";
-
-      for (let i = 0; i < 3; i += 1) {
-        const slotCard = document.createElement("div");
-        slotCard.style.border = "1px solid rgba(0,0,0,0.12)";
-        slotCard.style.borderRadius = "12px";
-        slotCard.style.background = "rgba(255,255,255,0.94)";
-        slotCard.style.padding = "12px";
-        slotCard.style.minHeight = "116px";
-        slotCard.style.display = "grid";
-        slotCard.style.alignContent = "start";
-        slotCard.style.gap = "6px";
-
-        const slotTitle = document.createElement("div");
-        slotTitle.style.fontSize = "13px";
-        slotTitle.style.fontWeight = "900";
-        slotTitle.style.color = "#222";
-        slotTitle.textContent = `판매 슬롯 ${i + 1}`;
-        slotCard.appendChild(slotTitle);
-
-        const isActiveSlot = i === 0 && slotState.itemId && slotState.quantity > 0;
-        if (!isActiveSlot) {
-          const empty = document.createElement("div");
-          empty.style.fontSize = "12px";
-          empty.style.lineHeight = "1.5";
-          empty.style.color = "#6b6053";
-          empty.textContent = i === 0 ? "등록된 상품이 없습니다." : "준비 중";
-          slotCard.appendChild(empty);
-        } else {
-          const itemName = ITEM_DEFS[slotState.itemId]?.name ?? slotState.itemId;
-          const lines = [
-            `상품: ${itemName}`,
-            `재고: ${slotState.quantity}개`,
-            `가격: ${slotState.price}원`,
-          ];
-          for (const line of lines) {
-            const info = document.createElement("div");
-            info.style.fontSize = "12px";
-            info.style.color = "#4a4138";
-            info.textContent = line;
-            slotCard.appendChild(info);
-          }
-        }
-        slotsGrid.appendChild(slotCard);
-      }
-
-      viewWrap.appendChild(slotsGrid);
-
-      if (slotState.itemId && slotState.quantity > 0) {
-        const purchaseCard = document.createElement("div");
-        purchaseCard.style.border = "1px solid rgba(0,0,0,0.12)";
-        purchaseCard.style.borderRadius = "12px";
-        purchaseCard.style.background = "rgba(255,255,255,0.94)";
-        purchaseCard.style.padding = "14px";
-        purchaseCard.style.display = "grid";
-        purchaseCard.style.gridTemplateColumns = "1fr auto";
-        purchaseCard.style.gap = "10px 14px";
-
-        const balance = document.createElement("div");
-        balance.style.gridColumn = "1 / -1";
-        balance.style.fontSize = "13px";
-        balance.style.fontWeight = "800";
-        balance.style.color = "#2f3f2b";
-        balance.textContent = `보유 개척 코인: ${formatPlayerCreditsLabel()}`;
-        purchaseCard.appendChild(balance);
-
-        const qtyLabel = document.createElement("label");
-        qtyLabel.textContent = "구매 수량";
-        qtyLabel.style.fontSize = "12px";
-        qtyLabel.style.fontWeight = "700";
-        qtyLabel.style.color = "#555";
-        purchaseCard.appendChild(qtyLabel);
-
-        const totalHint = document.createElement("div");
-        totalHint.style.fontSize = "12px";
-        totalHint.style.fontWeight = "700";
-        totalHint.style.color = "#7a4a12";
-        totalHint.style.alignSelf = "end";
-        purchaseCard.appendChild(totalHint);
-
-        const qtyInput = document.createElement("input");
-        qtyInput.type = "number";
-        qtyInput.min = "1";
-        qtyInput.max = String(Math.max(1, slotState.quantity));
-        qtyInput.step = "1";
-        qtyInput.value = "1";
-        qtyInput.style.border = "1px solid rgba(0,0,0,0.16)";
-        qtyInput.style.borderRadius = "10px";
-        qtyInput.style.padding = "10px 12px";
-        qtyInput.style.fontSize = "14px";
-        qtyInput.style.background = "rgba(255,255,255,0.96)";
-        purchaseCard.appendChild(qtyInput);
-
-        const purchaseBtn = document.createElement("button");
-        purchaseBtn.type = "button";
-        purchaseBtn.textContent = "구매";
-        purchaseBtn.style.minWidth = "94px";
-        purchaseBtn.style.border = "1px solid rgba(150,90,20,0.35)";
-        purchaseBtn.style.borderRadius = "12px";
-        purchaseBtn.style.padding = "10px 12px";
-        purchaseBtn.style.fontSize = "14px";
-        purchaseBtn.style.fontWeight = "900";
-        purchaseBtn.style.cursor = "pointer";
-        purchaseBtn.style.background = "rgba(255,255,255,0.94)";
-        purchaseBtn.style.color = "#7a4a12";
-        purchaseCard.appendChild(purchaseBtn);
-
-        const note = document.createElement("div");
-        note.style.gridColumn = "1 / -1";
-        note.style.fontSize = "12px";
-        note.style.color = "#6b6053";
-        purchaseCard.appendChild(note);
-
-        const purchaseState = document.createElement("div");
-        purchaseState.style.gridColumn = "1 / -1";
-        purchaseState.style.padding = "10px 12px";
-        purchaseState.style.borderRadius = "10px";
-        purchaseState.style.fontSize = "12px";
-        purchaseState.style.fontWeight = "700";
-        purchaseCard.appendChild(purchaseState);
-
-        const normalizePurchaseQtyInput = () => {
-          const qty = Math.max(1, Math.min(slotState.quantity, Math.floor(Number(qtyInput.value) || 1)));
-          qtyInput.value = String(qty);
-          updatePurchaseFeedback();
-        };
-        const updatePurchaseFeedback = () => {
-          const rawValue = qtyInput.value.trim();
-          let qty = 1;
-          if (!rawValue) {
-            totalHint.textContent = `총 ${clampPlayerCredits(slotState.price)}원`;
-          } else {
-            qty = Math.max(1, Math.min(slotState.quantity, Math.floor(Number(rawValue) || 1)));
-            totalHint.textContent = `총 ${clampPlayerCredits(slotState.price * qty)}원`;
-          }
-          const feedback = getFrontierShopPurchaseFeedback(parcelLabel, qty);
-          purchaseBtn.disabled = !feedback.ok;
-          purchaseBtn.style.opacity = feedback.ok ? "1" : "0.58";
-          purchaseState.textContent = feedback.reason;
-          purchaseState.style.background = feedback.ok ? "rgba(54,179,126,0.12)" : "rgba(220,38,38,0.1)";
-          purchaseState.style.color = feedback.ok ? "#1f6a4a" : "#9f1239";
-          note.textContent = feedback.ok
-            ? `재고 ${slotState.quantity}개 / 구매 후 총 ${feedback.totalPrice}원 차감`
-            : `재고 ${slotState.quantity}개 / 현재 구매 불가`;
-        };
-        qtyInput.addEventListener("focus", () => qtyInput.select());
-        qtyInput.addEventListener("click", () => qtyInput.select());
-        qtyInput.addEventListener("input", updatePurchaseFeedback);
-        qtyInput.addEventListener("blur", normalizePurchaseQtyInput);
-        updatePurchaseFeedback();
-
-        purchaseBtn.addEventListener("click", () => {
-          normalizePurchaseQtyInput();
-          const result = tryPurchaseFrontierShopListing(parcelLabel, qtyInput.value);
-          if (!result.ok) {
-            showUI(result.reason, 1100);
-            lastMessageUntil = performance.now() + 1100;
-            return;
-          }
-          showUI(`${result.itemName} 구매 완료 (-${result.totalPrice}원)`, 1100);
-          lastMessageUntil = performance.now() + 1100;
-          renderFrontierBoothDialog();
-        });
-
-        viewWrap.appendChild(purchaseCard);
-      }
-
-      targetWrap.appendChild(viewWrap);
-    };
-    frontierBoothStatus.innerHTML = `
-      <div>현재 판매 상태 카드</div>
-      <div style="margin-top:6px;">현재 사용자: <strong>${assignedWallet ? shortenWalletAddress(assignedWallet) : "미지정"}</strong></div>
-      <div style="margin-top:6px;">현재 판매자: <strong>${sellerWallet ? shortenWalletAddress(sellerWallet) : "없음"}</strong></div>
-      <div style="margin-top:6px;">판매 상품: <strong>${listingSummary.itemName}</strong></div>
-      <div style="margin-top:6px;">재고 <strong>${listingSummary.quantity}개</strong> / 개당 <strong>${listingSummary.price}원</strong></div>
-      <div style="margin-top:6px;">정산 대기금 <strong>${listingSummary.pendingCredits}원</strong> / 누적 판매금 <strong>${listingSummary.lifetimeCredits}원</strong></div>
-      <div style="margin-top:6px;opacity:0.78;">${mode === "manage" ? "운영자는 사용자 지정, 판매자는 상품/정산을 관리합니다." : "방문자는 등록된 판매 물품 상태를 여기서 확인할 수 있습니다."}</div>
-    `;
-    if (mode === "manage") {
-      if (isOperator) {
-        const controls = document.createElement("div");
-        controls.style.display = "grid";
-        controls.style.gap = "10px";
-
-        const current = document.createElement("div");
-        current.style.fontSize = "13px";
-        current.style.fontWeight = "700";
-        current.style.color = "#444";
-        current.textContent = assignedWallet ? `현재 지정: ${shortenWalletAddress(assignedWallet)}` : "현재 지정: 미지정";
-        controls.appendChild(current);
-
-        const input = document.createElement("input");
-        input.type = "text";
-        input.placeholder = "상점 사용자 지갑 주소 입력";
-        input.value = assignedWallet;
-        input.style.border = "1px solid rgba(0,0,0,0.14)";
-        input.style.borderRadius = "10px";
-        input.style.padding = "10px 12px";
-        input.style.fontSize = "14px";
-        controls.appendChild(input);
-
-        const row = document.createElement("div");
-        row.style.display = "flex";
-        row.style.flexWrap = "wrap";
-        row.style.gap = "8px";
-        controls.appendChild(row);
-
-        const selfBtn = makeManageBtn("내가 직접 사용");
-        selfBtn.addEventListener("click", () => {
-          const currentWallet = getCurrentFrontierWalletAddress();
-          if (!currentWallet) {
-            showUI("로그인 지갑 주소를 확인할 수 없습니다.", 1000);
-            lastMessageUntil = performance.now() + 1000;
-            return;
-          }
-          assignFrontierShopSlotUser(parcelLabel, currentWallet);
-          renderFrontierBoothDialog();
-        });
-        row.appendChild(selfBtn);
-
-        const assignBtn = makeManageBtn("지갑 주소로 지정");
-        assignBtn.addEventListener("click", () => {
-          assignFrontierShopSlotUser(parcelLabel, input.value);
-          renderFrontierBoothDialog();
-        });
-        row.appendChild(assignBtn);
-
-        const clearBtn = makeManageBtn("사용자 해제");
-        clearBtn.addEventListener("click", () => {
-          clearFrontierShopSlotUser(parcelLabel);
-          renderFrontierBoothDialog();
-        });
-        row.appendChild(clearBtn);
-
-        frontierBoothActionArea.appendChild(controls);
-      }
-
-      if (canRegisterFrontierShopListing(parcelLabel)) {
-        const salesBtn = document.createElement("button");
-        salesBtn.type = "button";
-        salesBtn.textContent = listingSummary.active ? "상품 교체 등록" : "판매 등록";
-        salesBtn.style.padding = "12px 14px";
-        salesBtn.style.borderRadius = "12px";
-        salesBtn.style.border = "1px solid rgba(150,90,20,0.35)";
-        salesBtn.style.background = "rgba(255,255,255,0.94)";
-        salesBtn.style.fontSize = "15px";
-        salesBtn.style.fontWeight = "900";
-        salesBtn.style.color = "#7a4a12";
-        salesBtn.style.cursor = "pointer";
-        salesBtn.addEventListener("click", () => {
-          openFrontierShopRegisterDialog(parcelLabel);
-        });
-        frontierBoothActionArea.appendChild(salesBtn);
-      }
-
-      if (canManageFrontierShopSellerTools(parcelLabel)) {
-        const sellerTools = document.createElement("div");
-        sellerTools.style.display = "grid";
-        sellerTools.style.gap = "10px";
-
-        if (canEditFrontierShopListing(parcelLabel)) {
-          const priceRow = document.createElement("div");
-          priceRow.style.display = "grid";
-          priceRow.style.gridTemplateColumns = "1fr auto";
-          priceRow.style.gap = "8px";
-          sellerTools.appendChild(priceRow);
-
-          const priceInput = document.createElement("input");
-          priceInput.type = "number";
-          priceInput.min = "0";
-          priceInput.step = "1";
-          priceInput.value = String(listingSummary.price);
-          priceInput.style.border = "1px solid rgba(0,0,0,0.14)";
-          priceInput.style.borderRadius = "10px";
-          priceInput.style.padding = "10px 12px";
-          priceInput.style.fontSize = "14px";
-          priceRow.appendChild(priceInput);
-
-          const priceBtn = makeManageBtn("가격 수정");
-          priceBtn.addEventListener("click", () => {
-            updateFrontierShopListingPrice(parcelLabel, priceInput.value);
-          });
-          priceRow.appendChild(priceBtn);
-        }
-
-        const sellerRow = document.createElement("div");
-        sellerRow.style.display = "flex";
-        sellerRow.style.flexWrap = "wrap";
-        sellerRow.style.gap = "8px";
-        sellerTools.appendChild(sellerRow);
-
-        if (canEditFrontierShopListing(parcelLabel)) {
-          const revokeBtn = makeManageBtn("판매 회수");
-          revokeBtn.addEventListener("click", () => {
-            clearFrontierShopListing(parcelLabel);
-          });
-          sellerRow.appendChild(revokeBtn);
-        }
-
-        const collectBtn = makeManageBtn("정산금 회수");
-        collectBtn.disabled = !canCollectFrontierShopSettlement(parcelLabel);
-        collectBtn.style.opacity = collectBtn.disabled ? "0.58" : "1";
-        collectBtn.addEventListener("click", () => {
-          collectFrontierShopSettlement(parcelLabel);
-        });
-        sellerRow.appendChild(collectBtn);
-
-        frontierBoothActionArea.appendChild(sellerTools);
-      } else if (isOperator && listingSummary.active) {
-        const operatorBuyerNote = document.createElement("div");
-        operatorBuyerNote.style.fontSize = "13px";
-        operatorBuyerNote.style.color = "#6b6053";
-        operatorBuyerNote.textContent = "현재 판매자는 다른 사용자입니다. 아래에서 상품 상태를 확인하고 방문자처럼 구매할 수 있습니다.";
-        frontierBoothActionArea.appendChild(operatorBuyerNote);
-        appendShopBuyerView(frontierBoothActionArea);
-      } else if (!isOperator) {
-        const note = document.createElement("div");
-        note.style.fontSize = "13px";
-        note.style.color = "#6b6053";
-        note.textContent = assignedWallet
-          ? (listingSummary.active
-            ? "현재 등록된 상품은 실제 판매자만 가격 수정, 회수, 정산금 회수를 할 수 있습니다."
-            : (isAssignedUser
-              ? "상품을 등록하면 판매 관리 항목이 여기에 표시됩니다."
-              : "현재 로그인한 지갑은 상점 사용자로 지정되어 있지 않아 판매 등록을 할 수 없습니다."))
-          : "상점 사용자를 먼저 지정해야 판매 등록을 할 수 있습니다.";
-        frontierBoothActionArea.appendChild(note);
-      }
-    } else {
-      appendShopBuyerView(frontierBoothActionArea);
-    }
-    return;
-  }
-
-  const displaySummary = getFrontierDisplaySummary(slotState);
-  const displayAssignedWallet = getFrontierDisplayAssignedWallet(parcelLabel, slotKey);
-  frontierBoothStatus.innerHTML = `
-    <div>현재 상태: <strong>${displaySummary.statusText}</strong></div>
-    <div style="margin-top:6px;">전시 슬롯: <strong>${boothTitle}</strong></div>
-    <div style="margin-top:6px;">현재 사용자: <strong>${displayAssignedWallet ? shortenWalletAddress(displayAssignedWallet) : "미지정"}</strong></div>
-    <div style="margin-top:6px;">전시 대상: <strong>${displaySummary.itemName}</strong></div>
-    <div style="margin-top:6px;opacity:0.78;">${mode === "manage" ? "운영자는 사용자 지정, 전시 사용자는 전시 관리가 가능합니다." : "방문자는 현재 전시 중인 대상을 여기서 확인할 수 있습니다."}</div>
-  `;
-
-  if (mode === "manage") {
-    const manageWrap = document.createElement("div");
-    manageWrap.style.display = "grid";
-    manageWrap.style.gap = "16px";
-    const isDisplayOperator = canManageFrontierDisplaySlot(parcelLabel, slotKey);
-    const isDisplayUser = canUseFrontierDisplaySlot(parcelLabel, slotKey);
-
-    const shouldSplitDisplayLayout = slotKey !== "shop";
-    let leftColumn = manageWrap;
-    let rightColumn = manageWrap;
-
-    if (shouldSplitDisplayLayout) {
-      manageWrap.style.gridTemplateColumns = "minmax(300px, 340px) minmax(0, 1fr)";
-      manageWrap.style.alignItems = "start";
-      manageWrap.style.maxHeight = "calc(100vh - 224px)";
-      manageWrap.style.overflow = "hidden";
-
-      leftColumn = document.createElement("div");
-      leftColumn.style.display = "grid";
-      leftColumn.style.gap = "12px";
-      leftColumn.style.alignContent = "start";
-      manageWrap.appendChild(leftColumn);
-
-      rightColumn = document.createElement("div");
-      rightColumn.style.display = "grid";
-      rightColumn.style.gap = "10px";
-      rightColumn.style.alignContent = "start";
-      rightColumn.style.minHeight = "0";
-      manageWrap.appendChild(rightColumn);
-    }
-
-    const statusCard = document.createElement("div");
-    statusCard.style.border = "1px solid rgba(0,0,0,0.12)";
-    statusCard.style.borderRadius = "12px";
-    statusCard.style.background = "rgba(255,255,255,0.94)";
-    statusCard.style.padding = "14px";
-    statusCard.appendChild(frontierBoothStatus);
-    leftColumn.appendChild(statusCard);
-
-    if (isDisplayOperator) {
-      const assignWrap = document.createElement("div");
-      assignWrap.style.display = "grid";
-      assignWrap.style.gap = "10px";
-      assignWrap.style.border = "1px solid rgba(0,0,0,0.12)";
-      assignWrap.style.borderRadius = "12px";
-      assignWrap.style.background = "rgba(255,255,255,0.94)";
-      assignWrap.style.padding = "14px";
-      leftColumn.appendChild(assignWrap);
-
-      const current = document.createElement("div");
-      current.style.fontSize = "13px";
-      current.style.fontWeight = "700";
-      current.style.color = "#444";
-      current.textContent = displayAssignedWallet ? `현재 지정: ${shortenWalletAddress(displayAssignedWallet)}` : "현재 지정: 미지정";
-      assignWrap.appendChild(current);
-
-      const input = document.createElement("input");
-      input.type = "text";
-      input.placeholder = `${boothTitle} 사용자 지갑 주소 입력`;
-      input.value = displayAssignedWallet;
-      input.style.border = "1px solid rgba(0,0,0,0.14)";
-      input.style.borderRadius = "10px";
-      input.style.padding = "10px 12px";
-      input.style.fontSize = "14px";
-      assignWrap.appendChild(input);
-
-      const assignRow = document.createElement("div");
-      assignRow.style.display = "flex";
-      assignRow.style.flexWrap = "wrap";
-      assignRow.style.gap = "8px";
-      assignWrap.appendChild(assignRow);
-
-      const makeDisplayBtn = (label) => {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.textContent = label;
-        btn.style.padding = "10px 12px";
-        btn.style.borderRadius = "10px";
-        btn.style.border = "1px solid rgba(0,0,0,0.14)";
-        btn.style.background = "rgba(255,255,255,0.94)";
-        btn.style.fontSize = "13px";
-        btn.style.fontWeight = "800";
-        btn.style.cursor = "pointer";
-        return btn;
-      };
-
-      const selfBtn = makeDisplayBtn("내가 직접 사용");
-      selfBtn.addEventListener("click", () => {
-        const currentWallet = getCurrentFrontierWalletAddress();
-        if (!currentWallet) {
-          showUI("로그인 지갑 주소를 확인할 수 없습니다.", 1000);
-          lastMessageUntil = performance.now() + 1000;
-          return;
-        }
-        assignFrontierDisplaySlotUser(parcelLabel, slotKey, currentWallet);
-        renderFrontierBoothDialog();
-      });
-      assignRow.appendChild(selfBtn);
-
-      const assignBtn = makeDisplayBtn("지갑 주소로 지정");
-      assignBtn.addEventListener("click", () => {
-        assignFrontierDisplaySlotUser(parcelLabel, slotKey, input.value);
-        renderFrontierBoothDialog();
-      });
-      assignRow.appendChild(assignBtn);
-
-      const clearUserBtn = makeDisplayBtn("사용자 해제");
-      clearUserBtn.addEventListener("click", () => {
-        clearFrontierDisplaySlotUser(parcelLabel, slotKey);
-        renderFrontierBoothDialog();
-      });
-      assignRow.appendChild(clearUserBtn);
-    }
-
-    const controls = document.createElement("div");
-    controls.style.display = "flex";
-    controls.style.flexWrap = "wrap";
-    controls.style.gap = "8px";
-    if (isDisplayUser) {
-      leftColumn.appendChild(controls);
-    }
-
-    if (isDisplayUser) {
-      const clearBtn = document.createElement("button");
-      clearBtn.type = "button";
-      clearBtn.textContent = "전시 해제";
-      clearBtn.style.padding = "10px 12px";
-      clearBtn.style.borderRadius = "10px";
-      clearBtn.style.border = "1px solid rgba(0,0,0,0.14)";
-      clearBtn.style.background = "rgba(255,255,255,0.94)";
-      clearBtn.style.fontSize = "13px";
-      clearBtn.style.fontWeight = "800";
-      clearBtn.style.cursor = "pointer";
-      clearBtn.style.opacity = displaySummary.active ? "1" : "0.58";
-      clearBtn.disabled = !displaySummary.active;
-      clearBtn.addEventListener("click", () => {
-        clearFrontierDisplayEntry(parcelLabel, slotKey);
-      });
-      controls.appendChild(clearBtn);
-
-      const availableEntries = getDisplayableFrontierEntries();
-      const listTitle = document.createElement("div");
-      listTitle.textContent = "전시할 물품";
-      listTitle.style.fontSize = "14px";
-      listTitle.style.fontWeight = "900";
-      listTitle.style.color = "#222";
-      rightColumn.appendChild(listTitle);
-
-      if (!availableEntries.length) {
-        const empty = document.createElement("div");
-        empty.textContent = "전시 가능한 아이템이 인벤토리에 없습니다.";
-        empty.style.padding = "14px 12px";
-        empty.style.borderRadius = "12px";
-        empty.style.background = "rgba(0,0,0,0.05)";
-        empty.style.fontSize = "13px";
-        empty.style.color = "#666";
-        rightColumn.appendChild(empty);
-      } else {
-        const scrollWrap = document.createElement("div");
-        scrollWrap.style.minHeight = "0";
-        scrollWrap.style.maxHeight = "calc(100vh - 300px)";
-        scrollWrap.style.overflowY = "auto";
-        scrollWrap.style.paddingRight = "6px";
-        rightColumn.appendChild(scrollWrap);
-
-        const grid = document.createElement("div");
-        grid.style.display = "grid";
-        grid.style.gridTemplateColumns = "repeat(auto-fill, minmax(118px, 1fr))";
-        grid.style.gap = "10px";
-        scrollWrap.appendChild(grid);
-
-        for (const { entry } of availableEntries) {
-          const card = document.createElement("button");
-          card.type = "button";
-          card.style.border = "1px solid rgba(0,0,0,0.14)";
-          card.style.borderRadius = "12px";
-          card.style.background = "rgba(255,255,255,0.96)";
-          card.style.padding = "10px";
-          card.style.cursor = "pointer";
-          card.style.display = "flex";
-          card.style.flexDirection = "column";
-          card.style.alignItems = "center";
-          card.style.gap = "6px";
-
-          const visual = createInventoryEntryVisualElement(entry, { size: 42 });
-          card.appendChild(visual);
-
-          const name = document.createElement("div");
-          name.textContent = getInventoryEntryDisplayName(entry);
-          name.style.fontSize = "12px";
-          name.style.fontWeight = "800";
-          name.style.color = "#333";
-          name.style.textAlign = "center";
-          card.appendChild(name);
-
-          const meta = document.createElement("div");
-          meta.textContent = isNftInventoryEntry(entry) ? "NFT 전시" : `보유 ${getSlotItemCount(entry)}개`;
-          meta.style.fontSize = "11px";
-          meta.style.color = "#7a6550";
-          card.appendChild(meta);
-
-          card.addEventListener("click", () => {
-            assignFrontierDisplayEntry(parcelLabel, slotKey, entry);
-          });
-          grid.appendChild(card);
-        }
-      }
-    } else if (!isDisplayOperator) {
-      const note = document.createElement("div");
-      note.textContent = displayAssignedWallet
-        ? "현재 로그인한 지갑은 이 전시 슬롯 사용자로 지정되어 있지 않습니다."
-        : "전시 사용자를 먼저 지정해야 전시 관리가 가능합니다.";
-      note.style.padding = "14px 12px";
-      note.style.borderRadius = "12px";
-      note.style.background = "rgba(0,0,0,0.05)";
-      note.style.fontSize = "13px";
-      note.style.color = "#666";
-      leftColumn.appendChild(note);
-    }
-
-    frontierBoothActionArea.appendChild(manageWrap);
-  } else {
-    const viewCard = document.createElement("div");
-    viewCard.style.border = "1px solid rgba(0,0,0,0.12)";
-    viewCard.style.borderRadius = "12px";
-    viewCard.style.background = "rgba(255,255,255,0.94)";
-    viewCard.style.padding = "14px";
-    viewCard.style.display = "grid";
-    viewCard.style.gap = "10px";
-
-    if (!displaySummary.active) {
-      const empty = document.createElement("div");
-      empty.textContent = "현재 전시 중인 대상이 없습니다.";
-      empty.style.fontSize = "13px";
-      empty.style.color = "#6b6053";
-      viewCard.appendChild(empty);
-    } else {
-      const visualWrap = document.createElement("div");
-      visualWrap.style.display = "flex";
-      visualWrap.style.alignItems = "center";
-      visualWrap.style.gap = "12px";
-      viewCard.appendChild(visualWrap);
-
-      const visual = createInventoryEntryVisualElement(displaySummary.entry, { size: 54 });
-      visualWrap.appendChild(visual);
-
-      const textWrap = document.createElement("div");
-      textWrap.style.display = "grid";
-      textWrap.style.gap = "4px";
-      visualWrap.appendChild(textWrap);
-
-      const title = document.createElement("div");
-      title.textContent = displaySummary.itemName;
-      title.style.fontSize = "14px";
-      title.style.fontWeight = "900";
-      title.style.color = "#222";
-      textWrap.appendChild(title);
-
-      const state = document.createElement("div");
-      state.textContent = displaySummary.statusText;
-      state.style.fontSize = "12px";
-      state.style.color = "#6b6053";
-      textWrap.appendChild(state);
-
-      const slotName = document.createElement("div");
-      slotName.textContent = `슬롯: ${boothTitle}`;
-      slotName.style.fontSize = "12px";
-      slotName.style.color = "#6b6053";
-      textWrap.appendChild(slotName);
-    }
-
-    frontierBoothActionArea.appendChild(viewCard);
-  }
+  renderFrontierBoothDialogUi({
+    parcelLabel,
+    slotKey,
+    boothTitle,
+    mode,
+    buildState,
+    slotState,
+    getShopAssignedWallet: getFrontierShopAssignedWallet,
+    getShopListingSummary: getFrontierShopListingSummary,
+    getShopSellerWallet: getFrontierShopSellerWallet,
+    canManageShopSlot: canManageFrontierShopSlot,
+    isShopSeller: isFrontierShopSeller,
+    canUseShopSlot: canUseFrontierShopSlot,
+    shortenWalletAddress,
+    itemDefs: ITEM_DEFS,
+    formatPlayerCreditsLabel,
+    clampPlayerCredits,
+    getShopPurchaseFeedback: getFrontierShopPurchaseFeedback,
+    tryPurchaseShopListing: tryPurchaseFrontierShopListing,
+    showUi: showUI,
+    setLastMessageUntil: (duration) => {
+      lastMessageUntil = performance.now() + duration;
+    },
+    openShopRegisterDialog: openFrontierShopRegisterDialog,
+    canRegisterShopListing: canRegisterFrontierShopListing,
+    canManageShopSellerTools: canManageFrontierShopSellerTools,
+    canEditShopListing: canEditFrontierShopListing,
+    updateShopListingPrice: updateFrontierShopListingPrice,
+    clearShopListing: clearFrontierShopListing,
+    canCollectShopSettlement: canCollectFrontierShopSettlement,
+    collectShopSettlement: collectFrontierShopSettlement,
+    assignShopSlotUser: assignFrontierShopSlotUser,
+    clearShopSlotUser: clearFrontierShopSlotUser,
+    getDisplaySummary: getFrontierDisplaySummary,
+    getDisplayAssignedWallet: getFrontierDisplayAssignedWallet,
+    canManageDisplaySlot: canManageFrontierDisplaySlot,
+    canUseDisplaySlot: canUseFrontierDisplaySlot,
+    getCurrentWallet: getCurrentFrontierWalletAddress,
+    assignDisplaySlotUser: assignFrontierDisplaySlotUser,
+    clearDisplaySlotUser: clearFrontierDisplaySlotUser,
+    clearDisplayEntry: clearFrontierDisplayEntry,
+    getDisplayableEntries: getDisplayableFrontierEntries,
+    createInventoryEntryVisualElement,
+    getInventoryEntryDisplayName,
+    isNftInventoryEntry,
+    getSlotItemCount,
+    assignDisplayEntry: assignFrontierDisplayEntry,
+    rerender: renderFrontierBoothDialog,
+  }, {
+    win: frontierBoothWin,
+    title: frontierBoothTitle,
+    status: frontierBoothStatus,
+    actionArea: frontierBoothActionArea,
+  });
 }
 
 function openFrontierBoothDialog(parcelLabel, slotKey, boothTitle, mode) {
@@ -12197,7 +11266,7 @@ function applyDevPreset() {
 
   player.position.set(startSpawn.x, player.position.y, startSpawn.z);
   player.rotation.y = startSpawn.rotationY;
-  latestMoveDir.set(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
+  latestMoveDir.copy(getFacingDirectionFromYaw(player.rotation.y));
   snapCameraToPlayer();
   updateInventoryUI();
 }
@@ -12237,7 +11306,7 @@ function applyFreshPlayerStartState() {
   updateSceneFogForCurrentMap();
   player.position.set(START_X, player.position.y, START_Z);
   player.rotation.y = 0;
-  latestMoveDir.set(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
+  latestMoveDir.copy(getFacingDirectionFromYaw(player.rotation.y));
   snapCameraToPlayer();
   setPersonalStorageOpen(false);
   updateInventoryUI();
@@ -12371,7 +11440,7 @@ function applySerializedPlayerSave(rawSave, { preserveSharedWorld = false } = {}
     Number.isFinite(source.position?.z) ? source.position.z : START_Z
   );
   player.rotation.y = Number.isFinite(source.rotationY) ? source.rotationY : 0;
-  latestMoveDir.set(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
+  latestMoveDir.copy(getFacingDirectionFromYaw(player.rotation.y));
   snapCameraToPlayer();
   updateInventoryUI();
   rebuildAllFrontierConstructionVisuals();
@@ -14270,19 +13339,17 @@ window.addEventListener("keyup", (e) => {
 
 // Collision helpers
 function getPlayerBox() {
-  const size = new THREE.Vector3(0.8, 2.0, 0.8);
-  const center = player.position.clone().add(new THREE.Vector3(0, 1.0, 0));
-  const box = new THREE.Box3();
-  box.setFromCenterAndSize(center, size);
-  return box;
+  return getPlayerBoxFromPosition(player.position);
 }
 
 function ensurePlayerNotInsideGeneratedColliders(colliderObjects = [], fallback = null, message = "구조물 생성으로 위치를 조정했습니다.") {
   if (!Array.isArray(colliderObjects) || !colliderObjects.length || !fallback) return false;
   const playerBox = getPlayerBox();
-  const overlaps = colliderObjects.some((obj) => {
-    const colliderIndex = getTrackedColliderIndex(obj, obj?.userData?.colliderIndex);
-    return typeof colliderIndex === "number" && colliderBoxes[colliderIndex] && playerBox.intersectsBox(colliderBoxes[colliderIndex]);
+  const overlaps = hasPlayerOverlapWithColliderObjects({
+    playerBox,
+    colliderObjects,
+    getTrackedColliderIndex,
+    colliderBoxes,
   });
   if (!overlaps) return false;
 
@@ -14293,7 +13360,7 @@ function ensurePlayerNotInsideGeneratedColliders(colliderObjects = [], fallback 
   );
   if (Number.isFinite(fallback.rotationY)) {
     player.rotation.y = fallback.rotationY;
-    latestMoveDir.set(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
+    latestMoveDir.copy(getFacingDirectionFromYaw(player.rotation.y));
   }
   snapCameraToPlayer();
   if (message) {
@@ -14304,10 +13371,7 @@ function ensurePlayerNotInsideGeneratedColliders(colliderObjects = [], fallback 
 }
 
 function intersectsAnyCollider(playerBox) {
-  for (let i = 0; i < colliderBoxes.length; i++) {
-    if (playerBox.intersectsBox(colliderBoxes[i])) return true;
-  }
-  return false;
+  return intersectsAnyColliderBox(playerBox, colliderBoxes);
 }
 
 function isBlockedByStartRing(x, z) {
@@ -14375,79 +13439,22 @@ function isStartRingTransitionBlocked(x0, z0, x1, z1) {
 
 function getCurrentMapBounds() {
   const entries = walkableMapSurfaces.get(currentMapId) ?? [];
-  if (entries.length === 0) {
-    return {
-      minX: -GROUND_SIZE * 0.5 + 1.4,
-      maxX: GROUND_SIZE * 0.5 - 1.4,
-      minZ: -GROUND_SIZE * 0.5 + 1.4,
-      maxZ: GROUND_SIZE * 0.5 - 1.4,
-    };
-  }
-
-  const union = new THREE.Box3();
-  let seeded = false;
-
-  for (const entry of entries) {
-    const mesh = entry.mesh;
-    if (!mesh?.parent) continue;
-    mesh.updateWorldMatrix(true, true);
-    const box = new THREE.Box3().setFromObject(mesh);
-    box.min.x -= entry.padding;
-    box.max.x += entry.padding;
-    box.min.z -= entry.padding;
-    box.max.z += entry.padding;
-    if (!seeded) {
-      union.copy(box);
-      seeded = true;
-    } else {
-      union.union(box);
-    }
-  }
-
-  if (!seeded) {
-    return {
-      minX: -GROUND_SIZE * 0.5 + 1.4,
-      maxX: GROUND_SIZE * 0.5 - 1.4,
-      minZ: -GROUND_SIZE * 0.5 + 1.4,
-      maxZ: GROUND_SIZE * 0.5 - 1.4,
-    };
-  }
-
-  return {
-    minX: union.min.x,
-    maxX: union.max.x,
-    minZ: union.min.z,
-    maxZ: union.max.z,
-  };
+  return getCurrentMapBoundsFromSurfaces(entries, {
+    minX: -GROUND_SIZE * 0.5 + 1.4,
+    maxX: GROUND_SIZE * 0.5 - 1.4,
+    minZ: -GROUND_SIZE * 0.5 + 1.4,
+    maxZ: GROUND_SIZE * 0.5 - 1.4,
+  });
 }
 
 function isInsideCurrentMapBounds(x, z) {
   const entries = walkableMapSurfaces.get(currentMapId) ?? [];
-  if (entries.length === 0) {
-    const bounds = getCurrentMapBounds();
-    return (
-      x >= bounds.minX &&
-      x <= bounds.maxX &&
-      z >= bounds.minZ &&
-      z <= bounds.maxZ
-    );
-  }
-
-  for (const entry of entries) {
-    const mesh = entry.mesh;
-    if (!mesh?.parent) continue;
-    mesh.updateWorldMatrix(true, true);
-    const box = new THREE.Box3().setFromObject(mesh);
-    box.min.x -= entry.padding;
-    box.max.x += entry.padding;
-    box.min.z -= entry.padding;
-    box.max.z += entry.padding;
-    if (x >= box.min.x && x <= box.max.x && z >= box.min.z && z <= box.max.z) {
-      return true;
-    }
-  }
-
-  return false;
+  return isInsideMapBoundsFromSurfaces(
+    x,
+    z,
+    entries,
+    getCurrentMapBounds()
+  );
 }
 
 
@@ -14492,42 +13499,25 @@ function updateMovement(dt) {
   if (mansionSleepOpen || mansionSleepPoseActive) {
     for (const key of Object.keys(keys)) keys[key] = false;
     updatePlayerGroundY(dt);
-    leftArmPivot.rotation.x = THREE.MathUtils.lerp(leftArmPivot.rotation.x, -1.18, 0.22);
-    rightArmPivot.rotation.x = THREE.MathUtils.lerp(rightArmPivot.rotation.x, -1.18, 0.22);
-    leftLegPivot.rotation.x = THREE.MathUtils.lerp(leftLegPivot.rotation.x, 0.12, 0.18);
-    rightLegPivot.rotation.x = THREE.MathUtils.lerp(rightLegPivot.rotation.x, 0.08, 0.18);
-    torso.rotation.x = THREE.MathUtils.lerp(torso.rotation.x, 0, 0.16);
-    torso.rotation.y = THREE.MathUtils.lerp(torso.rotation.y, 0, 0.16);
-    torso.rotation.z = THREE.MathUtils.lerp(torso.rotation.z, -Math.PI * 0.48, 0.16);
-    torso.position.y = THREE.MathUtils.lerp(torso.position.y, 1.02, 0.18);
-    torso.position.z = THREE.MathUtils.lerp(torso.position.z, 0.08, 0.18);
-    head.position.y = THREE.MathUtils.lerp(head.position.y, 1.78, 0.18);
-    head.position.z = THREE.MathUtils.lerp(head.position.z, 0.15, 0.18);
-    head.rotation.x = THREE.MathUtils.lerp(head.rotation.x, 0.04, 0.18);
-    leftArmPivot.rotation.z = THREE.MathUtils.lerp(leftArmPivot.rotation.z, -0.18, 0.18);
-    rightArmPivot.rotation.z = THREE.MathUtils.lerp(rightArmPivot.rotation.z, 0.18, 0.18);
+    applySleepPose({
+      torso,
+      head,
+      leftArmPivot,
+      rightArmPivot,
+      leftLegPivot,
+      rightLegPivot,
+    });
     return;
   }
 
-  const forward = new THREE.Vector3();
-  camera.getWorldDirection(forward);
-  forward.y = 0;
-  forward.normalize();
+  const { forward, right } = getMovementBasisVectors(camera);
 
-  const right = new THREE.Vector3()
-    .crossVectors(forward, new THREE.Vector3(0, 1, 0))
-    .normalize()
-
-  const move = new THREE.Vector3();
-  if (keys.w) move.add(forward);
-  if (keys.s) move.sub(forward);
-  if (keys.d) move.add(right);
-  if (keys.a) move.sub(right);
-  const isMoving = move.lengthSq() > 0;
+  const move = buildMoveVector(keys, forward, right);
+  const isMoving = isMoveVectorActive(move);
 
   if (isMoving) {
-    move.normalize();
-    latestMoveDir.copy(move);
+    normalizeMoveVector(move);
+    updateLatestMoveDirection(latestMoveDir, move);
     const isDevMovementMode = isDevSession();
     const hasShoesEquipped = getEquippedItemForSlot("shoes") === "basicShoes";
     const airMoveScalar =
@@ -14535,168 +13525,84 @@ function updateMovement(dt) {
         ? 0.12
         : 1;
     // ===== 이동속도 튜닝값 =====
-    // 아래 숫자만 바꾸면 실제 이동 체감을 바로 확인할 수 있습니다.
-    // - 개발자모드(개발자1/개발자2): devMoveSpeed
-    // - 메타마스크/게스트 기본 걷기: normalWalkSpeed
-    // - 메타마스크/게스트 + 기본신발 착용 후 Shift 달리기: normalRunSpeed
-    const devMoveSpeed = 20.0;
-    const normalWalkSpeed = 4.0;
-    const normalRunSpeed = 5.5;
-    const baseSpeed = isDevMovementMode ? 7.0 : 3.0;
-    const runSpeed = isDevMovementMode ? 7.0 : 4.5;
-    const isSprinting = keys.shift && (isDevMovementMode || hasShoesEquipped);
-    const speed = (
-      isSprinting
-        ? (isDevMovementMode ? devMoveSpeed : normalRunSpeed)
-        : (isDevMovementMode ? devMoveSpeed : normalWalkSpeed)
-    ) * airMoveScalar;
+    // 값 수정은 src/core/movement.js 에서 진행하면 됩니다.
+    const { speed } = getMovementSpeed({
+      isDevMovementMode,
+      hasShoesEquipped,
+      shiftPressed: keys.shift,
+      airMoveScalar,
+    });
      
     const prevPos = player.position.clone();
-    const delta = move.clone().multiplyScalar(speed * dt);
+    const delta = getMovementDelta(move, speed, dt);
 
     // 1) X축 이동만 먼저 시도
-    player.position.x = prevPos.x + delta.x;
-    if (
-      !isInsideCurrentMapBounds(player.position.x, player.position.z) ||
-      intersectsAnyCollider(getPlayerBox()) ||
-      isStartRingTransitionBlocked(prevPos.x, prevPos.z, player.position.x, player.position.z) ||
-      isCrossingBlockedStartRing(prevPos.x, prevPos.z, player.position.x, player.position.z)
-    ) {
-  player.position.x = prevPos.x; // X 이동 취소
-    }
+    const { afterX } = applyMovementCollisionStep({
+      axis: "x",
+      position: player.position,
+      prevPos,
+      delta,
+      isInsideBounds: isInsideCurrentMapBounds,
+      intersectsAnyCollider: () => intersectsAnyCollider(getPlayerBox()),
+      isStartRingTransitionBlocked,
+      isCrossingBlockedStartRing,
+    });
 
     // 2) Z축 이동만 시도
-    const afterX = player.position.x;
-    player.position.z = prevPos.z + delta.z;
-    if (
-      !isInsideCurrentMapBounds(player.position.x, player.position.z) ||
-      intersectsAnyCollider(getPlayerBox()) ||
-      isStartRingTransitionBlocked(afterX, prevPos.z, player.position.x, player.position.z) ||
-      isCrossingBlockedStartRing(afterX, prevPos.z, player.position.x, player.position.z)
-    ) {
-  player.position.z = prevPos.z; // Z 이동 취소
-    }
+    applyMovementCollisionStep({
+      axis: "z",
+      position: player.position,
+      prevPos: { ...prevPos, x: afterX },
+      delta,
+      isInsideBounds: isInsideCurrentMapBounds,
+      intersectsAnyCollider: () => intersectsAnyCollider(getPlayerBox()),
+      isStartRingTransitionBlocked,
+      isCrossingBlockedStartRing,
+    });
 
     // 혹시 남은 미세 침투를 정리해 벽 관통을 완전히 차단
     resolveStartRingPenetration(player.position, prevPos);
 
-    const targetYaw = Math.atan2(move.x, move.z);
+    const targetYaw = getMovementYaw(move);
     player.rotation.y = targetYaw;
   }
 
   // 간단 보행 모션
   const walkT = performance.now() * 0.015;
-  const torsoBaseY = 1.35;
-  const torsoBaseZ = 0;
-  const headBaseY = 2.1;
-  const headBaseZ = 0;
-  const walkAnimSpeed = isMoving && keys.shift && (isDevSession() || getEquippedItemForSlot("shoes") === "basicShoes") ? 1.28 : 1.0;
-  if (isMoving) {
-    const walkPhase = walkT * (typeof walkAnimSpeed === "number" ? walkAnimSpeed : 1.0);
-    const armSwing = Math.sin(walkPhase) * ((typeof walkAnimSpeed === "number" && walkAnimSpeed > 1) ? 0.76 : 0.65);
-    const legSwing = Math.sin(walkPhase) * ((typeof walkAnimSpeed === "number" && walkAnimSpeed > 1) ? 0.88 : 0.75);
-    leftArmPivot.rotation.x = armSwing;
-    rightArmPivot.rotation.x = -armSwing;
-    leftLegPivot.rotation.x = -legSwing;
-    rightLegPivot.rotation.x = legSwing;
-    torso.rotation.x = Math.sin(walkPhase * 2) * 0.04;
-  } else {
-    leftArmPivot.rotation.x *= 0.8;
-    rightArmPivot.rotation.x *= 0.8;
-    leftLegPivot.rotation.x *= 0.8;
-    rightLegPivot.rotation.x *= 0.8;
-    torso.rotation.x *= 0.8;
-  }
-
-  torso.rotation.y = THREE.MathUtils.lerp(torso.rotation.y, 0, 0.18);
-  torso.rotation.z = THREE.MathUtils.lerp(torso.rotation.z, 0, 0.18);
-  torso.position.y = THREE.MathUtils.lerp(torso.position.y, torsoBaseY, 0.18);
-  torso.position.z = THREE.MathUtils.lerp(torso.position.z, torsoBaseZ, 0.18);
-  head.position.y = THREE.MathUtils.lerp(head.position.y, headBaseY, 0.18);
-  head.position.z = THREE.MathUtils.lerp(head.position.z, headBaseZ, 0.18);
-  head.rotation.x = THREE.MathUtils.lerp(head.rotation.x, 0, 0.18);
-  leftArmPivot.rotation.z = THREE.MathUtils.lerp(leftArmPivot.rotation.z, 0, 0.22);
-  rightArmPivot.rotation.z = THREE.MathUtils.lerp(rightArmPivot.rotation.z, 0, 0.22);
+  const walkAnimSpeed = getWalkAnimationSpeed({
+    isMoving,
+    shiftPressed: keys.shift,
+    isDevSession: isDevSession(),
+    hasShoesEquipped: getEquippedItemForSlot("shoes") === "basicShoes",
+  });
+  const basePose = applyWalkIdlePose(
+    {
+      torso,
+      head,
+      leftArmPivot,
+      rightArmPivot,
+      leftLegPivot,
+      rightLegPivot,
+    },
+    { isMoving, walkT, walkAnimSpeed }
+  );
 
   if (miningSwingTime > 0) {
     miningSwingTime = Math.max(0, miningSwingTime - dt);
     const phase = 1 - (miningSwingTime / currentMiningSwingDuration);
 
-    let mainSwing = 0;
-    let supportSwing = 0;
-    let torsoBend = 0;
-    let torsoTwist = 0;
-    let torsoTilt = 0;
-    let torsoDrop = 0;
-    let torsoDrive = 0;
-    let headDrop = 0;
-    let headNod = 0;
-    let leadLeg = 0;
-    let trailLeg = 0;
-    let mainArmRoll = 0;
-    let supportArmRoll = 0;
-
-    if (phase < 0.32) {
-      const t = phase / 0.32;
-      mainSwing = THREE.MathUtils.lerp(0.25, -1.7, t);
-      supportSwing = THREE.MathUtils.lerp(-0.08, -0.65, t);
-      torsoBend = THREE.MathUtils.lerp(0.02, -0.22, t);
-      torsoTwist = THREE.MathUtils.lerp(-0.04, -0.2, t);
-      torsoTilt = THREE.MathUtils.lerp(0.02, 0.12, t);
-      torsoDrop = THREE.MathUtils.lerp(-0.02, -0.09, t);
-      torsoDrive = THREE.MathUtils.lerp(-0.01, -0.06, t);
-      headDrop = THREE.MathUtils.lerp(-0.01, -0.05, t);
-      headNod = THREE.MathUtils.lerp(-0.02, -0.08, t);
-      leadLeg = THREE.MathUtils.lerp(0.02, 0.14, t);
-      trailLeg = THREE.MathUtils.lerp(-0.01, 0.08, t);
-      mainArmRoll = THREE.MathUtils.lerp(0.02, 0.16, t);
-      supportArmRoll = THREE.MathUtils.lerp(-0.02, -0.08, t);
-    } else if (phase < 0.74) {
-      const t = (phase - 0.32) / 0.42;
-      mainSwing = THREE.MathUtils.lerp(-1.7, 1.85, t);
-      supportSwing = THREE.MathUtils.lerp(-0.65, 0.48, t);
-      torsoBend = THREE.MathUtils.lerp(-0.22, 0.34, t);
-      torsoTwist = THREE.MathUtils.lerp(-0.2, 0.18, t);
-      torsoTilt = THREE.MathUtils.lerp(0.12, -0.08, t);
-      torsoDrop = THREE.MathUtils.lerp(-0.09, -0.17, t);
-      torsoDrive = THREE.MathUtils.lerp(-0.06, 0.12, t);
-      headDrop = THREE.MathUtils.lerp(-0.05, -0.12, t);
-      headNod = THREE.MathUtils.lerp(-0.08, 0.2, t);
-      leadLeg = THREE.MathUtils.lerp(0.14, -0.08, t);
-      trailLeg = THREE.MathUtils.lerp(0.08, 0.26, t);
-      mainArmRoll = THREE.MathUtils.lerp(0.16, -0.12, t);
-      supportArmRoll = THREE.MathUtils.lerp(-0.08, -0.18, t);
-    } else {
-      const t = (phase - 0.74) / 0.26;
-      mainSwing = THREE.MathUtils.lerp(1.85, 0.82, t);
-      supportSwing = THREE.MathUtils.lerp(0.48, 0.08, t);
-      torsoBend = THREE.MathUtils.lerp(0.34, 0.08, t);
-      torsoTwist = THREE.MathUtils.lerp(0.18, 0.04, t);
-      torsoTilt = THREE.MathUtils.lerp(-0.08, -0.02, t);
-      torsoDrop = THREE.MathUtils.lerp(-0.17, -0.04, t);
-      torsoDrive = THREE.MathUtils.lerp(0.12, 0.03, t);
-      headDrop = THREE.MathUtils.lerp(-0.12, -0.03, t);
-      headNod = THREE.MathUtils.lerp(0.2, 0.05, t);
-      leadLeg = THREE.MathUtils.lerp(-0.08, 0.03, t);
-      trailLeg = THREE.MathUtils.lerp(0.26, 0.06, t);
-      mainArmRoll = THREE.MathUtils.lerp(-0.12, -0.02, t);
-      supportArmRoll = THREE.MathUtils.lerp(-0.18, -0.04, t);
-    }
-
-    leftArmPivot.rotation.x = mainSwing;
-    rightArmPivot.rotation.x = supportSwing;
-    leftArmPivot.rotation.z = mainArmRoll;
-    rightArmPivot.rotation.z = supportArmRoll;
-    torso.rotation.x = torsoBend;
-    torso.rotation.y = torsoTwist;
-    torso.rotation.z = torsoTilt;
-    torso.position.y = torsoBaseY + torsoDrop;
-    torso.position.z = torsoBaseZ + torsoDrive;
-    head.position.y = headBaseY + headDrop;
-    head.position.z = headBaseZ + torsoDrive * 0.5;
-    head.rotation.x = headNod;
-    leftLegPivot.rotation.x = leadLeg;
-    rightLegPivot.rotation.x = trailLeg;
+    applyMiningSwingPose(
+      {
+        torso,
+        head,
+        leftArmPivot,
+        rightArmPivot,
+        leftLegPivot,
+        rightLegPivot,
+      },
+      phase,
+      basePose
+    );
   }
 
   if (pickupReachTime > 0 && miningSwingTime <= 0) {
@@ -14704,11 +13610,16 @@ function updateMovement(dt) {
     const phase = 1 - (pickupReachTime / PICKUP_REACH_DURATION);
     const reach = Math.sin(phase * Math.PI);
 
-    leftArmPivot.rotation.x = THREE.MathUtils.lerp(0.12, -0.95, reach);
-    rightArmPivot.rotation.x = THREE.MathUtils.lerp(-0.08, -0.35, reach * 0.85);
-    torso.rotation.x = THREE.MathUtils.lerp(0, 0.18, reach);
-    leftLegPivot.rotation.x *= 0.7;
-    rightLegPivot.rotation.x *= 0.7;
+    applyPickupReachPose(
+      {
+        torso,
+        leftArmPivot,
+        rightArmPivot,
+        leftLegPivot,
+        rightLegPivot,
+      },
+      reach
+    );
   }
 
   // ===== Starting Zone clamp (hard boundary) =====
@@ -14896,11 +13807,7 @@ function animate() {
   updateRockHitReactions(rawDt);
   updateRockFadeIns(dt);
   if (invOpen) renderEquipmentPreview();
-  if (latestMoveDir.lengthSq() > 1e-6) {
-    updateCompassFromDirection(latestMoveDir);
-  } else {
-    updateCompassFromDirection(new THREE.Vector3(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y)));
-  }
+  updateCompassFromDirection(getCompassDirection(latestMoveDir, player.rotation.y));
 
   // ===== 상호작용 대상 탐색 =====
     activeInteractable = null;

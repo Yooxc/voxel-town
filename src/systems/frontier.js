@@ -1,0 +1,489 @@
+export const FRONTIER_BUILDING_HEIGHT = 4.4;
+export const FRONTIER_BUILDING_SIGN_MAX_CHARS = 8;
+
+export const FRONTIER_BUILD_STAGE_CONFIG = [
+  { from: 0, to: 25, wood: 10, stone: 6, label: "기둥 설치" },
+  { from: 25, to: 50, wood: 14, stone: 9, label: "하단 벽면 시공" },
+  { from: 50, to: 75, wood: 18, stone: 12, label: "상단 골조 보강" },
+  { from: 75, to: 100, wood: 24, stone: 16, label: "천장 완성" },
+];
+
+export function getFrontierParcelAuthorityItemId(parcelLabel, authorityItemIds) {
+  return authorityItemIds?.[parcelLabel] ?? null;
+}
+
+export function createDefaultFrontierShopState() {
+  return {
+    statusText: "비어 있음",
+    itemId: "",
+    quantity: 0,
+    price: 0,
+    userWallet: "",
+    sellerWallet: "",
+    pendingCredits: 0,
+    lifetimeCredits: 0,
+  };
+}
+
+export function createDefaultFrontierDisplayState() {
+  return {
+    statusText: "비어 있음",
+    entry: null,
+    userWallet: "",
+  };
+}
+
+export function createDefaultFrontierParcelOperationsState() {
+  return {
+    shop: createDefaultFrontierShopState(),
+    displayA: createDefaultFrontierDisplayState(),
+    displayB: createDefaultFrontierDisplayState(),
+  };
+}
+
+export function createDefaultFrontierParcelBuildEntry(label) {
+  return {
+    stage: 0,
+    signText: label,
+    operations: createDefaultFrontierParcelOperationsState(),
+  };
+}
+
+export function createDefaultFrontierBuildState(parcelLabels) {
+  return Object.fromEntries(
+    parcelLabels.map((label) => [
+      label.toLowerCase(),
+      createDefaultFrontierParcelBuildEntry(label),
+    ])
+  );
+}
+
+export function normalizeFrontierWalletAddress(rawAddress) {
+  return String(rawAddress || "").trim().toLowerCase();
+}
+
+export function formatFrontierShopStatusText(itemId, quantity, price, itemDefs) {
+  if (!itemId || quantity <= 0) return "비어 있음";
+  const itemName = itemDefs[itemId]?.name ?? itemId;
+  return `${itemName} x${quantity} / ${price}원`;
+}
+
+export function formatFrontierDisplayStatusText(entry, getInventoryEntryDisplayName) {
+  if (!entry) return "비어 있음";
+  return `${getInventoryEntryDisplayName(entry)} 전시 중`;
+}
+
+export function getFrontierDisplaySummary(
+  displayState,
+  { normalizeInventorySlotEntry, getInventoryEntryDisplayName }
+) {
+  const entry = normalizeInventorySlotEntry(displayState?.entry);
+  if (!entry) {
+    return {
+      active: false,
+      itemName: "없음",
+      statusText: "비어 있음",
+      entry: null,
+    };
+  }
+  return {
+    active: true,
+    itemName: getInventoryEntryDisplayName(entry),
+    statusText: formatFrontierDisplayStatusText(entry, getInventoryEntryDisplayName),
+    entry,
+  };
+}
+
+export function getFrontierShopListingSummary(
+  shopState,
+  { itemDefs, clampPlayerCredits }
+) {
+  if (!shopState?.itemId || shopState.quantity <= 0) {
+    return {
+      active: false,
+      itemName: "없음",
+      quantity: 0,
+      price: 0,
+      totalPrice: 0,
+      statusText: "비어 있음",
+      pendingCredits: clampPlayerCredits(shopState?.pendingCredits || 0),
+      lifetimeCredits: clampPlayerCredits(shopState?.lifetimeCredits || 0),
+    };
+  }
+  return {
+    active: true,
+    itemName: itemDefs[shopState.itemId]?.name ?? shopState.itemId,
+    quantity: shopState.quantity,
+    price: shopState.price,
+    totalPrice: clampPlayerCredits(shopState.quantity * shopState.price),
+    statusText: formatFrontierShopStatusText(
+      shopState.itemId,
+      shopState.quantity,
+      shopState.price,
+      itemDefs
+    ),
+    pendingCredits: clampPlayerCredits(shopState.pendingCredits || 0),
+    lifetimeCredits: clampPlayerCredits(shopState.lifetimeCredits || 0),
+  };
+}
+
+export function normalizeFrontierShopOperationEntry(
+  rawEntry,
+  { itemDefs, clampPlayerCredits }
+) {
+  const source = rawEntry && typeof rawEntry === "object" ? rawEntry : {};
+  const itemId =
+    typeof source.itemId === "string" && itemDefs[source.itemId]
+      ? source.itemId
+      : "";
+  const quantity = itemId ? Math.max(0, Math.min(999, Math.floor(Number(source.quantity) || 0))) : 0;
+  const price = itemId ? Math.max(0, Math.min(999999, Math.floor(Number(source.price) || 0))) : 0;
+  const userWallet = normalizeFrontierWalletAddress(source.userWallet);
+  const sellerWallet = normalizeFrontierWalletAddress(source.sellerWallet || userWallet);
+  const pendingCredits = clampPlayerCredits(source.pendingCredits || 0);
+  const lifetimeCredits = clampPlayerCredits(source.lifetimeCredits || 0);
+  return {
+    statusText: formatFrontierShopStatusText(itemId, quantity, price, itemDefs),
+    itemId,
+    quantity,
+    price,
+    userWallet,
+    sellerWallet,
+    pendingCredits,
+    lifetimeCredits,
+  };
+}
+
+export function normalizeFrontierDisplayOperationEntry(
+  rawEntry,
+  { normalizeInventorySlotEntry, getInventoryEntryDisplayName }
+) {
+  const source = rawEntry && typeof rawEntry === "object" ? rawEntry : {};
+  const entry = normalizeInventorySlotEntry(source.entry);
+  return {
+    statusText: formatFrontierDisplayStatusText(entry, getInventoryEntryDisplayName),
+    entry,
+    userWallet: normalizeFrontierWalletAddress(source.userWallet),
+  };
+}
+
+export function normalizeFrontierParcelOperationsState(
+  rawState,
+  deps
+) {
+  const source = rawState && typeof rawState === "object" ? rawState : {};
+  const defaults = createDefaultFrontierParcelOperationsState();
+  return {
+    shop: normalizeFrontierShopOperationEntry(source.shop ?? defaults.shop, deps),
+    displayA: normalizeFrontierDisplayOperationEntry(source.displayA ?? defaults.displayA, deps),
+    displayB: normalizeFrontierDisplayOperationEntry(source.displayB ?? defaults.displayB, deps),
+  };
+}
+
+export function normalizeFrontierParcelBuildEntry(
+  label,
+  rawEntry,
+  {
+    signMaxChars = FRONTIER_BUILDING_SIGN_MAX_CHARS,
+    normalizeInventorySlotEntry,
+    getInventoryEntryDisplayName,
+    itemDefs,
+    clampPlayerCredits,
+  }
+) {
+  const source = rawEntry && typeof rawEntry === "object" ? rawEntry : {};
+  const stage = Number(source.stage);
+  const normalizedStage = [0, 25, 50, 75, 100].includes(stage) ? stage : 0;
+  const signText = String(source.signText ?? label).trim().slice(0, signMaxChars) || label;
+  return {
+    stage: normalizedStage,
+    signText,
+    operations: normalizeFrontierParcelOperationsState(source.operations, {
+      normalizeInventorySlotEntry,
+      getInventoryEntryDisplayName,
+      itemDefs,
+      clampPlayerCredits,
+    }),
+  };
+}
+
+export function normalizeFrontierBuildState(
+  rawState,
+  { parcelLabels, ...deps }
+) {
+  const source = rawState && typeof rawState === "object" ? rawState : {};
+  const normalized = {};
+  for (const label of parcelLabels) {
+    const key = label.toLowerCase();
+    const legacyRaw = label === "P6" ? source.p6 : null;
+    normalized[key] = normalizeFrontierParcelBuildEntry(label, source[key] ?? legacyRaw, deps);
+  }
+  return normalized;
+}
+
+export function getFrontierNextStageConfig(stage, stageConfig = FRONTIER_BUILD_STAGE_CONFIG) {
+  return stageConfig.find((entry) => entry.from === stage) ?? null;
+}
+
+export function isFrontierShopSlotUser(assignedWallet, walletAddress) {
+  const currentWallet = normalizeFrontierWalletAddress(walletAddress);
+  if (!currentWallet) return false;
+  return normalizeFrontierWalletAddress(assignedWallet) === currentWallet;
+}
+
+export function isFrontierShopSeller(sellerWallet, walletAddress) {
+  const currentWallet = normalizeFrontierWalletAddress(walletAddress);
+  if (!currentWallet) return false;
+  return normalizeFrontierWalletAddress(sellerWallet) === currentWallet;
+}
+
+export function canManageFrontierShopSellerTools(shopState, walletAddress, clampPlayerCredits) {
+  return isFrontierShopSeller(shopState?.sellerWallet, walletAddress) && (
+    (shopState?.itemId && shopState?.quantity > 0) ||
+    clampPlayerCredits(shopState?.pendingCredits || 0) > 0
+  );
+}
+
+export function canRegisterFrontierShopListing(shopState, assignedWallet, walletAddress) {
+  if (!isFrontierShopSlotUser(assignedWallet, walletAddress)) return false;
+  if (!shopState?.itemId || shopState?.quantity <= 0) return true;
+  return isFrontierShopSeller(shopState?.sellerWallet, walletAddress);
+}
+
+export function canCollectFrontierShopSettlement(shopState, walletAddress, clampPlayerCredits) {
+  return isFrontierShopSeller(shopState?.sellerWallet, walletAddress) &&
+    clampPlayerCredits(shopState?.pendingCredits || 0) > 0;
+}
+
+export function isFrontierDisplaySlotUser(assignedWallet, walletAddress) {
+  const currentWallet = normalizeFrontierWalletAddress(walletAddress);
+  if (!currentWallet) return false;
+  return normalizeFrontierWalletAddress(assignedWallet) === currentWallet;
+}
+
+export function getFrontierCurrentParcelLabel(parcelLabels, isPlayerInsideFrontierParcel) {
+  for (const label of parcelLabels) {
+    if (isPlayerInsideFrontierParcel(label)) return label;
+  }
+  return "";
+}
+
+export function getFrontierSelectedParcelLabel(currentLabel, activeLabel, fallback = "P6") {
+  return currentLabel || activeLabel || fallback;
+}
+
+export function getFrontierBuildStateEntry(frontierBuildState, parcelLabel, createDefaultEntry) {
+  const key = String(parcelLabel || "P6").toLowerCase();
+  if (!frontierBuildState[key]) {
+    frontierBuildState[key] = createDefaultEntry(parcelLabel || "P6");
+  }
+  return frontierBuildState[key];
+}
+
+export function getFrontierShopOperation(frontierBuildState, parcelLabel, createDefaultEntry) {
+  return getFrontierBuildStateEntry(frontierBuildState, parcelLabel, createDefaultEntry).operations.shop;
+}
+
+export function getFrontierDisplayOperation(frontierBuildState, parcelLabel, slotKey, createDefaultEntry) {
+  return getFrontierBuildStateEntry(frontierBuildState, parcelLabel, createDefaultEntry).operations[slotKey];
+}
+
+export function getFrontierShopAssignedWallet(shopState) {
+  return normalizeFrontierWalletAddress(shopState?.userWallet);
+}
+
+export function getFrontierShopSellerWallet(shopState) {
+  return normalizeFrontierWalletAddress(shopState?.sellerWallet);
+}
+
+export function getFrontierDisplayAssignedWallet(displayState) {
+  return normalizeFrontierWalletAddress(displayState?.userWallet);
+}
+
+export function canManageFrontierShopSlot(hasFrontierParcelAuthority, parcelLabel) {
+  return hasFrontierParcelAuthority(parcelLabel);
+}
+
+export function canUseFrontierShopSlot(shopState, walletAddress) {
+  return isFrontierShopSlotUser(shopState?.userWallet, walletAddress);
+}
+
+export function canEditFrontierShopListing(shopState, walletAddress) {
+  if (!shopState?.itemId || shopState?.quantity <= 0) return false;
+  return isFrontierShopSeller(shopState?.sellerWallet, walletAddress);
+}
+
+export function canManageFrontierDisplaySlot(hasFrontierParcelAuthority, parcelLabel) {
+  return hasFrontierParcelAuthority(parcelLabel);
+}
+
+export function canUseFrontierDisplaySlot(displayState, walletAddress) {
+  return isFrontierDisplaySlotUser(displayState?.userWallet, walletAddress);
+}
+
+export function isFrontierDisplayableEntry(entry, isQuestCriticalItemBlockedFromDiscard) {
+  if (!entry) return { ok: false, reason: "전시할 아이템이 없습니다." };
+  if (isQuestCriticalItemBlockedFromDiscard(entry)) {
+    return { ok: false, reason: "퀘스트 아이템은 전시할 수 없습니다." };
+  }
+  return { ok: true };
+}
+
+export function getDisplayableFrontierEntries(inventorySlots, isQuestCriticalItemBlockedFromDiscard) {
+  return inventorySlots
+    .map((entry, index) => ({ entry, index }))
+    .filter(({ entry }) => entry)
+    .filter(({ entry }) => isFrontierDisplayableEntry(entry, isQuestCriticalItemBlockedFromDiscard).ok);
+}
+
+export function getFrontierShopPurchaseFeedback({
+  parcelLabel,
+  shopState,
+  quantity,
+  currentWallet,
+  canAffordPlayerCredits,
+  clampPlayerCredits,
+  validateInventorySpace,
+}) {
+  const purchaseQty = Math.max(1, Math.floor(Number(quantity) || 0));
+  const totalPrice = clampPlayerCredits((shopState?.price || 0) * purchaseQty);
+  let purchaseResult = { ok: true, reason: "" };
+  if (!parcelLabel) {
+    purchaseResult = { ok: false, reason: "상점 정보를 찾을 수 없습니다." };
+  } else if (!shopState?.itemId || shopState.quantity <= 0) {
+    purchaseResult = { ok: false, reason: "등록된 판매 물품이 없습니다." };
+  } else if (purchaseQty <= 0) {
+    purchaseResult = { ok: false, reason: "구매 수량을 확인해주세요." };
+  } else if (purchaseQty > shopState.quantity) {
+    purchaseResult = { ok: false, reason: "재고가 부족합니다." };
+  } else {
+    const sellerWallet = normalizeFrontierWalletAddress(shopState.sellerWallet || shopState.userWallet);
+    const normalizedCurrentWallet = normalizeFrontierWalletAddress(currentWallet);
+    if (sellerWallet && sellerWallet === normalizedCurrentWallet) {
+      purchaseResult = { ok: false, reason: "자신이 등록한 상품은 구매할 수 없습니다." };
+    } else if (!canAffordPlayerCredits(totalPrice)) {
+      purchaseResult = { ok: false, reason: "개척 코인이 부족합니다." };
+    } else if (!validateInventorySpace()) {
+      purchaseResult = { ok: false, reason: "인벤토리 공간이 부족합니다." };
+    }
+  }
+  return {
+    ok: purchaseResult.ok,
+    reason: purchaseResult.ok ? "바로 구매할 수 있습니다." : purchaseResult.reason,
+    totalPrice,
+    purchaseQty,
+  };
+}
+
+export function formatFrontierShopUserDisplay(assignedWallet, shortenWalletAddress) {
+  return assignedWallet ? shortenWalletAddress(assignedWallet) : "미지정";
+}
+
+export function canAssignFrontierDisplayEntryState(slotKey, canUseSlot, entryValidation) {
+  if (!["displayA", "displayB"].includes(slotKey)) {
+    return { ok: false, reason: "" };
+  }
+  if (!canUseSlot) {
+    return { ok: false, reason: "" };
+  }
+  if (!entryValidation?.ok) {
+    return { ok: false, reason: entryValidation?.reason || "전시할 수 없습니다." };
+  }
+  return { ok: true, reason: "" };
+}
+
+export function assignFrontierDisplayEntryState(
+  displayState,
+  entry,
+  { normalizeInventorySlotEntry, getInventoryEntryDisplayName }
+) {
+  displayState.entry = normalizeInventorySlotEntry(entry);
+  displayState.statusText = formatFrontierDisplayStatusText(
+    displayState.entry,
+    getInventoryEntryDisplayName
+  );
+  return displayState;
+}
+
+export function canClearFrontierDisplayEntryState(slotKey, canUseSlot, displayState) {
+  if (!["displayA", "displayB"].includes(slotKey)) {
+    return { ok: false, reason: "" };
+  }
+  if (!canUseSlot) {
+    return { ok: false, reason: "" };
+  }
+  if (!displayState?.entry) {
+    return { ok: false, reason: "현재 전시 중인 대상이 없습니다." };
+  }
+  return { ok: true, reason: "" };
+}
+
+export function clearFrontierDisplayEntryState(displayState) {
+  displayState.entry = null;
+  displayState.statusText = "비어 있음";
+  return displayState;
+}
+
+export function canAssignFrontierDisplaySlotUserState(slotKey, canManageSlot, displayState, walletAddress) {
+  if (!["displayA", "displayB"].includes(slotKey)) {
+    return { ok: false, reason: "", wallet: "" };
+  }
+  if (!canManageSlot) {
+    return { ok: false, reason: "", wallet: "" };
+  }
+  if (displayState?.entry) {
+    return { ok: false, reason: "전시 중인 대상이 있을 때는 사용자를 변경할 수 없습니다.", wallet: "" };
+  }
+  const normalizedWallet = normalizeFrontierWalletAddress(walletAddress);
+  if (!normalizedWallet) {
+    return { ok: false, reason: "지갑 주소를 입력해주세요.", wallet: "" };
+  }
+  return { ok: true, reason: "", wallet: normalizedWallet };
+}
+
+export function assignFrontierDisplaySlotUserState(displayState, normalizedWallet) {
+  displayState.userWallet = normalizedWallet;
+  return displayState;
+}
+
+export function canClearFrontierDisplaySlotUserState(slotKey, canManageSlot, displayState) {
+  if (!["displayA", "displayB"].includes(slotKey)) {
+    return { ok: false, reason: "" };
+  }
+  if (!canManageSlot) {
+    return { ok: false, reason: "" };
+  }
+  if (displayState?.entry) {
+    return { ok: false, reason: "전시 중인 대상이 있을 때는 사용자를 해제할 수 없습니다." };
+  }
+  return { ok: true, reason: "" };
+}
+
+export function clearFrontierDisplaySlotUserState(displayState) {
+  displayState.userWallet = "";
+  return displayState;
+}
+
+export function getCollectFrontierShopSettlementState(shopState, clampPlayerCredits) {
+  const amount = clampPlayerCredits(shopState?.pendingCredits || 0);
+  return {
+    amount,
+    sellerWallet: normalizeFrontierWalletAddress(shopState?.sellerWallet),
+    canCollect: amount > 0,
+  };
+}
+
+export function applyCollectedFrontierShopSettlementState(shopState) {
+  shopState.pendingCredits = 0;
+  return shopState;
+}
+
+export function getFrontierParcelSafeStandingPoint(parcel, frontierMapX, fallback) {
+  if (!parcel) return fallback;
+  const facesCenterLaneFromLeft = parcel.x < frontierMapX;
+  return {
+    x: parcel.x + (facesCenterLaneFromLeft ? parcel.width * 0.28 : -parcel.width * 0.28),
+    z: parcel.z,
+    rotationY: facesCenterLaneFromLeft ? Math.PI * 0.5 : -Math.PI * 0.5,
+  };
+}
