@@ -41,8 +41,7 @@ export function createMainCamera() {
 
 export function createMainRenderer() {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  syncMainViewport(renderer, createMainCameraViewportState());
   renderer.domElement.style.position = "fixed";
   renderer.domElement.style.inset = "0";
   renderer.domElement.style.zIndex = "0";
@@ -54,4 +53,22 @@ export function createMainGridHelper() {
   gridHelper.material.opacity = 0.25;
   gridHelper.material.transparent = true;
   return gridHelper;
+}
+
+export function createMainCameraViewportState() {
+  return {
+    width: window.innerWidth,
+    height: window.innerHeight,
+    pixelRatio: Math.min(window.devicePixelRatio, 2),
+  };
+}
+
+export function syncMainViewport(renderer, viewportState) {
+  renderer.setSize(viewportState.width, viewportState.height);
+  renderer.setPixelRatio(viewportState.pixelRatio);
+}
+
+export function syncMainCameraAspect(camera, viewportState) {
+  camera.aspect = viewportState.width / viewportState.height;
+  camera.updateProjectionMatrix();
 }

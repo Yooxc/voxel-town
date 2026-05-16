@@ -2,6 +2,16 @@
 
 ## 2026-05-16
 
+### main.js 분리: Mansion ONE / 개인 호실 로직을 `src/systems/residence.js`로 1차 이동
+- `main.js` 안에 있던 Mansion ONE 거주권 판정, 101호/102호 보유 방 계산, 개인 호실 로컬 인스턴스 생성/제거 구현을 `src/systems/residence.js`로 옮겼다.
+- `main.js`에는 여전히 입장/퇴장 흐름과 상위 상태 전환만 남기고, 거주 시스템의 기본 생성/정리 책임은 residence 모듈이 맡도록 정리했다.
+- 이번 분리도 기능 변경이 아니라 코드 이동/정리에 집중했고, Mansion ONE 입장/퇴장, 101호/102호 권한 분기, 개인 호실/창고 연결 동작은 기존과 동일하게 유지하는 것을 목표로 했다.
+
+### main.js 분리: 메인 viewport resize 동기화를 `src/core/scene.js`로 2차 이동
+- `main.js` 안에 남아 있던 메인 카메라 aspect 갱신과 메인 renderer size/pixelRatio 동기화 코드를 `src/core/scene.js`의 viewport 헬퍼로 옮겼다.
+- `main.js`에는 여전히 resize 이벤트 등록과 장비 미리보기 resize 호출만 남기고, 메인 scene viewport 상태 계산과 camera/renderer 동기화 책임은 scene 모듈이 맡도록 정리했다.
+- 이번 분리도 기능 변경이 아니라 코드 이동/정리에 집중했고, 창 크기 변경 시 게임 화면과 카메라 비율이 기존과 동일하게 유지되는 것을 목표로 했다.
+
 ### 개발자 프로필 로드 실패 시 개인 세이브 삭제 방지
 - 개발자 프로필 로드 중 `applySerializedPlayerSave()`에서 런타임 오류가 나면, 기존에는 로컬 세이브를 지우고 새 프리셋으로 덮어쓰던 흐름이 있었다.
 - 이제 JSON 파싱 실패와 세이브 적용 실패를 구분하고, 적용 실패일 때는 원본 세이브를 삭제하지 않고 `load-error` 백업 키에 남긴 채 임시 프리셋으로만 입장하도록 보정했다.
