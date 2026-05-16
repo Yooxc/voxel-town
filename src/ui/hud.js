@@ -224,3 +224,90 @@ export function createHudUi({ uiLayer, lastPatchedAt }) {
     mapArrivalBanner,
   };
 }
+
+export function updatePlayerSaveStatusBadgeUi(
+  playerSaveStatusBadge,
+  { text, borderColor, color, visible }
+) {
+  playerSaveStatusBadge.textContent = text;
+  playerSaveStatusBadge.style.borderColor = borderColor;
+  playerSaveStatusBadge.style.color = color;
+  playerSaveStatusBadge.style.opacity = visible ? "1" : "0";
+  playerSaveStatusBadge.style.transform = visible
+    ? "translateY(0)"
+    : "translateY(4px)";
+}
+
+export function hidePlayerSaveStatusBadgeUi(playerSaveStatusBadge) {
+  playerSaveStatusBadge.style.opacity = "0";
+  playerSaveStatusBadge.style.transform = "translateY(4px)";
+}
+
+export function showHudMessageUi(ui, text) {
+  ui.textContent = text;
+  ui.style.opacity = "1";
+  ui.style.transform = "translateX(-50%) translateY(0px)";
+}
+
+export function hideHudMessageUi(ui) {
+  ui.style.opacity = "0";
+  ui.style.transform = "translateX(-50%) translateY(8px)";
+}
+
+export function showMapArrivalBannerUi(mapArrivalBanner, mapName) {
+  mapArrivalBanner.textContent = mapName;
+  mapArrivalBanner.style.opacity = "1";
+  mapArrivalBanner.style.transform = "translateX(-50%) translateY(0)";
+}
+
+export function hideMapArrivalBannerUi(mapArrivalBanner) {
+  mapArrivalBanner.style.opacity = "0";
+  mapArrivalBanner.style.transform = "translateX(-50%) translateY(-10px)";
+}
+
+export function updateCompassUi(compassNeedle, compassText, dir) {
+  const d = dir.clone();
+  d.y = 0;
+  if (d.lengthSq() < 1e-6) return;
+  d.normalize();
+
+  const deg = (Math.atan2(d.x, -d.z) * 180) / Math.PI;
+  const heading = (deg + 360) % 360;
+  const labels = ["북", "북동", "동", "남동", "남", "남서", "서", "북서"];
+  const idx = Math.round(heading / 45) % 8;
+
+  compassNeedle.style.transform = `translate(-50%, -50%) rotate(${heading}deg)`;
+  compassText.textContent = `${labels[idx]} ${Math.round(heading)}°`;
+}
+
+export function updateAirHudUi({
+  airHudWrap,
+  airHudValue,
+  airHudBarFill,
+  airHudStatus,
+  airHudPurify,
+  visible,
+  currentAir,
+  maxAir,
+  statusText,
+  purifyText,
+}) {
+  if (!visible) {
+    airHudWrap.style.display = "none";
+    return;
+  }
+
+  airHudWrap.style.display = "block";
+  const airRatio =
+    maxAir > 0 ? Math.max(0, Math.min(1, currentAir / maxAir)) : 0;
+  airHudValue.textContent = `${Math.round(currentAir)} / ${maxAir}`;
+  airHudBarFill.style.width = `${Math.round(airRatio * 100)}%`;
+  airHudBarFill.style.background =
+    airRatio <= 0.18
+      ? "linear-gradient(90deg, #ff6a6a 0%, #ffb066 100%)"
+      : airRatio <= 0.45
+        ? "linear-gradient(90deg, #ffcf5b 0%, #ffec8a 100%)"
+        : "linear-gradient(90deg, #5be7ff 0%, #a2fff0 100%)";
+  airHudStatus.textContent = statusText;
+  airHudPurify.textContent = purifyText;
+}

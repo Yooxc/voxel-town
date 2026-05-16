@@ -126,3 +126,33 @@ export function applyMovementCollisionStep({
     blocked: position.z === prevPos.z && delta.z !== 0,
   };
 }
+
+export function applyMovementPostCollisionCorrections({
+  position,
+  prevPos = null,
+  resolveStartRingPenetration,
+  startWallOn = false,
+  startHardClamp = false,
+  startX = 0,
+  startZ = 0,
+  startRadius = 0,
+  margin = 0.6,
+}) {
+  if (typeof resolveStartRingPenetration === "function") {
+    resolveStartRingPenetration(position, prevPos);
+  }
+
+  if (!(startWallOn && startHardClamp)) return;
+
+  const dx = position.x - startX;
+  const dz = position.z - startZ;
+  const dist = Math.hypot(dx, dz);
+  const limit = startRadius - margin;
+
+  if (dist > limit && dist > 0.0001) {
+    const nx = dx / dist;
+    const nz = dz / dist;
+    position.x = startX + nx * limit;
+    position.z = startZ + nz * limit;
+  }
+}

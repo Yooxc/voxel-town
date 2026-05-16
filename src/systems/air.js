@@ -124,3 +124,35 @@ export function getAirOverlayVisualState({
     lowAirBlurStrength,
   };
 }
+
+export function updateAirValueForFrame({
+  currentAir,
+  maxAir,
+  dt,
+  effectiveMapId,
+  mapPurificationProgress,
+  mapPollutionConfig = MAP_POLLUTION_CONFIG,
+  recoveryPerSecond = AIR_RECOVERY_PER_SECOND,
+}) {
+  let nextAir = currentAir;
+  let depletedThisFrame = false;
+
+  if (canRecoverAirInMap(effectiveMapId, mapPurificationProgress, mapPollutionConfig)) {
+    nextAir = Math.min(maxAir, currentAir + recoveryPerSecond * dt);
+  } else if (isPollutedMap(effectiveMapId, mapPollutionConfig)) {
+    const purify = getMapPurificationValue(effectiveMapId, mapPurificationProgress, mapPollutionConfig);
+    if (purify < 100) {
+      nextAir = Math.max(
+        0,
+        currentAir -
+          getCurrentAirDrainPerSecond(effectiveMapId, mapPurificationProgress, mapPollutionConfig) * dt
+      );
+      depletedThisFrame = currentAir > 0 && nextAir <= 0;
+    }
+  }
+
+  return {
+    nextAir,
+    depletedThisFrame,
+  };
+}
