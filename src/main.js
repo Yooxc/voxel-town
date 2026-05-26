@@ -254,7 +254,7 @@ import {
   getFrontierParcelSafeStandingPoint as getFrontierParcelSafeStandingPointFromModule,
 } from "./systems/frontier.js";
 
-const LAST_PATCHED_AT = "2026-05-16 22:24:46 KST";
+const LAST_PATCHED_AT = "2026-05-26 14:32:11 KST";
 
 const scene = createMainScene();
 // ===== Atmosphere: Sky / Fog =====

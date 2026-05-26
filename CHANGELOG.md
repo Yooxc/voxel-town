@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-05-26
+
+### 사용되지 않는 코드 정리: `src/counter.js` 삭제 및 `src/core/movement.js` export 정리
+- 프로젝트 어디에서도 참조되지 않던 `src/counter.js`를 삭제했다.
+- `src/core/movement.js`에서 외부에서 import되지 않고 내부 계산에만 쓰이던 이동 상수들의 `export`를 제거했다.
+- 이번 정리는 기능 변경이 아니라 사용되지 않는 파일과 불필요한 공개 범위를 줄이는 정리 목적이며, 이동 동작과 게임 플레이는 기존과 동일하게 유지하는 것을 목표로 했다.
+
 ## 2026-05-16
 
 ### main.js 분리: Mansion ONE / 개인 호실 로직을 `src/systems/residence.js`로 1차 이동

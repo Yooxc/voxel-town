@@ -4,7 +4,7 @@
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
       "nickname": "XC",
       "createdAt": "2026-04-30T08:26:16.091Z",
-      "lastLoginAt": "2026-05-16T08:45:32.005Z"
+      "lastLoginAt": "2026-05-26T08:50:17.063Z"
     }
   ],
   "nonces": [],
@@ -632,11 +632,694 @@
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
       "createdAt": "2026-05-16T08:45:32.005Z",
       "expiresAt": "2026-06-15T08:45:32.005Z"
+    },
+    {
+      "token": "30bee4fb-3427-42b8-91a0-340d6a5c681e",
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "createdAt": "2026-05-26T08:50:17.063Z",
+      "expiresAt": "2026-06-25T08:50:17.064Z"
     }
   ],
   "playerSaves": [
     {
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "data": {
+        "version": 1,
+        "mapId": "광산맵",
+        "position": {
+          "x": 0.54,
+          "y": 0,
+          "z": 2.973
+        },
+        "rotationY": 2.4079,
+        "economy": {
+          "credits": 0
+        },
+        "inventory": {
+          "slots": [
+            {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "count": 1,
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "count": 1,
+              "instanceId": "inv_mos7tasd_7"
+            },
+            {
+              "kind": "item",
+              "itemId": "stoneDust",
+              "count": 57,
+              "instanceId": "inv_mos80voc_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "freshAirCanister",
+              "count": 10,
+              "instanceId": "inv_motu5uok_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "woodChip",
+              "count": 21,
+              "instanceId": "inv_mp2a6kor_p"
+            },
+            {
+              "kind": "item",
+              "itemId": "masonryStone",
+              "count": 1,
+              "instanceId": "inv_mp54a9go_h"
+            },
+            {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "count": 1,
+              "instanceId": "inv_mp2dk8ok_i"
+            },
+            null,
+            null,
+            {
+              "kind": "item",
+              "itemId": "purifyPowder",
+              "count": 2,
+              "instanceId": "inv_mp3pqvuy_k"
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "pickaxeLevel": 4,
+          "mineKeyIssued": true,
+          "abandonedMineUnlocked": true,
+          "quickUse": {
+            "1": {
+              "kind": "item",
+              "itemId": "freshAirCanister"
+            },
+            "2": null,
+            "3": null,
+            "4": null,
+            "5": null
+          },
+          "equipped": {
+            "head": {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            "body": null,
+            "shoes": {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "instanceId": "inv_mp2dk8ok_i"
+            },
+            "tool": {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "instanceId": "inv_mos7tasd_7"
+            }
+          }
+        },
+        "tutorial": {
+          "currentStep": 6,
+          "minedRockCount": 65,
+          "upgradeCount": 4,
+          "completed": true,
+          "archivedSteps": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "airSystem": {
+          "current": 100,
+          "max": 100,
+          "mapPurification": {
+            "폐광맵": 0,
+            "개척지": 0
+          }
+        },
+        "personalStorage": {
+          "slots": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        "residence": {
+          "activeRoomKey": "101"
+        },
+        "frontierBuild": {
+          "p1": {
+            "stage": 0,
+            "signText": "P1",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p2": {
+            "stage": 0,
+            "signText": "P2",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p3": {
+            "stage": 0,
+            "signText": "P3",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p4": {
+            "stage": 0,
+            "signText": "P4",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p5": {
+            "stage": 0,
+            "signText": "P5",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p6": {
+            "stage": 0,
+            "signText": "P6",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          }
+        },
+        "displayBoard": {
+          "chainId": "0x1",
+          "contractAddress": "0x3aaa87fbe562ac659f9e657a8efe00b411a56273",
+          "tokenId": "1",
+          "name": "DLP#00_concept",
+          "image": "ipfs://Qmb3pSfANoA1qGzZXyshGPvadxLKBxjoWjxboUoYzGmt9Y/nft.png",
+          "subtitle": "I call myself as a Digitalian, because I spend most of my daytime in digital world. My artwork captures my gaze in the digital world I live in as a landscape painting.\n\nArtwork 'DLP #00 concept' is a concept image of the DLP collection. DLP will show 12 artworks. The selling price of all artworks is 121% of the selling price of the previous works."
+        }
+      },
+      "updatedAt": "2026-05-26T08:50:42.248Z"
+    }
+  ],
+  "playerSaveBackups": [
+    {
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "updatedAt": "2026-05-16T08:45:40.314Z",
+      "backedUpAt": "2026-05-16T08:45:43.376Z",
+      "data": {
+        "version": 1,
+        "mapId": "광산맵",
+        "position": {
+          "x": 6.287,
+          "y": 0.314,
+          "z": 0.565
+        },
+        "rotationY": 0.5912,
+        "economy": {
+          "credits": 0
+        },
+        "inventory": {
+          "slots": [
+            {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "count": 1,
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "count": 1,
+              "instanceId": "inv_mos7tasd_7"
+            },
+            {
+              "kind": "item",
+              "itemId": "stoneDust",
+              "count": 50,
+              "instanceId": "inv_mos80voc_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "freshAirCanister",
+              "count": 10,
+              "instanceId": "inv_motu5uok_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "woodChip",
+              "count": 21,
+              "instanceId": "inv_mp2a6kor_p"
+            },
+            {
+              "kind": "item",
+              "itemId": "masonryStone",
+              "count": 1,
+              "instanceId": "inv_mp54a9go_h"
+            },
+            {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "count": 1,
+              "instanceId": "inv_mp2dk8ok_i"
+            },
+            null,
+            null,
+            {
+              "kind": "item",
+              "itemId": "purifyPowder",
+              "count": 2,
+              "instanceId": "inv_mp3pqvuy_k"
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "pickaxeLevel": 4,
+          "mineKeyIssued": true,
+          "abandonedMineUnlocked": true,
+          "quickUse": {
+            "1": {
+              "kind": "item",
+              "itemId": "freshAirCanister"
+            },
+            "2": null,
+            "3": null,
+            "4": null,
+            "5": null
+          },
+          "equipped": {
+            "head": {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            "body": null,
+            "shoes": {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "instanceId": "inv_mp2dk8ok_i"
+            },
+            "tool": {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "instanceId": "inv_mos7tasd_7"
+            }
+          }
+        },
+        "tutorial": {
+          "currentStep": 6,
+          "minedRockCount": 62,
+          "upgradeCount": 4,
+          "completed": true,
+          "archivedSteps": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "airSystem": {
+          "current": 100,
+          "max": 100,
+          "mapPurification": {
+            "폐광맵": 0,
+            "개척지": 0
+          }
+        },
+        "personalStorage": {
+          "slots": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        "residence": {
+          "activeRoomKey": "101"
+        },
+        "frontierBuild": {
+          "p1": {
+            "stage": 0,
+            "signText": "P1",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p2": {
+            "stage": 0,
+            "signText": "P2",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p3": {
+            "stage": 0,
+            "signText": "P3",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p4": {
+            "stage": 0,
+            "signText": "P4",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p5": {
+            "stage": 0,
+            "signText": "P5",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p6": {
+            "stage": 0,
+            "signText": "P6",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          }
+        },
+        "displayBoard": {
+          "chainId": "0x1",
+          "contractAddress": "0x3aaa87fbe562ac659f9e657a8efe00b411a56273",
+          "tokenId": "1",
+          "name": "DLP#00_concept",
+          "image": "ipfs://Qmb3pSfANoA1qGzZXyshGPvadxLKBxjoWjxboUoYzGmt9Y/nft.png",
+          "subtitle": "I call myself as a Digitalian, because I spend most of my daytime in digital world. My artwork captures my gaze in the digital world I live in as a landscape painting.\n\nArtwork 'DLP #00 concept' is a concept image of the DLP collection. DLP will show 12 artworks. The selling price of all artworks is 121% of the selling price of the previous works."
+        }
+      }
+    },
+    {
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "updatedAt": "2026-05-16T08:45:43.375Z",
+      "backedUpAt": "2026-05-26T08:50:17.638Z",
       "data": {
         "version": 1,
         "mapId": "광산맵",
@@ -968,3055 +1651,19 @@
           "image": "ipfs://Qmb3pSfANoA1qGzZXyshGPvadxLKBxjoWjxboUoYzGmt9Y/nft.png",
           "subtitle": "I call myself as a Digitalian, because I spend most of my daytime in digital world. My artwork captures my gaze in the digital world I live in as a landscape painting.\n\nArtwork 'DLP #00 concept' is a concept image of the DLP collection. DLP will show 12 artworks. The selling price of all artworks is 121% of the selling price of the previous works."
         }
-      },
-      "updatedAt": "2026-05-16T08:45:43.375Z"
-    }
-  ],
-  "playerSaveBackups": [
-    {
-      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
-      "updatedAt": "2026-05-15T08:32:43.264Z",
-      "backedUpAt": "2026-05-15T08:32:47.292Z",
-      "data": {
-        "version": 1,
-        "mapId": "광산맵",
-        "position": {
-          "x": 1.155,
-          "y": -0.126,
-          "z": 6.583
-        },
-        "rotationY": -1.4893,
-        "economy": {
-          "credits": 0
-        },
-        "inventory": {
-          "slots": [
-            {
-              "kind": "item",
-              "itemId": "safetyHelmet",
-              "count": 1,
-              "instanceId": "inv_mos7ta4k_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "pickaxe",
-              "count": 1,
-              "instanceId": "inv_mos7tasd_7"
-            },
-            {
-              "kind": "item",
-              "itemId": "stoneDust",
-              "count": 50,
-              "instanceId": "inv_mos80voc_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "freshAirCanister",
-              "count": 10,
-              "instanceId": "inv_motu5uok_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "woodChip",
-              "count": 21,
-              "instanceId": "inv_mp2a6kor_p"
-            },
-            {
-              "kind": "item",
-              "itemId": "masonryStone",
-              "count": 1,
-              "instanceId": "inv_mp54a9go_h"
-            },
-            {
-              "kind": "item",
-              "itemId": "basicShoes",
-              "count": 1,
-              "instanceId": "inv_mp2dk8ok_i"
-            },
-            null,
-            null,
-            {
-              "kind": "item",
-              "itemId": "purifyPowder",
-              "count": 2,
-              "instanceId": "inv_mp3pqvuy_k"
-            },
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null
-          ],
-          "pickaxeLevel": 4,
-          "mineKeyIssued": true,
-          "abandonedMineUnlocked": true,
-          "quickUse": {
-            "1": {
-              "kind": "item",
-              "itemId": "freshAirCanister"
-            },
-            "2": null,
-            "3": null,
-            "4": null,
-            "5": null
-          },
-          "equipped": {
-            "head": {
-              "kind": "item",
-              "itemId": "safetyHelmet",
-              "instanceId": "inv_mos7ta4k_6"
-            },
-            "body": null,
-            "shoes": {
-              "kind": "item",
-              "itemId": "basicShoes",
-              "instanceId": "inv_mp2dk8ok_i"
-            },
-            "tool": {
-              "kind": "item",
-              "itemId": "pickaxe",
-              "instanceId": "inv_mos7tasd_7"
-            }
-          }
-        },
-        "tutorial": {
-          "currentStep": 6,
-          "minedRockCount": 62,
-          "upgradeCount": 4,
-          "completed": true,
-          "archivedSteps": [
-            0,
-            1,
-            2,
-            3,
-            4
-          ]
-        },
-        "airSystem": {
-          "current": 100,
-          "max": 100,
-          "mapPurification": {
-            "폐광맵": 0,
-            "개척지": 0
-          }
-        },
-        "personalStorage": {
-          "slots": [
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null
-          ]
-        },
-        "residence": {
-          "activeRoomKey": "101"
-        },
-        "frontierBuild": {
-          "p1": {
-            "stage": 0,
-            "signText": "P1",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p2": {
-            "stage": 0,
-            "signText": "P2",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p3": {
-            "stage": 0,
-            "signText": "P3",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p4": {
-            "stage": 0,
-            "signText": "P4",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p5": {
-            "stage": 0,
-            "signText": "P5",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p6": {
-            "stage": 0,
-            "signText": "P6",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          }
-        },
-        "displayBoard": {
-          "chainId": "0x1",
-          "contractAddress": "0x3aaa87fbe562ac659f9e657a8efe00b411a56273",
-          "tokenId": "1",
-          "name": "DLP#00_concept",
-          "image": "ipfs://Qmb3pSfANoA1qGzZXyshGPvadxLKBxjoWjxboUoYzGmt9Y/nft.png",
-          "subtitle": "I call myself as a Digitalian, because I spend most of my daytime in digital world. My artwork captures my gaze in the digital world I live in as a landscape painting.\n\nArtwork 'DLP #00 concept' is a concept image of the DLP collection. DLP will show 12 artworks. The selling price of all artworks is 121% of the selling price of the previous works."
-        }
       }
     },
     {
       "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
-      "updatedAt": "2026-05-15T08:32:47.292Z",
-      "backedUpAt": "2026-05-15T09:04:54.009Z",
+      "updatedAt": "2026-05-26T08:50:17.616Z",
+      "backedUpAt": "2026-05-26T08:50:21.503Z",
       "data": {
         "version": 1,
         "mapId": "광산맵",
         "position": {
-          "x": 0.561,
-          "y": 0,
-          "z": 2.149
-        },
-        "rotationY": -3.069,
-        "economy": {
-          "credits": 0
-        },
-        "inventory": {
-          "slots": [
-            {
-              "kind": "item",
-              "itemId": "safetyHelmet",
-              "count": 1,
-              "instanceId": "inv_mos7ta4k_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "pickaxe",
-              "count": 1,
-              "instanceId": "inv_mos7tasd_7"
-            },
-            {
-              "kind": "item",
-              "itemId": "stoneDust",
-              "count": 50,
-              "instanceId": "inv_mos80voc_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "freshAirCanister",
-              "count": 10,
-              "instanceId": "inv_motu5uok_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "woodChip",
-              "count": 21,
-              "instanceId": "inv_mp2a6kor_p"
-            },
-            {
-              "kind": "item",
-              "itemId": "masonryStone",
-              "count": 1,
-              "instanceId": "inv_mp54a9go_h"
-            },
-            {
-              "kind": "item",
-              "itemId": "basicShoes",
-              "count": 1,
-              "instanceId": "inv_mp2dk8ok_i"
-            },
-            null,
-            null,
-            {
-              "kind": "item",
-              "itemId": "purifyPowder",
-              "count": 2,
-              "instanceId": "inv_mp3pqvuy_k"
-            },
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null
-          ],
-          "pickaxeLevel": 4,
-          "mineKeyIssued": true,
-          "abandonedMineUnlocked": true,
-          "quickUse": {
-            "1": {
-              "kind": "item",
-              "itemId": "freshAirCanister"
-            },
-            "2": null,
-            "3": null,
-            "4": null,
-            "5": null
-          },
-          "equipped": {
-            "head": {
-              "kind": "item",
-              "itemId": "safetyHelmet",
-              "instanceId": "inv_mos7ta4k_6"
-            },
-            "body": null,
-            "shoes": {
-              "kind": "item",
-              "itemId": "basicShoes",
-              "instanceId": "inv_mp2dk8ok_i"
-            },
-            "tool": {
-              "kind": "item",
-              "itemId": "pickaxe",
-              "instanceId": "inv_mos7tasd_7"
-            }
-          }
-        },
-        "tutorial": {
-          "currentStep": 6,
-          "minedRockCount": 62,
-          "upgradeCount": 4,
-          "completed": true,
-          "archivedSteps": [
-            0,
-            1,
-            2,
-            3,
-            4
-          ]
-        },
-        "airSystem": {
-          "current": 100,
-          "max": 100,
-          "mapPurification": {
-            "폐광맵": 0,
-            "개척지": 0
-          }
-        },
-        "personalStorage": {
-          "slots": [
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null
-          ]
-        },
-        "residence": {
-          "activeRoomKey": "101"
-        },
-        "frontierBuild": {
-          "p1": {
-            "stage": 0,
-            "signText": "P1",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p2": {
-            "stage": 0,
-            "signText": "P2",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p3": {
-            "stage": 0,
-            "signText": "P3",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p4": {
-            "stage": 0,
-            "signText": "P4",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p5": {
-            "stage": 0,
-            "signText": "P5",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p6": {
-            "stage": 0,
-            "signText": "P6",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          }
-        },
-        "displayBoard": {
-          "chainId": "0x1",
-          "contractAddress": "0x3aaa87fbe562ac659f9e657a8efe00b411a56273",
-          "tokenId": "1",
-          "name": "DLP#00_concept",
-          "image": "ipfs://Qmb3pSfANoA1qGzZXyshGPvadxLKBxjoWjxboUoYzGmt9Y/nft.png",
-          "subtitle": "I call myself as a Digitalian, because I spend most of my daytime in digital world. My artwork captures my gaze in the digital world I live in as a landscape painting.\n\nArtwork 'DLP #00 concept' is a concept image of the DLP collection. DLP will show 12 artworks. The selling price of all artworks is 121% of the selling price of the previous works."
-        }
-      }
-    },
-    {
-      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
-      "updatedAt": "2026-05-15T09:04:54.002Z",
-      "backedUpAt": "2026-05-15T09:04:58.001Z",
-      "data": {
-        "version": 1,
-        "mapId": "광산맵",
-        "position": {
-          "x": 9.189,
-          "y": -0.055,
-          "z": 7.902
-        },
-        "rotationY": 2.3562,
-        "economy": {
-          "credits": 0
-        },
-        "inventory": {
-          "slots": [
-            {
-              "kind": "item",
-              "itemId": "safetyHelmet",
-              "count": 1,
-              "instanceId": "inv_mos7ta4k_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "pickaxe",
-              "count": 1,
-              "instanceId": "inv_mos7tasd_7"
-            },
-            {
-              "kind": "item",
-              "itemId": "stoneDust",
-              "count": 50,
-              "instanceId": "inv_mos80voc_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "freshAirCanister",
-              "count": 10,
-              "instanceId": "inv_motu5uok_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "woodChip",
-              "count": 21,
-              "instanceId": "inv_mp2a6kor_p"
-            },
-            {
-              "kind": "item",
-              "itemId": "masonryStone",
-              "count": 1,
-              "instanceId": "inv_mp54a9go_h"
-            },
-            {
-              "kind": "item",
-              "itemId": "basicShoes",
-              "count": 1,
-              "instanceId": "inv_mp2dk8ok_i"
-            },
-            null,
-            null,
-            {
-              "kind": "item",
-              "itemId": "purifyPowder",
-              "count": 2,
-              "instanceId": "inv_mp3pqvuy_k"
-            },
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null
-          ],
-          "pickaxeLevel": 4,
-          "mineKeyIssued": true,
-          "abandonedMineUnlocked": true,
-          "quickUse": {
-            "1": {
-              "kind": "item",
-              "itemId": "freshAirCanister"
-            },
-            "2": null,
-            "3": null,
-            "4": null,
-            "5": null
-          },
-          "equipped": {
-            "head": {
-              "kind": "item",
-              "itemId": "safetyHelmet",
-              "instanceId": "inv_mos7ta4k_6"
-            },
-            "body": null,
-            "shoes": {
-              "kind": "item",
-              "itemId": "basicShoes",
-              "instanceId": "inv_mp2dk8ok_i"
-            },
-            "tool": {
-              "kind": "item",
-              "itemId": "pickaxe",
-              "instanceId": "inv_mos7tasd_7"
-            }
-          }
-        },
-        "tutorial": {
-          "currentStep": 6,
-          "minedRockCount": 62,
-          "upgradeCount": 4,
-          "completed": true,
-          "archivedSteps": [
-            0,
-            1,
-            2,
-            3,
-            4
-          ]
-        },
-        "airSystem": {
-          "current": 100,
-          "max": 100,
-          "mapPurification": {
-            "폐광맵": 0,
-            "개척지": 0
-          }
-        },
-        "personalStorage": {
-          "slots": [
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null
-          ]
-        },
-        "residence": {
-          "activeRoomKey": "101"
-        },
-        "frontierBuild": {
-          "p1": {
-            "stage": 0,
-            "signText": "P1",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p2": {
-            "stage": 0,
-            "signText": "P2",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p3": {
-            "stage": 0,
-            "signText": "P3",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p4": {
-            "stage": 0,
-            "signText": "P4",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p5": {
-            "stage": 0,
-            "signText": "P5",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p6": {
-            "stage": 0,
-            "signText": "P6",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          }
-        },
-        "displayBoard": {
-          "chainId": "0x1",
-          "contractAddress": "0x3aaa87fbe562ac659f9e657a8efe00b411a56273",
-          "tokenId": "1",
-          "name": "DLP#00_concept",
-          "image": "ipfs://Qmb3pSfANoA1qGzZXyshGPvadxLKBxjoWjxboUoYzGmt9Y/nft.png",
-          "subtitle": "I call myself as a Digitalian, because I spend most of my daytime in digital world. My artwork captures my gaze in the digital world I live in as a landscape painting.\n\nArtwork 'DLP #00 concept' is a concept image of the DLP collection. DLP will show 12 artworks. The selling price of all artworks is 121% of the selling price of the previous works."
-        }
-      }
-    },
-    {
-      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
-      "updatedAt": "2026-05-15T09:04:58.001Z",
-      "backedUpAt": "2026-05-15T09:05:02.014Z",
-      "data": {
-        "version": 1,
-        "mapId": "광산맵",
-        "position": {
-          "x": 10.601,
-          "y": 0.118,
-          "z": 7.29
-        },
-        "rotationY": 1.5708,
-        "economy": {
-          "credits": 0
-        },
-        "inventory": {
-          "slots": [
-            {
-              "kind": "item",
-              "itemId": "safetyHelmet",
-              "count": 1,
-              "instanceId": "inv_mos7ta4k_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "pickaxe",
-              "count": 1,
-              "instanceId": "inv_mos7tasd_7"
-            },
-            {
-              "kind": "item",
-              "itemId": "stoneDust",
-              "count": 50,
-              "instanceId": "inv_mos80voc_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "freshAirCanister",
-              "count": 10,
-              "instanceId": "inv_motu5uok_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "woodChip",
-              "count": 21,
-              "instanceId": "inv_mp2a6kor_p"
-            },
-            {
-              "kind": "item",
-              "itemId": "masonryStone",
-              "count": 1,
-              "instanceId": "inv_mp54a9go_h"
-            },
-            {
-              "kind": "item",
-              "itemId": "basicShoes",
-              "count": 1,
-              "instanceId": "inv_mp2dk8ok_i"
-            },
-            null,
-            null,
-            {
-              "kind": "item",
-              "itemId": "purifyPowder",
-              "count": 2,
-              "instanceId": "inv_mp3pqvuy_k"
-            },
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null
-          ],
-          "pickaxeLevel": 4,
-          "mineKeyIssued": true,
-          "abandonedMineUnlocked": true,
-          "quickUse": {
-            "1": {
-              "kind": "item",
-              "itemId": "freshAirCanister"
-            },
-            "2": null,
-            "3": null,
-            "4": null,
-            "5": null
-          },
-          "equipped": {
-            "head": {
-              "kind": "item",
-              "itemId": "safetyHelmet",
-              "instanceId": "inv_mos7ta4k_6"
-            },
-            "body": null,
-            "shoes": {
-              "kind": "item",
-              "itemId": "basicShoes",
-              "instanceId": "inv_mp2dk8ok_i"
-            },
-            "tool": {
-              "kind": "item",
-              "itemId": "pickaxe",
-              "instanceId": "inv_mos7tasd_7"
-            }
-          }
-        },
-        "tutorial": {
-          "currentStep": 6,
-          "minedRockCount": 62,
-          "upgradeCount": 4,
-          "completed": true,
-          "archivedSteps": [
-            0,
-            1,
-            2,
-            3,
-            4
-          ]
-        },
-        "airSystem": {
-          "current": 100,
-          "max": 100,
-          "mapPurification": {
-            "폐광맵": 0,
-            "개척지": 0
-          }
-        },
-        "personalStorage": {
-          "slots": [
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null
-          ]
-        },
-        "residence": {
-          "activeRoomKey": "101"
-        },
-        "frontierBuild": {
-          "p1": {
-            "stage": 0,
-            "signText": "P1",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p2": {
-            "stage": 0,
-            "signText": "P2",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p3": {
-            "stage": 0,
-            "signText": "P3",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p4": {
-            "stage": 0,
-            "signText": "P4",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p5": {
-            "stage": 0,
-            "signText": "P5",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p6": {
-            "stage": 0,
-            "signText": "P6",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          }
-        },
-        "displayBoard": {
-          "chainId": "0x1",
-          "contractAddress": "0x3aaa87fbe562ac659f9e657a8efe00b411a56273",
-          "tokenId": "1",
-          "name": "DLP#00_concept",
-          "image": "ipfs://Qmb3pSfANoA1qGzZXyshGPvadxLKBxjoWjxboUoYzGmt9Y/nft.png",
-          "subtitle": "I call myself as a Digitalian, because I spend most of my daytime in digital world. My artwork captures my gaze in the digital world I live in as a landscape painting.\n\nArtwork 'DLP #00 concept' is a concept image of the DLP collection. DLP will show 12 artworks. The selling price of all artworks is 121% of the selling price of the previous works."
-        }
-      }
-    },
-    {
-      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
-      "updatedAt": "2026-05-15T09:05:02.014Z",
-      "backedUpAt": "2026-05-15T09:05:06.038Z",
-      "data": {
-        "version": 1,
-        "mapId": "광산맵",
-        "position": {
-          "x": 4.563,
-          "y": -0.185,
-          "z": 5.854
-        },
-        "rotationY": -1.5708,
-        "economy": {
-          "credits": 0
-        },
-        "inventory": {
-          "slots": [
-            {
-              "kind": "item",
-              "itemId": "safetyHelmet",
-              "count": 1,
-              "instanceId": "inv_mos7ta4k_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "pickaxe",
-              "count": 1,
-              "instanceId": "inv_mos7tasd_7"
-            },
-            {
-              "kind": "item",
-              "itemId": "stoneDust",
-              "count": 50,
-              "instanceId": "inv_mos80voc_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "freshAirCanister",
-              "count": 10,
-              "instanceId": "inv_motu5uok_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "woodChip",
-              "count": 21,
-              "instanceId": "inv_mp2a6kor_p"
-            },
-            {
-              "kind": "item",
-              "itemId": "masonryStone",
-              "count": 1,
-              "instanceId": "inv_mp54a9go_h"
-            },
-            {
-              "kind": "item",
-              "itemId": "basicShoes",
-              "count": 1,
-              "instanceId": "inv_mp2dk8ok_i"
-            },
-            null,
-            null,
-            {
-              "kind": "item",
-              "itemId": "purifyPowder",
-              "count": 2,
-              "instanceId": "inv_mp3pqvuy_k"
-            },
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null
-          ],
-          "pickaxeLevel": 4,
-          "mineKeyIssued": true,
-          "abandonedMineUnlocked": true,
-          "quickUse": {
-            "1": {
-              "kind": "item",
-              "itemId": "freshAirCanister"
-            },
-            "2": null,
-            "3": null,
-            "4": null,
-            "5": null
-          },
-          "equipped": {
-            "head": {
-              "kind": "item",
-              "itemId": "safetyHelmet",
-              "instanceId": "inv_mos7ta4k_6"
-            },
-            "body": null,
-            "shoes": {
-              "kind": "item",
-              "itemId": "basicShoes",
-              "instanceId": "inv_mp2dk8ok_i"
-            },
-            "tool": {
-              "kind": "item",
-              "itemId": "pickaxe",
-              "instanceId": "inv_mos7tasd_7"
-            }
-          }
-        },
-        "tutorial": {
-          "currentStep": 6,
-          "minedRockCount": 62,
-          "upgradeCount": 4,
-          "completed": true,
-          "archivedSteps": [
-            0,
-            1,
-            2,
-            3,
-            4
-          ]
-        },
-        "airSystem": {
-          "current": 100,
-          "max": 100,
-          "mapPurification": {
-            "폐광맵": 0,
-            "개척지": 0
-          }
-        },
-        "personalStorage": {
-          "slots": [
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null
-          ]
-        },
-        "residence": {
-          "activeRoomKey": "101"
-        },
-        "frontierBuild": {
-          "p1": {
-            "stage": 0,
-            "signText": "P1",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p2": {
-            "stage": 0,
-            "signText": "P2",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p3": {
-            "stage": 0,
-            "signText": "P3",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p4": {
-            "stage": 0,
-            "signText": "P4",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p5": {
-            "stage": 0,
-            "signText": "P5",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p6": {
-            "stage": 0,
-            "signText": "P6",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          }
-        },
-        "displayBoard": {
-          "chainId": "0x1",
-          "contractAddress": "0x3aaa87fbe562ac659f9e657a8efe00b411a56273",
-          "tokenId": "1",
-          "name": "DLP#00_concept",
-          "image": "ipfs://Qmb3pSfANoA1qGzZXyshGPvadxLKBxjoWjxboUoYzGmt9Y/nft.png",
-          "subtitle": "I call myself as a Digitalian, because I spend most of my daytime in digital world. My artwork captures my gaze in the digital world I live in as a landscape painting.\n\nArtwork 'DLP #00 concept' is a concept image of the DLP collection. DLP will show 12 artworks. The selling price of all artworks is 121% of the selling price of the previous works."
-        }
-      }
-    },
-    {
-      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
-      "updatedAt": "2026-05-15T09:05:06.038Z",
-      "backedUpAt": "2026-05-15T09:05:10.245Z",
-      "data": {
-        "version": 1,
-        "mapId": "광산맵",
-        "position": {
-          "x": 4.563,
-          "y": -0.166,
-          "z": 4.165
-        },
-        "rotationY": 3.1416,
-        "economy": {
-          "credits": 0
-        },
-        "inventory": {
-          "slots": [
-            {
-              "kind": "item",
-              "itemId": "safetyHelmet",
-              "count": 1,
-              "instanceId": "inv_mos7ta4k_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "pickaxe",
-              "count": 1,
-              "instanceId": "inv_mos7tasd_7"
-            },
-            {
-              "kind": "item",
-              "itemId": "stoneDust",
-              "count": 50,
-              "instanceId": "inv_mos80voc_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "freshAirCanister",
-              "count": 10,
-              "instanceId": "inv_motu5uok_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "woodChip",
-              "count": 21,
-              "instanceId": "inv_mp2a6kor_p"
-            },
-            {
-              "kind": "item",
-              "itemId": "masonryStone",
-              "count": 1,
-              "instanceId": "inv_mp54a9go_h"
-            },
-            {
-              "kind": "item",
-              "itemId": "basicShoes",
-              "count": 1,
-              "instanceId": "inv_mp2dk8ok_i"
-            },
-            null,
-            null,
-            {
-              "kind": "item",
-              "itemId": "purifyPowder",
-              "count": 2,
-              "instanceId": "inv_mp3pqvuy_k"
-            },
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null
-          ],
-          "pickaxeLevel": 4,
-          "mineKeyIssued": true,
-          "abandonedMineUnlocked": true,
-          "quickUse": {
-            "1": {
-              "kind": "item",
-              "itemId": "freshAirCanister"
-            },
-            "2": null,
-            "3": null,
-            "4": null,
-            "5": null
-          },
-          "equipped": {
-            "head": {
-              "kind": "item",
-              "itemId": "safetyHelmet",
-              "instanceId": "inv_mos7ta4k_6"
-            },
-            "body": null,
-            "shoes": {
-              "kind": "item",
-              "itemId": "basicShoes",
-              "instanceId": "inv_mp2dk8ok_i"
-            },
-            "tool": {
-              "kind": "item",
-              "itemId": "pickaxe",
-              "instanceId": "inv_mos7tasd_7"
-            }
-          }
-        },
-        "tutorial": {
-          "currentStep": 6,
-          "minedRockCount": 62,
-          "upgradeCount": 4,
-          "completed": true,
-          "archivedSteps": [
-            0,
-            1,
-            2,
-            3,
-            4
-          ]
-        },
-        "airSystem": {
-          "current": 100,
-          "max": 100,
-          "mapPurification": {
-            "폐광맵": 0,
-            "개척지": 0
-          }
-        },
-        "personalStorage": {
-          "slots": [
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null
-          ]
-        },
-        "residence": {
-          "activeRoomKey": "101"
-        },
-        "frontierBuild": {
-          "p1": {
-            "stage": 0,
-            "signText": "P1",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p2": {
-            "stage": 0,
-            "signText": "P2",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p3": {
-            "stage": 0,
-            "signText": "P3",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p4": {
-            "stage": 0,
-            "signText": "P4",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p5": {
-            "stage": 0,
-            "signText": "P5",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p6": {
-            "stage": 0,
-            "signText": "P6",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          }
-        },
-        "displayBoard": {
-          "chainId": "0x1",
-          "contractAddress": "0x3aaa87fbe562ac659f9e657a8efe00b411a56273",
-          "tokenId": "1",
-          "name": "DLP#00_concept",
-          "image": "ipfs://Qmb3pSfANoA1qGzZXyshGPvadxLKBxjoWjxboUoYzGmt9Y/nft.png",
-          "subtitle": "I call myself as a Digitalian, because I spend most of my daytime in digital world. My artwork captures my gaze in the digital world I live in as a landscape painting.\n\nArtwork 'DLP #00 concept' is a concept image of the DLP collection. DLP will show 12 artworks. The selling price of all artworks is 121% of the selling price of the previous works."
-        }
-      }
-    },
-    {
-      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
-      "updatedAt": "2026-05-15T09:05:10.243Z",
-      "backedUpAt": "2026-05-16T08:45:32.306Z",
-      "data": {
-        "version": 1,
-        "mapId": "광산맵",
-        "position": {
-          "x": 10.43,
-          "y": -0.132,
-          "z": 4.165
-        },
-        "rotationY": 1.5708,
-        "economy": {
-          "credits": 0
-        },
-        "inventory": {
-          "slots": [
-            {
-              "kind": "item",
-              "itemId": "safetyHelmet",
-              "count": 1,
-              "instanceId": "inv_mos7ta4k_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "pickaxe",
-              "count": 1,
-              "instanceId": "inv_mos7tasd_7"
-            },
-            {
-              "kind": "item",
-              "itemId": "stoneDust",
-              "count": 50,
-              "instanceId": "inv_mos80voc_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "freshAirCanister",
-              "count": 10,
-              "instanceId": "inv_motu5uok_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "woodChip",
-              "count": 21,
-              "instanceId": "inv_mp2a6kor_p"
-            },
-            {
-              "kind": "item",
-              "itemId": "masonryStone",
-              "count": 1,
-              "instanceId": "inv_mp54a9go_h"
-            },
-            {
-              "kind": "item",
-              "itemId": "basicShoes",
-              "count": 1,
-              "instanceId": "inv_mp2dk8ok_i"
-            },
-            null,
-            null,
-            {
-              "kind": "item",
-              "itemId": "purifyPowder",
-              "count": 2,
-              "instanceId": "inv_mp3pqvuy_k"
-            },
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null
-          ],
-          "pickaxeLevel": 4,
-          "mineKeyIssued": true,
-          "abandonedMineUnlocked": true,
-          "quickUse": {
-            "1": {
-              "kind": "item",
-              "itemId": "freshAirCanister"
-            },
-            "2": null,
-            "3": null,
-            "4": null,
-            "5": null
-          },
-          "equipped": {
-            "head": {
-              "kind": "item",
-              "itemId": "safetyHelmet",
-              "instanceId": "inv_mos7ta4k_6"
-            },
-            "body": null,
-            "shoes": {
-              "kind": "item",
-              "itemId": "basicShoes",
-              "instanceId": "inv_mp2dk8ok_i"
-            },
-            "tool": {
-              "kind": "item",
-              "itemId": "pickaxe",
-              "instanceId": "inv_mos7tasd_7"
-            }
-          }
-        },
-        "tutorial": {
-          "currentStep": 6,
-          "minedRockCount": 62,
-          "upgradeCount": 4,
-          "completed": true,
-          "archivedSteps": [
-            0,
-            1,
-            2,
-            3,
-            4
-          ]
-        },
-        "airSystem": {
-          "current": 100,
-          "max": 100,
-          "mapPurification": {
-            "폐광맵": 0,
-            "개척지": 0
-          }
-        },
-        "personalStorage": {
-          "slots": [
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null
-          ]
-        },
-        "residence": {
-          "activeRoomKey": "101"
-        },
-        "frontierBuild": {
-          "p1": {
-            "stage": 0,
-            "signText": "P1",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p2": {
-            "stage": 0,
-            "signText": "P2",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p3": {
-            "stage": 0,
-            "signText": "P3",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p4": {
-            "stage": 0,
-            "signText": "P4",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p5": {
-            "stage": 0,
-            "signText": "P5",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p6": {
-            "stage": 0,
-            "signText": "P6",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          }
-        },
-        "displayBoard": {
-          "chainId": "0x1",
-          "contractAddress": "0x3aaa87fbe562ac659f9e657a8efe00b411a56273",
-          "tokenId": "1",
-          "name": "DLP#00_concept",
-          "image": "ipfs://Qmb3pSfANoA1qGzZXyshGPvadxLKBxjoWjxboUoYzGmt9Y/nft.png",
-          "subtitle": "I call myself as a Digitalian, because I spend most of my daytime in digital world. My artwork captures my gaze in the digital world I live in as a landscape painting.\n\nArtwork 'DLP #00 concept' is a concept image of the DLP collection. DLP will show 12 artworks. The selling price of all artworks is 121% of the selling price of the previous works."
-        }
-      }
-    },
-    {
-      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
-      "updatedAt": "2026-05-16T08:45:32.304Z",
-      "backedUpAt": "2026-05-16T08:45:36.294Z",
-      "data": {
-        "version": 1,
-        "mapId": "광산맵",
-        "position": {
-          "x": 10.43,
-          "y": -0.158,
-          "z": 4.165
-        },
-        "rotationY": 1.5708,
-        "economy": {
-          "credits": 0
-        },
-        "inventory": {
-          "slots": [
-            {
-              "kind": "item",
-              "itemId": "safetyHelmet",
-              "count": 1,
-              "instanceId": "inv_mos7ta4k_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "pickaxe",
-              "count": 1,
-              "instanceId": "inv_mos7tasd_7"
-            },
-            {
-              "kind": "item",
-              "itemId": "stoneDust",
-              "count": 50,
-              "instanceId": "inv_mos80voc_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "freshAirCanister",
-              "count": 10,
-              "instanceId": "inv_motu5uok_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "woodChip",
-              "count": 21,
-              "instanceId": "inv_mp2a6kor_p"
-            },
-            {
-              "kind": "item",
-              "itemId": "masonryStone",
-              "count": 1,
-              "instanceId": "inv_mp54a9go_h"
-            },
-            {
-              "kind": "item",
-              "itemId": "basicShoes",
-              "count": 1,
-              "instanceId": "inv_mp2dk8ok_i"
-            },
-            null,
-            null,
-            {
-              "kind": "item",
-              "itemId": "purifyPowder",
-              "count": 2,
-              "instanceId": "inv_mp3pqvuy_k"
-            },
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null
-          ],
-          "pickaxeLevel": 4,
-          "mineKeyIssued": true,
-          "abandonedMineUnlocked": true,
-          "quickUse": {
-            "1": {
-              "kind": "item",
-              "itemId": "freshAirCanister"
-            },
-            "2": null,
-            "3": null,
-            "4": null,
-            "5": null
-          },
-          "equipped": {
-            "head": {
-              "kind": "item",
-              "itemId": "safetyHelmet",
-              "instanceId": "inv_mos7ta4k_6"
-            },
-            "body": null,
-            "shoes": {
-              "kind": "item",
-              "itemId": "basicShoes",
-              "instanceId": "inv_mp2dk8ok_i"
-            },
-            "tool": {
-              "kind": "item",
-              "itemId": "pickaxe",
-              "instanceId": "inv_mos7tasd_7"
-            }
-          }
-        },
-        "tutorial": {
-          "currentStep": 6,
-          "minedRockCount": 62,
-          "upgradeCount": 4,
-          "completed": true,
-          "archivedSteps": [
-            0,
-            1,
-            2,
-            3,
-            4
-          ]
-        },
-        "airSystem": {
-          "current": 100,
-          "max": 100,
-          "mapPurification": {
-            "폐광맵": 0,
-            "개척지": 0
-          }
-        },
-        "personalStorage": {
-          "slots": [
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null
-          ]
-        },
-        "residence": {
-          "activeRoomKey": "101"
-        },
-        "frontierBuild": {
-          "p1": {
-            "stage": 0,
-            "signText": "P1",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p2": {
-            "stage": 0,
-            "signText": "P2",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p3": {
-            "stage": 0,
-            "signText": "P3",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p4": {
-            "stage": 0,
-            "signText": "P4",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p5": {
-            "stage": 0,
-            "signText": "P5",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p6": {
-            "stage": 0,
-            "signText": "P6",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          }
-        },
-        "displayBoard": {
-          "chainId": "0x1",
-          "contractAddress": "0x3aaa87fbe562ac659f9e657a8efe00b411a56273",
-          "tokenId": "1",
-          "name": "DLP#00_concept",
-          "image": "ipfs://Qmb3pSfANoA1qGzZXyshGPvadxLKBxjoWjxboUoYzGmt9Y/nft.png",
-          "subtitle": "I call myself as a Digitalian, because I spend most of my daytime in digital world. My artwork captures my gaze in the digital world I live in as a landscape painting.\n\nArtwork 'DLP #00 concept' is a concept image of the DLP collection. DLP will show 12 artworks. The selling price of all artworks is 121% of the selling price of the previous works."
-        }
-      }
-    },
-    {
-      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
-      "updatedAt": "2026-05-16T08:45:36.294Z",
-      "backedUpAt": "2026-05-16T08:45:40.314Z",
-      "data": {
-        "version": 1,
-        "mapId": "광산맵",
-        "position": {
-          "x": 6.022,
-          "y": 0.091,
-          "z": 7.065
-        },
-        "rotationY": 2.162,
-        "economy": {
-          "credits": 0
-        },
-        "inventory": {
-          "slots": [
-            {
-              "kind": "item",
-              "itemId": "safetyHelmet",
-              "count": 1,
-              "instanceId": "inv_mos7ta4k_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "pickaxe",
-              "count": 1,
-              "instanceId": "inv_mos7tasd_7"
-            },
-            {
-              "kind": "item",
-              "itemId": "stoneDust",
-              "count": 50,
-              "instanceId": "inv_mos80voc_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "freshAirCanister",
-              "count": 10,
-              "instanceId": "inv_motu5uok_6"
-            },
-            {
-              "kind": "item",
-              "itemId": "woodChip",
-              "count": 21,
-              "instanceId": "inv_mp2a6kor_p"
-            },
-            {
-              "kind": "item",
-              "itemId": "masonryStone",
-              "count": 1,
-              "instanceId": "inv_mp54a9go_h"
-            },
-            {
-              "kind": "item",
-              "itemId": "basicShoes",
-              "count": 1,
-              "instanceId": "inv_mp2dk8ok_i"
-            },
-            null,
-            null,
-            {
-              "kind": "item",
-              "itemId": "purifyPowder",
-              "count": 2,
-              "instanceId": "inv_mp3pqvuy_k"
-            },
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null
-          ],
-          "pickaxeLevel": 4,
-          "mineKeyIssued": true,
-          "abandonedMineUnlocked": true,
-          "quickUse": {
-            "1": {
-              "kind": "item",
-              "itemId": "freshAirCanister"
-            },
-            "2": null,
-            "3": null,
-            "4": null,
-            "5": null
-          },
-          "equipped": {
-            "head": {
-              "kind": "item",
-              "itemId": "safetyHelmet",
-              "instanceId": "inv_mos7ta4k_6"
-            },
-            "body": null,
-            "shoes": {
-              "kind": "item",
-              "itemId": "basicShoes",
-              "instanceId": "inv_mp2dk8ok_i"
-            },
-            "tool": {
-              "kind": "item",
-              "itemId": "pickaxe",
-              "instanceId": "inv_mos7tasd_7"
-            }
-          }
-        },
-        "tutorial": {
-          "currentStep": 6,
-          "minedRockCount": 62,
-          "upgradeCount": 4,
-          "completed": true,
-          "archivedSteps": [
-            0,
-            1,
-            2,
-            3,
-            4
-          ]
-        },
-        "airSystem": {
-          "current": 100,
-          "max": 100,
-          "mapPurification": {
-            "폐광맵": 0,
-            "개척지": 0
-          }
-        },
-        "personalStorage": {
-          "slots": [
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null
-          ]
-        },
-        "residence": {
-          "activeRoomKey": "101"
-        },
-        "frontierBuild": {
-          "p1": {
-            "stage": 0,
-            "signText": "P1",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p2": {
-            "stage": 0,
-            "signText": "P2",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p3": {
-            "stage": 0,
-            "signText": "P3",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p4": {
-            "stage": 0,
-            "signText": "P4",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p5": {
-            "stage": 0,
-            "signText": "P5",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          },
-          "p6": {
-            "stage": 0,
-            "signText": "P6",
-            "operations": {
-              "shop": {
-                "statusText": "비어 있음",
-                "itemId": "",
-                "quantity": 0,
-                "price": 0,
-                "userWallet": "",
-                "sellerWallet": "",
-                "pendingCredits": 0,
-                "lifetimeCredits": 0
-              },
-              "displayA": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              },
-              "displayB": {
-                "statusText": "비어 있음",
-                "entry": null,
-                "userWallet": ""
-              }
-            }
-          }
-        },
-        "displayBoard": {
-          "chainId": "0x1",
-          "contractAddress": "0x3aaa87fbe562ac659f9e657a8efe00b411a56273",
-          "tokenId": "1",
-          "name": "DLP#00_concept",
-          "image": "ipfs://Qmb3pSfANoA1qGzZXyshGPvadxLKBxjoWjxboUoYzGmt9Y/nft.png",
-          "subtitle": "I call myself as a Digitalian, because I spend most of my daytime in digital world. My artwork captures my gaze in the digital world I live in as a landscape painting.\n\nArtwork 'DLP #00 concept' is a concept image of the DLP collection. DLP will show 12 artworks. The selling price of all artworks is 121% of the selling price of the previous works."
-        }
-      }
-    },
-    {
-      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
-      "updatedAt": "2026-05-16T08:45:40.314Z",
-      "backedUpAt": "2026-05-16T08:45:43.376Z",
-      "data": {
-        "version": 1,
-        "mapId": "광산맵",
-        "position": {
-          "x": 6.287,
-          "y": 0.314,
-          "z": 0.565
+          "x": 7.04,
+          "y": 0.094,
+          "z": 0.952
         },
         "rotationY": 0.5912,
         "economy": {
@@ -4130,6 +1777,2365 @@
         "tutorial": {
           "currentStep": 6,
           "minedRockCount": 62,
+          "upgradeCount": 4,
+          "completed": true,
+          "archivedSteps": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "airSystem": {
+          "current": 100,
+          "max": 100,
+          "mapPurification": {
+            "폐광맵": 0,
+            "개척지": 0
+          }
+        },
+        "personalStorage": {
+          "slots": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        "residence": {
+          "activeRoomKey": "101"
+        },
+        "frontierBuild": {
+          "p1": {
+            "stage": 0,
+            "signText": "P1",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p2": {
+            "stage": 0,
+            "signText": "P2",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p3": {
+            "stage": 0,
+            "signText": "P3",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p4": {
+            "stage": 0,
+            "signText": "P4",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p5": {
+            "stage": 0,
+            "signText": "P5",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p6": {
+            "stage": 0,
+            "signText": "P6",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          }
+        },
+        "displayBoard": {
+          "chainId": "0x1",
+          "contractAddress": "0x3aaa87fbe562ac659f9e657a8efe00b411a56273",
+          "tokenId": "1",
+          "name": "DLP#00_concept",
+          "image": "ipfs://Qmb3pSfANoA1qGzZXyshGPvadxLKBxjoWjxboUoYzGmt9Y/nft.png",
+          "subtitle": "I call myself as a Digitalian, because I spend most of my daytime in digital world. My artwork captures my gaze in the digital world I live in as a landscape painting.\n\nArtwork 'DLP #00 concept' is a concept image of the DLP collection. DLP will show 12 artworks. The selling price of all artworks is 121% of the selling price of the previous works."
+        }
+      }
+    },
+    {
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "updatedAt": "2026-05-26T08:50:21.503Z",
+      "backedUpAt": "2026-05-26T08:50:25.596Z",
+      "data": {
+        "version": 1,
+        "mapId": "광산맵",
+        "position": {
+          "x": 16.741,
+          "y": -0.08,
+          "z": -0.268
+        },
+        "rotationY": 1.9519,
+        "economy": {
+          "credits": 0
+        },
+        "inventory": {
+          "slots": [
+            {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "count": 1,
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "count": 1,
+              "instanceId": "inv_mos7tasd_7"
+            },
+            {
+              "kind": "item",
+              "itemId": "stoneDust",
+              "count": 50,
+              "instanceId": "inv_mos80voc_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "freshAirCanister",
+              "count": 10,
+              "instanceId": "inv_motu5uok_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "woodChip",
+              "count": 21,
+              "instanceId": "inv_mp2a6kor_p"
+            },
+            {
+              "kind": "item",
+              "itemId": "masonryStone",
+              "count": 1,
+              "instanceId": "inv_mp54a9go_h"
+            },
+            {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "count": 1,
+              "instanceId": "inv_mp2dk8ok_i"
+            },
+            null,
+            null,
+            {
+              "kind": "item",
+              "itemId": "purifyPowder",
+              "count": 2,
+              "instanceId": "inv_mp3pqvuy_k"
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "pickaxeLevel": 4,
+          "mineKeyIssued": true,
+          "abandonedMineUnlocked": true,
+          "quickUse": {
+            "1": {
+              "kind": "item",
+              "itemId": "freshAirCanister"
+            },
+            "2": null,
+            "3": null,
+            "4": null,
+            "5": null
+          },
+          "equipped": {
+            "head": {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            "body": null,
+            "shoes": {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "instanceId": "inv_mp2dk8ok_i"
+            },
+            "tool": {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "instanceId": "inv_mos7tasd_7"
+            }
+          }
+        },
+        "tutorial": {
+          "currentStep": 6,
+          "minedRockCount": 62,
+          "upgradeCount": 4,
+          "completed": true,
+          "archivedSteps": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "airSystem": {
+          "current": 100,
+          "max": 100,
+          "mapPurification": {
+            "폐광맵": 0,
+            "개척지": 0
+          }
+        },
+        "personalStorage": {
+          "slots": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        "residence": {
+          "activeRoomKey": "101"
+        },
+        "frontierBuild": {
+          "p1": {
+            "stage": 0,
+            "signText": "P1",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p2": {
+            "stage": 0,
+            "signText": "P2",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p3": {
+            "stage": 0,
+            "signText": "P3",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p4": {
+            "stage": 0,
+            "signText": "P4",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p5": {
+            "stage": 0,
+            "signText": "P5",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p6": {
+            "stage": 0,
+            "signText": "P6",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          }
+        },
+        "displayBoard": {
+          "chainId": "0x1",
+          "contractAddress": "0x3aaa87fbe562ac659f9e657a8efe00b411a56273",
+          "tokenId": "1",
+          "name": "DLP#00_concept",
+          "image": "ipfs://Qmb3pSfANoA1qGzZXyshGPvadxLKBxjoWjxboUoYzGmt9Y/nft.png",
+          "subtitle": "I call myself as a Digitalian, because I spend most of my daytime in digital world. My artwork captures my gaze in the digital world I live in as a landscape painting.\n\nArtwork 'DLP #00 concept' is a concept image of the DLP collection. DLP will show 12 artworks. The selling price of all artworks is 121% of the selling price of the previous works."
+        }
+      }
+    },
+    {
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "updatedAt": "2026-05-26T08:50:25.592Z",
+      "backedUpAt": "2026-05-26T08:50:26.835Z",
+      "data": {
+        "version": 1,
+        "mapId": "광산맵",
+        "position": {
+          "x": 11.288,
+          "y": -0.303,
+          "z": 8.617
+        },
+        "rotationY": -2.7605,
+        "economy": {
+          "credits": 0
+        },
+        "inventory": {
+          "slots": [
+            {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "count": 1,
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "count": 1,
+              "instanceId": "inv_mos7tasd_7"
+            },
+            {
+              "kind": "item",
+              "itemId": "stoneDust",
+              "count": 50,
+              "instanceId": "inv_mos80voc_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "freshAirCanister",
+              "count": 10,
+              "instanceId": "inv_motu5uok_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "woodChip",
+              "count": 21,
+              "instanceId": "inv_mp2a6kor_p"
+            },
+            {
+              "kind": "item",
+              "itemId": "masonryStone",
+              "count": 1,
+              "instanceId": "inv_mp54a9go_h"
+            },
+            {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "count": 1,
+              "instanceId": "inv_mp2dk8ok_i"
+            },
+            null,
+            null,
+            {
+              "kind": "item",
+              "itemId": "purifyPowder",
+              "count": 2,
+              "instanceId": "inv_mp3pqvuy_k"
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "pickaxeLevel": 4,
+          "mineKeyIssued": true,
+          "abandonedMineUnlocked": true,
+          "quickUse": {
+            "1": {
+              "kind": "item",
+              "itemId": "freshAirCanister"
+            },
+            "2": null,
+            "3": null,
+            "4": null,
+            "5": null
+          },
+          "equipped": {
+            "head": {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            "body": null,
+            "shoes": {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "instanceId": "inv_mp2dk8ok_i"
+            },
+            "tool": {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "instanceId": "inv_mos7tasd_7"
+            }
+          }
+        },
+        "tutorial": {
+          "currentStep": 6,
+          "minedRockCount": 62,
+          "upgradeCount": 4,
+          "completed": true,
+          "archivedSteps": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "airSystem": {
+          "current": 100,
+          "max": 100,
+          "mapPurification": {
+            "폐광맵": 0,
+            "개척지": 0
+          }
+        },
+        "personalStorage": {
+          "slots": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        "residence": {
+          "activeRoomKey": "101"
+        },
+        "frontierBuild": {
+          "p1": {
+            "stage": 0,
+            "signText": "P1",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p2": {
+            "stage": 0,
+            "signText": "P2",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p3": {
+            "stage": 0,
+            "signText": "P3",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p4": {
+            "stage": 0,
+            "signText": "P4",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p5": {
+            "stage": 0,
+            "signText": "P5",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p6": {
+            "stage": 0,
+            "signText": "P6",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          }
+        },
+        "displayBoard": {
+          "chainId": "0x1",
+          "contractAddress": "0x3aaa87fbe562ac659f9e657a8efe00b411a56273",
+          "tokenId": "1",
+          "name": "DLP#00_concept",
+          "image": "ipfs://Qmb3pSfANoA1qGzZXyshGPvadxLKBxjoWjxboUoYzGmt9Y/nft.png",
+          "subtitle": "I call myself as a Digitalian, because I spend most of my daytime in digital world. My artwork captures my gaze in the digital world I live in as a landscape painting.\n\nArtwork 'DLP #00 concept' is a concept image of the DLP collection. DLP will show 12 artworks. The selling price of all artworks is 121% of the selling price of the previous works."
+        }
+      }
+    },
+    {
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "updatedAt": "2026-05-26T08:50:26.834Z",
+      "backedUpAt": "2026-05-26T08:50:30.968Z",
+      "data": {
+        "version": 1,
+        "mapId": "광산맵",
+        "position": {
+          "x": 11.288,
+          "y": -0.329,
+          "z": 8.557
+        },
+        "rotationY": -1.6935,
+        "economy": {
+          "credits": 0
+        },
+        "inventory": {
+          "slots": [
+            {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "count": 1,
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "count": 1,
+              "instanceId": "inv_mos7tasd_7"
+            },
+            {
+              "kind": "item",
+              "itemId": "stoneDust",
+              "count": 53,
+              "instanceId": "inv_mos80voc_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "freshAirCanister",
+              "count": 10,
+              "instanceId": "inv_motu5uok_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "woodChip",
+              "count": 21,
+              "instanceId": "inv_mp2a6kor_p"
+            },
+            {
+              "kind": "item",
+              "itemId": "masonryStone",
+              "count": 1,
+              "instanceId": "inv_mp54a9go_h"
+            },
+            {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "count": 1,
+              "instanceId": "inv_mp2dk8ok_i"
+            },
+            null,
+            null,
+            {
+              "kind": "item",
+              "itemId": "purifyPowder",
+              "count": 2,
+              "instanceId": "inv_mp3pqvuy_k"
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "pickaxeLevel": 4,
+          "mineKeyIssued": true,
+          "abandonedMineUnlocked": true,
+          "quickUse": {
+            "1": {
+              "kind": "item",
+              "itemId": "freshAirCanister"
+            },
+            "2": null,
+            "3": null,
+            "4": null,
+            "5": null
+          },
+          "equipped": {
+            "head": {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            "body": null,
+            "shoes": {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "instanceId": "inv_mp2dk8ok_i"
+            },
+            "tool": {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "instanceId": "inv_mos7tasd_7"
+            }
+          }
+        },
+        "tutorial": {
+          "currentStep": 6,
+          "minedRockCount": 63,
+          "upgradeCount": 4,
+          "completed": true,
+          "archivedSteps": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "airSystem": {
+          "current": 100,
+          "max": 100,
+          "mapPurification": {
+            "폐광맵": 0,
+            "개척지": 0
+          }
+        },
+        "personalStorage": {
+          "slots": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        "residence": {
+          "activeRoomKey": "101"
+        },
+        "frontierBuild": {
+          "p1": {
+            "stage": 0,
+            "signText": "P1",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p2": {
+            "stage": 0,
+            "signText": "P2",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p3": {
+            "stage": 0,
+            "signText": "P3",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p4": {
+            "stage": 0,
+            "signText": "P4",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p5": {
+            "stage": 0,
+            "signText": "P5",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p6": {
+            "stage": 0,
+            "signText": "P6",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          }
+        },
+        "displayBoard": {
+          "chainId": "0x1",
+          "contractAddress": "0x3aaa87fbe562ac659f9e657a8efe00b411a56273",
+          "tokenId": "1",
+          "name": "DLP#00_concept",
+          "image": "ipfs://Qmb3pSfANoA1qGzZXyshGPvadxLKBxjoWjxboUoYzGmt9Y/nft.png",
+          "subtitle": "I call myself as a Digitalian, because I spend most of my daytime in digital world. My artwork captures my gaze in the digital world I live in as a landscape painting.\n\nArtwork 'DLP #00 concept' is a concept image of the DLP collection. DLP will show 12 artworks. The selling price of all artworks is 121% of the selling price of the previous works."
+        }
+      }
+    },
+    {
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "updatedAt": "2026-05-26T08:50:30.967Z",
+      "backedUpAt": "2026-05-26T08:50:31.650Z",
+      "data": {
+        "version": 1,
+        "mapId": "광산맵",
+        "position": {
+          "x": 8.954,
+          "y": 0.124,
+          "z": 11.494
+        },
+        "rotationY": -0.4664,
+        "economy": {
+          "credits": 0
+        },
+        "inventory": {
+          "slots": [
+            {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "count": 1,
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "count": 1,
+              "instanceId": "inv_mos7tasd_7"
+            },
+            {
+              "kind": "item",
+              "itemId": "stoneDust",
+              "count": 53,
+              "instanceId": "inv_mos80voc_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "freshAirCanister",
+              "count": 10,
+              "instanceId": "inv_motu5uok_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "woodChip",
+              "count": 21,
+              "instanceId": "inv_mp2a6kor_p"
+            },
+            {
+              "kind": "item",
+              "itemId": "masonryStone",
+              "count": 1,
+              "instanceId": "inv_mp54a9go_h"
+            },
+            {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "count": 1,
+              "instanceId": "inv_mp2dk8ok_i"
+            },
+            null,
+            null,
+            {
+              "kind": "item",
+              "itemId": "purifyPowder",
+              "count": 2,
+              "instanceId": "inv_mp3pqvuy_k"
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "pickaxeLevel": 4,
+          "mineKeyIssued": true,
+          "abandonedMineUnlocked": true,
+          "quickUse": {
+            "1": {
+              "kind": "item",
+              "itemId": "freshAirCanister"
+            },
+            "2": null,
+            "3": null,
+            "4": null,
+            "5": null
+          },
+          "equipped": {
+            "head": {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            "body": null,
+            "shoes": {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "instanceId": "inv_mp2dk8ok_i"
+            },
+            "tool": {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "instanceId": "inv_mos7tasd_7"
+            }
+          }
+        },
+        "tutorial": {
+          "currentStep": 6,
+          "minedRockCount": 63,
+          "upgradeCount": 4,
+          "completed": true,
+          "archivedSteps": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "airSystem": {
+          "current": 100,
+          "max": 100,
+          "mapPurification": {
+            "폐광맵": 0,
+            "개척지": 0
+          }
+        },
+        "personalStorage": {
+          "slots": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        "residence": {
+          "activeRoomKey": "101"
+        },
+        "frontierBuild": {
+          "p1": {
+            "stage": 0,
+            "signText": "P1",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p2": {
+            "stage": 0,
+            "signText": "P2",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p3": {
+            "stage": 0,
+            "signText": "P3",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p4": {
+            "stage": 0,
+            "signText": "P4",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p5": {
+            "stage": 0,
+            "signText": "P5",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p6": {
+            "stage": 0,
+            "signText": "P6",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          }
+        },
+        "displayBoard": {
+          "chainId": "0x1",
+          "contractAddress": "0x3aaa87fbe562ac659f9e657a8efe00b411a56273",
+          "tokenId": "1",
+          "name": "DLP#00_concept",
+          "image": "ipfs://Qmb3pSfANoA1qGzZXyshGPvadxLKBxjoWjxboUoYzGmt9Y/nft.png",
+          "subtitle": "I call myself as a Digitalian, because I spend most of my daytime in digital world. My artwork captures my gaze in the digital world I live in as a landscape painting.\n\nArtwork 'DLP #00 concept' is a concept image of the DLP collection. DLP will show 12 artworks. The selling price of all artworks is 121% of the selling price of the previous works."
+        }
+      }
+    },
+    {
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "updatedAt": "2026-05-26T08:50:31.650Z",
+      "backedUpAt": "2026-05-26T08:50:34.163Z",
+      "data": {
+        "version": 1,
+        "mapId": "광산맵",
+        "position": {
+          "x": 8.954,
+          "y": 0.124,
+          "z": 11.494
+        },
+        "rotationY": -0.4664,
+        "economy": {
+          "credits": 0
+        },
+        "inventory": {
+          "slots": [
+            {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "count": 1,
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "count": 1,
+              "instanceId": "inv_mos7tasd_7"
+            },
+            {
+              "kind": "item",
+              "itemId": "stoneDust",
+              "count": 55,
+              "instanceId": "inv_mos80voc_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "freshAirCanister",
+              "count": 10,
+              "instanceId": "inv_motu5uok_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "woodChip",
+              "count": 21,
+              "instanceId": "inv_mp2a6kor_p"
+            },
+            {
+              "kind": "item",
+              "itemId": "masonryStone",
+              "count": 1,
+              "instanceId": "inv_mp54a9go_h"
+            },
+            {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "count": 1,
+              "instanceId": "inv_mp2dk8ok_i"
+            },
+            null,
+            null,
+            {
+              "kind": "item",
+              "itemId": "purifyPowder",
+              "count": 2,
+              "instanceId": "inv_mp3pqvuy_k"
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "pickaxeLevel": 4,
+          "mineKeyIssued": true,
+          "abandonedMineUnlocked": true,
+          "quickUse": {
+            "1": {
+              "kind": "item",
+              "itemId": "freshAirCanister"
+            },
+            "2": null,
+            "3": null,
+            "4": null,
+            "5": null
+          },
+          "equipped": {
+            "head": {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            "body": null,
+            "shoes": {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "instanceId": "inv_mp2dk8ok_i"
+            },
+            "tool": {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "instanceId": "inv_mos7tasd_7"
+            }
+          }
+        },
+        "tutorial": {
+          "currentStep": 6,
+          "minedRockCount": 64,
+          "upgradeCount": 4,
+          "completed": true,
+          "archivedSteps": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "airSystem": {
+          "current": 100,
+          "max": 100,
+          "mapPurification": {
+            "폐광맵": 0,
+            "개척지": 0
+          }
+        },
+        "personalStorage": {
+          "slots": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        "residence": {
+          "activeRoomKey": "101"
+        },
+        "frontierBuild": {
+          "p1": {
+            "stage": 0,
+            "signText": "P1",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p2": {
+            "stage": 0,
+            "signText": "P2",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p3": {
+            "stage": 0,
+            "signText": "P3",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p4": {
+            "stage": 0,
+            "signText": "P4",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p5": {
+            "stage": 0,
+            "signText": "P5",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p6": {
+            "stage": 0,
+            "signText": "P6",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          }
+        },
+        "displayBoard": {
+          "chainId": "0x1",
+          "contractAddress": "0x3aaa87fbe562ac659f9e657a8efe00b411a56273",
+          "tokenId": "1",
+          "name": "DLP#00_concept",
+          "image": "ipfs://Qmb3pSfANoA1qGzZXyshGPvadxLKBxjoWjxboUoYzGmt9Y/nft.png",
+          "subtitle": "I call myself as a Digitalian, because I spend most of my daytime in digital world. My artwork captures my gaze in the digital world I live in as a landscape painting.\n\nArtwork 'DLP #00 concept' is a concept image of the DLP collection. DLP will show 12 artworks. The selling price of all artworks is 121% of the selling price of the previous works."
+        }
+      }
+    },
+    {
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "updatedAt": "2026-05-26T08:50:34.163Z",
+      "backedUpAt": "2026-05-26T08:50:38.168Z",
+      "data": {
+        "version": 1,
+        "mapId": "광산맵",
+        "position": {
+          "x": 4.788,
+          "y": -0.159,
+          "z": 15.422
+        },
+        "rotationY": -0.1132,
+        "economy": {
+          "credits": 0
+        },
+        "inventory": {
+          "slots": [
+            {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "count": 1,
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "count": 1,
+              "instanceId": "inv_mos7tasd_7"
+            },
+            {
+              "kind": "item",
+              "itemId": "stoneDust",
+              "count": 57,
+              "instanceId": "inv_mos80voc_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "freshAirCanister",
+              "count": 10,
+              "instanceId": "inv_motu5uok_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "woodChip",
+              "count": 21,
+              "instanceId": "inv_mp2a6kor_p"
+            },
+            {
+              "kind": "item",
+              "itemId": "masonryStone",
+              "count": 1,
+              "instanceId": "inv_mp54a9go_h"
+            },
+            {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "count": 1,
+              "instanceId": "inv_mp2dk8ok_i"
+            },
+            null,
+            null,
+            {
+              "kind": "item",
+              "itemId": "purifyPowder",
+              "count": 2,
+              "instanceId": "inv_mp3pqvuy_k"
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "pickaxeLevel": 4,
+          "mineKeyIssued": true,
+          "abandonedMineUnlocked": true,
+          "quickUse": {
+            "1": {
+              "kind": "item",
+              "itemId": "freshAirCanister"
+            },
+            "2": null,
+            "3": null,
+            "4": null,
+            "5": null
+          },
+          "equipped": {
+            "head": {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            "body": null,
+            "shoes": {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "instanceId": "inv_mp2dk8ok_i"
+            },
+            "tool": {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "instanceId": "inv_mos7tasd_7"
+            }
+          }
+        },
+        "tutorial": {
+          "currentStep": 6,
+          "minedRockCount": 65,
+          "upgradeCount": 4,
+          "completed": true,
+          "archivedSteps": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "airSystem": {
+          "current": 100,
+          "max": 100,
+          "mapPurification": {
+            "폐광맵": 0,
+            "개척지": 0
+          }
+        },
+        "personalStorage": {
+          "slots": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        "residence": {
+          "activeRoomKey": "101"
+        },
+        "frontierBuild": {
+          "p1": {
+            "stage": 0,
+            "signText": "P1",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p2": {
+            "stage": 0,
+            "signText": "P2",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p3": {
+            "stage": 0,
+            "signText": "P3",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p4": {
+            "stage": 0,
+            "signText": "P4",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p5": {
+            "stage": 0,
+            "signText": "P5",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          },
+          "p6": {
+            "stage": 0,
+            "signText": "P6",
+            "operations": {
+              "shop": {
+                "statusText": "비어 있음",
+                "itemId": "",
+                "quantity": 0,
+                "price": 0,
+                "userWallet": "",
+                "sellerWallet": "",
+                "pendingCredits": 0,
+                "lifetimeCredits": 0
+              },
+              "displayA": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              },
+              "displayB": {
+                "statusText": "비어 있음",
+                "entry": null,
+                "userWallet": ""
+              }
+            }
+          }
+        },
+        "displayBoard": {
+          "chainId": "0x1",
+          "contractAddress": "0x3aaa87fbe562ac659f9e657a8efe00b411a56273",
+          "tokenId": "1",
+          "name": "DLP#00_concept",
+          "image": "ipfs://Qmb3pSfANoA1qGzZXyshGPvadxLKBxjoWjxboUoYzGmt9Y/nft.png",
+          "subtitle": "I call myself as a Digitalian, because I spend most of my daytime in digital world. My artwork captures my gaze in the digital world I live in as a landscape painting.\n\nArtwork 'DLP #00 concept' is a concept image of the DLP collection. DLP will show 12 artworks. The selling price of all artworks is 121% of the selling price of the previous works."
+        }
+      }
+    },
+    {
+      "walletAddress": "0xfb5674f5e88be965977261a2200292a63d89975f",
+      "updatedAt": "2026-05-26T08:50:38.168Z",
+      "backedUpAt": "2026-05-26T08:50:42.248Z",
+      "data": {
+        "version": 1,
+        "mapId": "광산맵",
+        "position": {
+          "x": 1.097,
+          "y": -0.046,
+          "z": 4.986
+        },
+        "rotationY": -3.1202,
+        "economy": {
+          "credits": 0
+        },
+        "inventory": {
+          "slots": [
+            {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "count": 1,
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "count": 1,
+              "instanceId": "inv_mos7tasd_7"
+            },
+            {
+              "kind": "item",
+              "itemId": "stoneDust",
+              "count": 57,
+              "instanceId": "inv_mos80voc_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "freshAirCanister",
+              "count": 10,
+              "instanceId": "inv_motu5uok_6"
+            },
+            {
+              "kind": "item",
+              "itemId": "woodChip",
+              "count": 21,
+              "instanceId": "inv_mp2a6kor_p"
+            },
+            {
+              "kind": "item",
+              "itemId": "masonryStone",
+              "count": 1,
+              "instanceId": "inv_mp54a9go_h"
+            },
+            {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "count": 1,
+              "instanceId": "inv_mp2dk8ok_i"
+            },
+            null,
+            null,
+            {
+              "kind": "item",
+              "itemId": "purifyPowder",
+              "count": 2,
+              "instanceId": "inv_mp3pqvuy_k"
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "pickaxeLevel": 4,
+          "mineKeyIssued": true,
+          "abandonedMineUnlocked": true,
+          "quickUse": {
+            "1": {
+              "kind": "item",
+              "itemId": "freshAirCanister"
+            },
+            "2": null,
+            "3": null,
+            "4": null,
+            "5": null
+          },
+          "equipped": {
+            "head": {
+              "kind": "item",
+              "itemId": "safetyHelmet",
+              "instanceId": "inv_mos7ta4k_6"
+            },
+            "body": null,
+            "shoes": {
+              "kind": "item",
+              "itemId": "basicShoes",
+              "instanceId": "inv_mp2dk8ok_i"
+            },
+            "tool": {
+              "kind": "item",
+              "itemId": "pickaxe",
+              "instanceId": "inv_mos7tasd_7"
+            }
+          }
+        },
+        "tutorial": {
+          "currentStep": 6,
+          "minedRockCount": 65,
           "upgradeCount": 4,
           "completed": true,
           "archivedSteps": [

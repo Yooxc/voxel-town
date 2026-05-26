@@ -1,14 +1,14 @@
 import * as THREE from "three";
 
-export const DEV_MOVE_SPEED = 20.0;
-export const NORMAL_WALK_SPEED = 4.0;
-export const NORMAL_RUN_SPEED = 5.5;
-export const DEV_BASE_MOVE_SPEED = 7.0;
-export const NORMAL_BASE_MOVE_SPEED = 3.0;
-export const DEV_RUN_MOVE_SPEED = 7.0;
-export const NORMAL_SHOES_RUN_SPEED = 4.5;
-export const FAST_WALK_ANIM_SPEED = 1.28;
-export const NORMAL_WALK_ANIM_SPEED = 1.0;
+const DEV_MOVE_SPEED = 20.0;
+const NORMAL_WALK_SPEED = 4.0;
+const NORMAL_RUN_SPEED = 5.5;
+const DEV_BASE_MOVE_SPEED = 7.0;
+const NORMAL_BASE_MOVE_SPEED = 3.0;
+const DEV_RUN_MOVE_SPEED = 7.0;
+const NORMAL_SHOES_RUN_SPEED = 4.5;
+const FAST_WALK_ANIM_SPEED = 1.28;
+const NORMAL_WALK_ANIM_SPEED = 1.0;
 
 export function getKeyInputCode(event) {
   return String(event?.code || "");
