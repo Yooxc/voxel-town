@@ -192,13 +192,13 @@ export function getCurrentMapIdFromPosition({
   campDoorThresholdZ,
   campNorthDoorThresholdZ,
   frontierDoorThresholdZ,
-  currentMapId = "광산맵",
+  currentMapId = "광산",
   residenceMapId = RESIDENCE_MAP_ID,
 }) {
   if (isInResidenceZone) return residenceMapId;
   if (playerZ <= frontierDoorThresholdZ) return "개척지";
-  if (playerZ <= campDoorThresholdZ && playerZ > campNorthDoorThresholdZ) return "폐광맵";
-  if (playerZ >= mineDoorThresholdZ) return "광산맵";
+  if (playerZ <= campDoorThresholdZ && playerZ > campNorthDoorThresholdZ) return "폐광";
+  if (playerZ >= mineDoorThresholdZ) return "광산";
   return currentMapId;
 }
 
@@ -262,7 +262,7 @@ export function getCurrentMapIdForPlayer({
   campDoorThresholdZ,
   campNorthDoorThresholdZ,
   frontierDoorThresholdZ,
-  currentMapId = "광산맵",
+  currentMapId = "광산",
   residenceMapId = RESIDENCE_MAP_ID,
 }) {
   return getCurrentMapIdFromPosition({
@@ -483,7 +483,7 @@ export function buildCampTestArea({
   pad.position.set(campMapX, 0.09, campMapZ);
   scene.add(pad);
   groundSurfaces.push(pad);
-  registerWalkableSurface("폐광맵", pad, 0.45);
+  registerWalkableSurface("폐광", pad, 0.45);
 
   const campHalf = campSize * 0.5;
   const wallThickness = 4.8;

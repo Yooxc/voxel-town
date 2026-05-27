@@ -3,7 +3,7 @@ export const AIR_CANISTER_RESTORE_AMOUNT = 34;
 export const AIR_RECOVERY_PER_SECOND = 1.1;
 
 export const MAP_POLLUTION_CONFIG = {
-  "폐광맵": {
+  "폐광": {
     displayName: "폐광",
     drainPerSecondAtZeroPurify: 2.25,
     purifierPowderCost: 1,

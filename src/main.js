@@ -23,6 +23,7 @@ import {
   getInventoryEntryEquipSlot as getInventoryEntryEquipSlotFromItems,
   getInventoryEntryDisplayName as getInventoryEntryDisplayNameFromItems,
   getInventoryEntryDisplayIcon as getInventoryEntryDisplayIconFromItems,
+  getInventoryEntryTooltipData as getInventoryEntryTooltipDataFromItems,
 } from "./systems/items.js";
 import {
   createDefaultSharedWorldSave as createDefaultSharedWorldSaveFromModule,
@@ -160,6 +161,7 @@ import {
   getRockDefaultResourceCount,
   getHarvestTreeCooldownUntil,
   isHarvestTreeReady,
+  getHarvestTreeRegrowthProgress,
   getHarvestTreeShakeRotation,
 } from "./systems/mining.js";
 import {
@@ -254,7 +256,7 @@ import {
   getFrontierParcelSafeStandingPoint as getFrontierParcelSafeStandingPointFromModule,
 } from "./systems/frontier.js";
 
-const LAST_PATCHED_AT = "2026-05-26 14:32:11 KST";
+const LAST_PATCHED_AT = "2026-05-27 18:00:24 KST";
 
 const scene = createMainScene();
 // ===== Atmosphere: Sky / Fog =====
@@ -945,6 +947,18 @@ function isUiEscapeCloseHandled() {
     return true;
   }
   return false;
+}
+
+function isWorkUiMovementLocked() {
+  return (
+    personalStorageOpen ||
+    !!personalStorageTransferState ||
+    frontierBuildOpen ||
+    frontierBoothOpen ||
+    frontierShopRegisterOpen ||
+    refineryOpen ||
+    forgeOpen
+  );
 }
 
 function isTextInputActive() {
@@ -3843,12 +3857,12 @@ function renderInventoryWindow() {
 
 
       // 아주 가벼운 툴팁(hover)
-      const tooltipText = getInventoryEntryTooltipText(item);
+      const tooltipData = getInventoryEntryTooltipData(item);
       slot.addEventListener("pointerenter", (e) => {
-        showItemTooltip(tooltipText, e.clientX, e.clientY);
+        showItemTooltip(tooltipData, e.clientX, e.clientY);
       });
       slot.addEventListener("pointermove", (e) => {
-        showItemTooltip(tooltipText, e.clientX, e.clientY);
+        showItemTooltip(tooltipData, e.clientX, e.clientY);
       });
       slot.addEventListener("pointerleave", () => {
         hideItemTooltip();
@@ -3956,9 +3970,9 @@ function renderPersonalStorageWindow() {
       badge.style.pointerEvents = "none";
       slotEl.appendChild(badge);
     }
-    const tooltipText = getInventoryEntryTooltipText(entry);
-    slotEl.addEventListener("pointerenter", (e) => showItemTooltip(tooltipText, e.clientX, e.clientY));
-    slotEl.addEventListener("pointermove", (e) => showItemTooltip(tooltipText, e.clientX, e.clientY));
+    const tooltipData = getInventoryEntryTooltipData(entry);
+    slotEl.addEventListener("pointerenter", (e) => showItemTooltip(tooltipData, e.clientX, e.clientY));
+    slotEl.addEventListener("pointermove", (e) => showItemTooltip(tooltipData, e.clientX, e.clientY));
     slotEl.addEventListener("pointerleave", hideItemTooltip);
   }
 
@@ -4221,13 +4235,30 @@ itemTooltip.style.borderRadius = "10px";
 itemTooltip.style.border = "1px solid rgba(255,255,255,0.14)";
 itemTooltip.style.boxShadow = "0 10px 24px rgba(0,0,0,0.22)";
 itemTooltip.style.pointerEvents = "none";
-itemTooltip.style.whiteSpace = "pre-line";
 itemTooltip.style.zIndex = "1000002";
 itemTooltip.style.display = "none";
+
+const itemTooltipTitle = document.createElement("div");
+Object.assign(itemTooltipTitle.style, {
+  fontSize: "13px",
+  fontWeight: "900",
+  color: "#ffd27a",
+  marginBottom: "6px",
+});
+itemTooltip.appendChild(itemTooltipTitle);
+
+const itemTooltipBody = document.createElement("div");
+Object.assign(itemTooltipBody.style, {
+  whiteSpace: "pre-line",
+});
+itemTooltip.appendChild(itemTooltipBody);
+
 uiLayer.appendChild(itemTooltip);
 
-function showItemTooltip(text, clientX, clientY) {
-  itemTooltip.textContent = text;
+function showItemTooltip(data, clientX, clientY) {
+  if (!data) return;
+  itemTooltipTitle.textContent = data.title || "";
+  itemTooltipBody.textContent = Array.isArray(data.lines) ? data.lines.join("\n") : "";
   itemTooltip.style.display = "block";
 
   const offset = 14;
@@ -4698,7 +4729,7 @@ const START_RING_HEIGHT = 1.1; // 허리춤 정도
 const DEV_PRESET_ENABLED = true;
 patchInfoWrap.style.display = DEV_PRESET_ENABLED ? "block" : "none";
 const DEV_PRESET = {
-  startMapId: "폐광맵",
+  startMapId: "폐광",
   completeTutorial: true,
   unlockAbandonedMine: true,
   giveStarterGear: true,
@@ -4799,7 +4830,7 @@ const startFloor = new THREE.Mesh(startFloorGeo, startFloorMat);
 startFloor.rotation.x = -Math.PI / 2;
 startFloor.position.set(START_X, START_FLAT_Y + 0.03, START_Z); // 살짝 위로
 scene.add(startFloor);
-registerWalkableSurface("광산맵", ground, 1.4);
+registerWalkableSurface("광산", ground, 1.4);
 
 
 const gridHelper = createMainGridHelper();
@@ -5107,23 +5138,16 @@ function getInventoryEntryDisplayIcon(entry) {
   return getInventoryEntryDisplayIconFromItems(ITEM_DEFS, entry);
 }
 
-function getInventoryEntryTooltipText(entry) {
-  if (!entry) return "";
-  if (isNftInventoryEntry(entry)) {
-    const lines = [
-      `이름: ${getInventoryEntryDisplayName(entry)}`,
-      "타입: NFT 장비",
-    ];
-    if (entry.rarity) lines.push(`희귀도: ${entry.rarity}`);
-    if (entry.nftType) lines.push(`장착 슬롯: ${entry.nftType}`);
-    lines.push(`Token ID: ${entry.tokenId}`);
-    return lines.join("\n");
-  }
-  const lines = [getItemTooltipText(getSlotItemId(entry), getSlotItemCount(entry))];
+function getInventoryEntryTooltipData(entry) {
+  const tooltip = getInventoryEntryTooltipDataFromItems(ITEM_DEFS, entry);
+  if (!tooltip) return null;
   if (isQuestCriticalItemBlockedFromDiscard(entry)) {
-    lines.push("퀘스트 아이템");
+    return {
+      ...tooltip,
+      lines: [...tooltip.lines, "퀘스트 아이템"],
+    };
   }
-  return lines.join("\n");
+  return tooltip;
 }
 
 function createQuickUseBinding(itemId, extra = {}) {
@@ -5189,27 +5213,6 @@ function pruneQuickUseBindings() {
   if (quickUseAssignState && !hasItem(quickUseAssignState.itemId)) {
     quickUseAssignState = null;
   }
-}
-
-function getItemTooltipText(itemId, count = null) {
-  const def = ITEM_DEFS[itemId];
-  if (!def) return itemId;
-
-  const lines = [`이름: ${def.name}`];
-  if (itemId === "pickaxe") {
-    const stats = getCurrentPickaxeStats();
-    lines.push(`강화 단계: Lv.${stats.level}`);
-    lines.push(`채굴력: ${stats.miningPowerMin.toFixed(1)} ~ ${stats.miningPowerMax.toFixed(1)}`);
-  } else if (itemId === "purifyPowder") {
-    lines.push("설명: 돌가루를 재련해 만든 정화용 가공 분말");
-    lines.push("용도: 공기 정화탑 가동");
-  } else if (typeof def.miningPower === "number") {
-    lines.push(`채굴력: ${def.miningPower}`);
-  }
-  if (count && count > 1) {
-    lines.push(`수량: ${count}`);
-  }
-  return lines.join("\n");
 }
 
 function getCurrentPickaxeStats() {
@@ -6381,7 +6384,7 @@ let frontierGate = null;
 let activeForgeStation = null;
 const mapGates = [];
 let activeMapGate = null;
-let currentMapId = "광산맵";
+let currentMapId = "광산";
 let lastAnnouncedMapId = currentMapId;
 let torchEquipped = false;
 let playerAirCurrent = AIR_GAUGE_MAX;
@@ -6389,7 +6392,7 @@ let playerAirMax = AIR_GAUGE_MAX;
 let airDepletedNoticeUntil = 0;
 const mapPollutionFields = {};
 const mapPurificationProgress = {
-  "폐광맵": 0,
+  "폐광": 0,
   "개척지": 0,
 };
 let frontierBuildState = createDefaultFrontierBuildState();
@@ -7771,7 +7774,7 @@ function buildPollutionFieldForMap(mapId, centerX, centerZ, halfSize) {
 }
 
 function buildCavePollutionField() {
-  buildPollutionFieldForMap("폐광맵", CAMP_MAP_X, CAMP_MAP_Z, GROUND_SIZE * 0.5 - 6);
+  buildPollutionFieldForMap("폐광", CAMP_MAP_X, CAMP_MAP_Z, GROUND_SIZE * 0.5 - 6);
   buildPollutionFieldForMap("개척지", FRONTIER_MAP_X, FRONTIER_MAP_Z, FRONTIER_GROUND_SIZE * 0.5 - 4);
 }
 
@@ -7940,7 +7943,7 @@ function getRefineryDistance() {
   return refineryStation.position.distanceTo(player.position);
 }
 
-function getAirPurifierHintText(mapId = "폐광맵") {
+function getAirPurifierHintText(mapId = "폐광") {
   const cfg = getMapPollutionConfig(mapId);
   const purify = getMapPurificationValue(mapId);
   if (!cfg) return "E : 공기 정화탑 가동";
@@ -7952,7 +7955,7 @@ function getAirPurifierHintText(mapId = "폐광맵") {
   return `E : 공기 정화탑 가동 (+${cfg.purifierGain}% / 정화 가루 ${cfg.purifierPowderCost})`;
 }
 
-function tryUseAirPurifier(mapId = "폐광맵") {
+function tryUseAirPurifier(mapId = "폐광") {
   const cfg = getMapPollutionConfig(mapId);
   if (!cfg) return false;
   const currentPurify = getMapPurificationValue(mapId);
@@ -10139,7 +10142,40 @@ function makeTree(x, z) {
   );
   leaves.position.y = 2.6;
 
-  g.add(trunk, leaves);
+  const stump = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.3, 0.38, 0.44, 8),
+    new THREE.MeshStandardMaterial({ color: 0x5f4633, roughness: 1.0, transparent: true, opacity: 0 })
+  );
+  stump.position.y = 0.22;
+  stump.visible = false;
+
+  const sproutStem = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.03, 0.05, 0.38, 6),
+    new THREE.MeshStandardMaterial({ color: 0x5b8a47, roughness: 1.0, transparent: true, opacity: 0 })
+  );
+  sproutStem.position.y = 0.38;
+
+  const sproutLeafLeft = new THREE.Mesh(
+    new THREE.SphereGeometry(0.12, 8, 8),
+    new THREE.MeshStandardMaterial({ color: 0x73a95c, roughness: 1.0, transparent: true, opacity: 0 })
+  );
+  sproutLeafLeft.position.set(-0.08, 0.6, 0);
+  sproutLeafLeft.scale.set(1.1, 0.6, 0.9);
+  sproutLeafLeft.rotation.z = -0.4;
+
+  const sproutLeafRight = new THREE.Mesh(
+    new THREE.SphereGeometry(0.12, 8, 8),
+    new THREE.MeshStandardMaterial({ color: 0x7cb563, roughness: 1.0, transparent: true, opacity: 0 })
+  );
+  sproutLeafRight.position.set(0.08, 0.62, 0);
+  sproutLeafRight.scale.set(1.05, 0.55, 0.85);
+  sproutLeafRight.rotation.z = 0.42;
+
+  const sprout = new THREE.Group();
+  sprout.add(sproutStem, sproutLeafLeft, sproutLeafRight);
+  sprout.visible = false;
+
+  g.add(trunk, leaves, stump, sprout);
   g.position.set(x, 0, z);
   scene.add(g);
   // ✅ 나무 충돌(트렁크만): 너무 빡빡하지 않게 약간 줄임
@@ -10153,6 +10189,10 @@ function makeTree(x, z) {
   g.userData.harvestDisabled = false;
   g.userData.trunk = trunk;
   g.userData.leaves = leaves;
+  g.userData.stump = stump;
+  g.userData.sprout = sprout;
+  g.userData.trunkBaseY = trunk.position.y;
+  g.userData.leavesBaseY = leaves.position.y;
   g.userData.baseRotationZ = 0;
   g.userData.harvestShakeUntil = 0;
   g.userData.harvestShakeStartedAt = 0;
@@ -10197,7 +10237,7 @@ function makeRock(x, z, rockSizeDef = ROCK_SIZE_DEFS[1], fadeIn = false, options
     x,
     z,
     rockSize: rockSizeDef.id,
-    mapId: options.mapId ?? "광산맵",
+    mapId: options.mapId ?? "광산",
     resourceItemId: options.resourceItemId ?? "stoneDust",
     resourceCount: options.resourceCount ?? defaultResourceCount,
     requiredPickaxeLevel: options.requiredPickaxeLevel ?? 0,
@@ -10224,7 +10264,7 @@ function scheduleRockRespawn(spawn) {
     const rockSizeDef =
       getRockSizeDefById(spawn?.rockSize, ROCK_SIZE_DEFS) ??
       ROCK_SIZE_DEFS[Math.floor(Math.random() * ROCK_SIZE_DEFS.length)];
-    const next = spawn?.mapId === "폐광맵"
+    const next = spawn?.mapId === "폐광"
       ? findCampStoneSpawnPosition(rockSizeDef.scale, 120)
       : findRockSpawnPosition(rockSizeDef.scale, 120);
     if (!next) return;
@@ -10251,12 +10291,83 @@ function setHarvestTreeActive(tree, active) {
   if (!tree?.userData) return;
   tree.userData.harvestDisabled = !active;
   tree.userData.harvestCooldownUntil = active ? 0 : getHarvestTreeCooldownUntil(performance.now(), TREE_HARVEST_RESPAWN_MS);
+  updateHarvestTreeVisualState(tree, active, active ? 1 : 0);
+}
+
+function updateHarvestTreeVisualState(tree, active, regrowthProgress = 1) {
+  if (!tree?.userData) return;
   const trunk = tree.userData.trunk;
   const leaves = tree.userData.leaves;
-  for (const mesh of [trunk, leaves]) {
-    if (!mesh?.material) continue;
-    mesh.material.transparent = !active;
-    mesh.material.opacity = active ? 1 : 0.26;
+  const stump = tree.userData.stump;
+  const sprout = tree.userData.sprout;
+  const progress = THREE.MathUtils.clamp(regrowthProgress, 0, 1);
+  const trunkBaseY = tree.userData.trunkBaseY ?? 1.1;
+  const leavesBaseY = tree.userData.leavesBaseY ?? 2.6;
+
+  if (active) {
+    if (trunk?.material) {
+      trunk.visible = true;
+      trunk.scale.y = 1;
+      trunk.position.y = trunkBaseY;
+      trunk.material.transparent = false;
+      trunk.material.opacity = 1;
+    }
+    if (leaves?.material) {
+      leaves.visible = true;
+      leaves.scale.setScalar(1);
+      leaves.position.y = leavesBaseY;
+      leaves.material.transparent = false;
+      leaves.material.opacity = 1;
+    }
+    if (stump?.material) {
+      stump.visible = false;
+      stump.material.opacity = 0;
+    }
+    if (sprout) {
+      sprout.visible = false;
+      sprout.scale.setScalar(0.2);
+      for (const child of sprout.children) {
+        if (child.material) child.material.opacity = 0;
+      }
+    }
+    return;
+  }
+
+  const trunkScaleY = THREE.MathUtils.lerp(0.22, 1, progress);
+  const leavesScale = THREE.MathUtils.lerp(0.12, 1, progress);
+  const leavesOpacity = THREE.MathUtils.lerp(0.08, 0.92, progress);
+  const stumpOpacity = THREE.MathUtils.lerp(0.95, 0.18, progress);
+  const sproutOpacity = THREE.MathUtils.clamp(progress * 1.15, 0, 0.92);
+  const sproutScale = THREE.MathUtils.lerp(0.25, 1.05, progress);
+
+  if (trunk?.material) {
+    trunk.visible = true;
+    trunk.scale.y = trunkScaleY;
+    trunk.position.y = trunkBaseY * trunkScaleY;
+    trunk.material.transparent = true;
+    trunk.material.opacity = THREE.MathUtils.lerp(0.32, 0.9, progress);
+  }
+  if (leaves?.material) {
+    leaves.visible = true;
+    leaves.scale.setScalar(leavesScale);
+    leaves.position.y = THREE.MathUtils.lerp(0.95, leavesBaseY, progress);
+    leaves.material.transparent = true;
+    leaves.material.opacity = leavesOpacity;
+  }
+  if (stump?.material) {
+    stump.visible = true;
+    stump.material.transparent = true;
+    stump.material.opacity = stumpOpacity;
+  }
+  if (sprout) {
+    sprout.visible = true;
+    sprout.scale.setScalar(sproutScale);
+    for (const child of sprout.children) {
+      if (child.material) {
+        child.material.transparent = true;
+        child.material.opacity = sproutOpacity;
+      }
+    }
   }
 }
 
@@ -10279,6 +10390,11 @@ function updateHarvestTrees() {
     }
 
     if (!tree.userData.harvestDisabled) continue;
+    updateHarvestTreeVisualState(
+      tree,
+      false,
+      getHarvestTreeRegrowthProgress(now, tree.userData.harvestCooldownUntil ?? 0, TREE_HARVEST_RESPAWN_MS, THREE.MathUtils)
+    );
     if (isHarvestTreeReady(now, tree.userData.harvestCooldownUntil ?? 0)) {
       setHarvestTreeActive(tree, true);
     }
@@ -10847,7 +10963,7 @@ function spawnCaveMasonryRocks() {
     const spawnPos = findCampStoneSpawnPosition(rockSizeDef.scale, 140);
     if (!spawnPos) continue;
     makeRock(spawnPos.x, spawnPos.z, rockSizeDef, false, {
-      mapId: "폐광맵",
+      mapId: "폐광",
       resourceItemId: "masonryStone",
       requiredPickaxeLevel: 4,
       hint: "Space : 석재 채굴",
@@ -10966,8 +11082,8 @@ mineGate = buildTravelGate({
   rotationY: Math.PI,
   startFlatY: START_FLAT_Y,
 });
-mineGate.userData.mapId = "광산맵";
-registerWalkableSurface("광산맵", mineGate.userData.walkSurface, 0.45);
+mineGate.userData.mapId = "광산";
+registerWalkableSurface("광산", mineGate.userData.walkSurface, 0.45);
 ({ airPurifierStation } = buildCampTestArea({
   scene,
   groundSurfaces,
@@ -10990,8 +11106,8 @@ campGate = buildTravelGate({
   rotationY: 0,
   startFlatY: START_FLAT_Y,
 });
-campGate.userData.mapId = "폐광맵";
-registerWalkableSurface("폐광맵", campGate.userData.walkSurface, 0.45);
+campGate.userData.mapId = "폐광";
+registerWalkableSurface("폐광", campGate.userData.walkSurface, 0.45);
 buildMapConnectorTunnel(mineGate, campGate);
 const frontierAreaBuildData = buildFrontierAreaFromMaps({
   scene,
@@ -11032,8 +11148,8 @@ frontierCampGate = buildTravelGate({
   rotationY: Math.PI,
   startFlatY: START_FLAT_Y,
 });
-frontierCampGate.userData.mapId = "폐광맵";
-registerWalkableSurface("폐광맵", frontierCampGate.userData.walkSurface, 0.45);
+frontierCampGate.userData.mapId = "폐광";
+registerWalkableSurface("폐광", frontierCampGate.userData.walkSurface, 0.45);
 frontierGate = buildTravelGate({
   scene,
   x: FRONTIER_MAP_X,
@@ -11046,8 +11162,8 @@ registerWalkableSurface("개척지", frontierGate.userData.walkSurface, 0.45);
 buildMapConnectorTunnel(frontierCampGate, frontierGate);
 
 const abandonedMineGate = registerMapGate({
-  mapId: "광산맵",
-  targetMapId: "폐광맵",
+  mapId: "광산",
+  targetMapId: "폐광",
   require: () => inventory.abandonedMineUnlocked,
   unlockWithItem: "abandonedMineKey",
   unlockFlag: "abandonedMineUnlocked",
@@ -11059,7 +11175,7 @@ const abandonedMineGate = registerMapGate({
     width: 10.6,
     depth: 2.4,
   },
-  hint: "북쪽 갱도로 들어가면 폐광맵으로 이어집니다",
+  hint: "북쪽 갱도로 들어가면 폐광으로 이어집니다",
 });
 
 const mineGateFence = buildTunnelFence(
@@ -11072,7 +11188,7 @@ abandonedMineGate.lockBlocker = mineGateFence;
 abandonedMineGate.lockColliderIndex = addCollider(mineGateFence, 1.0);
 
 registerMapGate({
-  mapId: "폐광맵",
+  mapId: "폐광",
   targetMapId: "개척지",
   trigger: {
     x: frontierCampGate.position.x,
@@ -11085,7 +11201,7 @@ registerMapGate({
 
 registerMapGate({
   mapId: "개척지",
-  targetMapId: "폐광맵",
+  targetMapId: "폐광",
   trigger: {
     x: frontierGate.position.x,
     z: frontierGate.position.z + 1.2,
@@ -11174,9 +11290,9 @@ function applyDevPreset() {
     }
   }
 
-  currentMapId = DEV_PRESET.startMapId ?? "광산맵";
+  currentMapId = DEV_PRESET.startMapId ?? "광산";
   updateSceneFogForCurrentMap();
-  const startSpawn = currentMapId === "폐광맵"
+  const startSpawn = currentMapId === "폐광"
     ? {
         x: campGate.position.x,
         z: campGate.position.z - 2.45,
@@ -11226,7 +11342,7 @@ function applyFreshPlayerStartState() {
 
   restoreLockedMapGate(abandonedMineGate);
 
-  currentMapId = "광산맵";
+  currentMapId = "광산";
   updateSceneFogForCurrentMap();
   player.position.set(START_X, player.position.y, START_Z);
   player.rotation.y = 0;
@@ -11345,9 +11461,9 @@ function applySerializedPlayerSave(rawSave, { preserveSharedWorld = false } = {}
     restoreLockedMapGate(abandonedMineGate);
   }
 
-  currentMapId = ["광산맵", "폐광맵", "개척지", RESIDENCE_MAP_ID].includes(source.mapId)
+  currentMapId = ["광산", "폐광", "개척지", RESIDENCE_MAP_ID].includes(source.mapId)
     ? source.mapId
-    : "광산맵";
+    : "광산";
   const restoredResidenceRoomKey = source.residence?.activeRoomKey === "102" ? "102" : "101";
   mansionOneActiveRoomKey = restoredResidenceRoomKey;
   if (currentMapId === RESIDENCE_MAP_ID) {
@@ -11762,7 +11878,7 @@ function renderResidenceNoticeBoards() {
   }
 }
 
-function buildAirPurifierStation(x, z, rotationY = Math.PI, mapId = "폐광맵") {
+function buildAirPurifierStation(x, z, rotationY = Math.PI, mapId = "폐광") {
   const g = new THREE.Group();
 
   const bodyMat = registerCaveDarkMaterial(
@@ -12208,7 +12324,7 @@ const keys = { w: false, a: false, s: false, d: false, shift: false };
 
 renderer.domElement.addEventListener("pointerdown", (e) => {
   if (e.button !== 0) return;
-  if (!canPlayGame() || !keys.shift) return;
+  if (!canPlayGame() || isWorkUiMovementLocked() || !keys.shift) return;
   shiftRotatePointerActive = true;
   shiftRotateLastX = e.clientX;
   shiftRotateLastY = e.clientY;
@@ -12217,16 +12333,16 @@ renderer.domElement.addEventListener("pointerdown", (e) => {
 
 window.addEventListener("pointerup", () => {
   shiftRotatePointerActive = false;
-  controls.enabled = canPlayGame();
+  controls.enabled = canPlayGame() && !isWorkUiMovementLocked();
 });
 
 window.addEventListener("pointercancel", () => {
   shiftRotatePointerActive = false;
-  controls.enabled = canPlayGame();
+  controls.enabled = canPlayGame() && !isWorkUiMovementLocked();
 });
 
 window.addEventListener("pointermove", (e) => {
-  if (!shiftRotatePointerActive || !keys.shift || !canPlayGame()) return;
+  if (!shiftRotatePointerActive || !keys.shift || !canPlayGame() || isWorkUiMovementLocked()) return;
 
   const deltaX = e.clientX - shiftRotateLastX;
   const deltaY = e.clientY - shiftRotateLastY;
@@ -12257,6 +12373,16 @@ window.addEventListener("keydown", (e) => {
     return;
   }
   console.log("KEYDOWN:", k);
+
+  if (isWorkUiMovementLocked() && (k in keys || k === "shift")) {
+    if (k in keys) keys[k] = false;
+    if (k === "shift") {
+      keys.shift = false;
+      shiftRotatePointerActive = false;
+      controls.enabled = canPlayGame() && !isWorkUiMovementLocked();
+    }
+    return;
+  }
 
   // ===== E : 월드 아이템 줍기 =====
   if (k === "e") {
@@ -12333,7 +12459,7 @@ window.addEventListener("keydown", (e) => {
   }
 
   if (activeInteractable?.type === "airPurifier") {
-    if (tryUseAirPurifier(activeInteractable.purifierMapId ?? "폐광맵")) {
+    if (tryUseAirPurifier(activeInteractable.purifierMapId ?? "폐광")) {
       return;
     }
   }
@@ -12405,6 +12531,15 @@ window.addEventListener("keyup", (e) => {
       keys.shift = false;
       shiftRotatePointerActive = false;
       controls.enabled = canPlayGame();
+    }
+    return;
+  }
+  if (isWorkUiMovementLocked()) {
+    if (k in keys) keys[k] = false;
+    if (k === "shift") {
+      keys.shift = false;
+      shiftRotatePointerActive = false;
+      controls.enabled = canPlayGame() && !isWorkUiMovementLocked();
     }
     return;
   }
@@ -12524,6 +12659,14 @@ function triggerPickupReach(target = null) {
 function updateMovement(dt) {
   if (!canPlayGame()) {
     for (const key of Object.keys(keys)) keys[key] = false;
+    updatePlayerGroundY(dt);
+    return;
+  }
+
+  if (isWorkUiMovementLocked()) {
+    for (const key of Object.keys(keys)) keys[key] = false;
+    shiftRotatePointerActive = false;
+    controls.enabled = canPlayGame() && !isWorkUiMovementLocked();
     updatePlayerGroundY(dt);
     return;
   }
@@ -12953,7 +13096,7 @@ if (!hintText && activeFrontierParcelLabel) {
 // 7) 표지판 근접 문구 (위 힌트가 없을 때만)
 if (!hintText && activeInteractable) {
   hintText = activeInteractable.type === "airPurifier"
-    ? getAirPurifierHintText(activeInteractable.purifierMapId ?? "폐광맵")
+    ? getAirPurifierHintText(activeInteractable.purifierMapId ?? "폐광")
     : activeInteractable.type === "frontierShopBooth"
       ? ((canManageFrontierShopSlot(activeInteractable.parcelLabel) || canUseFrontierShopSlot(activeInteractable.parcelLabel)) ? "E : 판매 관리" : "E : 판매 보기")
     : activeInteractable.type === "frontierDisplayBooth"

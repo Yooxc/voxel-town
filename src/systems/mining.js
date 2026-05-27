@@ -67,6 +67,18 @@ export function isHarvestTreeReady(now, cooldownUntil = 0) {
   return now >= cooldownUntil;
 }
 
+export function getHarvestTreeRegrowthProgress(
+  now,
+  cooldownUntil = 0,
+  respawnMs = TREE_HARVEST_RESPAWN_MS,
+  mathUtils = Math
+) {
+  if (!(cooldownUntil > 0) || respawnMs <= 0) return 1;
+  const remaining = Math.max(0, cooldownUntil - now);
+  const progress = 1 - remaining / respawnMs;
+  return mathUtils.clamp ? mathUtils.clamp(progress, 0, 1) : Math.max(0, Math.min(progress, 1));
+}
+
 export function getHarvestTreeShakeRotation(now, startedAt, shakeUntil, baseRotationZ = 0, mathUtils) {
   if (!(shakeUntil > now)) {
     return mathUtils.lerp(baseRotationZ, baseRotationZ, 1);

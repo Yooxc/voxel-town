@@ -32,6 +32,13 @@ export const DEV_MOCK_NFT_ITEMS = [
   },
 ];
 
+const EQUIP_SLOT_LABELS = {
+  head: "모자",
+  body: "상체",
+  shoes: "신발",
+  tool: "도구",
+};
+
 export function createItemDefs({
   buildPickaxeModel,
   buildSafetyHelmetModel,
@@ -41,91 +48,174 @@ export function createItemDefs({
   getPickaxeLevel,
 }) {
   return {
+    // Equipment
     pickaxe: {
+      category: "equip",
       name: "곡괭이",
       icon: "⛏️",
       stackMax: 1,
-      category: "equip",
       equipSlot: "tool",
+      equipSlotLabel: "도구",
+      rarityLabel: "일반",
+      typeLabel: "채굴 도구",
       upgradeKey: "pickaxe",
       miningPowerMin: 0.9,
       miningPowerMax: 1.1,
       makeInventoryModel: () => buildPickaxeModel(getPickaxeLevel()),
     },
     safetyHelmet: {
+      category: "equip",
       name: "안전모",
       icon: "🪖",
       stackMax: 1,
-      category: "equip",
       equipSlot: "head",
+      equipSlotLabel: "모자",
+      rarityLabel: "일반",
+      typeLabel: "보호 장비",
       makeInventoryModel: () => buildSafetyHelmetModel(),
     },
     basicShoes: {
+      category: "equip",
       name: "기본신발",
       icon: "👞",
       stackMax: 1,
-      category: "equip",
       equipSlot: "shoes",
+      equipSlotLabel: "신발",
+      rarityLabel: "일반",
+      typeLabel: "이동 장비",
       makeInventoryModel: () => buildBasicShoesModel(),
     },
-    abandonedMineKey: {
-      name: "폐광 열쇠",
-      icon: "🗝️",
-      stackMax: 1,
-      category: "misc",
-    },
-    frontierP1Permit: { name: "개척지 P1 개발권", icon: "📜", stackMax: 1, category: "misc", isAuthorityItem: true },
-    frontierP2Permit: { name: "개척지 P2 개발권", icon: "📜", stackMax: 1, category: "misc", isAuthorityItem: true },
-    frontierP3Permit: { name: "개척지 P3 개발권", icon: "📜", stackMax: 1, category: "misc", isAuthorityItem: true },
-    frontierP4Permit: { name: "개척지 P4 개발권", icon: "📜", stackMax: 1, category: "misc", isAuthorityItem: true },
-    frontierP5Permit: { name: "개척지 P5 개발권", icon: "📜", stackMax: 1, category: "misc", isAuthorityItem: true },
-    frontierP6Permit: { name: "개척지 P6 개발권", icon: "📜", stackMax: 1, category: "misc", isAuthorityItem: true },
-    mansionOneRoom101Permit: {
-      name: "Mansion ONE 101호",
-      icon: "🪪",
-      stackMax: 1,
-      category: "misc",
-      isAuthorityItem: true,
-    },
-    mansionOneRoom102Permit: {
-      name: "Mansion ONE 102호",
-      icon: "🪪",
-      stackMax: 1,
-      category: "misc",
-      isAuthorityItem: true,
-    },
+
+    // Consumables
     freshAirCanister: {
+      category: "cons",
       name: "신선한 공기 캔",
       icon: "🫧",
       stackMax: 200,
-      category: "cons",
+      effectText: "사용하면 공기를 회복한다",
       makeInventoryModel: () => buildFreshAirCanisterModel(),
     },
+
+    // Misc: access / authority
+    abandonedMineKey: {
+      category: "misc",
+      name: "폐광 열쇠",
+      icon: "🗝️",
+      stackMax: 1,
+      purposeText: "폐광 출입에 사용된다",
+    },
+    frontierP1Permit: {
+      category: "misc",
+      name: "개척지 P1 개발권",
+      icon: "📜",
+      stackMax: 1,
+      isAuthorityItem: true,
+      purposeText: "개척지 P1 필지 운영과 건축에 사용된다",
+    },
+    frontierP2Permit: {
+      category: "misc",
+      name: "개척지 P2 개발권",
+      icon: "📜",
+      stackMax: 1,
+      isAuthorityItem: true,
+      purposeText: "개척지 P2 필지 운영과 건축에 사용된다",
+    },
+    frontierP3Permit: {
+      category: "misc",
+      name: "개척지 P3 개발권",
+      icon: "📜",
+      stackMax: 1,
+      isAuthorityItem: true,
+      purposeText: "개척지 P3 필지 운영과 건축에 사용된다",
+    },
+    frontierP4Permit: {
+      category: "misc",
+      name: "개척지 P4 개발권",
+      icon: "📜",
+      stackMax: 1,
+      isAuthorityItem: true,
+      purposeText: "개척지 P4 필지 운영과 건축에 사용된다",
+    },
+    frontierP5Permit: {
+      category: "misc",
+      name: "개척지 P5 개발권",
+      icon: "📜",
+      stackMax: 1,
+      isAuthorityItem: true,
+      purposeText: "개척지 P5 필지 운영과 건축에 사용된다",
+    },
+    frontierP6Permit: {
+      category: "misc",
+      name: "개척지 P6 개발권",
+      icon: "📜",
+      stackMax: 1,
+      isAuthorityItem: true,
+      purposeText: "개척지 P6 필지 운영과 건축에 사용된다",
+    },
+    mansionOneRoom101Permit: {
+      category: "misc",
+      name: "Mansion ONE 101호",
+      icon: "🪪",
+      stackMax: 1,
+      isAuthorityItem: true,
+      purposeText: "Mansion ONE 101호 거주와 출입에 사용된다",
+    },
+    mansionOneRoom102Permit: {
+      category: "misc",
+      name: "Mansion ONE 102호",
+      icon: "🪪",
+      stackMax: 1,
+      isAuthorityItem: true,
+      purposeText: "Mansion ONE 102호 거주와 출입에 사용된다",
+    },
+
+    // Misc: materials
     woodChip: {
+      category: "misc",
       name: "나무조각",
       icon: "🪹",
       stackMax: 200,
-      category: "misc",
       isMaterial: true,
+      purposeText: "목재 가공과 제작 재료로 사용된다",
     },
     woodPlank: {
+      category: "misc",
       name: "목재",
       icon: "🟫",
       stackMax: 200,
-      category: "misc",
       isMaterial: true,
+      purposeText: "건축과 제작 재료로 사용된다",
     },
     purifyPowder: {
+      category: "misc",
       name: "정화 가루",
       icon: "✨",
       stackMax: 200,
-      category: "misc",
       isMaterial: true,
+      purposeText: "공기 정화탑 가동에 사용된다",
       makeInventoryModel: () => buildPurifyPowderModel(),
     },
-    stoneDust: { name: "돌가루", icon: "🪨", stackMax: 200, category: "misc", isMaterial: true },
-    masonryStone: { name: "석재", icon: "🧱", stackMax: 200, category: "misc", isMaterial: true },
+    stoneDust: {
+      category: "misc",
+      name: "돌가루",
+      icon: "🪨",
+      stackMax: 200,
+      isMaterial: true,
+      purposeText: "정제와 제작 재료로 사용된다",
+    },
+    masonryStone: {
+      category: "misc",
+      name: "석재",
+      icon: "🧱",
+      stackMax: 200,
+      isMaterial: true,
+      purposeText: "건축과 제작 재료로 사용된다",
+    },
   };
+}
+
+export function getEquipSlotDisplayLabel(equipSlot) {
+  return EQUIP_SLOT_LABELS[equipSlot] ?? equipSlot ?? "";
 }
 
 export function getDevMaterialItemIds(itemDefs) {
@@ -318,4 +408,50 @@ export function getInventoryEntryDisplayIcon(itemDefs, entry) {
   }
   const itemId = getSlotItemId(entry);
   return itemDefs[itemId]?.icon ?? "?";
+}
+
+export function getInventoryEntryTooltipData(itemDefs, entry) {
+  if (!entry) return null;
+  if (isNftInventoryEntry(entry)) {
+    return {
+      title: entry.name ?? `NFT #${entry.tokenId}`,
+      lines: [
+        `장착 슬롯: ${getEquipSlotDisplayLabel(entry.nftType) || "NFT"}`,
+        `희귀도: ${entry.rarity || "고유"}`,
+        "타입: NFT 장비",
+      ],
+    };
+  }
+
+  const itemId = getSlotItemId(entry);
+  const def = itemDefs[itemId];
+  if (!def) {
+    return {
+      title: itemId ?? "알 수 없는 아이템",
+      lines: [],
+    };
+  }
+
+  if (def.category === "equip") {
+    return {
+      title: def.name,
+      lines: [
+        `장착 슬롯: ${def.equipSlotLabel || getEquipSlotDisplayLabel(def.equipSlot)}`,
+        `희귀도: ${def.rarityLabel || "일반"}`,
+        `타입: ${def.typeLabel || "장비"}`,
+      ],
+    };
+  }
+
+  if (def.category === "cons") {
+    return {
+      title: def.name,
+      lines: [`효과: ${def.effectText || "사용 효과가 설정되지 않았다"}`],
+    };
+  }
+
+  return {
+    title: def.name,
+    lines: [`용도: ${def.purposeText || "용도가 설정되지 않았다"}`],
+  };
 }

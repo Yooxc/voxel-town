@@ -175,7 +175,7 @@ export function createInventoryWindowUi({
   createEquipmentSlot("head", "모자", 1, 1);
   createEquipmentSlot("body", "상의", 1, 2);
   createEquipmentSlot("shoes", "신발", 1, 3);
-  createEquipmentSlot("tool", "무기", 3, 2);
+  createEquipmentSlot("tool", "도구", 3, 2);
 
   const equipProfileCard = document.createElement("div");
   Object.assign(equipProfileCard.style, {
