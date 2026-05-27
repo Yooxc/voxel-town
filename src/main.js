@@ -256,7 +256,7 @@ import {
   getFrontierParcelSafeStandingPoint as getFrontierParcelSafeStandingPointFromModule,
 } from "./systems/frontier.js";
 
-const LAST_PATCHED_AT = "2026-05-27 18:00:24 KST";
+const LAST_PATCHED_AT = "2026-05-27 19:44:12 KST";
 
 const scene = createMainScene();
 // ===== Atmosphere: Sky / Fog =====
@@ -3179,8 +3179,8 @@ forgeWin.style.position = "fixed";
 forgeWin.style.left = "50%";
 forgeWin.style.top = "50%";
 forgeWin.style.transform = "translate(-50%, -50%)";
-forgeWin.style.width = "min(620px, calc(100vw - 36px))";
-forgeWin.style.minHeight = "430px";
+forgeWin.style.width = "min(1056px, calc(100vw - 36px))";
+forgeWin.style.height = "min(688px, calc(100vh - 36px))";
 forgeWin.style.background = "rgba(235, 235, 235, 0.96)";
 forgeWin.style.border = "1px solid rgba(0,0,0,0.25)";
 forgeWin.style.borderRadius = "14px";
@@ -3204,9 +3204,9 @@ forgeHeader.style.background = "rgba(255,255,255,0.7)";
 forgeWin.appendChild(forgeHeader);
 
 const forgeTitle = document.createElement("div");
-forgeTitle.textContent = "곡괭이 강화";
+forgeTitle.textContent = "장비 강화";
 forgeTitle.style.fontFamily = "system-ui, -apple-system, sans-serif";
-forgeTitle.style.fontSize = "18px";
+forgeTitle.style.fontSize = "20px";
 forgeTitle.style.fontWeight = "800";
 forgeTitle.style.color = "#222";
 forgeHeader.appendChild(forgeTitle);
@@ -3233,32 +3233,65 @@ forgeCloseBtn.style.color = "#333";
 forgeHeader.appendChild(forgeCloseBtn);
 
 const forgeBody = document.createElement("div");
-forgeBody.style.padding = "18px";
+forgeBody.style.padding = "14px";
 forgeBody.style.display = "grid";
-forgeBody.style.gridTemplateRows = "auto auto 1fr auto";
-forgeBody.style.gap = "14px";
+forgeBody.style.gridTemplateColumns = "220px minmax(0, 1fr)";
+forgeBody.style.gap = "20px";
+forgeBody.style.height = "100%";
+forgeBody.style.boxSizing = "border-box";
+forgeBody.style.overflow = "hidden";
 forgeWin.appendChild(forgeBody);
+
+const forgeListPanel = document.createElement("div");
+forgeListPanel.style.display = "flex";
+forgeListPanel.style.flexDirection = "column";
+forgeListPanel.style.gap = "8px";
+forgeBody.appendChild(forgeListPanel);
+
+const forgeListTitle = document.createElement("div");
+forgeListTitle.textContent = "강화 목록";
+forgeListTitle.style.fontFamily = "system-ui, -apple-system, sans-serif";
+forgeListTitle.style.fontSize = "12px";
+forgeListTitle.style.fontWeight = "800";
+forgeListTitle.style.color = "rgba(70,70,70,0.76)";
+forgeListPanel.appendChild(forgeListTitle);
+
+const forgeTargetList = document.createElement("div");
+forgeTargetList.style.display = "flex";
+forgeTargetList.style.flexDirection = "column";
+forgeTargetList.style.gap = "8px";
+forgeTargetList.style.overflow = "auto";
+forgeListPanel.appendChild(forgeTargetList);
+
+const forgeDetailPanel = document.createElement("div");
+forgeDetailPanel.style.display = "grid";
+forgeDetailPanel.style.gridTemplateRows = "308px 88px 88px 124px";
+forgeDetailPanel.style.gap = "12px";
+forgeDetailPanel.style.minWidth = "0";
+forgeDetailPanel.style.height = "100%";
+forgeDetailPanel.style.overflow = "hidden";
+forgeBody.appendChild(forgeDetailPanel);
 
 const forgeHero = document.createElement("div");
 forgeHero.style.display = "grid";
-forgeHero.style.gridTemplateColumns = "1fr 150px 1fr";
+forgeHero.style.gridTemplateColumns = "210px 1fr 210px";
 forgeHero.style.alignItems = "center";
-forgeHero.style.gap = "14px";
-forgeBody.appendChild(forgeHero);
+forgeHero.style.gap = "16px";
+forgeDetailPanel.appendChild(forgeHero);
 
 const forgeCurrentCard = document.createElement("div");
-forgeCurrentCard.style.minHeight = "132px";
+forgeCurrentCard.style.height = "308px";
 forgeCurrentCard.style.borderRadius = "12px";
 forgeCurrentCard.style.background = "rgba(255,255,255,0.95)";
 forgeCurrentCard.style.border = "1px solid rgba(0,0,0,0.18)";
 forgeCurrentCard.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.8)";
-forgeCurrentCard.style.padding = "14px";
+forgeCurrentCard.style.padding = "16px";
 forgeCurrentCard.style.boxSizing = "border-box";
 forgeCurrentCard.style.fontFamily = "system-ui, -apple-system, sans-serif";
 forgeHero.appendChild(forgeCurrentCard);
 
 const forgeCenterCard = document.createElement("div");
-forgeCenterCard.style.minHeight = "132px";
+forgeCenterCard.style.height = "224px";
 forgeCenterCard.style.borderRadius = "14px";
 forgeCenterCard.style.background = "linear-gradient(180deg, rgba(255,194,105,0.22), rgba(255,156,64,0.12))";
 forgeCenterCard.style.border = "1px solid rgba(255,162,68,0.38)";
@@ -3267,13 +3300,13 @@ forgeCenterCard.style.display = "flex";
 forgeCenterCard.style.flexDirection = "column";
 forgeCenterCard.style.alignItems = "center";
 forgeCenterCard.style.justifyContent = "center";
-forgeCenterCard.style.padding = "10px";
+forgeCenterCard.style.padding = "8px";
 forgeHero.appendChild(forgeCenterCard);
 
 const forgeChanceLabel = document.createElement("div");
 forgeChanceLabel.textContent = "강화 실행";
 forgeChanceLabel.style.fontFamily = "system-ui, -apple-system, sans-serif";
-forgeChanceLabel.style.fontSize = "12px";
+forgeChanceLabel.style.fontSize = "14px";
 forgeChanceLabel.style.fontWeight = "700";
 forgeChanceLabel.style.color = "rgba(88,66,34,0.76)";
 forgeCenterCard.appendChild(forgeChanceLabel);
@@ -3281,12 +3314,12 @@ forgeCenterCard.appendChild(forgeChanceLabel);
 const forgeChanceValue = document.createElement("button");
 forgeChanceValue.type = "button";
 forgeChanceValue.style.marginTop = "10px";
-forgeChanceValue.style.minWidth = "110px";
+forgeChanceValue.style.minWidth = "146px";
 forgeChanceValue.style.border = "1px solid rgba(150,90,20,0.35)";
 forgeChanceValue.style.borderRadius = "12px";
-forgeChanceValue.style.padding = "14px 18px";
+forgeChanceValue.style.padding = "16px 18px";
 forgeChanceValue.style.fontFamily = "system-ui, -apple-system, sans-serif";
-forgeChanceValue.style.fontSize = "32px";
+forgeChanceValue.style.fontSize = "22px";
 forgeChanceValue.style.fontWeight = "900";
 forgeChanceValue.style.color = "#7a4a12";
 forgeChanceValue.style.background = "rgba(255,255,255,0.78)";
@@ -3297,21 +3330,27 @@ forgeChanceValue.style.transition = "transform 90ms ease, box-shadow 90ms ease, 
 forgeCenterCard.appendChild(forgeChanceValue);
 
 const forgeNextCard = document.createElement("div");
-forgeNextCard.style.minHeight = "132px";
+forgeNextCard.style.height = "308px";
 forgeNextCard.style.borderRadius = "12px";
 forgeNextCard.style.background = "rgba(255,255,255,0.95)";
 forgeNextCard.style.border = "1px solid rgba(0,0,0,0.18)";
 forgeNextCard.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.8)";
-forgeNextCard.style.padding = "14px";
+forgeNextCard.style.padding = "16px";
 forgeNextCard.style.boxSizing = "border-box";
 forgeNextCard.style.fontFamily = "system-ui, -apple-system, sans-serif";
 forgeHero.appendChild(forgeNextCard);
 
+const forgeStatCompare = document.createElement("div");
+forgeStatCompare.style.display = "grid";
+forgeStatCompare.style.gridTemplateColumns = "repeat(3, minmax(0, 1fr))";
+forgeStatCompare.style.gap = "12px";
+forgeDetailPanel.appendChild(forgeStatCompare);
+
 const forgeInfo = document.createElement("div");
 forgeInfo.style.display = "grid";
-forgeInfo.style.gridTemplateColumns = "repeat(2, minmax(0, 1fr))";
-forgeInfo.style.gap = "10px";
-forgeBody.appendChild(forgeInfo);
+forgeInfo.style.gridTemplateColumns = "repeat(3, minmax(0, 1fr))";
+forgeInfo.style.gap = "12px";
+forgeDetailPanel.appendChild(forgeInfo);
 
 const forgeNotice = document.createElement("div");
 forgeNotice.style.padding = "12px 14px";
@@ -3322,7 +3361,9 @@ forgeNotice.style.fontFamily = "system-ui, -apple-system, sans-serif";
 forgeNotice.style.fontSize = "13px";
 forgeNotice.style.lineHeight = "1.5";
 forgeNotice.style.color = "#444";
-forgeBody.appendChild(forgeNotice);
+forgeNotice.style.height = "124px";
+forgeNotice.style.boxSizing = "border-box";
+forgeDetailPanel.appendChild(forgeNotice);
 
 const refineryOverlay = document.createElement("div");
 refineryOverlay.id = "refineryOverlay";
@@ -3341,8 +3382,8 @@ refineryWin.style.position = "fixed";
 refineryWin.style.left = "50%";
 refineryWin.style.top = "50%";
 refineryWin.style.transform = "translate(-50%, -50%)";
-refineryWin.style.width = "min(700px, calc(100vw - 36px))";
-refineryWin.style.minHeight = "420px";
+refineryWin.style.width = "min(1056px, calc(100vw - 36px))";
+refineryWin.style.height = "min(688px, calc(100vh - 36px))";
 refineryWin.style.background = "rgba(235, 235, 235, 0.96)";
 refineryWin.style.border = "1px solid rgba(0,0,0,0.25)";
 refineryWin.style.borderRadius = "14px";
@@ -3354,6 +3395,7 @@ refineryWin.style.pointerEvents = "auto";
 refineryWin.style.userSelect = "none";
 refineryWin.style.zIndex = "1000002";
 refineryWin.style.overflow = "hidden";
+refineryWin.style.gridTemplateRows = "96px minmax(0, 1fr)";
 uiLayer.appendChild(refineryWin);
 
 const refineryHeader = document.createElement("div");
@@ -3367,9 +3409,9 @@ refineryHeader.style.background = "rgba(255,255,255,0.7)";
 refineryWin.appendChild(refineryHeader);
 
 const refineryTitle = document.createElement("div");
-refineryTitle.textContent = "재련소";
+refineryTitle.textContent = "작업대";
 refineryTitle.style.fontFamily = "system-ui, -apple-system, sans-serif";
-refineryTitle.style.fontSize = "18px";
+refineryTitle.style.fontSize = "20px";
 refineryTitle.style.fontWeight = "800";
 refineryTitle.style.color = "#222";
 refineryTitle.style.marginRight = "auto";
@@ -3397,16 +3439,20 @@ refineryCloseBtn.style.color = "#333";
 refineryHeader.appendChild(refineryCloseBtn);
 
 const refineryBody = document.createElement("div");
-refineryBody.style.padding = "18px";
+refineryBody.style.padding = "14px";
 refineryBody.style.display = "grid";
-refineryBody.style.gridTemplateColumns = "220px minmax(0, 1fr)";
-refineryBody.style.gap = "16px";
+refineryBody.style.gridTemplateColumns = "230px minmax(0, 1fr)";
+refineryBody.style.gap = "20px";
+refineryBody.style.boxSizing = "border-box";
+refineryBody.style.height = "100%";
+refineryBody.style.overflow = "hidden";
 refineryWin.appendChild(refineryBody);
 
 const refineryListPanel = document.createElement("div");
 refineryListPanel.style.display = "flex";
 refineryListPanel.style.flexDirection = "column";
-refineryListPanel.style.gap = "10px";
+refineryListPanel.style.gap = "8px";
+refineryListPanel.style.minWidth = "0";
 refineryBody.appendChild(refineryListPanel);
 
 const refineryListTitle = document.createElement("div");
@@ -3420,38 +3466,43 @@ refineryListPanel.appendChild(refineryListTitle);
 const refineryRecipeList = document.createElement("div");
 refineryRecipeList.style.display = "flex";
 refineryRecipeList.style.flexDirection = "column";
-refineryRecipeList.style.gap = "8px";
+refineryRecipeList.style.gap = "6px";
+refineryRecipeList.style.overflow = "auto";
 refineryListPanel.appendChild(refineryRecipeList);
 
 const refineryDetailPanel = document.createElement("div");
 refineryDetailPanel.style.display = "grid";
-refineryDetailPanel.style.gridTemplateRows = "auto auto 1fr auto";
+refineryDetailPanel.style.gridTemplateRows = "360px 88px 124px";
 refineryDetailPanel.style.gap = "14px";
+refineryDetailPanel.style.minWidth = "0";
+refineryDetailPanel.style.height = "100%";
+refineryDetailPanel.style.overflow = "hidden";
 refineryBody.appendChild(refineryDetailPanel);
 
 const refineryHero = document.createElement("div");
 refineryHero.style.display = "grid";
-refineryHero.style.gridTemplateColumns = "1fr 120px 1fr";
+refineryHero.style.gridTemplateColumns = "210px 1fr 210px";
 refineryHero.style.alignItems = "center";
-refineryHero.style.gap = "14px";
+refineryHero.style.gap = "18px";
 refineryDetailPanel.appendChild(refineryHero);
 
 const refineryInputCard = document.createElement("div");
 const refineryOutputCard = document.createElement("div");
 for (const card of [refineryInputCard, refineryOutputCard]) {
-  card.style.minHeight = "156px";
+  card.style.height = "360px";
   card.style.borderRadius = "12px";
   card.style.background = "rgba(255,255,255,0.95)";
   card.style.border = "1px solid rgba(0,0,0,0.18)";
   card.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.8)";
-  card.style.padding = "14px";
+  card.style.padding = "16px 14px";
   card.style.boxSizing = "border-box";
   card.style.fontFamily = "system-ui, -apple-system, sans-serif";
+  card.style.overflow = "hidden";
 }
 refineryHero.appendChild(refineryInputCard);
 
 const refineryArrowCard = document.createElement("div");
-refineryArrowCard.style.minHeight = "156px";
+refineryArrowCard.style.height = "268px";
 refineryArrowCard.style.borderRadius = "14px";
 refineryArrowCard.style.background = "linear-gradient(180deg, rgba(255,194,105,0.22), rgba(255,156,64,0.12))";
 refineryArrowCard.style.border = "1px solid rgba(255,162,68,0.38)";
@@ -3461,6 +3512,7 @@ refineryArrowCard.style.flexDirection = "column";
 refineryArrowCard.style.alignItems = "center";
 refineryArrowCard.style.justifyContent = "center";
 refineryArrowCard.style.padding = "10px";
+refineryArrowCard.style.boxSizing = "border-box";
 refineryHero.appendChild(refineryArrowCard);
 
 const refineryArrowLabel = document.createElement("div");
@@ -3475,12 +3527,12 @@ const refineryArrowValue = document.createElement("button");
 refineryArrowValue.type = "button";
 refineryArrowValue.textContent = "재련하기";
 refineryArrowValue.style.marginTop = "12px";
-refineryArrowValue.style.minWidth = "100px";
+refineryArrowValue.style.minWidth = "150px";
 refineryArrowValue.style.border = "1px solid rgba(150,90,20,0.35)";
 refineryArrowValue.style.borderRadius = "12px";
-refineryArrowValue.style.padding = "14px 12px";
+refineryArrowValue.style.padding = "14px 16px";
 refineryArrowValue.style.fontFamily = "system-ui, -apple-system, sans-serif";
-refineryArrowValue.style.fontSize = "20px";
+refineryArrowValue.style.fontSize = "22px";
 refineryArrowValue.style.fontWeight = "900";
 refineryArrowValue.style.color = "#7a4a12";
 refineryArrowValue.style.background = "rgba(255,255,255,0.82)";
@@ -3494,18 +3546,21 @@ refineryHero.appendChild(refineryOutputCard);
 const refineryInfo = document.createElement("div");
 refineryInfo.style.display = "grid";
 refineryInfo.style.gridTemplateColumns = "repeat(2, minmax(0, 1fr))";
-refineryInfo.style.gap = "10px";
+refineryInfo.style.gap = "14px";
 refineryDetailPanel.appendChild(refineryInfo);
 
 const refineryNotice = document.createElement("div");
-refineryNotice.style.padding = "12px 14px";
+refineryNotice.style.padding = "14px 16px";
 refineryNotice.style.borderRadius = "10px";
 refineryNotice.style.background = "rgba(255,255,255,0.9)";
 refineryNotice.style.border = "1px solid rgba(0,0,0,0.12)";
 refineryNotice.style.fontFamily = "system-ui, -apple-system, sans-serif";
-refineryNotice.style.fontSize = "13px";
-refineryNotice.style.lineHeight = "1.5";
+refineryNotice.style.fontSize = "14px";
+refineryNotice.style.lineHeight = "1.55";
 refineryNotice.style.color = "#444";
+refineryNotice.style.boxSizing = "border-box";
+refineryNotice.style.height = "124px";
+refineryNotice.style.overflow = "hidden";
 refineryDetailPanel.appendChild(refineryNotice);
 
 
@@ -7895,7 +7950,7 @@ function getRefineryRecipeDescription(recipe) {
 
 function getRefineryHintText() {
   if (refineryOpen) return "재련대 이용 중";
-  return "E : 재련대 사용";
+  return "E : 작업대 사용";
 }
 
 function tryUseRefineryRecipe(recipe = getSelectedRefineryRecipe()) {
@@ -8784,60 +8839,63 @@ function setForgeOpen(v) {
 
 function renderRefineryItemCard(card, heading, itemId, count, description, accentColor = "#2f1700") {
   card.innerHTML = "";
+  card.style.display = "grid";
+  card.style.gridTemplateRows = "auto 124px auto 1fr";
+  card.style.justifyItems = "center";
+  card.style.alignItems = "start";
 
   const title = document.createElement("div");
   title.textContent = heading;
-  title.style.fontSize = "12px";
-  title.style.fontWeight = "700";
-  title.style.color = "rgba(70,70,70,0.76)";
-  title.style.marginBottom = "8px";
+  title.style.fontSize = "22px";
+  title.style.fontWeight = "800";
+  title.style.color = "rgba(70,70,70,0.88)";
+  title.style.marginBottom = "10px";
+  title.style.textAlign = "center";
   card.appendChild(title);
 
-  const hero = document.createElement("div");
-  hero.style.display = "flex";
-  hero.style.alignItems = "center";
-  hero.style.gap = "12px";
-  card.appendChild(hero);
-
   const visualWrap = document.createElement("div");
-  visualWrap.style.width = "64px";
-  visualWrap.style.height = "64px";
-  visualWrap.style.borderRadius = "12px";
+  visualWrap.style.width = "124px";
+  visualWrap.style.height = "124px";
+  visualWrap.style.borderRadius = "22px";
   visualWrap.style.background = "linear-gradient(180deg, rgba(246,246,246,0.96), rgba(224,224,224,0.9))";
   visualWrap.style.border = "1px solid rgba(0,0,0,0.12)";
   visualWrap.style.display = "flex";
   visualWrap.style.alignItems = "center";
   visualWrap.style.justifyContent = "center";
   visualWrap.style.flex = "0 0 auto";
-  visualWrap.appendChild(createItemVisualElement(itemId, { size: 50 }));
-  hero.appendChild(visualWrap);
-
-  const textWrap = document.createElement("div");
-  textWrap.style.minWidth = "0";
-  hero.appendChild(textWrap);
+  visualWrap.appendChild(createItemVisualElement(itemId, { size: 96 }));
+  card.appendChild(visualWrap);
 
   const name = document.createElement("div");
   name.textContent = ITEM_DEFS[itemId]?.name ?? itemId;
-  name.style.fontSize = "19px";
+  name.style.marginTop = "14px";
+  name.style.fontSize = "20px";
   name.style.fontWeight = "900";
   name.style.color = "#222";
-  textWrap.appendChild(name);
+  name.style.textAlign = "center";
+  card.appendChild(name);
 
   const countLabel = document.createElement("div");
-  countLabel.textContent = `수량 x${count}`;
-  countLabel.style.marginTop = "6px";
-  countLabel.style.fontSize = "13px";
-  countLabel.style.fontWeight = "800";
+  countLabel.textContent = `${count}`;
+  countLabel.style.marginTop = "12px";
+  countLabel.style.fontSize = "68px";
+  countLabel.style.lineHeight = "0.95";
+  countLabel.style.fontWeight = "900";
   countLabel.style.color = accentColor;
-  textWrap.appendChild(countLabel);
+  card.appendChild(countLabel);
 
-  const detail = document.createElement("div");
-  detail.style.marginTop = "12px";
-  detail.style.fontSize = "13px";
-  detail.style.lineHeight = "1.6";
-  detail.style.color = "#333";
-  detail.textContent = description;
-  card.appendChild(detail);
+  if (description) {
+    const detail = document.createElement("div");
+    detail.style.alignSelf = "end";
+    detail.style.justifySelf = "stretch";
+    detail.style.marginTop = "14px";
+    detail.style.fontSize = "12px";
+    detail.style.lineHeight = "1.45";
+    detail.style.color = "#555";
+    detail.style.textAlign = "center";
+    detail.textContent = description;
+    card.appendChild(detail);
+  }
 }
 
 function setRefineryOpen(v) {
@@ -8876,14 +8934,14 @@ function renderRefineryWindow() {
     btn.style.textAlign = "left";
     btn.style.border = isActive ? "1px solid rgba(255,140,0,0.78)" : "1px solid rgba(0,0,0,0.14)";
     btn.style.borderRadius = "12px";
-    btn.style.padding = "12px";
+    btn.style.padding = "10px";
     btn.style.background = isActive
       ? "linear-gradient(180deg, rgba(255,222,182,0.92), rgba(255,240,220,0.92))"
       : "rgba(255,255,255,0.94)";
     btn.style.cursor = "pointer";
     btn.innerHTML = `
-      <div style="font-size:14px;font-weight:800;color:#222;">${recipe.label}</div>
-      <div style="margin-top:6px;font-size:12px;line-height:1.5;color:#555;">${inputName} ${recipe.inputCount}개 → ${ITEM_DEFS[recipe.outputItemId]?.name ?? recipe.outputItemId} ${recipe.outputCount}개</div>
+      <div style="font-size:13px;font-weight:800;color:#222;">${recipe.label}</div>
+      <div style="margin-top:5px;font-size:11px;line-height:1.45;color:#555;">${inputName} ${recipe.inputCount}개 → ${ITEM_DEFS[recipe.outputItemId]?.name ?? recipe.outputItemId} ${recipe.outputCount}개</div>
     `;
     btn.addEventListener("click", () => {
       refinerySelectedRecipeId = recipe.id;
@@ -8892,7 +8950,7 @@ function renderRefineryWindow() {
     refineryRecipeList.appendChild(btn);
   }
 
-  refineryTitle.textContent = hasRecipe ? `${selectedRecipe.label} 재련` : "재련소";
+  refineryTitle.textContent = "작업대";
 
   if (!hasRecipe) {
     refineryInputCard.textContent = "";
@@ -8916,38 +8974,40 @@ function renderRefineryWindow() {
 
   renderRefineryItemCard(
     refineryInputCard,
-    "넣을 재료",
+    "재료",
     selectedRecipe.inputItemId,
     selectedRecipe.inputCount,
-    `보유량 ${inputOwned}개 / 필요량 ${selectedRecipe.inputCount}개`,
+    "",
     canCraft ? "#2f6a1e" : "#8b2f2f"
   );
   renderRefineryItemCard(
     refineryOutputCard,
-    "재련 결과",
+    "결과",
     selectedRecipe.outputItemId,
     selectedRecipe.outputCount,
-    `${getRefineryRecipeDescription(selectedRecipe)} 현재 보유량 ${outputOwned}개`,
+    "",
     "#7a4a12"
   );
 
   refineryInfo.innerHTML = "";
   const infoCards = [
     { label: "보유 재료", value: `${inputName} ${inputOwned}개` },
-    { label: "필요 재료", value: `${inputName} ${selectedRecipe.inputCount}개` },
-    { label: "결과물", value: `${outputName} ${selectedRecipe.outputCount}개` },
     { label: "현재 보유", value: `${outputName} ${outputOwned}개` },
-    { label: "재련 가능", value: canCraft ? "가능" : "재료 부족" },
   ];
   for (const entry of infoCards) {
     const card = document.createElement("div");
-    card.style.padding = "12px";
+    card.style.padding = "12px 14px";
     card.style.borderRadius = "10px";
     card.style.background = "rgba(255,255,255,0.92)";
     card.style.border = "1px solid rgba(0,0,0,0.12)";
+    card.style.height = "88px";
+    card.style.boxSizing = "border-box";
+    card.style.display = "flex";
+    card.style.flexDirection = "column";
+    card.style.justifyContent = "center";
     card.innerHTML = `
       <div style="font-size:12px;font-weight:700;color:rgba(70,70,70,0.74);margin-bottom:6px;">${entry.label}</div>
-      <div style="font-size:18px;font-weight:800;color:#242424;">${entry.value}</div>
+      <div style="font-size:24px;font-weight:900;color:#242424;line-height:1.1;">${entry.value}</div>
     `;
     refineryInfo.appendChild(card);
   }
@@ -8959,7 +9019,7 @@ function renderRefineryWindow() {
     refineryNotice.style.color = "#24622c";
   } else {
     refineryNotice.textContent = canCraft
-      ? `${inputName}을 정제해 ${outputName}로 바꿉니다. ${getRefineryRecipeDescription(selectedRecipe)}`
+      ? getRefineryRecipeDescription(selectedRecipe)
       : `${inputName} ${selectedRecipe.inputCount}개가 있어야 ${outputName}를 만들 수 있습니다.`;
     refineryNotice.style.background = "rgba(255,255,255,0.9)";
     refineryNotice.style.border = "1px solid rgba(0,0,0,0.12)";
@@ -8982,67 +9042,79 @@ function tryCraftSelectedRefineryRecipe() {
 
 function renderForgeItemCard(card, heading, itemId, level, stats, emptyText = "") {
   card.innerHTML = "";
+  card.style.display = "grid";
+  card.style.gridTemplateRows = "auto 1fr";
+  card.style.justifyItems = "center";
+  card.style.alignItems = "stretch";
 
   const title = document.createElement("div");
   title.textContent = heading;
-  title.style.fontSize = "12px";
+  title.style.fontSize = "14px";
   title.style.fontWeight = "700";
   title.style.color = "rgba(70,70,70,0.76)";
-  title.style.marginBottom = "8px";
+  title.style.marginBottom = "10px";
+  title.style.textAlign = "center";
   card.appendChild(title);
 
   if (!itemId || !stats) {
     const empty = document.createElement("div");
-    empty.style.marginTop = "18px";
+    empty.style.display = "flex";
+    empty.style.alignItems = "center";
+    empty.style.justifyContent = "center";
+    empty.style.height = "100%";
     empty.style.fontSize = "13px";
     empty.style.lineHeight = "1.6";
     empty.style.color = "#555";
+    empty.style.textAlign = "center";
     empty.innerHTML = emptyText;
     card.appendChild(empty);
     return;
   }
 
-  const hero = document.createElement("div");
-  hero.style.display = "flex";
-  hero.style.alignItems = "center";
-  hero.style.gap = "12px";
-  card.appendChild(hero);
+  const content = document.createElement("div");
+  content.style.display = "flex";
+  content.style.flexDirection = "column";
+  content.style.alignItems = "center";
+  content.style.justifyContent = "center";
+  content.style.gap = "12px";
+  content.style.height = "100%";
+  card.appendChild(content);
 
   const visualWrap = document.createElement("div");
-  visualWrap.style.width = "64px";
-  visualWrap.style.height = "64px";
-  visualWrap.style.borderRadius = "12px";
+  visualWrap.style.width = "104px";
+  visualWrap.style.height = "104px";
+  visualWrap.style.borderRadius = "22px";
   visualWrap.style.background = "linear-gradient(180deg, rgba(246,246,246,0.96), rgba(224,224,224,0.9))";
   visualWrap.style.border = "1px solid rgba(0,0,0,0.12)";
   visualWrap.style.display = "flex";
   visualWrap.style.alignItems = "center";
   visualWrap.style.justifyContent = "center";
   visualWrap.style.flex = "0 0 auto";
-  visualWrap.appendChild(createForgeUpgradeVisualElement(itemId, level, 50));
-  hero.appendChild(visualWrap);
-
-  const textWrap = document.createElement("div");
-  textWrap.style.minWidth = "0";
-  hero.appendChild(textWrap);
+  visualWrap.appendChild(createForgeUpgradeVisualElement(itemId, level, 80));
+  content.appendChild(visualWrap);
 
   const name = document.createElement("div");
   name.textContent = `${ITEM_DEFS[itemId]?.name ?? itemId} Lv.${level}`;
-  name.style.fontSize = "20px";
+  name.style.fontSize = "24px";
   name.style.fontWeight = "900";
   name.style.color = "#222";
-  textWrap.appendChild(name);
+  name.style.textAlign = "center";
+  content.appendChild(name);
+}
 
-  const detail = document.createElement("div");
-  detail.style.marginTop = "10px";
-  detail.style.fontSize = "13px";
-  detail.style.lineHeight = "1.6";
-  detail.style.color = "#333";
-  detail.innerHTML = `
-    채굴력 ${stats.miningPowerMin.toFixed(2)} ~ ${stats.miningPowerMax.toFixed(2)}<br>
-    추가 드랍 ${Math.round(stats.bonusDropChance * 100)}%<br>
-    속도 ${Math.round((0.28 / stats.swingDuration) * 100)}%
-  `;
-  card.appendChild(detail);
+function formatForgeMiningPower(stats) {
+  if (!stats) return "-";
+  return `${stats.miningPowerMin.toFixed(2)}~${stats.miningPowerMax.toFixed(2)}`;
+}
+
+function formatForgeBonusDropChance(stats) {
+  if (!stats) return "-";
+  return `${Math.round((stats.bonusDropChance ?? 0) * 100)}%`;
+}
+
+function formatForgeSwingDuration(stats) {
+  if (!stats) return "-";
+  return `${stats.swingDuration.toFixed(3)}초`;
 }
 
 function finishPendingForgeUpgrade() {
@@ -9089,7 +9161,38 @@ function renderForgeWindow() {
     stoneDustCount >= next.cost &&
     !isProcessing;
 
-  forgeTitle.textContent = upgradeState ? `${forgeItemName} 강화` : "장비 강화";
+  forgeTitle.textContent = "장비 강화";
+  forgeTargetList.innerHTML = "";
+  const forgeTargets = [
+    {
+      itemId: "pickaxe",
+      label: ITEM_DEFS.pickaxe?.name ?? "곡괭이",
+      summary: "돌가루로 채굴 장비를 강화합니다.",
+      active: getForgeTargetItemId() === "pickaxe",
+    },
+  ];
+  for (const target of forgeTargets) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.style.width = "100%";
+    btn.style.textAlign = "left";
+    btn.style.border = target.active ? "1px solid rgba(255,140,0,0.78)" : "1px solid rgba(0,0,0,0.14)";
+    btn.style.borderRadius = "12px";
+    btn.style.padding = "12px";
+    btn.style.background = target.active
+      ? "linear-gradient(180deg, rgba(255,222,182,0.92), rgba(255,240,220,0.92))"
+      : "rgba(255,255,255,0.94)";
+    btn.style.cursor = "pointer";
+    btn.innerHTML = `
+      <div style="font-size:14px;font-weight:800;color:#222;">${target.label}</div>
+      <div style="margin-top:6px;font-size:12px;line-height:1.5;color:#555;">${target.summary}</div>
+    `;
+    btn.addEventListener("click", () => {
+      renderForgeWindow();
+    });
+    forgeTargetList.appendChild(btn);
+  }
+
   renderForgeItemCard(
     forgeCurrentCard,
     "현재 장비",
@@ -9099,7 +9202,7 @@ function renderForgeWindow() {
     "현재 착용 중인 강화 가능 장비가 없습니다.<br>장비창에서 곡괭이를 먼저 장착해보세요."
   );
 
-  forgeChanceValue.textContent = isProcessing ? "..." : (next ? "가즈아" : "MAX");
+  forgeChanceValue.textContent = isProcessing ? "진행 중" : (next ? "강화 실행" : "최대 단계");
   forgeChanceValue.disabled = !canUpgrade;
   forgeChanceValue.style.opacity = canUpgrade ? "1" : "0.55";
   forgeChanceValue.style.cursor = canUpgrade ? "pointer" : "default";
@@ -9121,23 +9224,60 @@ function renderForgeWindow() {
     `;
   }
 
-  forgeInfo.innerHTML = "";
-  const infoCards = [
-    { label: "보유 돌가루", value: `${stoneDustCount}` },
-    { label: "강화 조건", value: upgradeState ? `${forgeItemName} 장착` : "장착 장비 필요" },
-    { label: "현재 안정성", value: upgradeState ? `${(stats.miningPowerMax - stats.miningPowerMin).toFixed(2)} 편차` : "-" },
-    { label: "강화 성공률", value: next ? `${Math.round((next.successChance ?? 1) * 100)}%` : "MAX" },
-    { label: "강화 가능", value: canUpgrade ? "가능" : (next ? "재료 확인" : "최대 단계") },
-  ];
-  for (const entry of infoCards) {
+  forgeStatCompare.innerHTML = "";
+  const statRows = next
+    ? [
+        { label: "채굴력", current: formatForgeMiningPower(stats), next: formatForgeMiningPower(next) },
+        { label: "추가 드랍 확률", current: formatForgeBonusDropChance(stats), next: formatForgeBonusDropChance(next) },
+        { label: "속도", current: formatForgeSwingDuration(stats), next: formatForgeSwingDuration(next) },
+      ]
+    : [
+        { label: "채굴력", current: formatForgeMiningPower(stats), next: "MAX" },
+        { label: "추가 드랍 확률", current: formatForgeBonusDropChance(stats), next: "MAX" },
+        { label: "속도", current: formatForgeSwingDuration(stats), next: "MAX" },
+      ];
+  for (const row of statRows) {
     const card = document.createElement("div");
-    card.style.padding = "12px";
+    card.style.padding = "14px 16px";
     card.style.borderRadius = "10px";
     card.style.background = "rgba(255,255,255,0.92)";
     card.style.border = "1px solid rgba(0,0,0,0.12)";
+    card.style.boxSizing = "border-box";
+    card.style.height = "88px";
+    card.style.display = "flex";
+    card.style.flexDirection = "column";
+    card.style.justifyContent = "center";
+    card.innerHTML = `
+      <div style="font-size:12px;font-weight:700;color:rgba(70,70,70,0.74);margin-bottom:6px;">${row.label}</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:12px;font-size:22px;font-weight:900;color:#242424;line-height:1.1;">
+        <span>${row.current}</span>
+        <span style="color:#9b6f2b;">&gt;</span>
+        <span style="color:#9b6f2b;">${row.next}</span>
+      </div>
+    `;
+    forgeStatCompare.appendChild(card);
+  }
+
+  forgeInfo.innerHTML = "";
+  const infoCards = [
+    { label: "보유 돌가루", value: `${stoneDustCount}` },
+    { label: "필요 돌가루", value: next ? `${next.cost}` : "0" },
+    { label: "강화 성공 확률", value: next ? `${Math.round((next.successChance ?? 1) * 100)}%` : "MAX" },
+  ];
+  for (const entry of infoCards) {
+    const card = document.createElement("div");
+    card.style.padding = "12px 14px";
+    card.style.borderRadius = "10px";
+    card.style.background = "rgba(255,255,255,0.92)";
+    card.style.border = "1px solid rgba(0,0,0,0.12)";
+    card.style.height = "88px";
+    card.style.boxSizing = "border-box";
+    card.style.display = "flex";
+    card.style.flexDirection = "column";
+    card.style.justifyContent = "center";
     card.innerHTML = `
       <div style="font-size:12px;font-weight:700;color:rgba(70,70,70,0.74);margin-bottom:6px;">${entry.label}</div>
-      <div style="font-size:18px;font-weight:800;color:#242424;">${entry.value}</div>
+      <div style="font-size:24px;font-weight:900;color:#242424;">${entry.value}</div>
     `;
     forgeInfo.appendChild(card);
   }
@@ -9150,13 +9290,13 @@ function renderForgeWindow() {
     forgeNotice.style.fontWeight = "800";
     return;
   } else if (!upgradeState) {
-    forgeNotice.textContent = "모루에서는 현재 착용 중인 강화 가능 장비를 기준으로 강화합니다. 장비창에서 곡괭이를 먼저 장착해보세요.";
+    forgeNotice.textContent = "현재 착용 중인 강화 가능 장비가 없습니다. 장비창에서 곡괭이를 먼저 장착해보세요.";
   } else if (!next) {
     forgeNotice.textContent = `더 이상 강화할 수 없습니다. 현재 ${forgeItemName}는 최고 단계입니다.`;
   } else if (stoneDustCount < next.cost) {
     forgeNotice.textContent = `강화에는 돌가루 ${next.cost}개가 필요합니다. 광산에서 더 채굴해오세요.`;
   } else {
-    forgeNotice.textContent = `모루에서 ${forgeItemName}를 강화하면 성능과 안정성이 함께 올라갑니다. 이번 강화 비용은 돌가루 ${next.cost}개, 성공률은 ${Math.round((next.successChance ?? 1) * 100)}%입니다.`;
+    forgeNotice.textContent = `${forgeItemName}를 강화하면 채굴력, 추가 드랍 확률, 속도가 함께 상승합니다. 이번 강화 비용은 돌가루 ${next.cost}개입니다.`;
   }
   forgeNotice.style.color = "#444";
   forgeNotice.style.fontWeight = "500";
