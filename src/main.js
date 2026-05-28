@@ -256,7 +256,7 @@ import {
   getFrontierParcelSafeStandingPoint as getFrontierParcelSafeStandingPointFromModule,
 } from "./systems/frontier.js";
 
-const LAST_PATCHED_AT = "2026-05-27 19:44:12 KST";
+const LAST_PATCHED_AT = "2026-05-28 18:07:12 KST";
 
 const scene = createMainScene();
 // ===== Atmosphere: Sky / Fog =====
@@ -3353,15 +3353,15 @@ forgeInfo.style.gap = "12px";
 forgeDetailPanel.appendChild(forgeInfo);
 
 const forgeNotice = document.createElement("div");
-forgeNotice.style.padding = "12px 14px";
+forgeNotice.style.padding = "10px 12px";
 forgeNotice.style.borderRadius = "10px";
 forgeNotice.style.background = "rgba(255,255,255,0.9)";
 forgeNotice.style.border = "1px solid rgba(0,0,0,0.12)";
 forgeNotice.style.fontFamily = "system-ui, -apple-system, sans-serif";
 forgeNotice.style.fontSize = "13px";
-forgeNotice.style.lineHeight = "1.5";
+forgeNotice.style.lineHeight = "1.45";
 forgeNotice.style.color = "#444";
-forgeNotice.style.height = "124px";
+forgeNotice.style.height = "80px";
 forgeNotice.style.boxSizing = "border-box";
 forgeDetailPanel.appendChild(forgeNotice);
 
@@ -3639,18 +3639,27 @@ function getRenderedModelPreviewDataUrl(cacheKey, buildModel, size = 40) {
   return dataUrl;
 }
 
-function getItemPreviewDataUrl(itemId, size = 40) {
-  const previewVariant = itemId === "pickaxe" ? `lv${inventory?.pickaxeLevel ?? 0}` : "base";
+function getItemPreviewDataUrl(itemId, size = 40, variantLevel = null) {
+  const previewVariant =
+    itemId === "pickaxe"
+      ? `lv${Number.isFinite(variantLevel) ? variantLevel : inventory?.pickaxeLevel ?? 0}`
+      : "base";
   const cacheKey = `${itemId}:${previewVariant}:${size}`;
   const def = ITEM_DEFS[itemId];
   if (!def?.makeInventoryModel) return null;
-  return getRenderedModelPreviewDataUrl(cacheKey, () => def.makeInventoryModel(), size);
+  return getRenderedModelPreviewDataUrl(
+    cacheKey,
+    () => (itemId === "pickaxe" && Number.isFinite(variantLevel)
+      ? buildPickaxeModel(variantLevel)
+      : def.makeInventoryModel()),
+    size
+  );
 }
 
 function createItemVisualElement(itemId, options = {}) {
   const def = ITEM_DEFS[itemId];
   const size = options.size ?? 40;
-  const dataUrl = getItemPreviewDataUrl(itemId, size);
+  const dataUrl = getItemPreviewDataUrl(itemId, size, options.variantLevel ?? null);
   if (dataUrl) {
     const img = document.createElement("img");
     img.src = dataUrl;
@@ -3700,7 +3709,12 @@ function createInventoryEntryVisualElement(entry, options = {}) {
     }
     return createFallbackItemIcon(getInventoryEntryDisplayIcon(entry), Math.max(20, Math.round((options.size ?? 40) * 0.6)));
   }
-  return createItemVisualElement(getSlotItemId(entry), options);
+  return createItemVisualElement(getSlotItemId(entry), {
+    ...options,
+    variantLevel: getSlotItemId(entry) === "pickaxe" && Number.isFinite(entry?.pickaxeLevel)
+      ? entry.pickaxeLevel
+      : options.variantLevel ?? null,
+  });
 }
 
 function createForgeUpgradeVisualElement(itemId, level, size = 54) {
@@ -5185,8 +5199,62 @@ function getInventoryEntryEquipSlot(entry) {
   return getInventoryEntryEquipSlotFromItems(ITEM_DEFS, entry);
 }
 
+function getEquippedInventoryEntry(slotId) {
+  const equippedRef = getEquippedItemRef(slotId);
+  if (!equippedRef) return null;
+  if (isNftInventoryEntry(equippedRef)) return equippedRef;
+  const matched = inventory.slots.find(
+    (slot) => slot && isSameInventoryEntryAsEquipped(slot, equippedRef)
+  );
+  return matched ?? equippedRef;
+}
+
+function getDisplayResolvedInventoryEntry(entry) {
+  if (
+    entry &&
+    !isNftInventoryEntry(entry) &&
+    typeof entry.instanceId === "string" &&
+    entry.instanceId.trim()
+  ) {
+    const matched = inventory.slots.find(
+      (slot) =>
+        slot &&
+        !isNftInventoryEntry(slot) &&
+        slot.instanceId === entry.instanceId
+    );
+    if (matched) {
+      return { ...entry, ...matched };
+    }
+  }
+  if (
+    entry &&
+    !isNftInventoryEntry(entry) &&
+    getSlotItemId(entry) === "pickaxe" &&
+    !Number.isFinite(entry.pickaxeLevel)
+  ) {
+    return {
+      ...entry,
+      pickaxeLevel: inventory.pickaxeLevel,
+    };
+  }
+  return entry;
+}
+
+function getResolvedPickaxeLevel(entry, fallbackLevel = inventory?.pickaxeLevel ?? 0) {
+  const rawLevel = Number.isFinite(entry?.pickaxeLevel) ? entry.pickaxeLevel : fallbackLevel;
+  return clampPickaxeLevel(rawLevel, PICKAXE_UPGRADE_LEVELS);
+}
+
+function getEquippedPickaxeLevel() {
+  const equippedPickaxeEntry = getEquippedInventoryEntry("tool");
+  if (!equippedPickaxeEntry || getSlotItemId(equippedPickaxeEntry) !== "pickaxe") {
+    return 0;
+  }
+  return getResolvedPickaxeLevel(equippedPickaxeEntry);
+}
+
 function getInventoryEntryDisplayName(entry) {
-  return getInventoryEntryDisplayNameFromItems(ITEM_DEFS, entry);
+  return getInventoryEntryDisplayNameFromItems(ITEM_DEFS, getDisplayResolvedInventoryEntry(entry));
 }
 
 function getInventoryEntryDisplayIcon(entry) {
@@ -5194,7 +5262,10 @@ function getInventoryEntryDisplayIcon(entry) {
 }
 
 function getInventoryEntryTooltipData(entry) {
-  const tooltip = getInventoryEntryTooltipDataFromItems(ITEM_DEFS, entry);
+  const tooltip = getInventoryEntryTooltipDataFromItems(
+    ITEM_DEFS,
+    getDisplayResolvedInventoryEntry(entry)
+  );
   if (!tooltip) return null;
   if (isQuestCriticalItemBlockedFromDiscard(entry)) {
     return {
@@ -5271,7 +5342,7 @@ function pruneQuickUseBindings() {
 }
 
 function getCurrentPickaxeStats() {
-  return getCurrentPickaxeStatsFromModule(inventory?.pickaxeLevel ?? 0, PICKAXE_UPGRADE_LEVELS);
+  return getCurrentPickaxeStatsFromModule(getEquippedPickaxeLevel(), PICKAXE_UPGRADE_LEVELS);
 }
 
 function getNextPickaxeUpgrade() {
@@ -5295,7 +5366,7 @@ function getForgeUpgradeState() {
   if (itemId === "pickaxe") {
     return getForgeUpgradeStateData({
       targetItemId: itemId,
-      pickaxeLevel: inventory.pickaxeLevel,
+      pickaxeLevel: getEquippedPickaxeLevel(),
       itemDefs: ITEM_DEFS,
     });
   }
@@ -5306,7 +5377,7 @@ function getForgeUpgradeState() {
 function getEquippedMiningPower() {
   return getMiningPowerForTool({
     toolId: getEquippedItemForSlot("tool"),
-    pickaxeLevel: inventory.pickaxeLevel,
+    pickaxeLevel: getEquippedPickaxeLevel(),
     itemDefs: ITEM_DEFS,
     randRange,
   });
@@ -5628,7 +5699,7 @@ function commitDiscardDialog() {
     }
 
     function refreshEquippedPickaxeModel() {
-  syncPickaxeGroupModel(equippedPickaxe, inventory.pickaxeLevel);
+  syncPickaxeGroupModel(equippedPickaxe, getEquippedPickaxeLevel());
     }
 
     refreshEquippedPickaxeModel();
@@ -5708,6 +5779,7 @@ function commitDiscardDialog() {
       equipSlot,
       createEquippedItemRef(getSlotItemId(normalizedEntry), {
         instanceId: normalizedEntry.instanceId ?? null,
+        pickaxeLevel: normalizedEntry.pickaxeLevel ?? null,
       })
     );
   }
@@ -5828,8 +5900,9 @@ function commitQuickUseAssignment(key) {
     },
   });
   if (previewParts.equippedPickaxe) {
-    if (previewParts.equippedPickaxe.userData.pickaxeLevel !== inventory.pickaxeLevel) {
-      syncPickaxeGroupModel(previewParts.equippedPickaxe, inventory.pickaxeLevel);
+    const equippedPickaxeLevel = getEquippedPickaxeLevel();
+    if (previewParts.equippedPickaxe.userData.pickaxeLevel !== equippedPickaxeLevel) {
+      syncPickaxeGroupModel(previewParts.equippedPickaxe, equippedPickaxeLevel);
     }
   }
   equipPreviewRenderer.render(equipPreviewScene, equipPreviewCamera);
@@ -5856,12 +5929,11 @@ function commitQuickUseAssignment(key) {
     if (hasItem) {
       entry.content.innerHTML = "";
       entry.content.style.opacity = "1";
-      const icon = createInventoryEntryVisualElement(equippedRef, { size: 34 });
+      const resolvedEquippedEntry = getDisplayResolvedInventoryEntry(equippedRef);
+      const icon = createInventoryEntryVisualElement(resolvedEquippedEntry, { size: 34 });
 
       const name = document.createElement("div");
-      name.textContent = itemId === "pickaxe"
-        ? `${def.name} Lv.${inventory.pickaxeLevel}`
-        : getInventoryEntryDisplayName(equippedRef);
+      name.textContent = getInventoryEntryDisplayName(resolvedEquippedEntry);
       name.style.fontSize = "11px";
       name.style.fontWeight = "700";
       name.style.marginTop = "6px";
@@ -6053,7 +6125,7 @@ function formatStatNumber(value) {
   return value.toFixed(2);
 }
 
-function updateRockHpBar(rock) {
+function updateRockHpBar(rock, options = {}) {
   if (!rock || !rock.parent) {
     hideRockHpBar();
     return;
@@ -6084,6 +6156,17 @@ function updateRockHpBar(rock) {
   rockHpWrap.style.display = "block";
   rockHpWrap.style.left = `${x}px`;
   rockHpWrap.style.top = `${y}px`;
+  const dimmed = Boolean(options.dimmed);
+  rockHpWrap.style.opacity = dimmed ? "0.48" : "1";
+  rockHpWrap.style.background = dimmed ? "rgba(20,20,20,0.42)" : "rgba(20,20,20,0.64)";
+  rockHpWrap.style.border = dimmed
+    ? "1px solid rgba(255,255,255,0.14)"
+    : "1px solid rgba(255,255,255,0.22)";
+  rockHpLabel.style.color = dimmed ? "rgba(255,255,255,0.78)" : "white";
+  rockHpTrack.style.background = dimmed ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.14)";
+  rockHpFill.style.background = dimmed
+    ? "linear-gradient(90deg, rgba(255,138,75,0.72), rgba(255,209,102,0.72))"
+    : "linear-gradient(90deg, #ff8a4b, #ffd166)";
   rockHpFill.style.width = `${Math.max(0, Math.min(1, ratio)) * 100}%`;
   rockHpLabel.textContent = `${rock.userData.hpLabelPrefix ?? "돌 체력"} ${formatStatNumber(hp)}/${formatStatNumber(maxHp)}`;
 }
@@ -9125,7 +9208,15 @@ function finishPendingForgeUpgrade() {
   const success = Math.random() < pending.successChance;
 
   if (success && pending.itemId === "pickaxe") {
-    inventory.pickaxeLevel = pending.targetLevel;
+    const equippedPickaxeEntry = getEquippedInventoryEntry("tool");
+    if (equippedPickaxeEntry && getSlotItemId(equippedPickaxeEntry) === "pickaxe") {
+      equippedPickaxeEntry.pickaxeLevel = pending.targetLevel;
+      if (!Number.isFinite(inventory.pickaxeLevel) || inventory.pickaxeLevel < pending.targetLevel) {
+        inventory.pickaxeLevel = pending.targetLevel;
+      }
+    } else {
+      inventory.pickaxeLevel = pending.targetLevel;
+    }
   }
 
   forgeLastResult = {
@@ -11015,8 +11106,8 @@ function alignWearableOnHead(headMesh, wearable, options = {}) {
   wearable.position.z = targetZ - seatForwardZ;
 }
 
-function makePickaxe(x, z, y = 0, rotation = null) {
-  const g = buildPickaxeModel();
+function makePickaxe(x, z, y = 0, rotation = null, level = 1) {
+  const g = buildPickaxeModel(level);
   g.position.set(x, y, z);
 
   if (rotation) {
@@ -11028,6 +11119,7 @@ function makePickaxe(x, z, y = 0, rotation = null) {
 
   // 아이템 정보
   g.userData.isPickaxe = true;
+  g.userData.pickaxeLevel = level;
 
   scene.add(g);
   return g;
@@ -11137,7 +11229,8 @@ const pickaxe = makePickaxe(
     x: Math.PI / 2,
     y: Math.PI * 0.04,
     z: 0,
-  }
+  },
+  1
 );
 restPropOnSupport(pickaxe, startStall.top);
 enableDynamicProp(pickaxe, { sleeping: true });
@@ -12529,7 +12622,9 @@ window.addEventListener("keydown", (e) => {
   const pickup = findNearestPickupItem(2.0);
   if (pickup) {
     triggerPickupReach(pickup.obj);
-    const added = addItem(pickup.itemId, 1);
+    const added = pickup.itemId === "pickaxe" && Number.isFinite(pickup.obj?.userData?.pickaxeLevel)
+      ? addInventoryEntry(createInventorySlotEntry("pickaxe", 1, { pickaxeLevel: pickup.obj.userData.pickaxeLevel }))
+      : addItem(pickup.itemId, 1);
     if (added) {
       updateInventoryUI();
       refreshQuestProgress();
@@ -13010,7 +13105,7 @@ window.addEventListener("keydown", (e) => {
 
   const minedRock = activeMineRock;
   const requiredPickaxeLevel = minedRock.userData.requiredPickaxeLevel ?? 0;
-  if (inventory.pickaxeLevel < requiredPickaxeLevel) {
+  if (getEquippedPickaxeLevel() < requiredPickaxeLevel) {
     showUI(`곡괭이 Lv.${requiredPickaxeLevel} 이상 필요`, 1000);
     lastMessageUntil = performance.now() + 1000;
     return;
@@ -13214,7 +13309,7 @@ if (!hintText) {
 if (!hintText) {
   activeMineRock = findNearestMineRock(2.2);
   if (activeMineRock) {
-    hintText = activeMineRock.userData.requiredPickaxeLevel > (inventory.pickaxeLevel ?? 0)
+    hintText = activeMineRock.userData.requiredPickaxeLevel > getEquippedPickaxeLevel()
       ? `Space : 채굴 (곡괭이 Lv.${activeMineRock.userData.requiredPickaxeLevel} 이상 필요)`
       : (activeMineRock.userData.resourceHint ?? "Space : 채굴");
   }
@@ -13277,13 +13372,10 @@ if (
 if (hintText) showHint(hintText);
 else hideHint();
 
-if (
-  activeMineRock &&
-  hasItem("pickaxe") &&
-  hasEquippedTool("pickaxe") &&
-  inventory.pickaxeLevel >= (activeMineRock.userData.requiredPickaxeLevel ?? 0)
-) {
-  updateRockHpBar(activeMineRock);
+if (activeMineRock) {
+  updateRockHpBar(activeMineRock, {
+    dimmed: !hasEquippedTool("pickaxe"),
+  });
 } else {
   hideRockHpBar();
 }

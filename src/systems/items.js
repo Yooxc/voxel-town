@@ -398,6 +398,9 @@ export function getInventoryEntryDisplayName(itemDefs, entry) {
   }
   const itemId = getSlotItemId(entry);
   const def = itemDefs[itemId];
+  if (itemId === "pickaxe" && Number.isFinite(entry?.pickaxeLevel)) {
+    return `${def?.name ?? itemId} Lv.${entry.pickaxeLevel}`;
+  }
   return def?.name ?? itemId ?? "";
 }
 
@@ -434,7 +437,10 @@ export function getInventoryEntryTooltipData(itemDefs, entry) {
 
   if (def.category === "equip") {
     return {
-      title: def.name,
+      title:
+        itemId === "pickaxe" && Number.isFinite(entry?.pickaxeLevel)
+          ? `${def.name} Lv.${entry.pickaxeLevel}`
+          : def.name,
       lines: [
         `장착 슬롯: ${def.equipSlotLabel || getEquipSlotDisplayLabel(def.equipSlot)}`,
         `희귀도: ${def.rarityLabel || "일반"}`,
