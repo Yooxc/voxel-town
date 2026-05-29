@@ -15,6 +15,8 @@ export const CAMP_MAP_Z = -126;
 export const FRONTIER_MAP_X = 0;
 export const FRONTIER_MAP_Z = -218;
 export const MAP_GATE_RADIUS = 1.15;
+export const FRONTIER_WASTELAND_SIZE = 28;
+export const FRONTIER_WASTELAND_CELL_SIZE = 2;
 
 export function isInStartRingOpening(
   angle,
@@ -714,9 +716,25 @@ export function buildFrontierArea({
   const wallThickness = 3.4;
   const wallHeight = 5.8;
   const southOpeningWidth = 12.5;
+  const northOpeningWidth = 11.5;
   const westHousingOpeningWidth = 13.5;
   const wallDefs = [
-    { x: 0, z: -half - wallThickness * 0.2, sx: FRONTIER_GROUND_SIZE + 4, sz: wallThickness },
+    {
+      x:
+        -(FRONTIER_GROUND_SIZE - northOpeningWidth) * 0.25 -
+        northOpeningWidth * 0.5,
+      z: -half - wallThickness * 0.2,
+      sx: (FRONTIER_GROUND_SIZE - northOpeningWidth) * 0.5 + 2.2,
+      sz: wallThickness,
+    },
+    {
+      x:
+        (FRONTIER_GROUND_SIZE - northOpeningWidth) * 0.25 +
+        northOpeningWidth * 0.5,
+      z: -half - wallThickness * 0.2,
+      sx: (FRONTIER_GROUND_SIZE - northOpeningWidth) * 0.5 + 2.2,
+      sz: wallThickness,
+    },
     { x: half + wallThickness * 0.2, z: 0, sx: wallThickness, sz: FRONTIER_GROUND_SIZE + 4 },
     { x: -(FRONTIER_GROUND_SIZE - southOpeningWidth) * 0.25 - southOpeningWidth * 0.5, z: half + wallThickness * 0.2, sx: (FRONTIER_GROUND_SIZE - southOpeningWidth) * 0.5 + 2.2, sz: wallThickness },
     { x: (FRONTIER_GROUND_SIZE - southOpeningWidth) * 0.25 + southOpeningWidth * 0.5, z: half + wallThickness * 0.2, sx: (FRONTIER_GROUND_SIZE - southOpeningWidth) * 0.5 + 2.2, sz: wallThickness },
@@ -810,6 +828,160 @@ export function buildFrontierArea({
     Math.PI,
     "개척지"
   );
+
+  const frontierWastelandSize = FRONTIER_WASTELAND_SIZE;
+  const frontierWastelandCellSize = FRONTIER_WASTELAND_CELL_SIZE;
+  const frontierWastelandDivisions = Math.floor(
+    frontierWastelandSize / frontierWastelandCellSize
+  );
+  const frontierWastelandCenterX = frontierMapX;
+  const frontierWastelandCenterZ = frontierMapZ - 42;
+  const frontierWastelandHalf = frontierWastelandSize * 0.5;
+  const frontierWastelandGroup = new THREE.Group();
+  frontierWastelandGroup.position.set(0, 0, 0);
+  scene.add(frontierWastelandGroup);
+
+  const frontierWastelandBridgeLength = Math.max(
+    4.8,
+    frontierMapZ - half - (frontierWastelandCenterZ + frontierWastelandHalf)
+  );
+  const frontierWastelandBridgeWidth = 8;
+  const frontierWastelandBridge = new THREE.Mesh(
+    new THREE.BoxGeometry(frontierWastelandBridgeWidth, 0.16, frontierWastelandBridgeLength),
+    new THREE.MeshStandardMaterial({
+      color: 0x8f7c67,
+      roughness: 0.96,
+    })
+  );
+  frontierWastelandBridge.position.set(
+    frontierWastelandCenterX,
+    0.08,
+    frontierMapZ - half - frontierWastelandBridgeLength * 0.5
+  );
+  frontierWastelandGroup.add(frontierWastelandBridge);
+  groundSurfaces.push(frontierWastelandBridge);
+  registerWalkableSurface("개척지", frontierWastelandBridge, 0.42);
+
+  const wastelandPad = new THREE.Mesh(
+    new THREE.BoxGeometry(frontierWastelandSize, 0.14, frontierWastelandSize),
+    new THREE.MeshStandardMaterial({
+      color: 0x050505,
+      roughness: 0.99,
+    })
+  );
+  wastelandPad.position.set(frontierWastelandCenterX, 0.07, frontierWastelandCenterZ);
+  frontierWastelandGroup.add(wastelandPad);
+  groundSurfaces.push(wastelandPad);
+  registerWalkableSurface("개척지", wastelandPad, 0.4);
+
+  const wastelandBorderMat = new THREE.MeshStandardMaterial({
+    color: 0x5f5143,
+    roughness: 0.96,
+  });
+  const wastelandBorderHeight = 0.12;
+  const wastelandBorderThickness = 0.36;
+  const wastelandBorderY = 0.15;
+  const wastelandBorderDefs = [
+    {
+      sx: frontierWastelandSize + wastelandBorderThickness,
+      sz: wastelandBorderThickness,
+      x: frontierWastelandCenterX,
+      z: frontierWastelandCenterZ - frontierWastelandHalf,
+    },
+    {
+      sx: frontierWastelandSize + wastelandBorderThickness,
+      sz: wastelandBorderThickness,
+      x: frontierWastelandCenterX,
+      z: frontierWastelandCenterZ + frontierWastelandHalf,
+    },
+    {
+      sx: wastelandBorderThickness,
+      sz: frontierWastelandSize + wastelandBorderThickness,
+      x: frontierWastelandCenterX - frontierWastelandHalf,
+      z: frontierWastelandCenterZ,
+    },
+    {
+      sx: wastelandBorderThickness,
+      sz: frontierWastelandSize + wastelandBorderThickness,
+      x: frontierWastelandCenterX + frontierWastelandHalf,
+      z: frontierWastelandCenterZ,
+    },
+  ];
+  for (const border of wastelandBorderDefs) {
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(border.sx, wastelandBorderHeight, border.sz),
+      wastelandBorderMat
+    );
+    mesh.position.set(border.x, wastelandBorderY, border.z);
+    frontierWastelandGroup.add(mesh);
+  }
+
+  const wastelandGrid = new THREE.GridHelper(
+    frontierWastelandSize,
+    frontierWastelandDivisions,
+    0xa68d70,
+    0x8b755e
+  );
+  wastelandGrid.position.set(frontierWastelandCenterX, 0.16, frontierWastelandCenterZ);
+  wastelandGrid.material.transparent = true;
+  wastelandGrid.material.opacity = 0.62;
+  frontierWastelandGroup.add(wastelandGrid);
+
+  const frontierWastelandCells = [];
+  const wastelandStartX =
+    frontierWastelandCenterX - frontierWastelandHalf + frontierWastelandCellSize * 0.5;
+  const wastelandStartZ =
+    frontierWastelandCenterZ - frontierWastelandHalf + frontierWastelandCellSize * 0.5;
+  const wastelandCellBaseY = 0.125;
+  const wastelandCellGeometry = new THREE.BoxGeometry(
+    frontierWastelandCellSize - 0.16,
+    0.1,
+    frontierWastelandCellSize - 0.16
+  );
+  for (let row = 0; row < frontierWastelandDivisions; row++) {
+    for (let col = 0; col < frontierWastelandDivisions; col++) {
+      const x = wastelandStartX + col * frontierWastelandCellSize;
+      const z = wastelandStartZ + row * frontierWastelandCellSize;
+      const mesh = new THREE.Mesh(
+        wastelandCellGeometry,
+        new THREE.MeshStandardMaterial({
+          color: 0xffffff,
+          roughness: 0.99,
+          transparent: true,
+          opacity: 0.32,
+        })
+      );
+      mesh.position.set(x, wastelandCellBaseY, z);
+      frontierWastelandGroup.add(mesh);
+      frontierWastelandCells.push({
+        id: `W${row + 1}-${col + 1}`,
+        row,
+        col,
+        x,
+        z,
+        size: frontierWastelandCellSize,
+        state: "idle",
+        digStage: 0,
+        mesh,
+      });
+    }
+  }
+  const frontierWastelandPlot = {
+    label: "WASTELAND_ALPHA",
+    x: frontierWastelandCenterX,
+    z: frontierWastelandCenterZ,
+    width: frontierWastelandSize,
+    depth: frontierWastelandSize,
+    cellSize: frontierWastelandCellSize,
+    rows: frontierWastelandDivisions,
+    cols: frontierWastelandDivisions,
+    cells: frontierWastelandCells,
+    bridge: frontierWastelandBridge,
+    root: frontierWastelandGroup,
+    pad: wastelandPad,
+    grid: wastelandGrid,
+  };
+  frontierWastelandGroup.userData.frontierWastelandPlot = frontierWastelandPlot;
 
   const housingLinkLength = 16;
   const housingLinkWidth = 11.5;
@@ -1157,6 +1329,7 @@ export function buildFrontierArea({
     frontierParcelConstructionGroups,
     frontierParcelConstructionColliders,
     frontierAirPurifierStation,
+    frontierWastelandPlot,
     mansionOneEntranceInteractable,
     mansionOneExteriorReturn,
     mansionOneRoomRoot: null,

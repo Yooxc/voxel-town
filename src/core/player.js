@@ -146,7 +146,7 @@ export function createPlayerEquipmentVisuals(
 }
 
 export function updatePlayerEquipmentVisualsVisibility(visuals, state) {
-  visuals.equippedPickaxe.visible = state.hasPickaxeEquipped;
+  visuals.equippedPickaxe.visible = state.hasToolEquipped ?? state.hasPickaxeEquipped;
   visuals.equippedSafetyHelmet.visible = state.isSafetyHelmetEquipped;
   visuals.equippedNftHelmet.visible = state.isNftHelmetEquipped;
   visuals.equippedLeftShoe.visible = state.shoesVisible;

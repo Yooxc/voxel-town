@@ -93,6 +93,7 @@ import {
   hideMapArrivalBannerUi,
   updateCompassUi,
   updateAirHudUi,
+  updateWastelandHudUi,
 } from "./ui/hud.js";
 import {
   getKeyInputCode,
@@ -256,7 +257,7 @@ import {
   getFrontierParcelSafeStandingPoint as getFrontierParcelSafeStandingPointFromModule,
 } from "./systems/frontier.js";
 
-const LAST_PATCHED_AT = "2026-05-28 18:07:12 KST";
+const LAST_PATCHED_AT = "2026-05-29 18:31:54 KST";
 
 const scene = createMainScene();
 // ===== Atmosphere: Sky / Fog =====
@@ -362,6 +363,12 @@ const {
   compassFace,
   compassNeedle,
   compassText,
+  wastelandHudWrap,
+  wastelandHudTitle,
+  wastelandHudValue,
+  wastelandHudBarTrack,
+  wastelandHudBarFill,
+  wastelandHudStatus,
   ui,
   mapArrivalBanner,
 } = createHudUi({
@@ -3861,12 +3868,23 @@ function renderInventoryWindow() {
      });
         }   
 
-        if (activeTab === "cons" && itemId === "freshAirCanister") {
+      if (activeTab === "cons" && itemId === "freshAirCanister") {
         slot.style.cursor = "pointer";
         slot.addEventListener("dblclick", () => {
         useFreshAirCanister();
      });
         }
+
+      if (activeTab === "misc" && itemId === "fencePost") {
+        slot.style.cursor = "pointer";
+        if (wastelandFencePlacementMode) {
+          slot.style.borderColor = "rgba(255,140,0,0.95)";
+          slot.style.boxShadow = "0 0 0 3px rgba(255,140,0,0.35), inset 0 1px 0 rgba(255,255,255,0.8)";
+        }
+        slot.addEventListener("dblclick", () => {
+          toggleWastelandFencePlacementMode();
+        });
+      }
 
       if (activeTab === "cons" && isQuickUseAssignableEntry(item)) {
         const assignedKey = getAssignedQuickUseKeyForEntry(item);
@@ -4385,6 +4403,8 @@ function showMapArrivalBanner(mapName, ms = 1800) {
 const HUD_MSG = {
   NEED_PICKAXE: "⛏️ 필요",
   EQUIP_PICKAXE: "⛏️ 장착 필요",
+  NEED_SHOVEL: "🪏 필요",
+  EQUIP_SHOVEL: "🪏 장착 필요",
   PICKAXE_EQUIPPED: "⛏️ 장착",
   PICKAXE_UNEQUIPPED: "⛏️ 해제",
   PICKAXE_GET: "⛏️ 곡괭이 획득!",
@@ -5143,6 +5163,7 @@ function updateParticles(dt) {
 // 아이템 정의(나중에 계속 늘릴 예정)
 const ITEM_DEFS = createItemDefs({
   buildPickaxeModel,
+  buildShovelModel,
   buildSafetyHelmetModel,
   buildBasicShoesModel,
   buildFreshAirCanisterModel,
@@ -5343,6 +5364,10 @@ function pruneQuickUseBindings() {
 
 function getCurrentPickaxeStats() {
   return getCurrentPickaxeStatsFromModule(getEquippedPickaxeLevel(), PICKAXE_UPGRADE_LEVELS);
+}
+
+function getEquippedToolId() {
+  return getEquippedItemForSlot("tool");
 }
 
 function getNextPickaxeUpgrade() {
@@ -5688,18 +5713,27 @@ function commitDiscardDialog() {
   }
     );
 
-    function syncPickaxeGroupModel(group, level) {
+    function syncEquippedToolGroupModel(group, itemId, level) {
   while (group.children.length) {
     const child = group.children[0];
     disposeObject3D(child);
     group.remove(child);
   }
-  group.add(buildPickaxeModel(level));
+  if (itemId === "shovel") {
+    group.add(buildShovelModel());
+  } else if (itemId === "pickaxe") {
+    group.add(buildPickaxeModel(level));
+  }
+  group.userData.toolItemId = itemId ?? null;
   group.userData.pickaxeLevel = level;
     }
 
     function refreshEquippedPickaxeModel() {
-  syncPickaxeGroupModel(equippedPickaxe, getEquippedPickaxeLevel());
+  syncEquippedToolGroupModel(
+    equippedPickaxe,
+    getEquippedToolId(),
+    getEquippedPickaxeLevel()
+  );
     }
 
     refreshEquippedPickaxeModel();
@@ -5719,7 +5753,7 @@ function commitDiscardDialog() {
       equippedRightShoe,
     },
     {
-      hasPickaxeEquipped: hasEquippedTool("pickaxe"),
+      hasToolEquipped: Boolean(getEquippedToolId()),
       isSafetyHelmetEquipped:
         !isNftHelmetEquipped && getEquippedItemForSlot("head") === "safetyHelmet",
       isNftHelmetEquipped,
@@ -5901,8 +5935,15 @@ function commitQuickUseAssignment(key) {
   });
   if (previewParts.equippedPickaxe) {
     const equippedPickaxeLevel = getEquippedPickaxeLevel();
-    if (previewParts.equippedPickaxe.userData.pickaxeLevel !== equippedPickaxeLevel) {
-      syncPickaxeGroupModel(previewParts.equippedPickaxe, equippedPickaxeLevel);
+    if (
+      previewParts.equippedPickaxe.userData.pickaxeLevel !== equippedPickaxeLevel ||
+      previewParts.equippedPickaxe.userData.toolItemId !== getEquippedToolId()
+    ) {
+      syncEquippedToolGroupModel(
+        previewParts.equippedPickaxe,
+        getEquippedToolId(),
+        equippedPickaxeLevel
+      );
     }
   }
   equipPreviewRenderer.render(equipPreviewScene, equipPreviewCamera);
@@ -6173,6 +6214,11 @@ function updateRockHpBar(rock, options = {}) {
 
 let activeMineRock = null;
 let activeHarvestTree = null;
+let activeWastelandCell = null;
+let wastelandFencePlacementMode = false;
+const WASTELAND_FENCE_MIN_WIDTH = 4;
+const WASTELAND_FENCE_MIN_HEIGHT = 3;
+const WASTELAND_CLAIM_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 const latestMoveDir = new THREE.Vector3(0, 0, -1); // 월드 기준: -Z = 북, +X = 동
 
 function updateCompassFromDirection(dir) {
@@ -6214,6 +6260,455 @@ function findNearestHarvestTree(radius = 2.2) {
   }
 
   return best;
+}
+
+function clearWastelandCellHighlight(cell) {
+  if (!cell?.mesh?.material) return;
+  cell.mesh.material.emissive?.set?.(0x000000);
+  cell.mesh.material.emissiveIntensity = 0;
+  if (cell.state === "dug3") {
+    cell.mesh.visible = false;
+    return;
+  }
+  cell.mesh.visible = true;
+  if (cell.state === "dug2") {
+    cell.mesh.material.opacity = 1;
+    cell.mesh.material.color.set(0x1f4fff);
+  } else if (cell.state === "dug1") {
+    cell.mesh.material.opacity = 1;
+    cell.mesh.material.color.set(0xff2a2a);
+  } else {
+    cell.mesh.material.opacity = 0.32;
+    cell.mesh.material.color.set(0xffffff);
+  }
+}
+
+function applyWastelandCellHighlight(cell) {
+  if (!cell?.mesh?.material) return;
+  if (cell.state === "dug3") return;
+  cell.mesh.visible = true;
+  cell.mesh.material.emissive?.set?.(0xa96a18);
+  cell.mesh.material.emissiveIntensity = 0.22;
+  cell.mesh.material.opacity = cell.state === "idle" ? 0.78 : 1.0;
+}
+
+function setWastelandCellState(cell, state) {
+  if (!cell?.mesh) return;
+  cell.state = state;
+  cell.digStage = state === "dug1" ? 1 : state === "dug2" ? 2 : state === "dug3" ? 3 : 0;
+  cell.mesh.visible = true;
+  if (state === "dug3") {
+    cell.mesh.visible = false;
+    return;
+  }
+  if (state === "dug2") {
+    cell.mesh.position.y = 0.055;
+    cell.mesh.scale.y = 0.36;
+    cell.mesh.material.color.set(0x1f4fff);
+    cell.mesh.material.opacity = 1;
+  } else if (state === "dug1") {
+    cell.mesh.position.y = 0.095;
+    cell.mesh.scale.y = 0.68;
+    cell.mesh.material.color.set(0xff2a2a);
+    cell.mesh.material.opacity = 1;
+  } else {
+    cell.mesh.position.y = 0.125;
+    cell.mesh.scale.y = 1;
+    cell.mesh.material.color.set(0xffffff);
+    cell.mesh.material.opacity = 0.32;
+  }
+}
+
+function findActiveFrontierWastelandCell(radius = 2.4) {
+  if (!frontierWastelandPlot?.cells?.length) return null;
+  let best = null;
+  let bestD2 = radius * radius;
+  for (const cell of frontierWastelandPlot.cells) {
+    if (cell.state === "dug3" && !wastelandFencePlacementMode) continue;
+    const dx = cell.x - player.position.x;
+    const dz = cell.z - player.position.z;
+    const d2 = dx * dx + dz * dz;
+    if (d2 < bestD2) {
+      bestD2 = d2;
+      best = cell;
+    }
+  }
+  return best;
+}
+
+function getFrontierWastelandProgress() {
+  const cells = frontierWastelandPlot?.cells ?? [];
+  const total = cells.length;
+  let completed = 0;
+  for (const cell of cells) {
+    if (cell.state === "dug3") completed += 1;
+  }
+  return {
+    completed,
+    total,
+    percent: total > 0 ? (completed / total) * 100 : 0,
+  };
+}
+
+function shouldShowFrontierWastelandHud() {
+  return Boolean(getCurrentFrontierWastelandClaim());
+}
+
+function getCurrentWastelandOwnerId() {
+  return getCurrentFrontierWalletAddress() || sanitizeDevProfileId(activeDevProfileId) || "guest-local";
+}
+
+function ensureFrontierWastelandRuntimeState() {
+  if (!frontierWastelandPlot) return null;
+  if (!frontierWastelandPlot.fenceRoot) {
+    frontierWastelandPlot.fenceRoot = new THREE.Group();
+    frontierWastelandPlot.root.add(frontierWastelandPlot.fenceRoot);
+  }
+  if (!frontierWastelandPlot.fenceLinkRoot) {
+    frontierWastelandPlot.fenceLinkRoot = new THREE.Group();
+    frontierWastelandPlot.root.add(frontierWastelandPlot.fenceLinkRoot);
+  }
+  if (!frontierWastelandPlot.fencePosts) {
+    frontierWastelandPlot.fencePosts = new Map();
+  }
+  if (!frontierWastelandPlot.claimDrafts) {
+    frontierWastelandPlot.claimDrafts = new Map();
+  }
+  if (!frontierWastelandPlot.claims) {
+    frontierWastelandPlot.claims = [];
+  }
+  return frontierWastelandPlot;
+}
+
+function getCurrentFrontierWastelandDraft() {
+  const plot = ensureFrontierWastelandRuntimeState();
+  if (!plot) return null;
+  return plot.claimDrafts.get(getCurrentWastelandOwnerId()) ?? null;
+}
+
+function getCurrentFrontierWastelandClaim() {
+  const plot = ensureFrontierWastelandRuntimeState();
+  if (!plot) return null;
+  return plot.claims.find((claim) => claim.ownerId === getCurrentWastelandOwnerId()) ?? null;
+}
+
+function formatWastelandClaimRemaining(ms) {
+  const clamped = Math.max(0, ms);
+  const totalMinutes = Math.ceil(clamped / 60000);
+  const days = Math.floor(totalMinutes / (60 * 24));
+  const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+  const minutes = totalMinutes % 60;
+  if (days > 0) return `${days}일 ${hours}시간`;
+  if (hours > 0) return `${hours}시간 ${minutes}분`;
+  return `${minutes}분`;
+}
+
+function getWastelandCellById(cellId) {
+  return frontierWastelandPlot?.cells?.find((cell) => cell.id === cellId) ?? null;
+}
+
+function createWastelandFencePostMesh() {
+  const g = new THREE.Group();
+  const shaft = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.08, 0.1, 0.9, 8),
+    new THREE.MeshStandardMaterial({ color: 0x75573a, roughness: 0.95 })
+  );
+  shaft.position.y = 0.45;
+  g.add(shaft);
+  const cap = new THREE.Mesh(
+    new THREE.BoxGeometry(0.24, 0.12, 0.24),
+    new THREE.MeshStandardMaterial({ color: 0x4d3824, roughness: 0.92 })
+  );
+  cap.position.y = 0.93;
+  g.add(cap);
+  return g;
+}
+
+function createWastelandFenceLinkMesh(length, horizontal = true) {
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(horizontal ? length : 0.12, 0.1, horizontal ? 0.12 : length),
+    new THREE.MeshStandardMaterial({ color: 0x8a6a49, roughness: 0.95 })
+  );
+  mesh.position.y = 0.62;
+  return mesh;
+}
+
+function rebuildFrontierWastelandFenceLinks() {
+  const plot = ensureFrontierWastelandRuntimeState();
+  if (!plot?.fenceLinkRoot) return;
+  while (plot.fenceLinkRoot.children.length) {
+    disposeObject3D(plot.fenceLinkRoot.children[0]);
+    plot.fenceLinkRoot.remove(plot.fenceLinkRoot.children[0]);
+  }
+  const byKey = plot.fencePosts;
+  for (const post of byKey.values()) {
+    const right = byKey.get(`${post.row}:${post.col + 1}`);
+    if (right) {
+      const mesh = createWastelandFenceLinkMesh(plot.cellSize, true);
+      mesh.position.x = (post.x + right.x) * 0.5;
+      mesh.position.z = post.z;
+      plot.fenceLinkRoot.add(mesh);
+    }
+    const down = byKey.get(`${post.row + 1}:${post.col}`);
+    if (down) {
+      const mesh = createWastelandFenceLinkMesh(plot.cellSize, false);
+      mesh.position.x = post.x;
+      mesh.position.z = (post.z + down.z) * 0.5;
+      plot.fenceLinkRoot.add(mesh);
+    }
+  }
+}
+
+function isCellInsideConfirmedWastelandClaim(cell) {
+  const plot = ensureFrontierWastelandRuntimeState();
+  if (!plot || !cell) return false;
+  return plot.claims.some(
+    (claim) =>
+      cell.row >= claim.minRow &&
+      cell.row <= claim.maxRow &&
+      cell.col >= claim.minCol &&
+      cell.col <= claim.maxCol
+  );
+}
+
+function canPlaceWastelandFencePost(cell) {
+  const plot = ensureFrontierWastelandRuntimeState();
+  if (!plot || !cell) return { ok: false, reason: "설치할 셀을 찾을 수 없습니다." };
+  if (getCurrentFrontierWastelandClaim()) {
+    return { ok: false, reason: "이미 확정된 개간 구역이 있습니다." };
+  }
+  if (plot.fencePosts.has(`${cell.row}:${cell.col}`)) {
+    return { ok: false, reason: "이미 울타리 기둥이 설치된 셀입니다." };
+  }
+  if (isCellInsideConfirmedWastelandClaim(cell)) {
+    return { ok: false, reason: "확정된 개간 구역과 겹치는 셀에는 설치할 수 없습니다." };
+  }
+  if (!hasItem("fencePost")) {
+    return { ok: false, reason: "울타리 기둥이 없습니다." };
+  }
+  return { ok: true };
+}
+
+function placeWastelandFencePost(cell) {
+  const plot = ensureFrontierWastelandRuntimeState();
+  if (!plot || !cell) return false;
+  const canPlace = canPlaceWastelandFencePost(cell);
+  if (!canPlace.ok) {
+    showUI(canPlace.reason, 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return false;
+  }
+  if (!consumeItem("fencePost", 1)) {
+    showUI("울타리 기둥을 소모하지 못했습니다.", 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return false;
+  }
+  const ownerId = getCurrentWastelandOwnerId();
+  const key = `${cell.row}:${cell.col}`;
+  const mesh = createWastelandFencePostMesh();
+  mesh.position.set(cell.x, 0.02, cell.z);
+  plot.fenceRoot.add(mesh);
+  plot.fencePosts.set(key, {
+    key,
+    row: cell.row,
+    col: cell.col,
+    x: cell.x,
+    z: cell.z,
+    ownerId,
+    mesh,
+  });
+  let draft = plot.claimDrafts.get(ownerId);
+  if (!draft) {
+    draft = {
+      ownerId,
+      postKeys: [],
+      lastPromptSignature: "",
+    };
+    plot.claimDrafts.set(ownerId, draft);
+  }
+  if (!draft.postKeys.includes(key)) draft.postKeys.push(key);
+  rebuildFrontierWastelandFenceLinks();
+  updateInventoryUI();
+  updateFrontierWastelandDraftPrompt();
+  return true;
+}
+
+function getWastelandDraftBounds(draft) {
+  const posts = draft.postKeys
+    .map((key) => frontierWastelandPlot?.fencePosts?.get(key))
+    .filter(Boolean);
+  if (!posts.length) return null;
+  let minRow = Infinity;
+  let maxRow = -Infinity;
+  let minCol = Infinity;
+  let maxCol = -Infinity;
+  for (const post of posts) {
+    minRow = Math.min(minRow, post.row);
+    maxRow = Math.max(maxRow, post.row);
+    minCol = Math.min(minCol, post.col);
+    maxCol = Math.max(maxCol, post.col);
+  }
+  return { minRow, maxRow, minCol, maxCol };
+}
+
+function isValidWastelandDraftRectangle(draft) {
+  if (!draft?.postKeys?.length || !frontierWastelandPlot?.fencePosts) return null;
+  const bounds = getWastelandDraftBounds(draft);
+  if (!bounds) return null;
+  const width = bounds.maxCol - bounds.minCol + 1;
+  const height = bounds.maxRow - bounds.minRow + 1;
+  if (!(Math.max(width, height) >= WASTELAND_FENCE_MIN_WIDTH && Math.min(width, height) >= WASTELAND_FENCE_MIN_HEIGHT)) {
+    return null;
+  }
+  const keySet = new Set(draft.postKeys);
+  for (let row = bounds.minRow; row <= bounds.maxRow; row += 1) {
+    for (let col = bounds.minCol; col <= bounds.maxCol; col += 1) {
+      const isBorder =
+        row === bounds.minRow ||
+        row === bounds.maxRow ||
+        col === bounds.minCol ||
+        col === bounds.maxCol;
+      const hasPost = keySet.has(`${row}:${col}`);
+      if (isBorder && !hasPost) return null;
+      if (!isBorder && hasPost) return null;
+    }
+  }
+  return {
+    ...bounds,
+    width,
+    height,
+    cellIds: frontierWastelandPlot.cells
+      .filter(
+        (cell) =>
+          cell.row >= bounds.minRow &&
+          cell.row <= bounds.maxRow &&
+          cell.col >= bounds.minCol &&
+          cell.col <= bounds.maxCol
+      )
+      .map((cell) => cell.id),
+  };
+}
+
+function removeWastelandClaimFences(claim) {
+  const plot = ensureFrontierWastelandRuntimeState();
+  if (!plot || !claim) return;
+  for (const key of claim.postKeys ?? []) {
+    const post = plot.fencePosts.get(key);
+    if (!post) continue;
+    if (post.mesh?.parent) {
+      disposeObject3D(post.mesh);
+      post.mesh.parent.remove(post.mesh);
+    }
+    plot.fencePosts.delete(key);
+  }
+  rebuildFrontierWastelandFenceLinks();
+}
+
+function confirmCurrentWastelandDraft() {
+  const plot = ensureFrontierWastelandRuntimeState();
+  const ownerId = getCurrentWastelandOwnerId();
+  const draft = plot?.claimDrafts?.get(ownerId);
+  if (!plot || !draft) return false;
+  const rect = isValidWastelandDraftRectangle(draft);
+  if (!rect) return false;
+  const hasOverlap = plot.claims.some(
+    (claim) =>
+      !(rect.maxRow < claim.minRow || rect.minRow > claim.maxRow || rect.maxCol < claim.minCol || rect.minCol > claim.maxCol)
+  );
+  if (hasOverlap) {
+    showUI("다른 확정 구역과 겹치는 직사각형은 확정할 수 없습니다.", 1100);
+    lastMessageUntil = performance.now() + 1100;
+    return false;
+  }
+  const confirmed = window.confirm("개간 구역을 확정하겠습니까?");
+  if (!confirmed) return false;
+  const claim = {
+    ownerId,
+    minRow: rect.minRow,
+    maxRow: rect.maxRow,
+    minCol: rect.minCol,
+    maxCol: rect.maxCol,
+    width: rect.width,
+    height: rect.height,
+    cellIds: rect.cellIds,
+    postKeys: [...draft.postKeys],
+    confirmedAt: Date.now(),
+    expiresAt: Date.now() + WASTELAND_CLAIM_DURATION_MS,
+  };
+  plot.claims.push(claim);
+  plot.claimDrafts.delete(ownerId);
+  wastelandFencePlacementMode = false;
+  updateInventoryUI();
+  showUI("개간 구역을 확정했습니다.", 1100);
+  lastMessageUntil = performance.now() + 1100;
+  return true;
+}
+
+function updateFrontierWastelandDraftPrompt() {
+  const draft = getCurrentFrontierWastelandDraft();
+  if (!draft || getCurrentFrontierWastelandClaim()) return;
+  const rect = isValidWastelandDraftRectangle(draft);
+  if (!rect) return;
+  const signature = `${rect.minRow}:${rect.maxRow}:${rect.minCol}:${rect.maxCol}:${draft.postKeys.length}`;
+  if (draft.lastPromptSignature === signature) return;
+  draft.lastPromptSignature = signature;
+  confirmCurrentWastelandDraft();
+}
+
+function expireOverdueFrontierWastelandClaims() {
+  const plot = ensureFrontierWastelandRuntimeState();
+  if (!plot?.claims?.length) return;
+  const now = Date.now();
+  const expired = plot.claims.filter((claim) => claim.expiresAt <= now);
+  if (!expired.length) return;
+  const currentOwnerId = getCurrentWastelandOwnerId();
+  plot.claims = plot.claims.filter((claim) => claim.expiresAt > now);
+  for (const claim of expired) {
+    removeWastelandClaimFences(claim);
+    if (claim.ownerId === currentOwnerId) {
+      showUI("개간 기한이 만료되어 울타리 기둥이 철거되었습니다.", 1300);
+      lastMessageUntil = performance.now() + 1300;
+    }
+  }
+}
+
+function getCurrentWastelandClaimProgress() {
+  const claim = getCurrentFrontierWastelandClaim();
+  if (!claim) return null;
+  let completed = 0;
+  for (const cellId of claim.cellIds) {
+    const cell = getWastelandCellById(cellId);
+    if (cell?.state === "dug3") completed += 1;
+  }
+  return {
+    claim,
+    completed,
+    total: claim.cellIds.length,
+    percent: claim.cellIds.length > 0 ? (completed / claim.cellIds.length) * 100 : 0,
+  };
+}
+
+function toggleWastelandFencePlacementMode() {
+  if (!hasItem("fencePost")) {
+    showUI("울타리 기둥이 없습니다.", 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return;
+  }
+  if (getCurrentFrontierWastelandClaim()) {
+    showUI("이미 확정된 개간 구역이 있습니다.", 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return;
+  }
+  wastelandFencePlacementMode = !wastelandFencePlacementMode;
+  showUI(
+    wastelandFencePlacementMode ? "울타리 기둥 설치 모드" : "울타리 기둥 설치 모드 해제",
+    1000
+  );
+  lastMessageUntil = performance.now() + 1000;
+  updateInventoryUI();
+  if (wastelandFencePlacementMode) {
+    updateFrontierWastelandDraftPrompt();
+  }
 }
 
 function removeColliderAt(idx) {
@@ -6499,6 +6994,7 @@ let frontierParcelConstructionRoots = {};
 let frontierParcelConstructionColliders = {};
 let frontierParcelBoothInteractables = {};
 let frontierParcelDefs = [];
+let frontierWastelandPlot = null;
 let mansionOneEntranceInteractable = null;
 let mansionOneExitInteractable = null;
 let mansionOneBedInteractable = null;
@@ -10845,6 +11341,53 @@ function buildPickaxeModel(level = 0) {
   return g;
 }
 
+function buildShovelModel() {
+  const g = new THREE.Group();
+  const woodMat = new THREE.MeshStandardMaterial({ color: 0x84572e, roughness: 0.92 });
+  const gripMat = new THREE.MeshStandardMaterial({ color: 0x5f3d22, roughness: 0.9 });
+  const metalMat = new THREE.MeshStandardMaterial({
+    color: 0xa1a8b0,
+    roughness: 0.56,
+    metalness: 0.24,
+  });
+
+  const handle = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.055, 0.055, 1.18, 8),
+    woodMat
+  );
+  handle.position.y = 0.58;
+
+  const grip = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.07, 0.07, 0.16, 10),
+    gripMat
+  );
+  grip.position.y = 0.18;
+
+  const blade = new THREE.Mesh(
+    new THREE.BoxGeometry(0.34, 0.42, 0.08),
+    metalMat
+  );
+  blade.position.set(0, 1.08, 0);
+  blade.rotation.z = Math.PI * 0.06;
+
+  const bladeTip = new THREE.Mesh(
+    new THREE.ConeGeometry(0.17, 0.22, 4),
+    metalMat
+  );
+  bladeTip.position.set(0, 0.82, 0);
+  bladeTip.rotation.z = Math.PI;
+  bladeTip.rotation.y = Math.PI * 0.25;
+
+  const topGrip = new THREE.Mesh(
+    new THREE.BoxGeometry(0.28, 0.08, 0.1),
+    woodMat
+  );
+  topGrip.position.set(0, 1.2, 0);
+
+  g.add(handle, grip, blade, bladeTip, topGrip);
+  return g;
+}
+
 function buildSafetyHelmetModel(theme = "default") {
   const g = new THREE.Group();
 
@@ -11125,6 +11668,21 @@ function makePickaxe(x, z, y = 0, rotation = null, level = 1) {
   return g;
 }
 
+function makeShovel(x, z, y = 0, rotation = null) {
+  const g = buildShovelModel();
+  g.position.set(x, y, z);
+
+  if (rotation) {
+    g.rotation.set(rotation.x, rotation.y, rotation.z);
+  } else {
+    g.rotation.z = Math.PI * 0.12;
+  }
+
+  g.userData.isShovel = true;
+  scene.add(g);
+  return g;
+}
+
 function makeSafetyHelmet(x, z, y = 0, rotation = null) {
   const g = buildSafetyHelmetModel();
   g.position.set(x, y, z);
@@ -11280,6 +11838,20 @@ restPropOnSupport(basicShoes, startStall.top);
 enableDynamicProp(basicShoes, { sleeping: true });
 registerPickupItem(basicShoes, "basicShoes", "E : 기본신발 줍기");
 
+const shovel = makeShovel(
+  START_X + 1.3,
+  START_Z - 2.44,
+  START_FLAT_Y,
+  {
+    x: Math.PI / 2,
+    y: Math.PI * -0.08,
+    z: 0,
+  }
+);
+restPropOnSupport(shovel, startStall.top);
+enableDynamicProp(shovel, { sleeping: true });
+registerPickupItem(shovel, "shovel", "E : 삽 줍기");
+
 const tutorialNpc = makeTutorialNpc(
   START_X,
   START_Z - 5.15,
@@ -11365,6 +11937,7 @@ frontierParcelConstructionRoots = frontierAreaBuildData.frontierParcelConstructi
 frontierParcelConstructionGroups = frontierAreaBuildData.frontierParcelConstructionGroups;
 frontierParcelConstructionColliders = frontierAreaBuildData.frontierParcelConstructionColliders;
 frontierAirPurifierStation = frontierAreaBuildData.frontierAirPurifierStation;
+frontierWastelandPlot = frontierAreaBuildData.frontierWastelandPlot;
 mansionOneEntranceInteractable = frontierAreaBuildData.mansionOneEntranceInteractable;
 mansionOneExteriorReturn = frontierAreaBuildData.mansionOneExteriorReturn;
 mansionOneRoomRoot = frontierAreaBuildData.mansionOneRoomRoot;
@@ -11476,7 +12049,9 @@ function applyDevPreset() {
 
   if (DEV_PRESET.giveStarterGear) {
     addItem("pickaxe", 1);
+    addItem("shovel", 1);
     addItem("safetyHelmet", 1);
+    addItem("fencePost", 100);
     equipFirstOwnedInventoryItem("tool", "pickaxe");
     equipFirstOwnedInventoryItem("head", "safetyHelmet");
   }
@@ -12631,6 +13206,7 @@ window.addEventListener("keydown", (e) => {
       const def = ITEM_DEFS[pickup.itemId];
       const msg =
         pickup.itemId === "pickaxe" ? HUD_MSG.PICKAXE_GET :
+        pickup.itemId === "shovel" ? "🪏 삽 획득!" :
         pickup.itemId === "safetyHelmet" ? HUD_MSG.HELMET_GET :
         pickup.itemId === "freshAirCanister" ? HUD_MSG.AIR_CAN_GET :
         `${def?.name ?? pickup.itemId} 획득!`;
@@ -13090,6 +13666,43 @@ window.addEventListener("keydown", (e) => {
     }
     return;
   }
+  if (activeWastelandCell) {
+    if (e.repeat) return;
+    if (wastelandFencePlacementMode) {
+      if (placeWastelandFencePost(activeWastelandCell)) {
+        showUI("울타리 기둥을 설치했습니다.", 900);
+        lastMessageUntil = performance.now() + 900;
+      }
+      return;
+    }
+    triggerMiningSwing(activeWastelandCell.mesh);
+    if (!hasEquippedTool("shovel")) {
+      if (findFirstSlotWithItem("shovel") !== -1) {
+        showUI(HUD_MSG.EQUIP_SHOVEL);
+      } else {
+        showUI(HUD_MSG.NEED_SHOVEL);
+      }
+      lastMessageUntil = performance.now() + 900;
+      return;
+    }
+    const nextState =
+      activeWastelandCell.state === "idle"
+        ? "dug1"
+        : activeWastelandCell.state === "dug1"
+          ? "dug2"
+          : activeWastelandCell.state === "dug2"
+            ? "dug3"
+            : null;
+    if (!nextState) {
+      showUI("이미 개간한 셀입니다.", 900);
+      lastMessageUntil = performance.now() + 900;
+      return;
+    }
+    setWastelandCellState(activeWastelandCell, nextState);
+    showUI(nextState === "dug3" ? "황무지 개간 완료!" : "황무지를 파냈습니다.", 900);
+    lastMessageUntil = performance.now() + 900;
+    return;
+  }
   if (!activeMineRock) return;
   triggerMiningSwing(activeMineRock);
   if (!hasEquippedTool("pickaxe")) {
@@ -13213,6 +13826,7 @@ function animate() {
     activeInteractable = null;
     activeForgeStation = null;
     activeHarvestTree = null;
+    activeWastelandCell = null;
     activeTutorialNpc = findNearestTutorialNpc(2.2);
     activeMapGate = findTriggeredMapGate();
 
@@ -13315,7 +13929,21 @@ if (!hintText) {
   }
 }
 
-// 6) 개척지 필지 건축 힌트
+// 6) 빈땅 개간 힌트
+if (!hintText) {
+  activeWastelandCell = findActiveFrontierWastelandCell(2.4);
+  if (activeWastelandCell) {
+    if (wastelandFencePlacementMode) {
+      hintText = "Space : 울타리 기둥 설치";
+    } else {
+      hintText = hasEquippedTool("shovel")
+        ? "Space : 땅 파기"
+        : "Space : 개간 (삽 장착 필요)";
+    }
+  }
+}
+
+// 7) 개척지 필지 건축 힌트
 const activeFrontierParcelLabel = getCurrentFrontierParcelLabel();
 if (!hintText && activeFrontierParcelLabel) {
   const activeBuildState = getFrontierBuildState(activeFrontierParcelLabel);
@@ -13328,7 +13956,7 @@ if (!hintText && activeFrontierParcelLabel) {
   }
 }
 
-// 7) 표지판 근접 문구 (위 힌트가 없을 때만)
+// 8) 표지판 근접 문구 (위 힌트가 없을 때만)
 if (!hintText && activeInteractable) {
   hintText = activeInteractable.type === "airPurifier"
     ? getAirPurifierHintText(activeInteractable.purifierMapId ?? "폐광")
@@ -13368,9 +13996,34 @@ if (
   hintText = `${getQuickUseKeyForItemId("freshAirCanister")} : 신선한 공기 캔 사용`;
 }
 
-// 6) 최종 출력
+// 9) 최종 출력
 if (hintText) showHint(hintText);
 else hideHint();
+
+for (const cell of frontierWastelandPlot?.cells ?? []) {
+  clearWastelandCellHighlight(cell);
+}
+if (activeWastelandCell) {
+  applyWastelandCellHighlight(activeWastelandCell);
+}
+
+expireOverdueFrontierWastelandClaims();
+const frontierWastelandProgress = getCurrentWastelandClaimProgress();
+updateWastelandHudUi(
+  wastelandHudWrap,
+  wastelandHudValue,
+  wastelandHudBarFill,
+  wastelandHudStatus,
+  {
+    visible: shouldShowFrontierWastelandHud(),
+    completed: frontierWastelandProgress?.completed ?? 0,
+    total: frontierWastelandProgress?.total ?? 0,
+    percent: frontierWastelandProgress?.percent ?? 0,
+    statusText: frontierWastelandProgress?.claim
+      ? `남은 시간 ${formatWastelandClaimRemaining(frontierWastelandProgress.claim.expiresAt - Date.now())}`
+      : "",
+  }
+);
 
 if (activeMineRock) {
   updateRockHpBar(activeMineRock, {

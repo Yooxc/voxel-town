@@ -41,6 +41,7 @@ const EQUIP_SLOT_LABELS = {
 
 export function createItemDefs({
   buildPickaxeModel,
+  buildShovelModel,
   buildSafetyHelmetModel,
   buildBasicShoesModel,
   buildFreshAirCanisterModel,
@@ -62,6 +63,17 @@ export function createItemDefs({
       miningPowerMin: 0.9,
       miningPowerMax: 1.1,
       makeInventoryModel: () => buildPickaxeModel(getPickaxeLevel()),
+    },
+    shovel: {
+      category: "equip",
+      name: "삽",
+      icon: "🪏",
+      stackMax: 1,
+      equipSlot: "tool",
+      equipSlotLabel: "도구",
+      rarityLabel: "일반",
+      typeLabel: "개간 도구",
+      makeInventoryModel: () => buildShovelModel(),
     },
     safetyHelmet: {
       category: "equip",
@@ -167,6 +179,13 @@ export function createItemDefs({
       stackMax: 1,
       isAuthorityItem: true,
       purposeText: "Mansion ONE 102호 거주와 출입에 사용된다",
+    },
+    fencePost: {
+      category: "misc",
+      name: "울타리 기둥",
+      icon: "🪵",
+      stackMax: 200,
+      purposeText: "황무지에서 개간 구역을 선언하는 울타리 설치에 사용된다",
     },
 
     // Misc: materials

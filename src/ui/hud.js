@@ -165,6 +165,62 @@ export function createHudUi({ uiLayer, lastPatchedAt }) {
   compassWrap.appendChild(compassText);
   uiLayer.appendChild(compassWrap);
 
+  const wastelandHudWrap = document.createElement("div");
+  wastelandHudWrap.id = "wastelandHudWrap";
+  wastelandHudWrap.style.position = "fixed";
+  wastelandHudWrap.style.right = "12px";
+  wastelandHudWrap.style.bottom = "88px";
+  wastelandHudWrap.style.width = "214px";
+  wastelandHudWrap.style.padding = "12px 14px";
+  wastelandHudWrap.style.background = "rgba(20,20,20,0.56)";
+  wastelandHudWrap.style.border = "1px solid rgba(255,255,255,0.16)";
+  wastelandHudWrap.style.borderRadius = "14px";
+  wastelandHudWrap.style.backdropFilter = "blur(4px)";
+  wastelandHudWrap.style.color = "white";
+  wastelandHudWrap.style.fontFamily = "system-ui, -apple-system, sans-serif";
+  wastelandHudWrap.style.fontSize = "12px";
+  wastelandHudWrap.style.lineHeight = "1.45";
+  wastelandHudWrap.style.userSelect = "none";
+  wastelandHudWrap.style.pointerEvents = "none";
+  wastelandHudWrap.style.zIndex = "1000001";
+  wastelandHudWrap.style.display = "none";
+  uiLayer.appendChild(wastelandHudWrap);
+
+  const wastelandHudTitle = document.createElement("div");
+  wastelandHudTitle.textContent = "개간 진행";
+  wastelandHudTitle.style.fontWeight = "800";
+  wastelandHudTitle.style.letterSpacing = "0.04em";
+  wastelandHudTitle.style.opacity = "0.84";
+  wastelandHudTitle.style.marginBottom = "8px";
+  wastelandHudWrap.appendChild(wastelandHudTitle);
+
+  const wastelandHudValue = document.createElement("div");
+  wastelandHudValue.style.fontWeight = "800";
+  wastelandHudValue.style.fontSize = "18px";
+  wastelandHudValue.style.color = "#f4fbff";
+  wastelandHudWrap.appendChild(wastelandHudValue);
+
+  const wastelandHudBarTrack = document.createElement("div");
+  wastelandHudBarTrack.style.position = "relative";
+  wastelandHudBarTrack.style.height = "10px";
+  wastelandHudBarTrack.style.marginTop = "8px";
+  wastelandHudBarTrack.style.borderRadius = "999px";
+  wastelandHudBarTrack.style.background = "rgba(255,255,255,0.14)";
+  wastelandHudBarTrack.style.overflow = "hidden";
+  wastelandHudWrap.appendChild(wastelandHudBarTrack);
+
+  const wastelandHudBarFill = document.createElement("div");
+  wastelandHudBarFill.style.width = "0%";
+  wastelandHudBarFill.style.height = "100%";
+  wastelandHudBarFill.style.background = "linear-gradient(90deg, #f2b85f 0%, #fff0bb 100%)";
+  wastelandHudBarFill.style.borderRadius = "inherit";
+  wastelandHudBarTrack.appendChild(wastelandHudBarFill);
+
+  const wastelandHudStatus = document.createElement("div");
+  wastelandHudStatus.style.marginTop = "8px";
+  wastelandHudStatus.style.opacity = "0.8";
+  wastelandHudWrap.appendChild(wastelandHudStatus);
+
   const ui = document.createElement("div");
   ui.style.position = "fixed";
   ui.style.left = "50%";
@@ -220,6 +276,12 @@ export function createHudUi({ uiLayer, lastPatchedAt }) {
     compassFace,
     compassNeedle,
     compassText,
+    wastelandHudWrap,
+    wastelandHudTitle,
+    wastelandHudValue,
+    wastelandHudBarTrack,
+    wastelandHudBarFill,
+    wastelandHudStatus,
     ui,
     mapArrivalBanner,
   };
@@ -278,6 +340,20 @@ export function updateCompassUi(compassNeedle, compassText, dir) {
 
   compassNeedle.style.transform = `translate(-50%, -50%) rotate(${heading}deg)`;
   compassText.textContent = `${labels[idx]} ${Math.round(heading)}°`;
+}
+
+export function updateWastelandHudUi(
+  wastelandHudWrap,
+  wastelandHudValue,
+  wastelandHudBarFill,
+  wastelandHudStatus,
+  { visible, completed, total, percent, statusText }
+) {
+  wastelandHudWrap.style.display = visible ? "block" : "none";
+  if (!visible) return;
+  wastelandHudValue.textContent = `${completed} / ${total}`;
+  wastelandHudBarFill.style.width = `${Math.max(0, Math.min(100, percent))}%`;
+  wastelandHudStatus.textContent = statusText || `개간률 ${percent.toFixed(1)}%`;
 }
 
 export function updateAirHudUi({
