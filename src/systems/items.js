@@ -187,6 +187,14 @@ export function createItemDefs({
       stackMax: 200,
       purposeText: "황무지에서 개간 구역을 선언하는 울타리 설치에 사용된다",
     },
+    wastelandLandDeed: {
+      category: "misc",
+      name: "황무지 토지권",
+      icon: "📜",
+      stackMax: 1,
+      isAuthorityItem: true,
+      purposeText: "개간 완료 구역의 임시 토지 소유권을 표시한다",
+    },
 
     // Misc: materials
     woodChip: {

@@ -933,7 +933,12 @@ export function buildFrontierArea({
   const wastelandStartZ =
     frontierWastelandCenterZ - frontierWastelandHalf + frontierWastelandCellSize * 0.5;
   const wastelandCellBaseY = 0.125;
-  const wastelandCellGeometry = new THREE.BoxGeometry(
+  const wastelandCellBaseGeometry = new THREE.BoxGeometry(
+    frontierWastelandCellSize - 0.16,
+    0.035,
+    frontierWastelandCellSize - 0.16
+  );
+  const wastelandCellCoverGeometry = new THREE.BoxGeometry(
     frontierWastelandCellSize - 0.16,
     0.1,
     frontierWastelandCellSize - 0.16
@@ -942,17 +947,27 @@ export function buildFrontierArea({
     for (let col = 0; col < frontierWastelandDivisions; col++) {
       const x = wastelandStartX + col * frontierWastelandCellSize;
       const z = wastelandStartZ + row * frontierWastelandCellSize;
-      const mesh = new THREE.Mesh(
-        wastelandCellGeometry,
+      const baseMesh = new THREE.Mesh(
+        wastelandCellBaseGeometry,
         new THREE.MeshStandardMaterial({
-          color: 0xffffff,
+          color: 0x030303,
           roughness: 0.99,
-          transparent: true,
-          opacity: 0.32,
         })
       );
-      mesh.position.set(x, wastelandCellBaseY, z);
-      frontierWastelandGroup.add(mesh);
+      baseMesh.position.set(x, 0.087, z);
+      frontierWastelandGroup.add(baseMesh);
+
+      const coverMesh = new THREE.Mesh(
+        wastelandCellCoverGeometry,
+        new THREE.MeshStandardMaterial({
+          color: 0xd8d8d8,
+          roughness: 0.99,
+          transparent: true,
+          opacity: 0.74,
+        })
+      );
+      coverMesh.position.set(x, wastelandCellBaseY, z);
+      frontierWastelandGroup.add(coverMesh);
       frontierWastelandCells.push({
         id: `W${row + 1}-${col + 1}`,
         row,
@@ -960,9 +975,12 @@ export function buildFrontierArea({
         x,
         z,
         size: frontierWastelandCellSize,
+        clearProgress: 0,
         state: "idle",
         digStage: 0,
-        mesh,
+        baseMesh,
+        coverMesh,
+        mesh: coverMesh,
       });
     }
   }

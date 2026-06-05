@@ -257,7 +257,7 @@ import {
   getFrontierParcelSafeStandingPoint as getFrontierParcelSafeStandingPointFromModule,
 } from "./systems/frontier.js";
 
-const LAST_PATCHED_AT = "2026-05-29 18:31:54 KST";
+const LAST_PATCHED_AT = "2026-06-05 18:51:50 KST";
 
 const scene = createMainScene();
 // ===== Atmosphere: Sky / Fog =====
@@ -302,6 +302,7 @@ const REFINERY_RECIPES = {
 };
 
 const RESIDENCE_NOTICE_BOARD_KEYS = ["boardA", "boardB", "boardC"];
+const WASTELAND_LAND_DEED_ITEM_ID = "wastelandLandDeed";
 
 // ===== Lighting =====
 const { ambientLight, sunLight, torchLight } = createMainLights(scene);
@@ -338,6 +339,13 @@ let mansionSleepDialog = null;
 let mansionSleepOpen = false;
 let mansionSleepPoseActive = false;
 let mansionSleepWakePoint = { x: 0, z: 0, rotationY: Math.PI };
+let wastelandClaimConfirmOverlay = null;
+let wastelandClaimConfirmDialog = null;
+let wastelandClaimConfirmOpen = false;
+let wastelandClaimConfirmRect = null;
+let wastelandClaimCancelOverlay = null;
+let wastelandClaimCancelDialog = null;
+let wastelandClaimCancelOpen = false;
 let personalStorageOverlay = null;
 let personalStorageWin = null;
 let personalStorageOpen = false;
@@ -375,6 +383,38 @@ const {
   uiLayer,
   lastPatchedAt: LAST_PATCHED_AT,
 });
+
+const wastelandClaimCompleteBtn = document.createElement("button");
+wastelandClaimCompleteBtn.type = "button";
+wastelandClaimCompleteBtn.textContent = "완료";
+wastelandClaimCompleteBtn.style.display = "none";
+wastelandClaimCompleteBtn.style.marginTop = "10px";
+wastelandClaimCompleteBtn.style.width = "100%";
+wastelandClaimCompleteBtn.style.padding = "9px 10px";
+wastelandClaimCompleteBtn.style.border = "1px solid rgba(255,255,255,0.24)";
+wastelandClaimCompleteBtn.style.borderRadius = "10px";
+wastelandClaimCompleteBtn.style.background = "linear-gradient(180deg, rgba(245,189,84,0.98), rgba(218,146,47,0.98))";
+wastelandClaimCompleteBtn.style.color = "#2c1c08";
+wastelandClaimCompleteBtn.style.fontWeight = "900";
+wastelandClaimCompleteBtn.style.cursor = "pointer";
+wastelandClaimCompleteBtn.style.pointerEvents = "auto";
+wastelandHudWrap.appendChild(wastelandClaimCompleteBtn);
+
+const wastelandClaimAbortBtn = document.createElement("button");
+wastelandClaimAbortBtn.type = "button";
+wastelandClaimAbortBtn.textContent = "확정 취소";
+wastelandClaimAbortBtn.style.display = "none";
+wastelandClaimAbortBtn.style.marginTop = "8px";
+wastelandClaimAbortBtn.style.width = "100%";
+wastelandClaimAbortBtn.style.padding = "8px 10px";
+wastelandClaimAbortBtn.style.border = "1px solid rgba(255,255,255,0.2)";
+wastelandClaimAbortBtn.style.borderRadius = "10px";
+wastelandClaimAbortBtn.style.background = "rgba(255,255,255,0.1)";
+wastelandClaimAbortBtn.style.color = "white";
+wastelandClaimAbortBtn.style.fontWeight = "800";
+wastelandClaimAbortBtn.style.cursor = "pointer";
+wastelandClaimAbortBtn.style.pointerEvents = "auto";
+wastelandHudWrap.appendChild(wastelandClaimAbortBtn);
 
 const WALLET_SESSION_KEY = "voxel-town.wallet-auth.v1";
 const DEV_ACTIVE_PROFILE_KEY = "voxel-town.dev-active-profile.v1";
@@ -917,6 +957,14 @@ function sanitizeDevProfileId(profileId) {
 }
 
 function isUiEscapeCloseHandled() {
+  if (wastelandClaimCancelOpen) {
+    closeWastelandClaimCancelDialog();
+    return true;
+  }
+  if (wastelandClaimConfirmOpen) {
+    closeWastelandClaimConfirmDialog();
+    return true;
+  }
   if (nftExhibitSelectionOpen) {
     closeNftBoardSelectionOverlay();
     return true;
@@ -963,6 +1011,8 @@ function isWorkUiMovementLocked() {
     frontierBuildOpen ||
     frontierBoothOpen ||
     frontierShopRegisterOpen ||
+    wastelandClaimCancelOpen ||
+    wastelandClaimConfirmOpen ||
     refineryOpen ||
     forgeOpen
   );
@@ -2568,6 +2618,8 @@ function resetDevTestingEnvironment() {
   localStorage.setItem(DEV_SHARED_WORLD_KEY, JSON.stringify(blankWorld));
   localStorage.setItem(DEV_ACTIVE_PROFILE_KEY, currentProfileId);
   initializeDevProfileState(currentProfileId);
+  resetFrontierWastelandRuntimeState();
+  saveSharedWorldStateToLocal();
   showUI("개발자 테스트 환경을 초기화했습니다.", 1200);
   lastMessageUntil = performance.now() + 1200;
   return true;
@@ -2898,6 +2950,169 @@ mansionSleepOverlay.addEventListener("click", closeMansionSleepDialog);
 mansionWakeBtn.addEventListener("click", closeMansionSleepDialog);
 mansionSleepConfirmBtn.addEventListener("click", () => {
   void confirmMansionSleepLogout();
+});
+
+wastelandClaimConfirmOverlay = document.createElement("div");
+wastelandClaimConfirmOverlay.style.position = "fixed";
+wastelandClaimConfirmOverlay.style.inset = "0";
+wastelandClaimConfirmOverlay.style.background = "rgba(12, 16, 22, 0.34)";
+wastelandClaimConfirmOverlay.style.backdropFilter = "blur(5px)";
+wastelandClaimConfirmOverlay.style.display = "none";
+wastelandClaimConfirmOverlay.style.pointerEvents = "auto";
+wastelandClaimConfirmOverlay.style.zIndex = "1000005";
+uiLayer.appendChild(wastelandClaimConfirmOverlay);
+
+wastelandClaimConfirmDialog = document.createElement("div");
+wastelandClaimConfirmDialog.style.position = "fixed";
+wastelandClaimConfirmDialog.style.left = "50%";
+wastelandClaimConfirmDialog.style.top = "50%";
+wastelandClaimConfirmDialog.style.transform = "translate(-50%, -50%)";
+wastelandClaimConfirmDialog.style.width = "min(430px, calc(100vw - 36px))";
+wastelandClaimConfirmDialog.style.background = "rgba(246, 243, 236, 0.98)";
+wastelandClaimConfirmDialog.style.border = "1px solid rgba(0,0,0,0.18)";
+wastelandClaimConfirmDialog.style.borderRadius = "14px";
+wastelandClaimConfirmDialog.style.boxShadow = "0 18px 42px rgba(0,0,0,0.28)";
+wastelandClaimConfirmDialog.style.padding = "18px";
+wastelandClaimConfirmDialog.style.boxSizing = "border-box";
+wastelandClaimConfirmDialog.style.display = "none";
+wastelandClaimConfirmDialog.style.pointerEvents = "auto";
+wastelandClaimConfirmDialog.style.zIndex = "1000006";
+uiLayer.appendChild(wastelandClaimConfirmDialog);
+
+const wastelandClaimConfirmTitle = document.createElement("div");
+wastelandClaimConfirmTitle.textContent = "개간 구역 확정";
+wastelandClaimConfirmTitle.style.fontFamily = "system-ui, -apple-system, sans-serif";
+wastelandClaimConfirmTitle.style.fontSize = "20px";
+wastelandClaimConfirmTitle.style.fontWeight = "900";
+wastelandClaimConfirmTitle.style.color = "#2b2117";
+wastelandClaimConfirmDialog.appendChild(wastelandClaimConfirmTitle);
+
+const wastelandClaimConfirmBody = document.createElement("div");
+wastelandClaimConfirmBody.style.marginTop = "10px";
+wastelandClaimConfirmBody.style.fontFamily = "system-ui, -apple-system, sans-serif";
+wastelandClaimConfirmBody.style.fontSize = "14px";
+wastelandClaimConfirmBody.style.lineHeight = "1.6";
+wastelandClaimConfirmBody.style.color = "#514437";
+wastelandClaimConfirmDialog.appendChild(wastelandClaimConfirmBody);
+
+const wastelandClaimConfirmButtons = document.createElement("div");
+wastelandClaimConfirmButtons.style.display = "flex";
+wastelandClaimConfirmButtons.style.justifyContent = "flex-end";
+wastelandClaimConfirmButtons.style.gap = "10px";
+wastelandClaimConfirmButtons.style.marginTop = "18px";
+wastelandClaimConfirmDialog.appendChild(wastelandClaimConfirmButtons);
+
+const wastelandClaimCancelBtn = document.createElement("button");
+wastelandClaimCancelBtn.type = "button";
+wastelandClaimCancelBtn.textContent = "취소";
+wastelandClaimCancelBtn.style.minWidth = "82px";
+wastelandClaimCancelBtn.style.padding = "10px 12px";
+wastelandClaimCancelBtn.style.borderRadius = "10px";
+wastelandClaimCancelBtn.style.border = "1px solid rgba(0,0,0,0.18)";
+wastelandClaimCancelBtn.style.background = "rgba(255,255,255,0.92)";
+wastelandClaimCancelBtn.style.fontWeight = "800";
+wastelandClaimCancelBtn.style.cursor = "pointer";
+wastelandClaimConfirmButtons.appendChild(wastelandClaimCancelBtn);
+
+const wastelandClaimConfirmBtn = document.createElement("button");
+wastelandClaimConfirmBtn.type = "button";
+wastelandClaimConfirmBtn.textContent = "확정";
+wastelandClaimConfirmBtn.style.minWidth = "86px";
+wastelandClaimConfirmBtn.style.padding = "10px 12px";
+wastelandClaimConfirmBtn.style.borderRadius = "10px";
+wastelandClaimConfirmBtn.style.border = "1px solid rgba(117,86,40,0.28)";
+wastelandClaimConfirmBtn.style.background = "linear-gradient(180deg, rgba(238,181,92,0.98), rgba(211,143,55,0.98))";
+wastelandClaimConfirmBtn.style.color = "#2f1d08";
+wastelandClaimConfirmBtn.style.fontWeight = "900";
+wastelandClaimConfirmBtn.style.cursor = "pointer";
+wastelandClaimConfirmButtons.appendChild(wastelandClaimConfirmBtn);
+
+wastelandClaimConfirmOverlay.addEventListener("click", closeWastelandClaimConfirmDialog);
+wastelandClaimCancelBtn.addEventListener("click", closeWastelandClaimConfirmDialog);
+wastelandClaimConfirmBtn.addEventListener("click", () => {
+  commitCurrentWastelandDraft();
+});
+
+wastelandClaimCancelOverlay = document.createElement("div");
+wastelandClaimCancelOverlay.style.position = "fixed";
+wastelandClaimCancelOverlay.style.inset = "0";
+wastelandClaimCancelOverlay.style.background = "rgba(12, 16, 22, 0.34)";
+wastelandClaimCancelOverlay.style.backdropFilter = "blur(5px)";
+wastelandClaimCancelOverlay.style.display = "none";
+wastelandClaimCancelOverlay.style.pointerEvents = "auto";
+wastelandClaimCancelOverlay.style.zIndex = "1000005";
+uiLayer.appendChild(wastelandClaimCancelOverlay);
+
+wastelandClaimCancelDialog = document.createElement("div");
+wastelandClaimCancelDialog.style.position = "fixed";
+wastelandClaimCancelDialog.style.left = "50%";
+wastelandClaimCancelDialog.style.top = "50%";
+wastelandClaimCancelDialog.style.transform = "translate(-50%, -50%)";
+wastelandClaimCancelDialog.style.width = "min(430px, calc(100vw - 36px))";
+wastelandClaimCancelDialog.style.background = "rgba(246, 243, 236, 0.98)";
+wastelandClaimCancelDialog.style.border = "1px solid rgba(0,0,0,0.18)";
+wastelandClaimCancelDialog.style.borderRadius = "14px";
+wastelandClaimCancelDialog.style.boxShadow = "0 18px 42px rgba(0,0,0,0.28)";
+wastelandClaimCancelDialog.style.padding = "18px";
+wastelandClaimCancelDialog.style.boxSizing = "border-box";
+wastelandClaimCancelDialog.style.display = "none";
+wastelandClaimCancelDialog.style.pointerEvents = "auto";
+wastelandClaimCancelDialog.style.zIndex = "1000006";
+uiLayer.appendChild(wastelandClaimCancelDialog);
+
+const wastelandClaimCancelTitle = document.createElement("div");
+wastelandClaimCancelTitle.textContent = "확정 취소";
+wastelandClaimCancelTitle.style.fontFamily = "system-ui, -apple-system, sans-serif";
+wastelandClaimCancelTitle.style.fontSize = "20px";
+wastelandClaimCancelTitle.style.fontWeight = "900";
+wastelandClaimCancelTitle.style.color = "#2b2117";
+wastelandClaimCancelDialog.appendChild(wastelandClaimCancelTitle);
+
+const wastelandClaimCancelBody = document.createElement("div");
+wastelandClaimCancelBody.textContent = "확정을 취소하시겠습니까? 사용된 울타리는 소멸됩니다.";
+wastelandClaimCancelBody.style.marginTop = "10px";
+wastelandClaimCancelBody.style.fontFamily = "system-ui, -apple-system, sans-serif";
+wastelandClaimCancelBody.style.fontSize = "14px";
+wastelandClaimCancelBody.style.lineHeight = "1.6";
+wastelandClaimCancelBody.style.color = "#514437";
+wastelandClaimCancelDialog.appendChild(wastelandClaimCancelBody);
+
+const wastelandClaimCancelButtons = document.createElement("div");
+wastelandClaimCancelButtons.style.display = "flex";
+wastelandClaimCancelButtons.style.justifyContent = "flex-end";
+wastelandClaimCancelButtons.style.gap = "10px";
+wastelandClaimCancelButtons.style.marginTop = "18px";
+wastelandClaimCancelDialog.appendChild(wastelandClaimCancelButtons);
+
+const wastelandClaimCancelCloseBtn = document.createElement("button");
+wastelandClaimCancelCloseBtn.type = "button";
+wastelandClaimCancelCloseBtn.textContent = "닫기";
+wastelandClaimCancelCloseBtn.style.minWidth = "82px";
+wastelandClaimCancelCloseBtn.style.padding = "10px 12px";
+wastelandClaimCancelCloseBtn.style.borderRadius = "10px";
+wastelandClaimCancelCloseBtn.style.border = "1px solid rgba(0,0,0,0.18)";
+wastelandClaimCancelCloseBtn.style.background = "rgba(255,255,255,0.92)";
+wastelandClaimCancelCloseBtn.style.fontWeight = "800";
+wastelandClaimCancelCloseBtn.style.cursor = "pointer";
+wastelandClaimCancelButtons.appendChild(wastelandClaimCancelCloseBtn);
+
+const wastelandClaimCancelConfirmBtn = document.createElement("button");
+wastelandClaimCancelConfirmBtn.type = "button";
+wastelandClaimCancelConfirmBtn.textContent = "확인";
+wastelandClaimCancelConfirmBtn.style.minWidth = "86px";
+wastelandClaimCancelConfirmBtn.style.padding = "10px 12px";
+wastelandClaimCancelConfirmBtn.style.borderRadius = "10px";
+wastelandClaimCancelConfirmBtn.style.border = "1px solid rgba(117,50,40,0.28)";
+wastelandClaimCancelConfirmBtn.style.background = "linear-gradient(180deg, rgba(226,118,83,0.98), rgba(183,71,45,0.98))";
+wastelandClaimCancelConfirmBtn.style.color = "white";
+wastelandClaimCancelConfirmBtn.style.fontWeight = "900";
+wastelandClaimCancelConfirmBtn.style.cursor = "pointer";
+wastelandClaimCancelButtons.appendChild(wastelandClaimCancelConfirmBtn);
+
+wastelandClaimCancelOverlay.addEventListener("click", closeWastelandClaimCancelDialog);
+wastelandClaimCancelCloseBtn.addEventListener("click", closeWastelandClaimCancelDialog);
+wastelandClaimCancelConfirmBtn.addEventListener("click", () => {
+  cancelCurrentWastelandClaim();
 });
 
 window.addEventListener("keydown", (e) => {
@@ -6216,8 +6431,8 @@ let activeMineRock = null;
 let activeHarvestTree = null;
 let activeWastelandCell = null;
 let wastelandFencePlacementMode = false;
-const WASTELAND_FENCE_MIN_WIDTH = 4;
-const WASTELAND_FENCE_MIN_HEIGHT = 3;
+const WASTELAND_FENCE_MIN_WIDTH = 5;
+const WASTELAND_FENCE_MIN_HEIGHT = 5;
 const WASTELAND_CLAIM_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 const latestMoveDir = new THREE.Vector3(0, 0, -1); // 월드 기준: -Z = 북, +X = 동
 
@@ -6262,61 +6477,120 @@ function findNearestHarvestTree(radius = 2.2) {
   return best;
 }
 
+const WASTELAND_DIG_PROGRESS_GAIN = 25;
+const WASTELAND_CELL_VISUAL_STOPS = [
+  { progress: 0, color: 0xd8d8d8, opacity: 0.78, y: 0.125, scaleY: 1, visible: true },
+  { progress: 25, color: 0xa6a6a6, opacity: 0.95, y: 0.104, scaleY: 0.72, visible: true },
+  { progress: 50, color: 0x696969, opacity: 1, y: 0.083, scaleY: 0.46, visible: true },
+  { progress: 75, color: 0x303030, opacity: 1, y: 0.063, scaleY: 0.22, visible: true },
+  { progress: 100, color: 0x181818, opacity: 0, y: 0.052, scaleY: 0.04, visible: false },
+];
+
+function clampWastelandClearProgress(value) {
+  return Math.max(0, Math.min(100, Math.floor(Number(value) || 0)));
+}
+
+function getWastelandStateForProgress(progress) {
+  if (progress >= 100) return { state: "dug3", digStage: 3 };
+  if (progress >= 50) return { state: "dug2", digStage: 2 };
+  if (progress > 0) return { state: "dug1", digStage: 1 };
+  return { state: "idle", digStage: 0 };
+}
+
+function getFallbackWastelandProgressFromState(cell) {
+  if (cell?.state === "dug3") return 100;
+  if (cell?.state === "dug2") return 50;
+  if (cell?.state === "dug1") return 25;
+  return 0;
+}
+
+function getWastelandCellClearProgress(cell) {
+  return clampWastelandClearProgress(cell?.clearProgress ?? getFallbackWastelandProgressFromState(cell));
+}
+
+function syncWastelandCellStateFromProgress(cell) {
+  if (!cell) return;
+  cell.clearProgress = getWastelandCellClearProgress(cell);
+  const synced = getWastelandStateForProgress(cell.clearProgress);
+  cell.state = synced.state;
+  cell.digStage = synced.digStage;
+}
+
+function lerpNumber(a, b, t) {
+  return a + (b - a) * t;
+}
+
+function lerpHexColor(a, b, t) {
+  const ar = (a >> 16) & 255;
+  const ag = (a >> 8) & 255;
+  const ab = a & 255;
+  const br = (b >> 16) & 255;
+  const bg = (b >> 8) & 255;
+  const bb = b & 255;
+  return (
+    (Math.round(lerpNumber(ar, br, t)) << 16) |
+    (Math.round(lerpNumber(ag, bg, t)) << 8) |
+    Math.round(lerpNumber(ab, bb, t))
+  );
+}
+
+function getWastelandCellVisualForProgress(progress) {
+  const clamped = clampWastelandClearProgress(progress);
+  for (let i = 0; i < WASTELAND_CELL_VISUAL_STOPS.length - 1; i += 1) {
+    const from = WASTELAND_CELL_VISUAL_STOPS[i];
+    const to = WASTELAND_CELL_VISUAL_STOPS[i + 1];
+    if (clamped <= to.progress) {
+      const t = (clamped - from.progress) / (to.progress - from.progress || 1);
+      return {
+        color: lerpHexColor(from.color, to.color, t),
+        opacity: lerpNumber(from.opacity, to.opacity, t),
+        y: lerpNumber(from.y, to.y, t),
+        scaleY: lerpNumber(from.scaleY, to.scaleY, t),
+        visible: clamped >= 100 ? false : to.visible,
+      };
+    }
+  }
+  return WASTELAND_CELL_VISUAL_STOPS[WASTELAND_CELL_VISUAL_STOPS.length - 1];
+}
+
+function applyWastelandCellVisual(cell) {
+  const coverMesh = cell?.coverMesh ?? cell?.mesh;
+  const baseMesh = cell?.baseMesh;
+  if (!coverMesh?.material) return;
+  syncWastelandCellStateFromProgress(cell);
+  const visual = getWastelandCellVisualForProgress(cell.clearProgress);
+  if (baseMesh) baseMesh.visible = true;
+  coverMesh.visible = visual.visible;
+  coverMesh.position.y = visual.y;
+  coverMesh.scale.y = visual.scaleY;
+  coverMesh.material.color.set(visual.color);
+  coverMesh.material.opacity = visual.opacity;
+  coverMesh.material.transparent = visual.opacity < 1;
+  coverMesh.material.needsUpdate = true;
+}
+
 function clearWastelandCellHighlight(cell) {
-  if (!cell?.mesh?.material) return;
-  cell.mesh.material.emissive?.set?.(0x000000);
-  cell.mesh.material.emissiveIntensity = 0;
-  if (cell.state === "dug3") {
-    cell.mesh.visible = false;
-    return;
-  }
-  cell.mesh.visible = true;
-  if (cell.state === "dug2") {
-    cell.mesh.material.opacity = 1;
-    cell.mesh.material.color.set(0x1f4fff);
-  } else if (cell.state === "dug1") {
-    cell.mesh.material.opacity = 1;
-    cell.mesh.material.color.set(0xff2a2a);
-  } else {
-    cell.mesh.material.opacity = 0.32;
-    cell.mesh.material.color.set(0xffffff);
-  }
+  const coverMesh = cell?.coverMesh ?? cell?.mesh;
+  if (!coverMesh?.material) return;
+  coverMesh.material.emissive?.set?.(0x000000);
+  coverMesh.material.emissiveIntensity = 0;
+  applyWastelandCellVisual(cell);
 }
 
 function applyWastelandCellHighlight(cell) {
-  if (!cell?.mesh?.material) return;
-  if (cell.state === "dug3") return;
-  cell.mesh.visible = true;
-  cell.mesh.material.emissive?.set?.(0xa96a18);
-  cell.mesh.material.emissiveIntensity = 0.22;
-  cell.mesh.material.opacity = cell.state === "idle" ? 0.78 : 1.0;
+  const coverMesh = cell?.coverMesh ?? cell?.mesh;
+  if (!coverMesh?.material) return;
+  applyWastelandCellVisual(cell);
+  if (!coverMesh.visible) return;
+  coverMesh.material.emissive?.set?.(0xffb13d);
+  coverMesh.material.emissiveIntensity = 0.28;
 }
 
 function setWastelandCellState(cell, state) {
   if (!cell?.mesh) return;
-  cell.state = state;
-  cell.digStage = state === "dug1" ? 1 : state === "dug2" ? 2 : state === "dug3" ? 3 : 0;
-  cell.mesh.visible = true;
-  if (state === "dug3") {
-    cell.mesh.visible = false;
-    return;
-  }
-  if (state === "dug2") {
-    cell.mesh.position.y = 0.055;
-    cell.mesh.scale.y = 0.36;
-    cell.mesh.material.color.set(0x1f4fff);
-    cell.mesh.material.opacity = 1;
-  } else if (state === "dug1") {
-    cell.mesh.position.y = 0.095;
-    cell.mesh.scale.y = 0.68;
-    cell.mesh.material.color.set(0xff2a2a);
-    cell.mesh.material.opacity = 1;
-  } else {
-    cell.mesh.position.y = 0.125;
-    cell.mesh.scale.y = 1;
-    cell.mesh.material.color.set(0xffffff);
-    cell.mesh.material.opacity = 0.32;
-  }
+  cell.clearProgress = state === "dug3" ? 100 : state === "dug2" ? 50 : state === "dug1" ? 25 : 0;
+  syncWastelandCellStateFromProgress(cell);
+  applyWastelandCellVisual(cell);
 }
 
 function findActiveFrontierWastelandCell(radius = 2.4) {
@@ -6324,7 +6598,6 @@ function findActiveFrontierWastelandCell(radius = 2.4) {
   let best = null;
   let bestD2 = radius * radius;
   for (const cell of frontierWastelandPlot.cells) {
-    if (cell.state === "dug3" && !wastelandFencePlacementMode) continue;
     const dx = cell.x - player.position.x;
     const dz = cell.z - player.position.z;
     const d2 = dx * dx + dz * dz;
@@ -6355,7 +6628,7 @@ function shouldShowFrontierWastelandHud() {
 }
 
 function getCurrentWastelandOwnerId() {
-  return getCurrentFrontierWalletAddress() || sanitizeDevProfileId(activeDevProfileId) || "guest-local";
+  return getCurrentFrontierWalletAddress();
 }
 
 function ensureFrontierWastelandRuntimeState() {
@@ -6368,6 +6641,10 @@ function ensureFrontierWastelandRuntimeState() {
     frontierWastelandPlot.fenceLinkRoot = new THREE.Group();
     frontierWastelandPlot.root.add(frontierWastelandPlot.fenceLinkRoot);
   }
+  if (!frontierWastelandPlot.claimPreviewRoot) {
+    frontierWastelandPlot.claimPreviewRoot = new THREE.Group();
+    frontierWastelandPlot.root.add(frontierWastelandPlot.claimPreviewRoot);
+  }
   if (!frontierWastelandPlot.fencePosts) {
     frontierWastelandPlot.fencePosts = new Map();
   }
@@ -6378,6 +6655,29 @@ function ensureFrontierWastelandRuntimeState() {
     frontierWastelandPlot.claims = [];
   }
   return frontierWastelandPlot;
+}
+
+function resetFrontierWastelandRuntimeState() {
+  const plot = ensureFrontierWastelandRuntimeState();
+  if (!plot) return;
+  for (const root of [plot.fenceRoot, plot.fenceLinkRoot, plot.claimPreviewRoot]) {
+    if (!root) continue;
+    while (root.children.length) {
+      disposeObject3D(root.children[0]);
+      root.remove(root.children[0]);
+    }
+  }
+  plot.fencePosts = new Map();
+  plot.claimDrafts = new Map();
+  plot.claims = [];
+  wastelandFencePlacementMode = false;
+  closeWastelandClaimConfirmDialog();
+  for (const cell of plot.cells ?? []) {
+    cell.clearProgress = 0;
+    setWastelandCellState(cell, "idle");
+  }
+  updateWastelandClaimCompleteButton(null);
+  updateWastelandClaimCancelButton(null);
 }
 
 function getCurrentFrontierWastelandDraft() {
@@ -6471,9 +6771,35 @@ function isCellInsideConfirmedWastelandClaim(cell) {
   );
 }
 
+function getWastelandClaimForCell(cell) {
+  const plot = ensureFrontierWastelandRuntimeState();
+  if (!plot || !cell) return null;
+  return plot.claims.find(
+    (claim) =>
+      cell.row >= claim.minRow &&
+      cell.row <= claim.maxRow &&
+      cell.col >= claim.minCol &&
+      cell.col <= claim.maxCol
+  ) ?? null;
+}
+
+function canClearWastelandCell(cell) {
+  const claim = getWastelandClaimForCell(cell);
+  if (!claim) return { ok: false, reason: "울타리 구역을 먼저 확정해야 개간할 수 있습니다." };
+  const ownerId = getCurrentWastelandOwnerId();
+  if (!ownerId) return { ok: false, reason: "개간은 지갑 로그인이 필요합니다." };
+  if (claim.ownerId !== ownerId) return { ok: false, reason: "이 구역의 소유자만 개간할 수 있습니다." };
+  if (claim.status && claim.status !== "active") return { ok: false, reason: "진행 중인 개간 구역이 아닙니다." };
+  return { ok: true, claim };
+}
+
 function canPlaceWastelandFencePost(cell) {
   const plot = ensureFrontierWastelandRuntimeState();
+  const ownerId = getCurrentWastelandOwnerId();
   if (!plot || !cell) return { ok: false, reason: "설치할 셀을 찾을 수 없습니다." };
+  if (!ownerId) {
+    return { ok: false, reason: "울타리 기둥 설치는 지갑 로그인이 필요합니다." };
+  }
   if (getCurrentFrontierWastelandClaim()) {
     return { ok: false, reason: "이미 확정된 개간 구역이 있습니다." };
   }
@@ -6489,9 +6815,39 @@ function canPlaceWastelandFencePost(cell) {
   return { ok: true };
 }
 
+function removeWastelandDraftFencePost(cell) {
+  const plot = ensureFrontierWastelandRuntimeState();
+  const ownerId = getCurrentWastelandOwnerId();
+  if (!plot || !cell || !ownerId) return false;
+  const key = `${cell.row}:${cell.col}`;
+  const post = plot.fencePosts.get(key);
+  const draft = plot.claimDrafts.get(ownerId);
+  if (!post || post.ownerId !== ownerId || !draft?.postKeys?.includes(key)) return false;
+  if (post.mesh?.parent) {
+    disposeObject3D(post.mesh);
+    post.mesh.parent.remove(post.mesh);
+  }
+  plot.fencePosts.delete(key);
+  draft.postKeys = draft.postKeys.filter((postKey) => postKey !== key);
+  draft.lastPromptSignature = "";
+  if (draft.postKeys.length <= 0) {
+    plot.claimDrafts.delete(ownerId);
+  }
+  addItem("fencePost", 1);
+  rebuildFrontierWastelandFenceLinks();
+  clearWastelandClaimPreview();
+  closeWastelandClaimConfirmDialog();
+  updateInventoryUI();
+  showUI("울타리 기둥을 회수했습니다.", 900);
+  lastMessageUntil = performance.now() + 900;
+  updateFrontierWastelandDraftPrompt();
+  return true;
+}
+
 function placeWastelandFencePost(cell) {
   const plot = ensureFrontierWastelandRuntimeState();
   if (!plot || !cell) return false;
+  if (removeWastelandDraftFencePost(cell)) return true;
   const canPlace = canPlaceWastelandFencePost(cell);
   if (!canPlace.ok) {
     showUI(canPlace.reason, 1000);
@@ -6504,6 +6860,11 @@ function placeWastelandFencePost(cell) {
     return false;
   }
   const ownerId = getCurrentWastelandOwnerId();
+  if (!ownerId) {
+    showUI("울타리 기둥 설치는 지갑 로그인이 필요합니다.", 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return false;
+  }
   const key = `${cell.row}:${cell.col}`;
   const mesh = createWastelandFencePostMesh();
   mesh.position.set(cell.x, 0.02, cell.z);
@@ -6589,6 +6950,138 @@ function isValidWastelandDraftRectangle(draft) {
   };
 }
 
+function getWastelandDraftGuide() {
+  const draft = getCurrentFrontierWastelandDraft();
+  const plot = ensureFrontierWastelandRuntimeState();
+  const postCount = draft?.postKeys?.length ?? 0;
+  if (!draft || !plot?.fencePosts || postCount <= 0) {
+    return {
+      postCount,
+      text: `${WASTELAND_FENCE_MIN_WIDTH} x ${WASTELAND_FENCE_MIN_HEIGHT} 이상 테두리 필요`,
+    };
+  }
+  const bounds = getWastelandDraftBounds(draft);
+  if (!bounds) {
+    return {
+      postCount,
+      text: `${WASTELAND_FENCE_MIN_WIDTH} x ${WASTELAND_FENCE_MIN_HEIGHT} 이상 테두리 필요`,
+    };
+  }
+  const width = bounds.maxCol - bounds.minCol + 1;
+  const height = bounds.maxRow - bounds.minRow + 1;
+  const minSizeOk = Math.max(width, height) >= WASTELAND_FENCE_MIN_WIDTH && Math.min(width, height) >= WASTELAND_FENCE_MIN_HEIGHT;
+  const keySet = new Set(draft.postKeys);
+  let requiredBorderCount = 0;
+  let currentBorderCount = 0;
+  let innerPostCount = 0;
+  for (let row = bounds.minRow; row <= bounds.maxRow; row += 1) {
+    for (let col = bounds.minCol; col <= bounds.maxCol; col += 1) {
+      const isBorder =
+        row === bounds.minRow ||
+        row === bounds.maxRow ||
+        col === bounds.minCol ||
+        col === bounds.maxCol;
+      const hasPost = keySet.has(`${row}:${col}`);
+      if (isBorder) {
+        requiredBorderCount += 1;
+        if (hasPost) currentBorderCount += 1;
+      } else if (hasPost) {
+        innerPostCount += 1;
+      }
+    }
+  }
+  const missingBorderCount = Math.max(0, requiredBorderCount - currentBorderCount);
+  const validRect = isValidWastelandDraftRectangle(draft);
+  const sizeText = `${width} x ${height}`;
+  let text = `${sizeText} | ${WASTELAND_FENCE_MIN_WIDTH} x ${WASTELAND_FENCE_MIN_HEIGHT} 이상 필요`;
+  if (!minSizeOk) {
+    text = `${sizeText} | 최소 ${WASTELAND_FENCE_MIN_WIDTH} x ${WASTELAND_FENCE_MIN_HEIGHT} 필요`;
+  } else if (innerPostCount > 0) {
+    text = `${sizeText} | 내부 기둥 ${innerPostCount}개 제거 필요`;
+  } else if (missingBorderCount > 0) {
+    text = `${sizeText} | 테두리 ${missingBorderCount}칸 부족`;
+  } else if (validRect) {
+    text = `구역 확정 가능: ${sizeText}`;
+  }
+  return {
+    postCount,
+    width,
+    height,
+    requiredBorderCount,
+    currentBorderCount,
+    missingBorderCount,
+    innerPostCount,
+    canConfirm: Boolean(validRect),
+    text,
+  };
+}
+
+function clearWastelandClaimPreview() {
+  const plot = ensureFrontierWastelandRuntimeState();
+  const root = plot?.claimPreviewRoot;
+  if (!root) return;
+  while (root.children.length) {
+    disposeObject3D(root.children[0]);
+    root.remove(root.children[0]);
+  }
+}
+
+function createWastelandPreviewCellMesh(cell, color, opacity, height = 0.018) {
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(cell.size - 0.26, height, cell.size - 0.26),
+    new THREE.MeshStandardMaterial({
+      color,
+      transparent: true,
+      opacity,
+      roughness: 0.9,
+      depthWrite: false,
+    })
+  );
+  mesh.position.set(cell.x, 0.19, cell.z);
+  return mesh;
+}
+
+function updateWastelandClaimPreview() {
+  const plot = ensureFrontierWastelandRuntimeState();
+  clearWastelandClaimPreview();
+  if (!wastelandFencePlacementMode || !plot?.claimPreviewRoot) return;
+  const draft = getCurrentFrontierWastelandDraft();
+  if (!draft?.postKeys?.length) return;
+  const bounds = getWastelandDraftBounds(draft);
+  if (!bounds) return;
+  const guide = getWastelandDraftGuide();
+  const color = guide.canConfirm
+    ? 0x35d66f
+    : guide.innerPostCount > 0 || guide.missingBorderCount > 0
+      ? 0xff5b4a
+      : 0xf2b84b;
+  const overlayOpacity = guide.canConfirm ? 0.22 : 0.16;
+  const markerOpacity = 0.62;
+  const keySet = new Set(draft.postKeys);
+  for (const cell of plot.cells ?? []) {
+    const inside =
+      cell.row >= bounds.minRow &&
+      cell.row <= bounds.maxRow &&
+      cell.col >= bounds.minCol &&
+      cell.col <= bounds.maxCol;
+    if (!inside) continue;
+    const isBorder =
+      cell.row === bounds.minRow ||
+      cell.row === bounds.maxRow ||
+      cell.col === bounds.minCol ||
+      cell.col === bounds.maxCol;
+    const hasPost = keySet.has(`${cell.row}:${cell.col}`);
+    const mesh = createWastelandPreviewCellMesh(cell, color, overlayOpacity);
+    plot.claimPreviewRoot.add(mesh);
+    if ((isBorder && !hasPost) || (!isBorder && hasPost)) {
+      const marker = createWastelandPreviewCellMesh(cell, 0xff2f2f, markerOpacity, 0.032);
+      marker.scale.set(0.54, 1, 0.54);
+      marker.position.y = 0.215;
+      plot.claimPreviewRoot.add(marker);
+    }
+  }
+}
+
 function removeWastelandClaimFences(claim) {
   const plot = ensureFrontierWastelandRuntimeState();
   if (!plot || !claim) return;
@@ -6604,10 +7097,69 @@ function removeWastelandClaimFences(claim) {
   rebuildFrontierWastelandFenceLinks();
 }
 
-function confirmCurrentWastelandDraft() {
+function closeWastelandClaimConfirmDialog() {
+  wastelandClaimConfirmOpen = false;
+  wastelandClaimConfirmRect = null;
+  if (wastelandClaimConfirmOverlay) wastelandClaimConfirmOverlay.style.display = "none";
+  if (wastelandClaimConfirmDialog) wastelandClaimConfirmDialog.style.display = "none";
+}
+
+function closeWastelandClaimCancelDialog() {
+  wastelandClaimCancelOpen = false;
+  if (wastelandClaimCancelOverlay) wastelandClaimCancelOverlay.style.display = "none";
+  if (wastelandClaimCancelDialog) wastelandClaimCancelDialog.style.display = "none";
+}
+
+function openWastelandClaimCancelDialog() {
+  const claim = getCurrentFrontierWastelandClaim();
+  if (!claim || claim.status === "completed" || claim.rewardIssuedAt) {
+    showUI("취소할 수 있는 확정 구역이 없습니다.", 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return false;
+  }
+  wastelandClaimCancelOpen = true;
+  if (wastelandClaimCancelOverlay) wastelandClaimCancelOverlay.style.display = "block";
+  if (wastelandClaimCancelDialog) wastelandClaimCancelDialog.style.display = "block";
+  return true;
+}
+
+function openWastelandClaimConfirmDialog(rect) {
+  if (!rect || !wastelandClaimConfirmOverlay || !wastelandClaimConfirmDialog) return false;
+  wastelandClaimConfirmRect = rect;
+  wastelandClaimConfirmOpen = true;
+  wastelandClaimConfirmBody.innerHTML = "";
+  const sizeLine = document.createElement("div");
+  sizeLine.textContent = `${rect.width} x ${rect.height} 구역, 총 ${rect.cellIds.length}셀`;
+  sizeLine.style.fontWeight = "900";
+  sizeLine.style.color = "#2f261b";
+  wastelandClaimConfirmBody.appendChild(sizeLine);
+
+  const guideLine = document.createElement("div");
+  guideLine.textContent = "확정하면 7일 안에 내부 셀을 모두 개간해야 토지 권한을 획득할 수 있습니다.";
+  guideLine.style.marginTop = "8px";
+  wastelandClaimConfirmBody.appendChild(guideLine);
+
+  const ownerLine = document.createElement("div");
+  ownerLine.textContent = "현재 단계에서는 확정한 소유주만 이 구역을 개간할 수 있게 이어갈 예정입니다.";
+  ownerLine.style.marginTop = "6px";
+  ownerLine.style.opacity = "0.82";
+  wastelandClaimConfirmBody.appendChild(ownerLine);
+
+  wastelandClaimConfirmOverlay.style.display = "block";
+  wastelandClaimConfirmDialog.style.display = "block";
+  return true;
+}
+
+function commitCurrentWastelandDraft() {
   const plot = ensureFrontierWastelandRuntimeState();
   const ownerId = getCurrentWastelandOwnerId();
   const draft = plot?.claimDrafts?.get(ownerId);
+  if (!ownerId) {
+    showUI("개간 구역 확정은 지갑 로그인이 필요합니다.", 1100);
+    lastMessageUntil = performance.now() + 1100;
+    closeWastelandClaimConfirmDialog();
+    return false;
+  }
   if (!plot || !draft) return false;
   const rect = isValidWastelandDraftRectangle(draft);
   if (!rect) return false;
@@ -6620,9 +7172,8 @@ function confirmCurrentWastelandDraft() {
     lastMessageUntil = performance.now() + 1100;
     return false;
   }
-  const confirmed = window.confirm("개간 구역을 확정하겠습니까?");
-  if (!confirmed) return false;
   const claim = {
+    status: "active",
     ownerId,
     minRow: rect.minRow,
     maxRow: rect.maxRow,
@@ -6638,10 +7189,32 @@ function confirmCurrentWastelandDraft() {
   plot.claims.push(claim);
   plot.claimDrafts.delete(ownerId);
   wastelandFencePlacementMode = false;
+  clearWastelandClaimPreview();
+  closeWastelandClaimConfirmDialog();
   updateInventoryUI();
   showUI("개간 구역을 확정했습니다.", 1100);
   lastMessageUntil = performance.now() + 1100;
   return true;
+}
+
+function confirmCurrentWastelandDraft() {
+  const plot = ensureFrontierWastelandRuntimeState();
+  const ownerId = getCurrentWastelandOwnerId();
+  const draft = plot?.claimDrafts?.get(ownerId);
+  if (!ownerId || !plot || !draft) return false;
+  const rect = isValidWastelandDraftRectangle(draft);
+  if (!rect) return false;
+  const hasOverlap = plot.claims.some(
+    (claim) =>
+      !(rect.maxRow < claim.minRow || rect.minRow > claim.maxRow || rect.maxCol < claim.minCol || rect.minCol > claim.maxCol)
+  );
+  if (hasOverlap) {
+    showUI("다른 확정 구역과 겹치는 직사각형은 확정할 수 없습니다.", 1100);
+    lastMessageUntil = performance.now() + 1100;
+    return false;
+  }
+  if (wastelandClaimConfirmOpen) return true;
+  return openWastelandClaimConfirmDialog(rect);
 }
 
 function updateFrontierWastelandDraftPrompt() {
@@ -6685,10 +7258,99 @@ function getCurrentWastelandClaimProgress() {
     completed,
     total: claim.cellIds.length,
     percent: claim.cellIds.length > 0 ? (completed / claim.cellIds.length) * 100 : 0,
+    readyToComplete: claim.cellIds.length > 0 && completed >= claim.cellIds.length,
   };
 }
 
+function canCompleteWastelandClaim(progress) {
+  const claim = progress?.claim;
+  return Boolean(
+    claim &&
+    progress.readyToComplete &&
+    (!claim.status || claim.status === "active") &&
+    !claim.rewardIssuedAt &&
+    claim.ownerId === getCurrentWastelandOwnerId()
+  );
+}
+
+function completeCurrentWastelandClaim() {
+  const progress = getCurrentWastelandClaimProgress();
+  if (!canCompleteWastelandClaim(progress)) {
+    showUI("아직 완료할 수 없습니다.", 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return false;
+  }
+  if (!addItem(WASTELAND_LAND_DEED_ITEM_ID, 1)) {
+    updateInventoryUI();
+    showUI("기타 아이템 슬롯을 한 칸 비워주세요.", 1400);
+    lastMessageUntil = performance.now() + 1400;
+    return false;
+  }
+  progress.claim.status = "completed";
+  progress.claim.completedAt = Date.now();
+  progress.claim.rewardItemId = WASTELAND_LAND_DEED_ITEM_ID;
+  progress.claim.rewardIssuedAt = Date.now();
+  updateInventoryUI();
+  showUI("개간 완료! 황무지 토지권을 획득했습니다.", 1400);
+  lastMessageUntil = performance.now() + 1400;
+  updateWastelandClaimCompleteButton(progress);
+  updateWastelandClaimCancelButton(progress);
+  return true;
+}
+
+function canCancelWastelandClaim(progress) {
+  const claim = progress?.claim;
+  return Boolean(
+    claim &&
+    claim.ownerId === getCurrentWastelandOwnerId() &&
+    claim.status !== "completed" &&
+    !claim.rewardIssuedAt
+  );
+}
+
+function cancelCurrentWastelandClaim() {
+  const plot = ensureFrontierWastelandRuntimeState();
+  const claim = getCurrentFrontierWastelandClaim();
+  if (!plot || !claim || claim.status === "completed" || claim.rewardIssuedAt) {
+    closeWastelandClaimCancelDialog();
+    showUI("취소할 수 있는 확정 구역이 없습니다.", 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return false;
+  }
+  removeWastelandClaimFences(claim);
+  plot.claims = plot.claims.filter((entry) => entry !== claim);
+  closeWastelandClaimCancelDialog();
+  updateWastelandClaimCompleteButton(null);
+  updateWastelandClaimCancelButton(null);
+  showUI("개간 구역 확정을 취소했습니다.", 1100);
+  lastMessageUntil = performance.now() + 1100;
+  return true;
+}
+
+function updateWastelandClaimCompleteButton(progress) {
+  if (!wastelandClaimCompleteBtn) return;
+  wastelandClaimCompleteBtn.style.display = canCompleteWastelandClaim(progress) ? "block" : "none";
+}
+
+function updateWastelandClaimCancelButton(progress) {
+  if (!wastelandClaimAbortBtn) return;
+  wastelandClaimAbortBtn.style.display = canCancelWastelandClaim(progress) ? "block" : "none";
+}
+
+wastelandClaimCompleteBtn.addEventListener("click", () => {
+  completeCurrentWastelandClaim();
+});
+
+wastelandClaimAbortBtn.addEventListener("click", () => {
+  openWastelandClaimCancelDialog();
+});
+
 function toggleWastelandFencePlacementMode() {
+  if (!getCurrentWastelandOwnerId()) {
+    showUI("울타리 기둥 설치는 지갑 로그인이 필요합니다.", 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return;
+  }
   if (!hasItem("fencePost")) {
     showUI("울타리 기둥이 없습니다.", 1000);
     lastMessageUntil = performance.now() + 1000;
@@ -6700,6 +7362,9 @@ function toggleWastelandFencePlacementMode() {
     return;
   }
   wastelandFencePlacementMode = !wastelandFencePlacementMode;
+  if (!wastelandFencePlacementMode) {
+    clearWastelandClaimPreview();
+  }
   showUI(
     wastelandFencePlacementMode ? "울타리 기둥 설치 모드" : "울타리 기둥 설치 모드 해제",
     1000
@@ -12051,7 +12716,7 @@ function applyDevPreset() {
     addItem("pickaxe", 1);
     addItem("shovel", 1);
     addItem("safetyHelmet", 1);
-    addItem("fencePost", 100);
+    addItem("fencePost", 200);
     equipFirstOwnedInventoryItem("tool", "pickaxe");
     equipFirstOwnedInventoryItem("head", "safetyHelmet");
   }
@@ -13624,6 +14289,8 @@ window.addEventListener("keydown", (e) => {
   if (nftExhibitSelectionOpen) return;
   if (quickUseAssignState) return;
   if (mansionSleepOpen) return;
+  if (wastelandClaimCancelOpen) return;
+  if (wastelandClaimConfirmOpen) return;
   if (personalStorageOpen) return;
   if (e.code !== "Space") return;
   if (activeInteractable?.type === "mansionStorage") {
@@ -13670,8 +14337,11 @@ window.addEventListener("keydown", (e) => {
     if (e.repeat) return;
     if (wastelandFencePlacementMode) {
       if (placeWastelandFencePost(activeWastelandCell)) {
-        showUI("울타리 기둥을 설치했습니다.", 900);
-        lastMessageUntil = performance.now() + 900;
+        const key = `${activeWastelandCell.row}:${activeWastelandCell.col}`;
+        if (frontierWastelandPlot?.fencePosts?.has(key)) {
+          showUI("울타리 기둥을 설치했습니다.", 900);
+          lastMessageUntil = performance.now() + 900;
+        }
       }
       return;
     }
@@ -13685,21 +14355,24 @@ window.addEventListener("keydown", (e) => {
       lastMessageUntil = performance.now() + 900;
       return;
     }
-    const nextState =
-      activeWastelandCell.state === "idle"
-        ? "dug1"
-        : activeWastelandCell.state === "dug1"
-          ? "dug2"
-          : activeWastelandCell.state === "dug2"
-            ? "dug3"
-            : null;
-    if (!nextState) {
+    const clearCheck = canClearWastelandCell(activeWastelandCell);
+    if (!clearCheck.ok) {
+      showUI(clearCheck.reason, 1000);
+      lastMessageUntil = performance.now() + 1000;
+      return;
+    }
+    const currentProgress = getWastelandCellClearProgress(activeWastelandCell);
+    if (currentProgress >= 100) {
       showUI("이미 개간한 셀입니다.", 900);
       lastMessageUntil = performance.now() + 900;
       return;
     }
-    setWastelandCellState(activeWastelandCell, nextState);
-    showUI(nextState === "dug3" ? "황무지 개간 완료!" : "황무지를 파냈습니다.", 900);
+    activeWastelandCell.clearProgress = clampWastelandClearProgress(
+      currentProgress + WASTELAND_DIG_PROGRESS_GAIN
+    );
+    syncWastelandCellStateFromProgress(activeWastelandCell);
+    applyWastelandCellVisual(activeWastelandCell);
+    showUI(activeWastelandCell.clearProgress >= 100 ? "황무지 개간 완료!" : `황무지 개간 ${activeWastelandCell.clearProgress}%`, 900);
     lastMessageUntil = performance.now() + 900;
     return;
   }
@@ -13934,7 +14607,7 @@ if (!hintText) {
   activeWastelandCell = findActiveFrontierWastelandCell(2.4);
   if (activeWastelandCell) {
     if (wastelandFencePlacementMode) {
-      hintText = "Space : 울타리 기둥 설치";
+      hintText = `Space : 울타리 기둥 설치 | ${getWastelandDraftGuide().text}`;
     } else {
       hintText = hasEquippedTool("shovel")
         ? "Space : 땅 파기"
@@ -14006,6 +14679,7 @@ for (const cell of frontierWastelandPlot?.cells ?? []) {
 if (activeWastelandCell) {
   applyWastelandCellHighlight(activeWastelandCell);
 }
+updateWastelandClaimPreview();
 
 expireOverdueFrontierWastelandClaims();
 const frontierWastelandProgress = getCurrentWastelandClaimProgress();
@@ -14020,10 +14694,16 @@ updateWastelandHudUi(
     total: frontierWastelandProgress?.total ?? 0,
     percent: frontierWastelandProgress?.percent ?? 0,
     statusText: frontierWastelandProgress?.claim
-      ? `남은 시간 ${formatWastelandClaimRemaining(frontierWastelandProgress.claim.expiresAt - Date.now())}`
+      ? frontierWastelandProgress.claim.status === "completed"
+        ? "개간 완료 | 토지권 지급 대기"
+        : frontierWastelandProgress.readyToComplete
+        ? `완료 가능 | 남은 시간 ${formatWastelandClaimRemaining(frontierWastelandProgress.claim.expiresAt - Date.now())}`
+        : `개간률 ${frontierWastelandProgress.percent.toFixed(1)}% | 남은 시간 ${formatWastelandClaimRemaining(frontierWastelandProgress.claim.expiresAt - Date.now())}`
       : "",
   }
 );
+updateWastelandClaimCompleteButton(frontierWastelandProgress);
+updateWastelandClaimCancelButton(frontierWastelandProgress);
 
 if (activeMineRock) {
   updateRockHpBar(activeMineRock, {
