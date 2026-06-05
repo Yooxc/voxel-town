@@ -255,9 +255,14 @@ import {
   getCollectFrontierShopSettlementState as getCollectFrontierShopSettlementStateFromModule,
   applyCollectedFrontierShopSettlementState as applyCollectedFrontierShopSettlementStateFromModule,
   getFrontierParcelSafeStandingPoint as getFrontierParcelSafeStandingPointFromModule,
+  getWastelandDraftBounds as getWastelandDraftBoundsFromModule,
+  validateWastelandDraftRectangle as validateWastelandDraftRectangleFromModule,
+  getWastelandClaimProgress as getWastelandClaimProgressFromModule,
+  canCompleteWastelandClaimState as canCompleteWastelandClaimStateFromModule,
+  canCancelWastelandClaimState as canCancelWastelandClaimStateFromModule,
 } from "./systems/frontier.js";
 
-const LAST_PATCHED_AT = "2026-06-05 18:51:50 KST";
+const LAST_PATCHED_AT = "2026-06-05 19:11:12 KST";
 
 const scene = createMainScene();
 // ===== Atmosphere: Sky / Fog =====
@@ -6895,59 +6900,17 @@ function placeWastelandFencePost(cell) {
 }
 
 function getWastelandDraftBounds(draft) {
-  const posts = draft.postKeys
-    .map((key) => frontierWastelandPlot?.fencePosts?.get(key))
-    .filter(Boolean);
-  if (!posts.length) return null;
-  let minRow = Infinity;
-  let maxRow = -Infinity;
-  let minCol = Infinity;
-  let maxCol = -Infinity;
-  for (const post of posts) {
-    minRow = Math.min(minRow, post.row);
-    maxRow = Math.max(maxRow, post.row);
-    minCol = Math.min(minCol, post.col);
-    maxCol = Math.max(maxCol, post.col);
-  }
-  return { minRow, maxRow, minCol, maxCol };
+  return getWastelandDraftBoundsFromModule(draft, frontierWastelandPlot?.fencePosts);
 }
 
 function isValidWastelandDraftRectangle(draft) {
-  if (!draft?.postKeys?.length || !frontierWastelandPlot?.fencePosts) return null;
-  const bounds = getWastelandDraftBounds(draft);
-  if (!bounds) return null;
-  const width = bounds.maxCol - bounds.minCol + 1;
-  const height = bounds.maxRow - bounds.minRow + 1;
-  if (!(Math.max(width, height) >= WASTELAND_FENCE_MIN_WIDTH && Math.min(width, height) >= WASTELAND_FENCE_MIN_HEIGHT)) {
-    return null;
-  }
-  const keySet = new Set(draft.postKeys);
-  for (let row = bounds.minRow; row <= bounds.maxRow; row += 1) {
-    for (let col = bounds.minCol; col <= bounds.maxCol; col += 1) {
-      const isBorder =
-        row === bounds.minRow ||
-        row === bounds.maxRow ||
-        col === bounds.minCol ||
-        col === bounds.maxCol;
-      const hasPost = keySet.has(`${row}:${col}`);
-      if (isBorder && !hasPost) return null;
-      if (!isBorder && hasPost) return null;
-    }
-  }
-  return {
-    ...bounds,
-    width,
-    height,
-    cellIds: frontierWastelandPlot.cells
-      .filter(
-        (cell) =>
-          cell.row >= bounds.minRow &&
-          cell.row <= bounds.maxRow &&
-          cell.col >= bounds.minCol &&
-          cell.col <= bounds.maxCol
-      )
-      .map((cell) => cell.id),
-  };
+  return validateWastelandDraftRectangleFromModule({
+    draft,
+    fencePosts: frontierWastelandPlot?.fencePosts,
+    cells: frontierWastelandPlot?.cells,
+    minWidth: WASTELAND_FENCE_MIN_WIDTH,
+    minHeight: WASTELAND_FENCE_MIN_HEIGHT,
+  });
 }
 
 function getWastelandDraftGuide() {
@@ -7247,30 +7210,11 @@ function expireOverdueFrontierWastelandClaims() {
 
 function getCurrentWastelandClaimProgress() {
   const claim = getCurrentFrontierWastelandClaim();
-  if (!claim) return null;
-  let completed = 0;
-  for (const cellId of claim.cellIds) {
-    const cell = getWastelandCellById(cellId);
-    if (cell?.state === "dug3") completed += 1;
-  }
-  return {
-    claim,
-    completed,
-    total: claim.cellIds.length,
-    percent: claim.cellIds.length > 0 ? (completed / claim.cellIds.length) * 100 : 0,
-    readyToComplete: claim.cellIds.length > 0 && completed >= claim.cellIds.length,
-  };
+  return getWastelandClaimProgressFromModule(claim, getWastelandCellById);
 }
 
 function canCompleteWastelandClaim(progress) {
-  const claim = progress?.claim;
-  return Boolean(
-    claim &&
-    progress.readyToComplete &&
-    (!claim.status || claim.status === "active") &&
-    !claim.rewardIssuedAt &&
-    claim.ownerId === getCurrentWastelandOwnerId()
-  );
+  return canCompleteWastelandClaimStateFromModule(progress, getCurrentWastelandOwnerId());
 }
 
 function completeCurrentWastelandClaim() {
@@ -7299,13 +7243,7 @@ function completeCurrentWastelandClaim() {
 }
 
 function canCancelWastelandClaim(progress) {
-  const claim = progress?.claim;
-  return Boolean(
-    claim &&
-    claim.ownerId === getCurrentWastelandOwnerId() &&
-    claim.status !== "completed" &&
-    !claim.rewardIssuedAt
-  );
+  return canCancelWastelandClaimStateFromModule(progress, getCurrentWastelandOwnerId());
 }
 
 function cancelCurrentWastelandClaim() {

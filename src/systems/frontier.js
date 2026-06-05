@@ -487,3 +487,109 @@ export function getFrontierParcelSafeStandingPoint(parcel, frontierMapX, fallbac
     rotationY: facesCenterLaneFromLeft ? Math.PI * 0.5 : -Math.PI * 0.5,
   };
 }
+
+export function getWastelandDraftBounds(draft, fencePosts) {
+  const posts = (draft?.postKeys ?? [])
+    .map((key) => fencePosts?.get?.(key))
+    .filter(Boolean);
+  if (!posts.length) return null;
+  let minRow = Infinity;
+  let maxRow = -Infinity;
+  let minCol = Infinity;
+  let maxCol = -Infinity;
+  for (const post of posts) {
+    minRow = Math.min(minRow, post.row);
+    maxRow = Math.max(maxRow, post.row);
+    minCol = Math.min(minCol, post.col);
+    maxCol = Math.max(maxCol, post.col);
+  }
+  return { minRow, maxRow, minCol, maxCol };
+}
+
+export function validateWastelandDraftRectangle({
+  draft,
+  fencePosts,
+  cells,
+  minWidth,
+  minHeight,
+}) {
+  if (!draft?.postKeys?.length || !fencePosts) return null;
+  const bounds = getWastelandDraftBounds(draft, fencePosts);
+  if (!bounds) return null;
+  const width = bounds.maxCol - bounds.minCol + 1;
+  const height = bounds.maxRow - bounds.minRow + 1;
+  if (!(Math.max(width, height) >= minWidth && Math.min(width, height) >= minHeight)) {
+    return null;
+  }
+  const keySet = new Set(draft.postKeys);
+  const requiredPostKeys = [];
+  for (let row = bounds.minRow; row <= bounds.maxRow; row += 1) {
+    for (let col = bounds.minCol; col <= bounds.maxCol; col += 1) {
+      const isBorder =
+        row === bounds.minRow ||
+        row === bounds.maxRow ||
+        col === bounds.minCol ||
+        col === bounds.maxCol;
+      const key = `${row}:${col}`;
+      if (isBorder) {
+        requiredPostKeys.push(key);
+        if (!keySet.has(key)) return null;
+      } else if (keySet.has(key)) {
+        return null;
+      }
+    }
+  }
+  return {
+    ...bounds,
+    width,
+    height,
+    requiredPostKeys,
+    cellIds: (cells ?? [])
+      .filter(
+        (cell) =>
+          cell.row >= bounds.minRow &&
+          cell.row <= bounds.maxRow &&
+          cell.col >= bounds.minCol &&
+          cell.col <= bounds.maxCol
+      )
+      .map((cell) => cell.id),
+  };
+}
+
+export function getWastelandClaimProgress(claim, getCellById) {
+  if (!claim) return null;
+  let completed = 0;
+  for (const cellId of claim.cellIds ?? []) {
+    const cell = getCellById(cellId);
+    if (cell?.state === "dug3") completed += 1;
+  }
+  const total = claim.cellIds?.length ?? 0;
+  return {
+    claim,
+    completed,
+    total,
+    percent: total > 0 ? (completed / total) * 100 : 0,
+    readyToComplete: total > 0 && completed >= total,
+  };
+}
+
+export function canCompleteWastelandClaimState(progress, ownerId) {
+  const claim = progress?.claim;
+  return Boolean(
+    claim &&
+    progress.readyToComplete &&
+    (!claim.status || claim.status === "active") &&
+    !claim.rewardIssuedAt &&
+    claim.ownerId === ownerId
+  );
+}
+
+export function canCancelWastelandClaimState(progress, ownerId) {
+  const claim = progress?.claim;
+  return Boolean(
+    claim &&
+    claim.ownerId === ownerId &&
+    claim.status !== "completed" &&
+    !claim.rewardIssuedAt
+  );
+}
