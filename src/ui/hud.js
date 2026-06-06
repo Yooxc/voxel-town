@@ -287,6 +287,155 @@ export function createHudUi({ uiLayer, lastPatchedAt }) {
   };
 }
 
+export function createWastelandHudActionButtons(wastelandHudWrap) {
+  const completeBtn = document.createElement("button");
+  completeBtn.type = "button";
+  completeBtn.textContent = "완료";
+  completeBtn.style.display = "none";
+  completeBtn.style.marginTop = "10px";
+  completeBtn.style.width = "100%";
+  completeBtn.style.padding = "9px 10px";
+  completeBtn.style.border = "1px solid rgba(255,255,255,0.24)";
+  completeBtn.style.borderRadius = "10px";
+  completeBtn.style.background = "linear-gradient(180deg, rgba(245,189,84,0.98), rgba(218,146,47,0.98))";
+  completeBtn.style.color = "#2c1c08";
+  completeBtn.style.fontWeight = "900";
+  completeBtn.style.cursor = "pointer";
+  completeBtn.style.pointerEvents = "auto";
+  wastelandHudWrap.appendChild(completeBtn);
+
+  const abortBtn = document.createElement("button");
+  abortBtn.type = "button";
+  abortBtn.textContent = "확정 취소";
+  abortBtn.style.display = "none";
+  abortBtn.style.marginTop = "8px";
+  abortBtn.style.width = "100%";
+  abortBtn.style.padding = "8px 10px";
+  abortBtn.style.border = "1px solid rgba(255,255,255,0.2)";
+  abortBtn.style.borderRadius = "10px";
+  abortBtn.style.background = "rgba(255,255,255,0.1)";
+  abortBtn.style.color = "white";
+  abortBtn.style.fontWeight = "800";
+  abortBtn.style.cursor = "pointer";
+  abortBtn.style.pointerEvents = "auto";
+  wastelandHudWrap.appendChild(abortBtn);
+
+  return {
+    wastelandClaimCompleteBtn: completeBtn,
+    wastelandClaimAbortBtn: abortBtn,
+  };
+}
+
+function createWastelandDialogShell(uiLayer, titleText, zIndex = 1000005) {
+  const overlay = document.createElement("div");
+  overlay.style.position = "fixed";
+  overlay.style.inset = "0";
+  overlay.style.background = "rgba(12, 16, 22, 0.34)";
+  overlay.style.backdropFilter = "blur(5px)";
+  overlay.style.display = "none";
+  overlay.style.pointerEvents = "auto";
+  overlay.style.zIndex = String(zIndex);
+  uiLayer.appendChild(overlay);
+
+  const dialog = document.createElement("div");
+  dialog.style.position = "fixed";
+  dialog.style.left = "50%";
+  dialog.style.top = "50%";
+  dialog.style.transform = "translate(-50%, -50%)";
+  dialog.style.width = "min(430px, calc(100vw - 36px))";
+  dialog.style.background = "rgba(246, 243, 236, 0.98)";
+  dialog.style.border = "1px solid rgba(0,0,0,0.18)";
+  dialog.style.borderRadius = "14px";
+  dialog.style.boxShadow = "0 18px 42px rgba(0,0,0,0.28)";
+  dialog.style.padding = "18px";
+  dialog.style.boxSizing = "border-box";
+  dialog.style.display = "none";
+  dialog.style.pointerEvents = "auto";
+  dialog.style.zIndex = String(zIndex + 1);
+  uiLayer.appendChild(dialog);
+
+  const title = document.createElement("div");
+  title.textContent = titleText;
+  title.style.fontFamily = "system-ui, -apple-system, sans-serif";
+  title.style.fontSize = "20px";
+  title.style.fontWeight = "900";
+  title.style.color = "#2b2117";
+  dialog.appendChild(title);
+
+  const body = document.createElement("div");
+  body.style.marginTop = "10px";
+  body.style.fontFamily = "system-ui, -apple-system, sans-serif";
+  body.style.fontSize = "14px";
+  body.style.lineHeight = "1.6";
+  body.style.color = "#514437";
+  dialog.appendChild(body);
+
+  const buttons = document.createElement("div");
+  buttons.style.display = "flex";
+  buttons.style.justifyContent = "flex-end";
+  buttons.style.gap = "10px";
+  buttons.style.marginTop = "18px";
+  dialog.appendChild(buttons);
+
+  return { overlay, dialog, body, buttons };
+}
+
+function createWastelandDialogButton(text, variant = "default") {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = text;
+  button.style.minWidth = variant === "confirm" ? "86px" : "82px";
+  button.style.padding = "10px 12px";
+  button.style.borderRadius = "10px";
+  button.style.fontWeight = variant === "default" ? "800" : "900";
+  button.style.cursor = "pointer";
+  if (variant === "danger") {
+    button.style.border = "1px solid rgba(117,50,40,0.28)";
+    button.style.background = "linear-gradient(180deg, rgba(226,118,83,0.98), rgba(183,71,45,0.98))";
+    button.style.color = "white";
+  } else if (variant === "confirm") {
+    button.style.border = "1px solid rgba(117,86,40,0.28)";
+    button.style.background = "linear-gradient(180deg, rgba(238,181,92,0.98), rgba(211,143,55,0.98))";
+    button.style.color = "#2f1d08";
+  } else {
+    button.style.border = "1px solid rgba(0,0,0,0.18)";
+    button.style.background = "rgba(255,255,255,0.92)";
+  }
+  return button;
+}
+
+export function createWastelandClaimConfirmDialogUi({ uiLayer, onClose, onConfirm }) {
+  const { overlay, dialog, body, buttons } = createWastelandDialogShell(uiLayer, "개간 구역 확정");
+  const cancelBtn = createWastelandDialogButton("취소");
+  const confirmBtn = createWastelandDialogButton("확정", "confirm");
+  buttons.appendChild(cancelBtn);
+  buttons.appendChild(confirmBtn);
+  overlay.addEventListener("click", onClose);
+  cancelBtn.addEventListener("click", onClose);
+  confirmBtn.addEventListener("click", onConfirm);
+  return {
+    wastelandClaimConfirmOverlay: overlay,
+    wastelandClaimConfirmDialog: dialog,
+    wastelandClaimConfirmBody: body,
+  };
+}
+
+export function createWastelandClaimCancelDialogUi({ uiLayer, onClose, onConfirm }) {
+  const { overlay, dialog, body, buttons } = createWastelandDialogShell(uiLayer, "확정 취소");
+  body.textContent = "확정을 취소하시겠습니까? 사용된 울타리는 소멸됩니다.";
+  const closeBtn = createWastelandDialogButton("닫기");
+  const confirmBtn = createWastelandDialogButton("확인", "danger");
+  buttons.appendChild(closeBtn);
+  buttons.appendChild(confirmBtn);
+  overlay.addEventListener("click", onClose);
+  closeBtn.addEventListener("click", onClose);
+  confirmBtn.addEventListener("click", onConfirm);
+  return {
+    wastelandClaimCancelOverlay: overlay,
+    wastelandClaimCancelDialog: dialog,
+  };
+}
+
 export function updatePlayerSaveStatusBadgeUi(
   playerSaveStatusBadge,
   { text, borderColor, color, visible }

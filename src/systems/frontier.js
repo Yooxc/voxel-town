@@ -593,3 +593,133 @@ export function canCancelWastelandClaimState(progress, ownerId) {
     !claim.rewardIssuedAt
   );
 }
+
+export function canBuildOnWastelandCellState({
+  cell,
+  claim,
+  hasLandDeed,
+  currentOwnerId,
+  structures = [],
+  minSpacing = 2,
+}) {
+  if (!currentOwnerId) {
+    return { ok: false, reason: "건축은 지갑 로그인이 필요합니다." };
+  }
+  if (!cell || !claim) {
+    return { ok: false, reason: "내 확정 구역에서만 건축할 수 있습니다" };
+  }
+  if (
+    cell.row < claim.minRow ||
+    cell.row > claim.maxRow ||
+    cell.col < claim.minCol ||
+    cell.col > claim.maxCol
+  ) {
+    return { ok: false, reason: "내 확정 구역에서만 건축할 수 있습니다" };
+  }
+  if (!hasLandDeed) {
+    return { ok: false, reason: "해당 토지권을 보유해야 건축할 수 있습니다." };
+  }
+  if (Math.floor(Number(cell.clearProgress) || 0) < 100) {
+    return { ok: false, reason: "100% 개간된 셀에서만 건축할 수 있습니다" };
+  }
+  if (
+    structures.some(
+      (structure) =>
+        Number(structure?.row) === cell.row &&
+        Number(structure?.col) === cell.col
+    )
+  ) {
+    return { ok: false, reason: "이미 건축물이 있는 셀입니다." };
+  }
+  if (
+    structures.some(
+      (structure) =>
+        Math.abs(Number(structure?.row) - cell.row) <= minSpacing &&
+        Math.abs(Number(structure?.col) - cell.col) <= minSpacing
+    )
+  ) {
+    return { ok: false, reason: "주변 2셀 이내에는 다른 건축물을 지을 수 없습니다" };
+  }
+  return { ok: true, reason: "" };
+}
+
+export function normalizeFrontierWastelandState(rawState) {
+  const raw = rawState && typeof rawState === "object" ? rawState : {};
+  const cells = Array.isArray(raw.cells)
+    ? raw.cells
+        .map((cell) => ({
+          id: String(cell?.id ?? ""),
+          clearProgress: Math.max(0, Math.min(100, Math.floor(Number(cell?.clearProgress) || 0))),
+        }))
+        .filter((cell) => cell.id)
+    : [];
+  const fencePosts = Array.isArray(raw.fencePosts)
+    ? raw.fencePosts
+        .map((post) => ({
+          key: String(post?.key ?? ""),
+          row: Number(post?.row),
+          col: Number(post?.col),
+          x: Number(post?.x),
+          z: Number(post?.z),
+          ownerId: String(post?.ownerId ?? ""),
+        }))
+        .filter(
+          (post) =>
+            post.key &&
+            Number.isFinite(post.row) &&
+            Number.isFinite(post.col) &&
+            Number.isFinite(post.x) &&
+            Number.isFinite(post.z) &&
+            post.ownerId
+        )
+    : [];
+  const structures = Array.isArray(raw.structures)
+    ? raw.structures
+        .map((structure) => ({
+          key: String(structure?.key ?? ""),
+          landId: String(structure?.landId ?? ""),
+          ownerId: String(structure?.ownerId ?? ""),
+          type: String(structure?.type ?? ""),
+          row: Number(structure?.row),
+          col: Number(structure?.col),
+        }))
+        .filter(
+          (structure) =>
+            Number.isFinite(structure.row) &&
+            Number.isFinite(structure.col)
+        )
+    : [];
+  const claims = Array.isArray(raw.claims)
+    ? raw.claims
+        .map((claim) => ({
+          status: claim?.status === "completed" ? "completed" : "active",
+          ownerId: String(claim?.ownerId ?? ""),
+          mapId: String(claim?.mapId ?? "frontier-wasteland"),
+          landId: String(claim?.landId ?? ""),
+          displayName: String(claim?.displayName ?? ""),
+          detailAddress: String(claim?.detailAddress ?? ""),
+          minRow: Number(claim?.minRow),
+          maxRow: Number(claim?.maxRow),
+          minCol: Number(claim?.minCol),
+          maxCol: Number(claim?.maxCol),
+          width: Number(claim?.width),
+          height: Number(claim?.height),
+          cellIds: Array.isArray(claim?.cellIds) ? claim.cellIds.map(String).filter(Boolean) : [],
+          postKeys: Array.isArray(claim?.postKeys) ? claim.postKeys.map(String).filter(Boolean) : [],
+          confirmedAt: Number(claim?.confirmedAt) || 0,
+          expiresAt: Number(claim?.expiresAt) || 0,
+          completedAt: Number(claim?.completedAt) || 0,
+          rewardItemId: String(claim?.rewardItemId ?? ""),
+          rewardIssuedAt: Number(claim?.rewardIssuedAt) || 0,
+        }))
+        .filter(
+          (claim) =>
+            claim.ownerId &&
+            Number.isFinite(claim.minRow) &&
+            Number.isFinite(claim.maxRow) &&
+            Number.isFinite(claim.minCol) &&
+            Number.isFinite(claim.maxCol)
+        )
+    : [];
+  return { cells, fencePosts, claims, structures };
+}

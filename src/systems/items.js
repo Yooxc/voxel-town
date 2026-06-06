@@ -423,6 +423,9 @@ export function getInventoryEntryDisplayName(itemDefs, entry) {
   if (isNftInventoryEntry(entry)) {
     return entry.name ?? `NFT #${entry.tokenId}`;
   }
+  if (typeof entry.displayName === "string" && entry.displayName.trim()) {
+    return entry.displayName.trim();
+  }
   const itemId = getSlotItemId(entry);
   const def = itemDefs[itemId];
   if (itemId === "pickaxe" && Number.isFinite(entry?.pickaxeLevel)) {
@@ -478,13 +481,17 @@ export function getInventoryEntryTooltipData(itemDefs, entry) {
 
   if (def.category === "cons") {
     return {
-      title: def.name,
+      title: getInventoryEntryDisplayName(itemDefs, entry),
       lines: [`효과: ${def.effectText || "사용 효과가 설정되지 않았다"}`],
     };
   }
 
+  const lines = [`용도: ${def.purposeText || "용도가 설정되지 않았다"}`];
+  if (typeof entry.detailAddress === "string" && entry.detailAddress.trim()) {
+    lines.push(`주소: ${entry.detailAddress.trim()}`);
+  }
   return {
-    title: def.name,
-    lines: [`용도: ${def.purposeText || "용도가 설정되지 않았다"}`],
+    title: getInventoryEntryDisplayName(itemDefs, entry),
+    lines,
   };
 }

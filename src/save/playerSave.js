@@ -15,6 +15,12 @@ export function createDefaultSharedWorldSave({
     ),
     displayBoard: null,
     residenceNoticeBoards: createDefaultResidenceNoticeBoardState(),
+    frontierWasteland: {
+      cells: [],
+      fencePosts: [],
+      claims: [],
+      structures: [],
+    },
   };
 }
 
@@ -25,6 +31,7 @@ export function serializeSharedWorldStateData({
   getMapPurificationValue,
   nftExhibitSelectedItem,
   residenceNoticeBoardState,
+  frontierWastelandState,
 }) {
   return {
     frontierBuild: structuredClone(frontierBuildState),
@@ -34,6 +41,12 @@ export function serializeSharedWorldStateData({
     ),
     displayBoard: cloneOrNull(nftExhibitSelectedItem),
     residenceNoticeBoards: structuredClone(residenceNoticeBoardState),
+    frontierWasteland: structuredClone(frontierWastelandState ?? {
+      cells: [],
+      fencePosts: [],
+      claims: [],
+      structures: [],
+    }),
   };
 }
 
@@ -42,6 +55,7 @@ export function normalizeSharedWorldStateData(rawWorld, {
   normalizeFrontierBuildState,
   normalizeNftBoardSelection,
   normalizeResidenceNoticeBoardState,
+  normalizeFrontierWastelandState,
 }) {
   return {
     ...createDefaultSharedWorldSave(),
@@ -54,6 +68,7 @@ export function normalizeSharedWorldStateData(rawWorld, {
     },
     displayBoard: normalizeNftBoardSelection(rawWorld?.displayBoard),
     residenceNoticeBoards: normalizeResidenceNoticeBoardState(rawWorld?.residenceNoticeBoards),
+    frontierWasteland: normalizeFrontierWastelandState(rawWorld?.frontierWasteland),
   };
 }
 
