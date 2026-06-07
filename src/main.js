@@ -94,6 +94,7 @@ import {
   updateCompassUi,
   updateAirHudUi,
   updateWastelandHudUi,
+  updateWastelandFenceHudUi,
   createWastelandHudActionButtons,
   createWastelandClaimConfirmDialogUi,
   createWastelandClaimCancelDialogUi,
@@ -267,7 +268,7 @@ import {
   normalizeFrontierWastelandState as normalizeFrontierWastelandStateFromModule,
 } from "./systems/frontier.js";
 
-const LAST_PATCHED_AT = "2026-06-06 15:26:51 KST";
+const LAST_PATCHED_AT = "2026-06-07 16:21:55 KST";
 
 const scene = createMainScene();
 // ===== Atmosphere: Sky / Fog =====
@@ -388,6 +389,11 @@ const {
   wastelandHudBarTrack,
   wastelandHudBarFill,
   wastelandHudStatus,
+  wastelandFenceHudWrap,
+  wastelandFenceHudTitle,
+  wastelandFenceHudValue,
+  wastelandFenceHudMeta,
+  wastelandFenceHudStatus,
   ui,
   mapArrivalBanner,
 } = createHudUi({
@@ -2554,6 +2560,8 @@ function initializeDevProfileState(preferredProfileId = "") {
   }
   localStorage.setItem(creditsMigrationKey, "1");
   applyDevProfileRoleOverrides();
+  resetWastelandDraftUiState();
+  refreshCurrentWastelandDraftUiState();
   saveActiveLocalProfileState();
   localStorage.setItem(DEV_ACTIVE_PROFILE_KEY, activeDevProfileId);
   walletLoginStatus.textContent = `${getDevProfileDisplayName(activeDevProfileId)}로 개발자 모드에 입장했습니다.`;
@@ -2563,6 +2571,7 @@ function switchDevProfile(profileId) {
   if (!isDevSession()) return;
   const nextProfileId = sanitizeDevProfileId(profileId);
   if (nextProfileId === activeDevProfileId) return;
+  resetWastelandDraftUiState();
   saveActiveLocalProfileState();
   saveSharedWorldStateToLocal();
   localStorage.setItem(DEV_ACTIVE_PROFILE_KEY, nextProfileId);
@@ -6277,6 +6286,7 @@ let wastelandFencePlacementMode = false;
 const WASTELAND_FENCE_MIN_WIDTH = 5;
 const WASTELAND_FENCE_MIN_HEIGHT = 5;
 const WASTELAND_CLAIM_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
+const WASTELAND_DRAFT_RESERVATION_MS = 5 * 60 * 1000;
 const latestMoveDir = new THREE.Vector3(0, 0, -1); // 월드 기준: -Z = 북, +X = 동
 
 function updateCompassFromDirection(dir) {
@@ -6527,10 +6537,90 @@ function resetFrontierWastelandRuntimeState() {
   updateWastelandClaimCancelButton(null);
 }
 
+function resetWastelandDraftUiState({ clearPlacementMode = true } = {}) {
+  activeWastelandCell = null;
+  if (clearPlacementMode) {
+    wastelandFencePlacementMode = false;
+  }
+  clearWastelandClaimPreview();
+  closeWastelandClaimConfirmDialog();
+  closeWastelandClaimCancelDialog();
+}
+
+function rebuildAllWastelandDraftsFromFencePosts() {
+  const plot = ensureFrontierWastelandRuntimeState();
+  if (!plot?.claimDrafts) return null;
+  const claimedPostKeys = new Set(
+    (plot.claims ?? [])
+      .flatMap((claim) => claim.postKeys ?? [])
+  );
+  const previousDrafts = plot.claimDrafts;
+  const groupedPostKeys = new Map();
+  for (const post of [...(plot.fencePosts?.values?.() ?? [])]) {
+    if (!post?.ownerId || claimedPostKeys.has(post.key)) continue;
+    if (!groupedPostKeys.has(post.ownerId)) groupedPostKeys.set(post.ownerId, []);
+    groupedPostKeys.get(post.ownerId).push(post.key);
+  }
+  const nextDrafts = new Map();
+  const now = Date.now();
+  for (const [ownerId, postKeys] of groupedPostKeys.entries()) {
+    postKeys.sort();
+    const previousDraft = previousDrafts.get(ownerId);
+    nextDrafts.set(ownerId, {
+      ownerId,
+      postKeys,
+      lastPromptSignature: previousDraft?.lastPromptSignature ?? "",
+      reservedAt: previousDraft?.reservedAt ?? now,
+      updatedAt: previousDraft?.updatedAt ?? now,
+      expiresAt: previousDraft?.expiresAt ?? now + WASTELAND_DRAFT_RESERVATION_MS,
+    });
+  }
+  plot.claimDrafts = nextDrafts;
+  return nextDrafts;
+}
+
+function rebuildCurrentWastelandDraftFromOwnedFencePosts() {
+  const ownerId = getCurrentWastelandOwnerId();
+  if (!ownerId) return null;
+  const drafts = rebuildAllWastelandDraftsFromFencePosts();
+  return drafts?.get(ownerId) ?? null;
+}
+
+function refreshCurrentWastelandDraftUiState() {
+  rebuildCurrentWastelandDraftFromOwnedFencePosts();
+  clearWastelandClaimPreview();
+  updateWastelandClaimCompleteButton(getCurrentWastelandClaimProgress());
+  updateWastelandClaimCancelButton(getCurrentWastelandClaimProgress());
+  if (wastelandFencePlacementMode) {
+    updateFrontierWastelandDraftPrompt();
+    updateWastelandClaimPreview();
+  }
+}
+
 function getCurrentFrontierWastelandDraft() {
   const plot = ensureFrontierWastelandRuntimeState();
   if (!plot) return null;
   return plot.claimDrafts.get(getCurrentWastelandOwnerId()) ?? null;
+}
+
+function touchWastelandDraftReservation(draft, now = Date.now()) {
+  if (!draft) return null;
+  draft.reservedAt = draft.reservedAt ?? now;
+  draft.updatedAt = now;
+  draft.expiresAt = now + WASTELAND_DRAFT_RESERVATION_MS;
+  return draft;
+}
+
+function getScopedWastelandDraftFencePosts(draft, ownerId = getCurrentWastelandOwnerId()) {
+  const plot = ensureFrontierWastelandRuntimeState();
+  const scoped = new Map();
+  if (!plot?.fencePosts || !draft?.postKeys?.length || !ownerId) return scoped;
+  for (const key of draft.postKeys) {
+    const post = plot.fencePosts.get(key);
+    if (!post || post.ownerId !== ownerId) continue;
+    scoped.set(key, post);
+  }
+  return scoped;
 }
 
 function getCurrentFrontierWastelandClaim() {
@@ -6563,6 +6653,33 @@ function formatWastelandClaimRemaining(ms) {
   if (days > 0) return `${days}일 ${hours}시간`;
   if (hours > 0) return `${hours}시간 ${minutes}분`;
   return `${minutes}분`;
+}
+
+function getWastelandDraftReservationHit(cell, buffer = 0) {
+  const plot = ensureFrontierWastelandRuntimeState();
+  const ownerId = getCurrentWastelandOwnerId();
+  if (!plot?.claimDrafts || !cell || !ownerId) return null;
+  for (const [draftOwnerId, draft] of plot.claimDrafts.entries()) {
+    if (!draft || draftOwnerId === ownerId || !draft.postKeys?.length) continue;
+    const bounds = getWastelandDraftBoundsFromModule(
+      draft,
+      getScopedWastelandDraftFencePosts(draft, draftOwnerId)
+    );
+    if (!bounds) continue;
+    const inside =
+      cell.row >= bounds.minRow - buffer &&
+      cell.row <= bounds.maxRow + buffer &&
+      cell.col >= bounds.minCol - buffer &&
+      cell.col <= bounds.maxCol + buffer;
+    if (!inside) continue;
+    return {
+      ownerId: draftOwnerId,
+      bounds,
+      buffer,
+      expiresAt: draft.expiresAt ?? 0,
+    };
+  }
+  return null;
 }
 
 function getWastelandCellById(cellId) {
@@ -6664,6 +6781,7 @@ function applyFrontierWastelandState(rawState) {
   wastelandFencePlacementMode = false;
   closeWastelandClaimConfirmDialog();
   closeWastelandClaimCancelDialog();
+  rebuildAllWastelandDraftsFromFencePosts();
   rebuildFrontierWastelandFenceLinks();
   clearWastelandClaimPreview();
   updateWastelandClaimCompleteButton(null);
@@ -6706,20 +6824,97 @@ function rebuildFrontierWastelandFenceLinks() {
   const byKey = plot.fencePosts;
   for (const post of byKey.values()) {
     const right = byKey.get(`${post.row}:${post.col + 1}`);
-    if (right) {
+    if (right && right.ownerId === post.ownerId) {
       const mesh = createWastelandFenceLinkMesh(plot.cellSize, true);
       mesh.position.x = (post.x + right.x) * 0.5;
       mesh.position.z = post.z;
       plot.fenceLinkRoot.add(mesh);
     }
     const down = byKey.get(`${post.row + 1}:${post.col}`);
-    if (down) {
+    if (down && down.ownerId === post.ownerId) {
       const mesh = createWastelandFenceLinkMesh(plot.cellSize, false);
       mesh.position.x = post.x;
       mesh.position.z = (post.z + down.z) * 0.5;
       plot.fenceLinkRoot.add(mesh);
     }
   }
+}
+
+function grantLocalProfileItem(walletAddress, itemId, count = 1) {
+  const safeCount = Math.max(0, Math.floor(count || 0));
+  if (!walletAddress || !itemId || safeCount <= 0) return false;
+  if (walletAddress === getCurrentFrontierWalletAddress()) {
+    return addItem(itemId, safeCount);
+  }
+  if (!DEV_PROFILE_IDS.includes(walletAddress)) {
+    return false;
+  }
+  const saveKey = getDevProfileSaveKey(walletAddress);
+  let parsed = createDefaultPlayerSave();
+  try {
+    const raw = localStorage.getItem(saveKey);
+    if (raw) {
+      parsed = {
+        ...parsed,
+        ...JSON.parse(raw),
+      };
+    }
+  } catch {
+    parsed = createDefaultPlayerSave();
+  }
+  const slots = Array.isArray(parsed.inventory?.slots)
+    ? parsed.inventory.slots.map((slot) => normalizeInventorySlotEntry(slot))
+    : createDefaultPlayerSave().inventory.slots;
+  const added = addEntryToInventoryFromModule(
+    slots,
+    createInventorySlotEntry(itemId, safeCount),
+    safeCount,
+    {
+      createPartialInventoryEntry,
+      getSlotItemId,
+      getInventoryStackMax,
+      getSlotItemCount,
+      isNftInventoryEntry,
+      createInventorySlotEntry,
+    }
+  );
+  if (!added) return false;
+  parsed.inventory = parsed.inventory || {};
+  parsed.inventory.slots = slots;
+  localStorage.setItem(saveKey, JSON.stringify(parsed));
+  return true;
+}
+
+function reclaimConflictingWastelandFencePostsForClaim(claim, buffer = 2) {
+  const plot = ensureFrontierWastelandRuntimeState();
+  if (!plot?.fencePosts || !claim) return 0;
+  const reclaimedByOwner = new Map();
+  for (const [key, post] of [...plot.fencePosts.entries()]) {
+    if (!post || post.ownerId === claim.ownerId) continue;
+    const insideBuffer =
+      post.row >= claim.minRow - buffer &&
+      post.row <= claim.maxRow + buffer &&
+      post.col >= claim.minCol - buffer &&
+      post.col <= claim.maxCol + buffer;
+    if (!insideBuffer) continue;
+    if (post.mesh?.parent) {
+      disposeObject3D(post.mesh);
+      post.mesh.parent.remove(post.mesh);
+    }
+    plot.fencePosts.delete(key);
+    reclaimedByOwner.set(post.ownerId, (reclaimedByOwner.get(post.ownerId) ?? 0) + 1);
+  }
+  if (!reclaimedByOwner.size) return 0;
+  let totalReclaimed = 0;
+  for (const [ownerId, count] of reclaimedByOwner.entries()) {
+    if (grantLocalProfileItem(ownerId, "fencePost", count)) {
+      totalReclaimed += count;
+    }
+  }
+  rebuildAllWastelandDraftsFromFencePosts();
+  rebuildFrontierWastelandFenceLinks();
+  clearWastelandClaimPreview();
+  return totalReclaimed;
 }
 
 function isCellInsideConfirmedWastelandClaim(cell) {
@@ -6731,6 +6926,20 @@ function isCellInsideConfirmedWastelandClaim(cell) {
       cell.row <= claim.maxRow &&
       cell.col >= claim.minCol &&
       cell.col <= claim.maxCol
+  );
+}
+
+function getConfirmedWastelandClaimBufferHit(cell, buffer = 2) {
+  const plot = ensureFrontierWastelandRuntimeState();
+  if (!plot || !cell) return null;
+  return (
+    plot.claims.find(
+      (claim) =>
+        cell.row >= claim.minRow - buffer &&
+        cell.row <= claim.maxRow + buffer &&
+        cell.col >= claim.minCol - buffer &&
+        cell.col <= claim.maxCol + buffer
+    ) ?? null
   );
 }
 
@@ -6772,6 +6981,19 @@ function canPlaceWastelandFencePost(cell) {
   if (isCellInsideConfirmedWastelandClaim(cell)) {
     return { ok: false, reason: "확정된 개간 구역과 겹치는 셀에는 설치할 수 없습니다." };
   }
+  if (getConfirmedWastelandClaimBufferHit(cell, 2)) {
+    return { ok: false, reason: "확정된 개간 구역 주변 2셀 안에는 설치할 수 없습니다." };
+  }
+  const reservationHit = getWastelandDraftReservationHit(cell, 2);
+  if (reservationHit) {
+    return {
+      ok: false,
+      reason:
+        reservationHit.buffer > 0
+          ? "다른 플레이어가 예약한 토지 선언 구역 주변 2셀 안에는 설치할 수 없습니다."
+          : "다른 플레이어가 예약한 토지 선언 구역입니다.",
+    };
+  }
   if (!hasItem("fencePost")) {
     return { ok: false, reason: "울타리 기둥이 없습니다." };
   }
@@ -6795,6 +7017,8 @@ function removeWastelandDraftFencePost(cell) {
   draft.lastPromptSignature = "";
   if (draft.postKeys.length <= 0) {
     plot.claimDrafts.delete(ownerId);
+  } else {
+    touchWastelandDraftReservation(draft);
   }
   addItem("fencePost", 1);
   rebuildFrontierWastelandFenceLinks();
@@ -6844,14 +7068,19 @@ function placeWastelandFencePost(cell) {
   });
   let draft = plot.claimDrafts.get(ownerId);
   if (!draft) {
+    const now = Date.now();
     draft = {
       ownerId,
       postKeys: [],
       lastPromptSignature: "",
+      reservedAt: now,
+      updatedAt: now,
+      expiresAt: now + WASTELAND_DRAFT_RESERVATION_MS,
     };
     plot.claimDrafts.set(ownerId, draft);
   }
   if (!draft.postKeys.includes(key)) draft.postKeys.push(key);
+  touchWastelandDraftReservation(draft);
   rebuildFrontierWastelandFenceLinks();
   updateInventoryUI();
   updateFrontierWastelandDraftPrompt();
@@ -6860,13 +7089,13 @@ function placeWastelandFencePost(cell) {
 }
 
 function getWastelandDraftBounds(draft) {
-  return getWastelandDraftBoundsFromModule(draft, frontierWastelandPlot?.fencePosts);
+  return getWastelandDraftBoundsFromModule(draft, getScopedWastelandDraftFencePosts(draft));
 }
 
 function isValidWastelandDraftRectangle(draft) {
   return validateWastelandDraftRectangleFromModule({
     draft,
-    fencePosts: frontierWastelandPlot?.fencePosts,
+    fencePosts: getScopedWastelandDraftFencePosts(draft),
     cells: frontierWastelandPlot?.cells,
     minWidth: WASTELAND_FENCE_MIN_WIDTH,
     minHeight: WASTELAND_FENCE_MIN_HEIGHT,
@@ -6875,9 +7104,8 @@ function isValidWastelandDraftRectangle(draft) {
 
 function getWastelandDraftGuide() {
   const draft = getCurrentFrontierWastelandDraft();
-  const plot = ensureFrontierWastelandRuntimeState();
   const postCount = draft?.postKeys?.length ?? 0;
-  if (!draft || !plot?.fencePosts || postCount <= 0) {
+  if (!draft || postCount <= 0) {
     return {
       postCount,
       text: `${WASTELAND_FENCE_MIN_WIDTH} x ${WASTELAND_FENCE_MIN_HEIGHT} 이상 테두리 필요`,
@@ -6939,6 +7167,28 @@ function getWastelandDraftGuide() {
   };
 }
 
+function getWastelandFenceHudState() {
+  if (!wastelandFencePlacementMode) {
+    return { visible: false };
+  }
+  const guide = getWastelandDraftGuide();
+  const hasRect = Number.isFinite(guide.width) && Number.isFinite(guide.height);
+  const draft = getCurrentFrontierWastelandDraft();
+  const reservationText =
+    draft?.expiresAt != null
+      ? `예약 유지 ${formatWastelandClaimRemaining(draft.expiresAt - Date.now())}`
+      : "예약 대기 중";
+  return {
+    visible: true,
+    postCount: guide.postCount ?? 0,
+    sizeText: hasRect
+      ? `현재 테두리 ${guide.width} x ${guide.height} | 최소 ${WASTELAND_FENCE_MIN_WIDTH} x ${WASTELAND_FENCE_MIN_HEIGHT}`
+      : `최소 ${WASTELAND_FENCE_MIN_WIDTH} x ${WASTELAND_FENCE_MIN_HEIGHT} 테두리 필요`,
+    requirementText: `${WASTELAND_FENCE_MIN_WIDTH} x ${WASTELAND_FENCE_MIN_HEIGHT} 이상 테두리 필요`,
+    statusText: `${reservationText} | ${guide.canConfirm ? "구역 확정 가능" : guide.text}`,
+  };
+}
+
 function clearWastelandClaimPreview() {
   const plot = ensureFrontierWastelandRuntimeState();
   const root = plot?.claimPreviewRoot;
@@ -6967,40 +7217,50 @@ function createWastelandPreviewCellMesh(cell, color, opacity, height = 0.018) {
 function updateWastelandClaimPreview() {
   const plot = ensureFrontierWastelandRuntimeState();
   clearWastelandClaimPreview();
-  if (!wastelandFencePlacementMode || !plot?.claimPreviewRoot) return;
-  const draft = getCurrentFrontierWastelandDraft();
-  if (!draft?.postKeys?.length) return;
-  const bounds = getWastelandDraftBounds(draft);
-  if (!bounds) return;
-  const guide = getWastelandDraftGuide();
-  const color = guide.canConfirm
-    ? 0x35d66f
-    : guide.innerPostCount > 0 || guide.missingBorderCount > 0
-      ? 0xff5b4a
-      : 0xf2b84b;
-  const overlayOpacity = guide.canConfirm ? 0.22 : 0.16;
-  const markerOpacity = 0.62;
-  const keySet = new Set(draft.postKeys);
-  for (const cell of plot.cells ?? []) {
-    const inside =
-      cell.row >= bounds.minRow &&
-      cell.row <= bounds.maxRow &&
-      cell.col >= bounds.minCol &&
-      cell.col <= bounds.maxCol;
-    if (!inside) continue;
-    const isBorder =
-      cell.row === bounds.minRow ||
-      cell.row === bounds.maxRow ||
-      cell.col === bounds.minCol ||
-      cell.col === bounds.maxCol;
-    const hasPost = keySet.has(`${cell.row}:${cell.col}`);
-    const mesh = createWastelandPreviewCellMesh(cell, color, overlayOpacity);
-    plot.claimPreviewRoot.add(mesh);
-    if ((isBorder && !hasPost) || (!isBorder && hasPost)) {
-      const marker = createWastelandPreviewCellMesh(cell, 0xff2f2f, markerOpacity, 0.032);
-      marker.scale.set(0.54, 1, 0.54);
-      marker.position.y = 0.215;
-      plot.claimPreviewRoot.add(marker);
+  if (!plot?.claimPreviewRoot) return;
+  const currentOwnerId = getCurrentWastelandOwnerId();
+  const currentDraft = getCurrentFrontierWastelandDraft();
+  for (const [draftOwnerId, draft] of plot.claimDrafts ?? []) {
+    if (!draft?.postKeys?.length) continue;
+    const bounds = getWastelandDraftBoundsFromModule(
+      draft,
+      getScopedWastelandDraftFencePosts(draft, draftOwnerId)
+    );
+    if (!bounds) continue;
+    const isCurrentDraft = draftOwnerId === currentOwnerId;
+    if (isCurrentDraft && !wastelandFencePlacementMode) continue;
+    const guide = isCurrentDraft ? getWastelandDraftGuide() : null;
+    const color = isCurrentDraft
+      ? guide?.canConfirm
+        ? 0x35d66f
+        : guide?.innerPostCount > 0 || guide?.missingBorderCount > 0
+          ? 0xff5b4a
+          : 0xf2b84b
+      : 0xff5b4a;
+    const overlayOpacity = isCurrentDraft ? (guide?.canConfirm ? 0.22 : 0.16) : 0.12;
+    const markerOpacity = isCurrentDraft ? 0.62 : 0.46;
+    const keySet = new Set(draft.postKeys);
+    for (const cell of plot.cells ?? []) {
+      const inside =
+        cell.row >= bounds.minRow &&
+        cell.row <= bounds.maxRow &&
+        cell.col >= bounds.minCol &&
+        cell.col <= bounds.maxCol;
+      if (!inside) continue;
+      const isBorder =
+        cell.row === bounds.minRow ||
+        cell.row === bounds.maxRow ||
+        cell.col === bounds.minCol ||
+        cell.col === bounds.maxCol;
+      const hasPost = keySet.has(`${cell.row}:${cell.col}`);
+      const mesh = createWastelandPreviewCellMesh(cell, color, overlayOpacity);
+      plot.claimPreviewRoot.add(mesh);
+      if ((isCurrentDraft && ((isBorder && !hasPost) || (!isBorder && hasPost))) || (!isCurrentDraft && isBorder)) {
+        const marker = createWastelandPreviewCellMesh(cell, 0xff2f2f, markerOpacity, 0.032);
+        marker.scale.set(isCurrentDraft ? 0.54 : 0.82, 1, isCurrentDraft ? 0.54 : 0.82);
+        marker.position.y = 0.215;
+        plot.claimPreviewRoot.add(marker);
+      }
     }
   }
 }
@@ -7018,6 +7278,7 @@ function removeWastelandClaimFences(claim) {
     plot.fencePosts.delete(key);
   }
   rebuildFrontierWastelandFenceLinks();
+  clearWastelandClaimPreview();
 }
 
 function closeWastelandClaimConfirmDialog() {
@@ -7116,12 +7377,18 @@ function commitCurrentWastelandDraft() {
   };
   plot.claims.push(claim);
   plot.claimDrafts.delete(ownerId);
+  const reclaimedCount = reclaimConflictingWastelandFencePostsForClaim(claim, 2);
   wastelandFencePlacementMode = false;
   clearWastelandClaimPreview();
   closeWastelandClaimConfirmDialog();
   updateInventoryUI();
-  showUI("개간 구역을 확정했습니다.", 1100);
-  lastMessageUntil = performance.now() + 1100;
+  showUI(
+    reclaimedCount > 0
+      ? `개간 구역을 확정했습니다. 충돌 울타리 ${reclaimedCount}개를 자동 회수했습니다.`
+      : "개간 구역을 확정했습니다.",
+    1300
+  );
+  lastMessageUntil = performance.now() + 1300;
   saveSharedWorldStateToLocal();
   return true;
 }
@@ -7175,6 +7442,40 @@ function expireOverdueFrontierWastelandClaims() {
   saveSharedWorldStateToLocal();
 }
 
+function expireOverdueWastelandDraftReservations() {
+  const plot = ensureFrontierWastelandRuntimeState();
+  if (!plot?.claimDrafts?.size) return;
+  const now = Date.now();
+  const currentOwnerId = getCurrentWastelandOwnerId();
+  let changed = false;
+  for (const [ownerId, draft] of [...plot.claimDrafts.entries()]) {
+    if (!draft?.postKeys?.length || !draft.expiresAt || draft.expiresAt > now) continue;
+    for (const key of draft.postKeys) {
+      const post = plot.fencePosts.get(key);
+      if (post?.mesh?.parent) {
+        disposeObject3D(post.mesh);
+        post.mesh.parent.remove(post.mesh);
+      }
+      plot.fencePosts.delete(key);
+    }
+    plot.claimDrafts.delete(ownerId);
+    changed = true;
+    if (ownerId === currentOwnerId) {
+      showUI("토지 선언 예약이 만료되어 울타리 기둥이 해제되었습니다.", 1300);
+      lastMessageUntil = performance.now() + 1300;
+    }
+  }
+  if (!changed) return;
+  rebuildFrontierWastelandFenceLinks();
+  clearWastelandClaimPreview();
+  closeWastelandClaimConfirmDialog();
+  updateInventoryUI();
+  if (wastelandFencePlacementMode) {
+    updateFrontierWastelandDraftPrompt();
+  }
+  saveSharedWorldStateToLocal();
+}
+
 function getCurrentWastelandClaimProgress() {
   const claim = getCurrentFrontierWastelandClaim();
   return getWastelandClaimProgressFromModule(claim, getWastelandCellById);
@@ -7199,6 +7500,7 @@ function completeCurrentWastelandClaim() {
     claim.completedAt = claim.completedAt || rewardIssuedAt;
     claim.rewardItemId = WASTELAND_LAND_DEED_ITEM_ID;
     claim.rewardIssuedAt = claim.rewardIssuedAt || rewardIssuedAt;
+    removeWastelandClaimFences(claim);
     updateInventoryUI();
     showUI("이미 지급된 토지권을 확인했습니다.", 1400);
     lastMessageUntil = performance.now() + 1400;
@@ -7228,6 +7530,7 @@ function completeCurrentWastelandClaim() {
   claim.completedAt = rewardIssuedAt;
   claim.rewardItemId = WASTELAND_LAND_DEED_ITEM_ID;
   claim.rewardIssuedAt = rewardIssuedAt;
+  removeWastelandClaimFences(claim);
   updateInventoryUI();
   showUI(`개간 완료! ${deedEntry.displayName} 토지권을 획득했습니다.`, 1400);
   lastMessageUntil = performance.now() + 1400;
@@ -14542,7 +14845,7 @@ if (!hintText) {
   activeWastelandCell = findActiveFrontierWastelandCell(2.4);
   if (activeWastelandCell) {
     if (wastelandFencePlacementMode) {
-      hintText = `Space : 울타리 기둥 설치 | ${getWastelandDraftGuide().text}`;
+      hintText = "";
     } else {
       hintText = hasEquippedTool("shovel")
         ? "Space : 땅 파기"
@@ -14620,6 +14923,7 @@ if (activeWastelandCell) {
 }
 updateWastelandClaimPreview();
 
+expireOverdueWastelandDraftReservations();
 expireOverdueFrontierWastelandClaims();
 const frontierWastelandProgress = getCurrentWastelandClaimProgress();
 updateWastelandHudUi(
@@ -14640,6 +14944,14 @@ updateWastelandHudUi(
         : `개간률 ${frontierWastelandProgress.percent.toFixed(1)}% | 남은 시간 ${formatWastelandClaimRemaining(frontierWastelandProgress.claim.expiresAt - Date.now())}`
       : "",
   }
+);
+const wastelandFenceHudState = getWastelandFenceHudState();
+updateWastelandFenceHudUi(
+  wastelandFenceHudWrap,
+  wastelandFenceHudValue,
+  wastelandFenceHudMeta,
+  wastelandFenceHudStatus,
+  wastelandFenceHudState
 );
 updateWastelandClaimCompleteButton(frontierWastelandProgress);
 updateWastelandClaimCancelButton(frontierWastelandProgress);

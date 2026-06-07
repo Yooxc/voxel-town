@@ -221,6 +221,49 @@ export function createHudUi({ uiLayer, lastPatchedAt }) {
   wastelandHudStatus.style.opacity = "0.8";
   wastelandHudWrap.appendChild(wastelandHudStatus);
 
+  const wastelandFenceHudWrap = document.createElement("div");
+  wastelandFenceHudWrap.style.position = "fixed";
+  wastelandFenceHudWrap.style.right = "12px";
+  wastelandFenceHudWrap.style.bottom = "88px";
+  wastelandFenceHudWrap.style.width = "246px";
+  wastelandFenceHudWrap.style.padding = "12px 14px";
+  wastelandFenceHudWrap.style.background = "rgba(20,20,20,0.62)";
+  wastelandFenceHudWrap.style.border = "1px solid rgba(255,183,77,0.28)";
+  wastelandFenceHudWrap.style.borderRadius = "14px";
+  wastelandFenceHudWrap.style.backdropFilter = "blur(4px)";
+  wastelandFenceHudWrap.style.color = "white";
+  wastelandFenceHudWrap.style.fontFamily = "system-ui, -apple-system, sans-serif";
+  wastelandFenceHudWrap.style.fontSize = "12px";
+  wastelandFenceHudWrap.style.lineHeight = "1.45";
+  wastelandFenceHudWrap.style.userSelect = "none";
+  wastelandFenceHudWrap.style.pointerEvents = "none";
+  wastelandFenceHudWrap.style.zIndex = "1000001";
+  wastelandFenceHudWrap.style.display = "none";
+  uiLayer.appendChild(wastelandFenceHudWrap);
+
+  const wastelandFenceHudTitle = document.createElement("div");
+  wastelandFenceHudTitle.textContent = "토지 선언 중";
+  wastelandFenceHudTitle.style.fontWeight = "900";
+  wastelandFenceHudTitle.style.color = "#ffd27f";
+  wastelandFenceHudTitle.style.marginBottom = "8px";
+  wastelandFenceHudWrap.appendChild(wastelandFenceHudTitle);
+
+  const wastelandFenceHudValue = document.createElement("div");
+  wastelandFenceHudValue.style.fontWeight = "800";
+  wastelandFenceHudValue.style.fontSize = "18px";
+  wastelandFenceHudValue.style.color = "#fff5dc";
+  wastelandFenceHudWrap.appendChild(wastelandFenceHudValue);
+
+  const wastelandFenceHudMeta = document.createElement("div");
+  wastelandFenceHudMeta.style.marginTop = "8px";
+  wastelandFenceHudMeta.style.opacity = "0.86";
+  wastelandFenceHudWrap.appendChild(wastelandFenceHudMeta);
+
+  const wastelandFenceHudStatus = document.createElement("div");
+  wastelandFenceHudStatus.style.marginTop = "8px";
+  wastelandFenceHudStatus.style.opacity = "0.86";
+  wastelandFenceHudWrap.appendChild(wastelandFenceHudStatus);
+
   const ui = document.createElement("div");
   ui.style.position = "fixed";
   ui.style.left = "50%";
@@ -282,6 +325,11 @@ export function createHudUi({ uiLayer, lastPatchedAt }) {
     wastelandHudBarTrack,
     wastelandHudBarFill,
     wastelandHudStatus,
+    wastelandFenceHudWrap,
+    wastelandFenceHudTitle,
+    wastelandFenceHudValue,
+    wastelandFenceHudMeta,
+    wastelandFenceHudStatus,
     ui,
     mapArrivalBanner,
   };
@@ -503,6 +551,26 @@ export function updateWastelandHudUi(
   wastelandHudValue.textContent = `${completed} / ${total}`;
   wastelandHudBarFill.style.width = `${Math.max(0, Math.min(100, percent))}%`;
   wastelandHudStatus.textContent = statusText || `개간률 ${percent.toFixed(1)}%`;
+}
+
+export function updateWastelandFenceHudUi(
+  wastelandFenceHudWrap,
+  wastelandFenceHudValue,
+  wastelandFenceHudMeta,
+  wastelandFenceHudStatus,
+  {
+    visible,
+    postCount = 0,
+    sizeText = "",
+    requirementText = "",
+    statusText = "",
+  }
+) {
+  wastelandFenceHudWrap.style.display = visible ? "block" : "none";
+  if (!visible) return;
+  wastelandFenceHudValue.textContent = `울타리 ${postCount}개`;
+  wastelandFenceHudMeta.textContent = sizeText || requirementText;
+  wastelandFenceHudStatus.textContent = statusText || "울타리 기둥으로 토지 구역을 선언합니다.";
 }
 
 export function updateAirHudUi({
