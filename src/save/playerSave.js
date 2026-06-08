@@ -17,6 +17,7 @@ export function createDefaultSharedWorldSave({
     residenceNoticeBoards: createDefaultResidenceNoticeBoardState(),
     frontierWasteland: {
       cells: [],
+      drafts: [],
       fencePosts: [],
       claims: [],
       structures: [],
@@ -43,6 +44,7 @@ export function serializeSharedWorldStateData({
     residenceNoticeBoards: structuredClone(residenceNoticeBoardState),
     frontierWasteland: structuredClone(frontierWastelandState ?? {
       cells: [],
+      drafts: [],
       fencePosts: [],
       claims: [],
       structures: [],

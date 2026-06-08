@@ -506,6 +506,60 @@ export function getWastelandDraftBounds(draft, fencePosts) {
   return { minRow, maxRow, minCol, maxCol };
 }
 
+export function isCellInsideWastelandBounds(cell, bounds, buffer = 0) {
+  if (!cell || !bounds) return false;
+  return (
+    cell.row >= bounds.minRow - buffer &&
+    cell.row <= bounds.maxRow + buffer &&
+    cell.col >= bounds.minCol - buffer &&
+    cell.col <= bounds.maxCol + buffer
+  );
+}
+
+export function canLinkWastelandFencePostsByOwner(post, otherPost) {
+  return Boolean(
+    post &&
+      otherPost &&
+      post.ownerId &&
+      otherPost.ownerId &&
+      post.ownerId === otherPost.ownerId
+  );
+}
+
+export function findWastelandDraftReservationHit({
+  cell,
+  claimDrafts,
+  currentOwnerId,
+  getFencePostsByOwner,
+  buffer = 0,
+}) {
+  if (!cell || !claimDrafts || !currentOwnerId || typeof getFencePostsByOwner !== "function") {
+    return null;
+  }
+  for (const [draftOwnerId, draft] of claimDrafts.entries()) {
+    if (!draft || draftOwnerId === currentOwnerId || !draft.postKeys?.length) continue;
+    const bounds = getWastelandDraftBounds(draft, getFencePostsByOwner(draft, draftOwnerId));
+    if (!bounds || !isCellInsideWastelandBounds(cell, bounds, buffer)) continue;
+    return {
+      ownerId: draftOwnerId,
+      bounds,
+      buffer,
+      expiresAt: draft.expiresAt ?? 0,
+    };
+  }
+  return null;
+}
+
+export function getWastelandDraftPhaseState({
+  draft,
+  isConfirmable,
+  phases,
+}) {
+  if (!draft?.postKeys?.length) return phases.NONE;
+  if (draft.phase === phases.EXPIRED) return phases.EXPIRED;
+  return isConfirmable ? phases.CONFIRMABLE : phases.ACTIVE;
+}
+
 export function validateWastelandDraftRectangle({
   draft,
   fencePosts,
@@ -594,6 +648,19 @@ export function canCancelWastelandClaimState(progress, ownerId) {
   );
 }
 
+export function getWastelandClaimPhaseState({
+  progress,
+  claimStatuses,
+  claimPhases,
+}) {
+  const claim = progress?.claim;
+  if (!claim) return claimPhases.NONE;
+  if (claim.status === claimStatuses.COMPLETED) return claimPhases.COMPLETED;
+  if (claim.status === claimStatuses.FAILED) return claimPhases.FAILED;
+  if (progress.readyToComplete && !claim.rewardIssuedAt) return claimPhases.REWARD_PENDING;
+  return claimPhases.ACTIVE;
+}
+
 export function canBuildOnWastelandCellState({
   cell,
   claim,
@@ -643,6 +710,31 @@ export function canBuildOnWastelandCellState({
   return { ok: true, reason: "" };
 }
 
+export function getConflictingWastelandFencePostsForClaim({
+  fencePosts,
+  claim,
+  buffer = 2,
+}) {
+  if (!fencePosts || !claim) return [];
+  return [...fencePosts.values()].filter(
+    (post) => post && post.ownerId !== claim.ownerId && isCellInsideWastelandBounds(post, claim, buffer)
+  );
+}
+
+export function createEmptyFrontierWastelandState() {
+  return {
+    cells: [],
+    drafts: [],
+    fencePosts: [],
+    claims: [],
+    structures: [],
+  };
+}
+
+export function serializeFrontierWastelandServerState(rawState) {
+  return normalizeFrontierWastelandState(rawState);
+}
+
 export function normalizeFrontierWastelandState(rawState) {
   const raw = rawState && typeof rawState === "object" ? rawState : {};
   const cells = Array.isArray(raw.cells)
@@ -673,6 +765,18 @@ export function normalizeFrontierWastelandState(rawState) {
             post.ownerId
         )
     : [];
+  const drafts = Array.isArray(raw.drafts)
+    ? raw.drafts
+        .map((draft) => ({
+          ownerId: String(draft?.ownerId ?? ""),
+          postKeys: Array.isArray(draft?.postKeys) ? draft.postKeys.map(String).filter(Boolean) : [],
+          reservedAt: Number(draft?.reservedAt) || 0,
+          updatedAt: Number(draft?.updatedAt) || 0,
+          expiresAt: Number(draft?.expiresAt) || 0,
+          phase: String(draft?.phase ?? ""),
+        }))
+        .filter((draft) => draft.ownerId && draft.postKeys.length > 0)
+    : [];
   const structures = Array.isArray(raw.structures)
     ? raw.structures
         .map((structure) => ({
@@ -692,7 +796,12 @@ export function normalizeFrontierWastelandState(rawState) {
   const claims = Array.isArray(raw.claims)
     ? raw.claims
         .map((claim) => ({
-          status: claim?.status === "completed" ? "completed" : "active",
+          status:
+            claim?.status === "completed" ||
+            claim?.status === "failed" ||
+            claim?.status === "cancelled"
+              ? claim.status
+              : "active",
           ownerId: String(claim?.ownerId ?? ""),
           mapId: String(claim?.mapId ?? "frontier-wasteland"),
           landId: String(claim?.landId ?? ""),
@@ -721,5 +830,5 @@ export function normalizeFrontierWastelandState(rawState) {
             Number.isFinite(claim.maxCol)
         )
     : [];
-  return { cells, fencePosts, claims, structures };
+  return { cells, drafts, fencePosts, claims, structures };
 }

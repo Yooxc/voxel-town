@@ -1,5 +1,30 @@
 # CHANGELOG
 
+## 2026-06-08
+
+### 서버 전환 대비 1차 - 황무지 서버 대상 상태 정리
+- 황무지 shared world 저장 구조에 `drafts`를 추가해서 예약 상태(`ownerId`, `postKeys`, `reservedAt`, `updatedAt`, `expiresAt`, `phase`)도 저장/복원되게 했다.
+- `src/main.js`의 황무지 serialize/apply 흐름을 서버 대상 상태 기준으로 정리하고, runtime 전용 값(`mesh`, `lastPromptSignature`, preview root 등)은 계속 저장에서 제외했다.
+- `src/systems/frontier.js` normalize를 보강해서 claim status(`active/completed/failed/cancelled`)와 drafts 필드를 더 명확히 정규화하게 했다.
+
+### 책임 분리 2차 - 황무지 상태 전이 후처리 정리
+- 황무지 draft/claim 상태 전이 뒤에 반복되던 preview 갱신, HUD 갱신, 모달 닫기, 인벤토리 갱신, 저장 호출을 공통 후처리 헬퍼로 묶었다.
+- 울타리 설치/회수, 구역 확정, 예약 만료, 완료, 취소 흐름이 같은 순서로 후처리되도록 `src/main.js` 실행 흐름을 정리했다.
+
+### 책임 분리 1차 - 황무지 순수 판정/계산 로직 frontier.js 이동
+- 황무지 예약 충돌, draft/claim phase 계산, 충돌 울타리 선별, 같은 owner 울타리 연결 판정을 `src/systems/frontier.js` 순수 함수로 이동했다.
+- `src/main.js`는 mesh/UI/인벤토리/저장 같은 실행 처리만 남기고, 판정은 import 함수 호출로 정리했다.
+
+## 2026-06-08
+
+### 황무지 판정 로직 테스트 1차
+- 황무지 핵심 규칙을 빠르게 다시 확인할 수 있도록 Node 내장 테스트 기반의 자동 판정 테스트를 추가했다.
+- 직사각형 확정 가능, claim 완료/취소 가능, 건축 가능, bounds 완충 판정을 코드로 바로 검증할 수 있게 정리했다.
+
+### 황무지 상태 전이 정리 1차
+- draft/claim 단계 이름을 정리하는 상수와 판정 헬퍼를 추가해 예약 중, 확정 가능, 진행 중, 지급 대기, 완료, 실패 상태를 한 기준으로 읽게 했다.
+- 완료/취소 버튼과 HUD 문구 갱신을 상태 기반으로 정리해 예약 만료, 확정 취소, 토지권 지급 성공/실패 뒤 UI가 더 일관되게 움직이도록 보강했다.
+
 ## 2026-06-07
 
 ### 확정 전 draft 예약/임시 점유 시스템 1차
