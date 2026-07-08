@@ -238,6 +238,48 @@ export function createItemDefs({
       isMaterial: true,
       purposeText: "건축과 제작 재료로 사용된다",
     },
+    woodFloor: {
+      category: "misc",
+      name: "목재 바닥",
+      icon: "🟫",
+      stackMax: 200,
+      purposeText: "자유 건축용 바닥 겸 천장 부품이다",
+    },
+    woodWall: {
+      category: "misc",
+      name: "목재 벽",
+      icon: "🪵",
+      stackMax: 200,
+      purposeText: "자유 건축용 목재 벽 부품이다",
+    },
+    woodPillar: {
+      category: "misc",
+      name: "목재 기둥",
+      icon: "🪚",
+      stackMax: 200,
+      purposeText: "자유 건축용 목재 기둥 부품이다",
+    },
+    stoneFloor: {
+      category: "misc",
+      name: "석재 바닥",
+      icon: "⬜",
+      stackMax: 200,
+      purposeText: "자유 건축용 석재 바닥 겸 천장 부품이다",
+    },
+    stoneWall: {
+      category: "misc",
+      name: "석재 벽",
+      icon: "🧱",
+      stackMax: 200,
+      purposeText: "자유 건축용 석재 벽 부품이다",
+    },
+    stonePillar: {
+      category: "misc",
+      name: "석재 기둥",
+      icon: "🗿",
+      stackMax: 200,
+      purposeText: "자유 건축용 석재 기둥 부품이다",
+    },
   };
 }
 

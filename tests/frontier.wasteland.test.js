@@ -160,6 +160,43 @@ test("건축 가능 판정은 토지권/개간/간격 규칙을 확인한다", (
   assert.equal(blockedByDeed.ok, false);
 });
 
+test("같은 셀이라도 부품 슬롯이 다르면 함께 배치할 수 있다", () => {
+  const claim = {
+    ownerId: "dev_user_1",
+    minRow: 10,
+    maxRow: 14,
+    minCol: 20,
+    maxCol: 24,
+  };
+  const targetCell = {
+    row: 12,
+    col: 22,
+    clearProgress: 100,
+  };
+
+  const sameSlotBlocked = canBuildOnWastelandCellState({
+    cell: targetCell,
+    claim,
+    hasLandDeed: true,
+    currentOwnerId: "dev_user_1",
+    structures: [{ row: 12, col: 22, slot: "floor" }],
+    structureSlot: "floor",
+    minSpacing: 0,
+  });
+  assert.equal(sameSlotBlocked.ok, false);
+
+  const differentSlotAllowed = canBuildOnWastelandCellState({
+    cell: targetCell,
+    claim,
+    hasLandDeed: true,
+    currentOwnerId: "dev_user_1",
+    structures: [{ row: 12, col: 22, slot: "floor" }],
+    structureSlot: "wall",
+    minSpacing: 0,
+  });
+  assert.equal(differentSlotAllowed.ok, true);
+});
+
 test("bounds 완충 판정은 2셀 안쪽만 true를 반환한다", () => {
   const bounds = { minRow: 10, maxRow: 14, minCol: 20, maxCol: 24 };
 

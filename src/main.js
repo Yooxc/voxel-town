@@ -275,7 +275,7 @@ import {
   normalizeFrontierWastelandState as normalizeFrontierWastelandStateFromModule,
 } from "./systems/frontier.js";
 
-const LAST_PATCHED_AT = "2026-06-08 08:59:31 KST";
+const LAST_PATCHED_AT = "2026-06-15 17:09:11 KST";
 
 const scene = createMainScene();
 // ===== Atmosphere: Sky / Fog =====
@@ -300,6 +300,19 @@ const LOW_AIR_EDGE_BLUR_MAX_PX = 26;
 const AIR_HUD_POSITION_KEY = "excit_air_hud_position_v1";
 const SHIFT_CAMERA_ROTATE_SENSITIVITY = 0.0062;
 const FRONTIER_PARCEL_BORDER_COLOR = 0xf3b24e;
+const WASTELAND_BUILD_PART_DEFS = Object.freeze({
+  woodFloor: { itemId: "woodFloor", slot: "floor", label: "목재 바닥", inputItemId: "woodPlank", inputCount: 2 },
+  woodWall: { itemId: "woodWall", slot: "wall", label: "목재 벽", inputItemId: "woodPlank", inputCount: 3 },
+  woodPillar: { itemId: "woodPillar", slot: "pillar", label: "목재 기둥", inputItemId: "woodPlank", inputCount: 2 },
+  stoneFloor: { itemId: "stoneFloor", slot: "floor", label: "석재 바닥", inputItemId: "masonryStone", inputCount: 2 },
+  stoneWall: { itemId: "stoneWall", slot: "wall", label: "석재 벽", inputItemId: "masonryStone", inputCount: 3 },
+  stonePillar: { itemId: "stonePillar", slot: "pillar", label: "석재 기둥", inputItemId: "masonryStone", inputCount: 2 },
+});
+const WASTELAND_STRUCTURE_SLOT_LABELS = Object.freeze({
+  floor: "바닥",
+  wall: "벽",
+  pillar: "기둥",
+});
 const REFINERY_RECIPES = {
   purifyPowder: {
     id: "purifyPowder",
@@ -315,6 +328,54 @@ const REFINERY_RECIPES = {
     inputItemId: "woodChip",
     inputCount: 2,
     outputItemId: "woodPlank",
+    outputCount: 1,
+  },
+  woodFloor: {
+    id: "woodFloor",
+    label: "목재 바닥",
+    inputItemId: "woodPlank",
+    inputCount: 2,
+    outputItemId: "woodFloor",
+    outputCount: 1,
+  },
+  woodWall: {
+    id: "woodWall",
+    label: "목재 벽",
+    inputItemId: "woodPlank",
+    inputCount: 3,
+    outputItemId: "woodWall",
+    outputCount: 1,
+  },
+  woodPillar: {
+    id: "woodPillar",
+    label: "목재 기둥",
+    inputItemId: "woodPlank",
+    inputCount: 2,
+    outputItemId: "woodPillar",
+    outputCount: 1,
+  },
+  stoneFloor: {
+    id: "stoneFloor",
+    label: "석재 바닥",
+    inputItemId: "masonryStone",
+    inputCount: 2,
+    outputItemId: "stoneFloor",
+    outputCount: 1,
+  },
+  stoneWall: {
+    id: "stoneWall",
+    label: "석재 벽",
+    inputItemId: "masonryStone",
+    inputCount: 3,
+    outputItemId: "stoneWall",
+    outputCount: 1,
+  },
+  stonePillar: {
+    id: "stonePillar",
+    label: "석재 기둥",
+    inputItemId: "masonryStone",
+    inputCount: 2,
+    outputItemId: "stonePillar",
     outputCount: 1,
   },
 };
@@ -434,6 +495,10 @@ const PLAYER_CURRENCY_NAME = "개척 코인";
 const PLAYER_SAVE_VERSION = 1;
 const PLAYER_SAVE_INTERVAL_MS = 4000;
 const DEV_PROFILE_IDS = ["dev_user_1", "dev_user_2"];
+const DEV_PROFILE_START_OFFSETS = Object.freeze({
+  dev_user_1: { x: -1.2, z: 0 },
+  dev_user_2: { x: 1.2, z: 0 },
+});
 let playerSaveSyncInFlight = null;
 let lastPlayerSaveSnapshot = "";
 let lastPlayerSaveAttemptAt = 0;
@@ -2523,6 +2588,23 @@ function getDevCreditsMigrationKey(profileId = activeDevProfileId) {
   return `${DEV_CREDITS_MIGRATION_PREFIX}${sanitizeDevProfileId(profileId)}`;
 }
 
+function getDevProfileStartPosition(profileId = activeDevProfileId) {
+  const normalizedProfileId = sanitizeDevProfileId(profileId);
+  const offset = DEV_PROFILE_START_OFFSETS[normalizedProfileId] ?? DEV_PROFILE_START_OFFSETS[DEV_PROFILE_IDS[0]];
+  return {
+    x: START_X + (offset?.x ?? 0),
+    z: START_Z + (offset?.z ?? 0),
+  };
+}
+
+function applyDevProfileStartPosition(profileId = activeDevProfileId) {
+  const start = getDevProfileStartPosition(profileId);
+  player.position.set(start.x, player.position.y, start.z);
+  player.rotation.y = 0;
+  latestMoveDir.copy(getFacingDirectionFromYaw(player.rotation.y));
+  snapCameraToPlayer();
+}
+
 function initializeDevProfileState(preferredProfileId = "") {
   const rawProfile = localStorage.getItem(DEV_ACTIVE_PROFILE_KEY);
   activeDevProfileId = sanitizeDevProfileId(preferredProfileId || rawProfile || activeDevProfileId);
@@ -2548,6 +2630,7 @@ function initializeDevProfileState(preferredProfileId = "") {
   const loadState = loadActiveLocalProfileState();
   if (loadState === "apply_error") {
     applyFreshPlayerStartState();
+    applyDevProfileStartPosition(activeDevProfileId);
     applySharedWorldState(sharedWorld);
     applyDevPreset();
     walletLoginStatus.textContent = `${getDevProfileDisplayName(activeDevProfileId)} 저장본 적용 중 오류가 발생해 임시 프리셋으로 입장했습니다.`;
@@ -2555,6 +2638,7 @@ function initializeDevProfileState(preferredProfileId = "") {
     lastMessageUntil = performance.now() + 1300;
   } else if (loadState !== "loaded") {
     applyFreshPlayerStartState();
+    applyDevProfileStartPosition(activeDevProfileId);
     applySharedWorldState(sharedWorld);
     applyDevPreset();
     saveActiveLocalProfileState();
@@ -2567,6 +2651,7 @@ function initializeDevProfileState(preferredProfileId = "") {
   }
   localStorage.setItem(creditsMigrationKey, "1");
   applyDevProfileRoleOverrides();
+  restoreMissingOwnedWastelandLandDeeds({ saveProfile: true });
   resetWastelandDraftUiState();
   refreshCurrentWastelandDraftUiState();
   saveActiveLocalProfileState();
@@ -2583,6 +2668,8 @@ function switchDevProfile(profileId) {
   saveSharedWorldStateToLocal();
   localStorage.setItem(DEV_ACTIVE_PROFILE_KEY, nextProfileId);
   initializeDevProfileState(nextProfileId);
+  showUI(`${getDevProfileDisplayName(nextProfileId)} 위치를 복원했습니다.`, 900);
+  lastMessageUntil = performance.now() + 900;
 }
 
 function writeDevProfilePresetSnapshot(profileId) {
@@ -2604,6 +2691,7 @@ function writeDevProfilePresetSnapshot(profileId) {
     { persist: false }
   );
   applyFreshPlayerStartState();
+  applyDevProfileStartPosition(targetProfileId);
   applySharedWorldState(createDefaultSharedWorldSave());
   applyDevPreset();
   applyDevProfileRoleOverrides();
@@ -3957,6 +4045,17 @@ function renderInventoryWindow() {
         }
         slot.addEventListener("dblclick", () => {
           toggleWastelandFencePlacementMode();
+        });
+      }
+
+      if (activeTab === "misc" && isWastelandBuildPartItemId(itemId)) {
+        slot.style.cursor = "pointer";
+        if (selectedWastelandStructureItemId === itemId) {
+          slot.style.borderColor = "rgba(80,160,255,0.95)";
+          slot.style.boxShadow = "0 0 0 3px rgba(80,160,255,0.28), inset 0 1px 0 rgba(255,255,255,0.8)";
+        }
+        slot.addEventListener("dblclick", () => {
+          toggleWastelandStructurePlacementItem(itemId);
         });
       }
 
@@ -6524,6 +6623,10 @@ function ensureFrontierWastelandRuntimeState() {
     frontierWastelandPlot.claimPreviewRoot = new THREE.Group();
     frontierWastelandPlot.root.add(frontierWastelandPlot.claimPreviewRoot);
   }
+  if (!frontierWastelandPlot.structureRoot) {
+    frontierWastelandPlot.structureRoot = new THREE.Group();
+    frontierWastelandPlot.root.add(frontierWastelandPlot.structureRoot);
+  }
   if (!frontierWastelandPlot.fencePosts) {
     frontierWastelandPlot.fencePosts = new Map();
   }
@@ -6542,7 +6645,7 @@ function ensureFrontierWastelandRuntimeState() {
 function resetFrontierWastelandRuntimeState() {
   const plot = ensureFrontierWastelandRuntimeState();
   if (!plot) return;
-  for (const root of [plot.fenceRoot, plot.fenceLinkRoot, plot.claimPreviewRoot]) {
+  for (const root of [plot.fenceRoot, plot.fenceLinkRoot, plot.claimPreviewRoot, plot.structureRoot]) {
     if (!root) continue;
     while (root.children.length) {
       disposeObject3D(root.children[0]);
@@ -6554,6 +6657,7 @@ function resetFrontierWastelandRuntimeState() {
   plot.claims = [];
   plot.structures = [];
   wastelandFencePlacementMode = false;
+  selectedWastelandStructureItemId = "";
   closeWastelandClaimConfirmDialog();
   for (const cell of plot.cells ?? []) {
     cell.clearProgress = 0;
@@ -6769,7 +6873,117 @@ function findOwnedWastelandLandDeed(landId) {
   return findIssuedWastelandLandDeed(landId);
 }
 
-function getWastelandBuildCheck(cell) {
+function createWastelandLandDeedEntry(claim) {
+  if (!claim) return null;
+  const landMeta = buildWastelandClaimLandMeta(claim) ?? {};
+  return createInventorySlotEntry(WASTELAND_LAND_DEED_ITEM_ID, 1, {
+    landId: claim.landId || landMeta.landId || "",
+    mapId: claim.mapId || landMeta.mapId || "frontier-wasteland",
+    displayName: claim.displayName || landMeta.displayName || "개척지 황무지 토지권",
+    detailAddress: claim.detailAddress || landMeta.detailAddress || "frontier-wasteland",
+    minRow: claim.minRow,
+    maxRow: claim.maxRow,
+    minCol: claim.minCol,
+    maxCol: claim.maxCol,
+  });
+}
+
+function getWastelandLandDeedInventoryEntries() {
+  return inventory.slots.filter(
+    (entry) =>
+      entry &&
+      !isNftInventoryEntry(entry) &&
+      getSlotItemId(entry) === WASTELAND_LAND_DEED_ITEM_ID &&
+      entry.landId
+  );
+}
+
+function restorePreservedWastelandLandDeeds(entries) {
+  if (!Array.isArray(entries) || !entries.length) return 0;
+  let restored = 0;
+  for (const entry of entries) {
+    if (!entry?.landId || findIssuedWastelandLandDeed(entry.landId)) continue;
+    if (addInventoryEntry(structuredClone(entry))) restored += 1;
+  }
+  return restored;
+}
+
+function restoreMissingOwnedWastelandLandDeeds({ showMessage = false, saveProfile = false } = {}) {
+  const plot = ensureFrontierWastelandRuntimeState();
+  const ownerId = getCurrentWastelandOwnerId();
+  if (!plot || !ownerId) return 0;
+  let restored = 0;
+  let blocked = false;
+  for (const claim of plot.claims ?? []) {
+    if (
+      claim?.ownerId !== ownerId ||
+      claim?.status !== WASTELAND_CLAIM_STATUS.COMPLETED ||
+      !claim.landId ||
+      findIssuedWastelandLandDeed(claim.landId)
+    ) {
+      continue;
+    }
+    const deedEntry = createWastelandLandDeedEntry(claim);
+    if (!deedEntry || !addInventoryEntry(deedEntry)) {
+      blocked = true;
+      continue;
+    }
+    restored += 1;
+  }
+  if (restored > 0) {
+    updateInventoryUI();
+    if (saveProfile) saveActiveLocalProfileState();
+    if (showMessage) {
+      showUI(`누락된 황무지 토지권 ${restored}개를 복구했습니다.`, 1300);
+      lastMessageUntil = performance.now() + 1300;
+    }
+  } else if (blocked && showMessage) {
+    showUI("기타 아이템 슬롯을 비우면 누락된 황무지 토지권을 복구할 수 있습니다.", 1400);
+    lastMessageUntil = performance.now() + 1400;
+  }
+  return restored;
+}
+
+function isWastelandBuildPartItemId(itemId) {
+  return Boolean(itemId && WASTELAND_BUILD_PART_DEFS[itemId]);
+}
+
+function getWastelandBuildPartDef(itemId = selectedWastelandStructureItemId) {
+  return WASTELAND_BUILD_PART_DEFS[itemId] ?? null;
+}
+
+function getWastelandStructureSlotLabel(slot) {
+  return WASTELAND_STRUCTURE_SLOT_LABELS[slot] ?? "건축";
+}
+
+function getWastelandStructureSurfaceY(cell) {
+  const baseY = Number(cell?.baseMesh?.position?.y);
+  if (Number.isFinite(baseY)) return Math.max(0.22, baseY + 0.14);
+  const coverY = Number(cell?.coverMesh?.position?.y ?? cell?.mesh?.position?.y);
+  if (Number.isFinite(coverY)) return Math.max(0.22, coverY + 0.1);
+  return 0.22;
+}
+
+function findWastelandStructureSlotConflict(cell, slot) {
+  if (!cell || !slot) return null;
+  const plot = ensureFrontierWastelandRuntimeState();
+  return (
+    plot?.structures?.find(
+      (structure) =>
+        Number(structure?.row) === cell.row &&
+        Number(structure?.col) === cell.col &&
+        String(structure?.slot ?? "") === slot
+    ) ?? null
+  );
+}
+
+function getWastelandStructureRotationQuarter() {
+  const yaw = ((player.rotation.y % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+  return Math.round(yaw / (Math.PI * 0.5)) % 4;
+}
+
+function getWastelandBuildCheck(cell, itemId = selectedWastelandStructureItemId) {
+  const partDef = getWastelandBuildPartDef(itemId);
   const claim = getFrontierWastelandClaimByCell(cell);
   return canBuildOnWastelandCellStateFromModule({
     cell,
@@ -6777,8 +6991,181 @@ function getWastelandBuildCheck(cell) {
     hasLandDeed: Boolean(claim?.landId && findOwnedWastelandLandDeed(claim.landId)),
     currentOwnerId: getCurrentWastelandOwnerId(),
     structures: ensureFrontierWastelandRuntimeState()?.structures ?? [],
-    minSpacing: 2,
+    structureSlot: partDef?.slot ?? "",
+    minSpacing: 0,
   });
+}
+
+function createWastelandStructurePartBox({
+  width,
+  height,
+  depth,
+  y,
+  color,
+  emissive,
+  outlineColor,
+}) {
+  const group = new THREE.Group();
+  const geometry = new THREE.BoxGeometry(width, height, depth);
+  const mesh = new THREE.Mesh(
+    geometry,
+    new THREE.MeshStandardMaterial({
+      color,
+      emissive,
+      emissiveIntensity: 0.18,
+      roughness: 0.86,
+      metalness: 0.02,
+    })
+  );
+  mesh.position.y = y;
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.renderOrder = 4;
+  const outline = new THREE.LineSegments(
+    new THREE.EdgesGeometry(geometry),
+    new THREE.LineBasicMaterial({
+      color: outlineColor,
+      transparent: true,
+      opacity: 0.95,
+      depthTest: false,
+    })
+  );
+  outline.position.y = y;
+  outline.renderOrder = 5;
+  group.add(mesh);
+  group.add(outline);
+  return group;
+}
+
+function createWastelandStructureMesh(structure) {
+  const type = structure?.type ?? "";
+  const def = getWastelandBuildPartDef(type);
+  if (!def) return null;
+  const surfaceY = Number.isFinite(Number(structure?.y)) ? Number(structure.y) : 0.22;
+  let mesh = null;
+  if (def.slot === "floor") {
+    mesh = createWastelandStructurePartBox({
+      width: 1.64,
+      height: 0.22,
+      depth: 1.64,
+      y: 0.11,
+      color: type.startsWith("stone") ? 0xd9dde6 : 0xb77a3e,
+      emissive: type.startsWith("stone") ? 0x3f4652 : 0x4a2108,
+      outlineColor: type.startsWith("stone") ? 0xf5f7ff : 0xffd09a,
+    });
+    mesh.position.set(structure.x, surfaceY + 0.035, structure.z);
+  } else if (def.slot === "wall") {
+    mesh = createWastelandStructurePartBox({
+      width: 1.74,
+      height: 1.78,
+      depth: 0.24,
+      y: 0.89,
+      color: type.startsWith("stone") ? 0xcbd0db : 0x9a6537,
+      emissive: type.startsWith("stone") ? 0x333b48 : 0x351808,
+      outlineColor: type.startsWith("stone") ? 0xf3f6ff : 0xffc47f,
+    });
+    mesh.position.set(structure.x, surfaceY + 0.02, structure.z);
+    mesh.rotation.y = (structure.rotationQuarter ?? 0) * (Math.PI * 0.5);
+  } else if (def.slot === "pillar") {
+    mesh = createWastelandStructurePartBox({
+      width: 0.44,
+      height: 1.88,
+      depth: 0.44,
+      y: 0.94,
+      color: type.startsWith("stone") ? 0xc1c6d0 : 0x89572f,
+      emissive: type.startsWith("stone") ? 0x323944 : 0x321707,
+      outlineColor: type.startsWith("stone") ? 0xf3f6ff : 0xffc47f,
+    });
+    mesh.position.set(structure.x, surfaceY + 0.02, structure.z);
+  }
+  if (!mesh) return null;
+  mesh.name = `wasteland-structure-${type}-${structure.row}-${structure.col}`;
+  mesh.userData.wastelandStructureKey = structure.key;
+  mesh.traverse((child) => {
+    child.frustumCulled = false;
+  });
+  return mesh;
+}
+
+function rebuildFrontierWastelandStructures() {
+  const plot = ensureFrontierWastelandRuntimeState();
+  if (!plot) return;
+  if (!plot.structureRoot) {
+    plot.structureRoot = new THREE.Group();
+    plot.root.add(plot.structureRoot);
+  }
+  while (plot.structureRoot.children.length) {
+    disposeObject3D(plot.structureRoot.children[0]);
+    plot.structureRoot.remove(plot.structureRoot.children[0]);
+  }
+  for (const structure of plot.structures ?? []) {
+    const cell = getFrontierWastelandCellByGrid(structure.row, structure.col);
+    if (!cell) continue;
+    structure.x = cell.x;
+    structure.z = cell.z;
+    structure.y = getWastelandStructureSurfaceY(cell);
+    const mesh = createWastelandStructureMesh(structure);
+    if (!mesh) continue;
+    structure.mesh = mesh;
+    plot.structureRoot.add(mesh);
+  }
+}
+
+function toggleWastelandStructurePlacementItem(itemId) {
+  if (!isWastelandBuildPartItemId(itemId)) return false;
+  selectedWastelandStructureItemId = selectedWastelandStructureItemId === itemId ? "" : itemId;
+  if (selectedWastelandStructureItemId) {
+    wastelandFencePlacementMode = false;
+  }
+  updateInventoryUI();
+  showUI(
+    selectedWastelandStructureItemId
+      ? `${ITEM_DEFS[selectedWastelandStructureItemId]?.name ?? itemId} 배치 모드`
+      : "건축 부품 배치 모드 해제",
+    1000
+  );
+  lastMessageUntil = performance.now() + 1000;
+  return true;
+}
+
+function placeWastelandStructure(cell, itemId = selectedWastelandStructureItemId) {
+  const plot = ensureFrontierWastelandRuntimeState();
+  const partDef = getWastelandBuildPartDef(itemId);
+  if (!plot || !cell || !partDef) return false;
+  const buildCheck = getWastelandBuildCheck(cell, itemId);
+  if (!buildCheck.ok) {
+    const conflict = findWastelandStructureSlotConflict(cell, partDef.slot);
+    const reason = conflict
+      ? `이미 이 셀에 ${getWastelandStructureSlotLabel(partDef.slot)} 부품이 있습니다.`
+      : buildCheck.reason;
+    showUI(reason, 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return false;
+  }
+  if (!consumeItem(itemId, 1)) {
+    showUI("건축 부품을 소모하지 못했습니다.", 1000);
+    lastMessageUntil = performance.now() + 1000;
+    return false;
+  }
+  const claim = getFrontierWastelandClaimByCell(cell);
+  const structure = {
+    key: `wasteland_structure_${Date.now().toString(36)}_${cell.row}_${cell.col}`,
+    landId: claim?.landId ?? "",
+    ownerId: getCurrentWastelandOwnerId(),
+    type: itemId,
+    slot: partDef.slot,
+    row: cell.row,
+    col: cell.col,
+    y: getWastelandStructureSurfaceY(cell),
+    rotationQuarter: partDef.slot === "wall" ? getWastelandStructureRotationQuarter() : 0,
+  };
+  plot.structures.push(structure);
+  rebuildFrontierWastelandStructures();
+  updateInventoryUI();
+  saveSharedWorldStateToLocal();
+  showUI(`${ITEM_DEFS[itemId]?.name ?? itemId} 설치 완료`, 900);
+  lastMessageUntil = performance.now() + 900;
+  return true;
 }
 
 function serializeFrontierWastelandState() {
@@ -6814,7 +7201,7 @@ function applyFrontierWastelandState(rawState) {
   const plot = ensureFrontierWastelandRuntimeState();
   if (!plot) return;
   const state = normalizeFrontierWastelandStateFromModule(rawState);
-  for (const root of [plot.fenceRoot, plot.fenceLinkRoot, plot.claimPreviewRoot]) {
+  for (const root of [plot.fenceRoot, plot.fenceLinkRoot, plot.claimPreviewRoot, plot.structureRoot]) {
     if (!root) continue;
     while (root.children.length) {
       disposeObject3D(root.children[0]);
@@ -6849,10 +7236,12 @@ function applyFrontierWastelandState(rawState) {
   plot.claims = state.claims;
   plot.structures = state.structures ?? [];
   wastelandFencePlacementMode = false;
+  selectedWastelandStructureItemId = "";
   closeWastelandClaimConfirmDialog();
   closeWastelandClaimCancelDialog();
   rebuildAllWastelandDraftsFromFencePosts();
   rebuildFrontierWastelandFenceLinks();
+  rebuildFrontierWastelandStructures();
   clearWastelandClaimPreview();
   updateWastelandClaimActionUi(null);
 }
@@ -7618,21 +8007,12 @@ function completeCurrentWastelandClaim() {
       updateInventory: true,
       save: true,
     });
+    saveActiveLocalProfileState();
     showUI("이미 지급된 토지권을 확인했습니다.", 1400);
     lastMessageUntil = performance.now() + 1400;
     return true;
   }
-  const deedEntry = createInventorySlotEntry(WASTELAND_LAND_DEED_ITEM_ID, 1, {
-    landId: claim.landId || buildWastelandClaimLandMeta(claim)?.landId || "",
-    mapId: claim.mapId || "frontier-wasteland",
-    displayName: claim.displayName || buildWastelandClaimLandMeta(claim)?.displayName || "개척지 황무지 토지권",
-    detailAddress:
-      claim.detailAddress || buildWastelandClaimLandMeta(claim)?.detailAddress || "frontier-wasteland",
-    minRow: claim.minRow,
-    maxRow: claim.maxRow,
-    minCol: claim.minCol,
-    maxCol: claim.maxCol,
-  });
+  const deedEntry = createWastelandLandDeedEntry(claim);
   if (!addInventoryEntry(deedEntry)) {
     finalizeWastelandStateTransition({
       updateClaimUi: true,
@@ -7653,6 +8033,7 @@ function completeCurrentWastelandClaim() {
     updateInventory: true,
     save: true,
   });
+  saveActiveLocalProfileState();
   showUI(`개간 완료! ${deedEntry.displayName} 토지권을 획득했습니다.`, 1400);
   lastMessageUntil = performance.now() + 1400;
   return true;
@@ -7729,6 +8110,9 @@ function toggleWastelandFencePlacementMode() {
     return;
   }
   wastelandFencePlacementMode = !wastelandFencePlacementMode;
+  if (wastelandFencePlacementMode) {
+    selectedWastelandStructureItemId = "";
+  }
   if (!wastelandFencePlacementMode) {
     clearWastelandClaimPreview();
   }
@@ -9556,6 +9940,9 @@ function getRefineryRecipeDescription(recipe) {
   if (recipe.outputItemId === "woodPlank") {
     return "목재는 앞으로 빈 땅에 건축물을 세울 때 사용할 기본 건축 재료입니다.";
   }
+  if (isWastelandBuildPartItemId(recipe.outputItemId)) {
+    return "재련대에서 제작하는 자유 건축용 기본 부품입니다.";
+  }
   return `${ITEM_DEFS[recipe.outputItemId]?.name ?? recipe.outputItemId} 제작 결과물`;
 }
 
@@ -9779,6 +10166,7 @@ let refineryOpen = false;
 let refinerySelectedRecipeId = "purifyPowder";
 let refinerySuccessUntil = 0;
 let refinerySuccessMessage = "";
+let selectedWastelandStructureItemId = "";
 const FORGE_UPGRADE_DELAY_MS = 1050;
 let forgePendingUpgrade = null;
 let forgeLastResult = null;
@@ -13052,6 +13440,7 @@ registerMapGate({
 function applyDevPreset() {
   if (!DEV_PRESET_ENABLED) return;
   const isBuyerProfile = activeDevProfileId === "dev_user_2";
+  const preservedLandDeeds = getWastelandLandDeedInventoryEntries().map((entry) => structuredClone(entry));
 
   for (let i = 0; i < inventory.slots.length; i++) {
     inventory.slots[i] = null;
@@ -13072,6 +13461,7 @@ function applyDevPreset() {
   inventory.equipped.shoes = null;
   inventory.equipped.tool = null;
   setPlayerCredits(0);
+  restorePreservedWastelandLandDeeds(preservedLandDeeds);
 
   tutorialQuest.minedRockCount = DEV_PRESET.completeTutorial ? 1 : 0;
   tutorialQuest.upgradeCount = DEV_PRESET.completeTutorial ? 3 : 0;
@@ -13084,6 +13474,9 @@ function applyDevPreset() {
     addItem("shovel", 1);
     addItem("safetyHelmet", 1);
     addItem("fencePost", 200);
+    for (const itemId of Object.keys(WASTELAND_BUILD_PART_DEFS)) {
+      addItem(itemId, 200);
+    }
     equipFirstOwnedInventoryItem("tool", "pickaxe");
     equipFirstOwnedInventoryItem("head", "safetyHelmet");
   }
@@ -14712,6 +15105,10 @@ window.addEventListener("keydown", (e) => {
       }
       return;
     }
+    if (selectedWastelandStructureItemId) {
+      placeWastelandStructure(activeWastelandCell, selectedWastelandStructureItemId);
+      return;
+    }
     triggerMiningSwing(activeWastelandCell.mesh);
     if (!hasEquippedTool("shovel")) {
       if (findFirstSlotWithItem("shovel") !== -1) {
@@ -14976,6 +15373,11 @@ if (!hintText) {
   if (activeWastelandCell) {
     if (wastelandFencePlacementMode) {
       hintText = "";
+    } else if (selectedWastelandStructureItemId) {
+      const partDef = getWastelandBuildPartDef();
+      const buildCheck = getWastelandBuildCheck(activeWastelandCell, selectedWastelandStructureItemId);
+      hintText = `Space : ${partDef?.label ?? "건축 부품"} 설치`;
+      hintText += buildCheck.ok ? " | 건축 가능" : ` | ${buildCheck.reason}`;
     } else {
       hintText = hasEquippedTool("shovel")
         ? "Space : 땅 파기"

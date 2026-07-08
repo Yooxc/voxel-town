@@ -667,6 +667,7 @@ export function canBuildOnWastelandCellState({
   hasLandDeed,
   currentOwnerId,
   structures = [],
+  structureSlot = "",
   minSpacing = 2,
 }) {
   if (!currentOwnerId) {
@@ -693,12 +694,14 @@ export function canBuildOnWastelandCellState({
     structures.some(
       (structure) =>
         Number(structure?.row) === cell.row &&
-        Number(structure?.col) === cell.col
+        Number(structure?.col) === cell.col &&
+        (!structureSlot || String(structure?.slot ?? "") === structureSlot)
     )
   ) {
     return { ok: false, reason: "이미 건축물이 있는 셀입니다." };
   }
   if (
+    minSpacing > 0 &&
     structures.some(
       (structure) =>
         Math.abs(Number(structure?.row) - cell.row) <= minSpacing &&
@@ -784,8 +787,10 @@ export function normalizeFrontierWastelandState(rawState) {
           landId: String(structure?.landId ?? ""),
           ownerId: String(structure?.ownerId ?? ""),
           type: String(structure?.type ?? ""),
+          slot: String(structure?.slot ?? ""),
           row: Number(structure?.row),
           col: Number(structure?.col),
+          rotationQuarter: Number(structure?.rotationQuarter) || 0,
         }))
         .filter(
           (structure) =>
