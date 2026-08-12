@@ -1,5 +1,51 @@
-import * as THREE from "three";
+﻿import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import {
+  buildPickaxeModel,
+  buildShovelModel,
+  buildSafetyHelmetModel,
+  buildBasicShoesModel,
+  buildSingleBasicShoeModel,
+  buildFreshAirCanisterModel,
+  buildPurifyPowderModel,
+  alignWearableOnHead,
+} from "./models/equipmentModels.js";
+import {
+  createBoardTextTexture,
+  createBoardImageTexture,
+} from "./world/nftBoard.js";
+import {
+  createNftExhibitUi,
+  renderNftExhibitTokenGrid,
+  updateNftExhibitUiState,
+} from "./ui/nftExhibitUi.js";
+import {
+  NFT_EXHIBIT_TARGET,
+  createNftOwnedTokensCache,
+  createNftBoardDefaultSelection,
+  createNftBoardClearedSelection,
+  normalizeNftBoardSelection,
+  isSameNftBoardSelection,
+  normalizeIpfsUrl,
+  isValidHexAddress,
+  isValidChainId,
+  isValidTokenId,
+  isValidNftImageRef,
+  encodeUint256Call,
+  encodeAddressCall,
+  encodeAddressUintCall,
+  encodeSupportsInterfaceCall,
+  decodeAbiAddress,
+  decodeAbiUint256,
+  decodeAbiString,
+  fetchErc721Owner,
+  fetchErc721Balance,
+  fetchErc721TokenOfOwnerByIndex,
+  fetchSupportsInterface,
+  fetchErc721TokenUri,
+  fetchNftMetadata,
+  fetchWalletOwnedExhibitTokens as fetchWalletOwnedExhibitTokensFromModule,
+} from "./systems/nftExhibit.js";
 import {
   QUICK_USE_ALLOWED_KEYS,
   INVENTORY_STACK_LIMIT,
@@ -481,14 +527,6 @@ const DEV_CREDITS_MIGRATION_PREFIX = "voxel-town.dev-credits-migrated.v1.";
 const DEV_PROFILE_FAILED_LOAD_PREFIX = "voxel-town.dev-profile-load-error.v1.";
 const DEV_SHARED_WORLD_KEY = "voxel-town.dev-shared-world.v1";
 const AUTH_API_BASE_URL = "http://localhost:8787";
-const NFT_EXHIBIT_TARGET = {
-  chainId: "0x1",
-  contractAddress: "0x3aAA87FBe562AC659F9e657a8EFe00b411a56273",
-  tokenId: "1",
-  title: "지갑 NFT 전시",
-};
-const NFT_BOARD_CANVAS_WIDTH = 1152;
-const NFT_BOARD_CANVAS_HEIGHT = 1000;
 const walletAuth = createInitialWalletAuthState();
 const walletProfile = createInitialWalletProfile();
 const PLAYER_CURRENCY_NAME = "개척 코인";
@@ -519,13 +557,7 @@ let nftExhibitOwnedTokens = [];
 let nftExhibitSelectedItem = null;
 let nftExhibitSelectionOwnershipMismatch = false;
 let nftExhibitSelectionOwnershipMessage = "";
-let nftExhibitOwnedTokensCache = {
-  walletAddress: "",
-  chainId: "",
-  contractAddress: "",
-  items: [],
-  fetchedAt: 0,
-};
+let nftExhibitOwnedTokensCache = createNftOwnedTokensCache();
 let residenceNoticeBoardState = createDefaultResidenceNoticeBoardState();
 const residenceNoticeBoardVisuals = {};
 let quickUseAssignState = null;
@@ -917,89 +949,12 @@ walletNicknameSaveBtn.style.cursor = "pointer";
 walletNicknameSaveBtn.style.pointerEvents = "auto";
 walletNicknameCard.appendChild(walletNicknameSaveBtn);
 
-const nftBoardOverlay = document.createElement("div");
-nftBoardOverlay.id = "nftBoardOverlay";
-nftBoardOverlay.style.position = "fixed";
-nftBoardOverlay.style.inset = "0";
-nftBoardOverlay.style.display = "none";
-nftBoardOverlay.style.alignItems = "center";
-nftBoardOverlay.style.justifyContent = "center";
-nftBoardOverlay.style.background = "rgba(8,10,14,0.58)";
-nftBoardOverlay.style.backdropFilter = "blur(8px)";
-nftBoardOverlay.style.pointerEvents = "auto";
-nftBoardOverlay.style.zIndex = "1000004";
-uiLayer.appendChild(nftBoardOverlay);
-
-const nftBoardCard = document.createElement("div");
-nftBoardCard.style.width = "min(760px, calc(100vw - 40px))";
-nftBoardCard.style.maxHeight = "min(78vh, 840px)";
-nftBoardCard.style.display = "flex";
-nftBoardCard.style.flexDirection = "column";
-nftBoardCard.style.padding = "22px";
-nftBoardCard.style.background = "rgba(245,245,245,0.97)";
-nftBoardCard.style.border = "1px solid rgba(0,0,0,0.14)";
-nftBoardCard.style.borderRadius = "18px";
-nftBoardCard.style.boxShadow = "0 20px 48px rgba(0,0,0,0.28)";
-nftBoardCard.style.fontFamily = "system-ui, -apple-system, sans-serif";
-nftBoardCard.style.color = "#222";
-nftBoardOverlay.appendChild(nftBoardCard);
-
-const nftBoardTitleRow = document.createElement("div");
-nftBoardTitleRow.style.display = "flex";
-nftBoardTitleRow.style.alignItems = "center";
-nftBoardTitleRow.style.justifyContent = "space-between";
-nftBoardTitleRow.style.gap = "12px";
-nftBoardCard.appendChild(nftBoardTitleRow);
-
-const nftBoardTitle = document.createElement("div");
-nftBoardTitle.textContent = "내 NFT 전시 선택";
-nftBoardTitle.style.fontSize = "24px";
-nftBoardTitle.style.fontWeight = "900";
-nftBoardTitleRow.appendChild(nftBoardTitle);
-
-const nftBoardCloseBtn = document.createElement("button");
-nftBoardCloseBtn.type = "button";
-nftBoardCloseBtn.textContent = "닫기";
-nftBoardCloseBtn.style.padding = "10px 14px";
-nftBoardCloseBtn.style.borderRadius = "12px";
-nftBoardCloseBtn.style.border = "1px solid rgba(0,0,0,0.12)";
-nftBoardCloseBtn.style.background = "rgba(255,255,255,0.9)";
-nftBoardCloseBtn.style.color = "#333";
-nftBoardCloseBtn.style.fontSize = "14px";
-nftBoardCloseBtn.style.fontWeight = "800";
-nftBoardCloseBtn.style.cursor = "pointer";
-nftBoardCloseBtn.style.pointerEvents = "auto";
-nftBoardTitleRow.appendChild(nftBoardCloseBtn);
-
-const nftBoardDesc = document.createElement("div");
-nftBoardDesc.textContent = "현재 지갑이 보유한 전시 가능 NFT 중 하나를 골라 보드에 전시합니다.";
-nftBoardDesc.style.marginTop = "10px";
-nftBoardDesc.style.fontSize = "14px";
-nftBoardDesc.style.lineHeight = "1.65";
-nftBoardDesc.style.color = "#555";
-nftBoardCard.appendChild(nftBoardDesc);
-
-const nftBoardStatus = document.createElement("div");
-nftBoardStatus.textContent = "지갑 NFT 목록을 준비하는 중입니다.";
-nftBoardStatus.style.marginTop = "14px";
-nftBoardStatus.style.padding = "10px 12px";
-nftBoardStatus.style.background = "rgba(0,0,0,0.05)";
-nftBoardStatus.style.borderRadius = "12px";
-nftBoardStatus.style.fontSize = "13px";
-nftBoardStatus.style.lineHeight = "1.6";
-nftBoardStatus.style.color = "#444";
-nftBoardCard.appendChild(nftBoardStatus);
-
-const nftBoardGrid = document.createElement("div");
-nftBoardGrid.style.marginTop = "16px";
-nftBoardGrid.style.display = "grid";
-nftBoardGrid.style.gridTemplateColumns = "repeat(auto-fill, minmax(168px, 1fr))";
-nftBoardGrid.style.gap = "14px";
-nftBoardGrid.style.overflowY = "auto";
-nftBoardGrid.style.paddingRight = "4px";
-nftBoardGrid.style.maxHeight = "52vh";
-nftBoardGrid.style.pointerEvents = "auto";
-nftBoardCard.appendChild(nftBoardGrid);
+const {
+  nftBoardOverlay,
+  nftBoardCloseBtn,
+  nftBoardStatus,
+  nftBoardGrid,
+} = createNftExhibitUi(uiLayer);
 
 function shortenWalletAddress(address) {
   if (!address) return "";
@@ -1095,144 +1050,6 @@ function getWalletLoginMessage(address, nonce, issuedAt) {
   ].join("\n");
 }
 
-function stripHexPrefix(hex) {
-  return String(hex || "").replace(/^0x/i, "");
-}
-
-function normalizeIpfsUrl(rawUrl) {
-  if (!rawUrl) return "";
-  if (rawUrl.startsWith("ipfs://ipfs/")) {
-    return `https://ipfs.io/ipfs/${rawUrl.slice("ipfs://ipfs/".length)}`;
-  }
-  if (rawUrl.startsWith("ipfs://")) {
-    return `https://ipfs.io/ipfs/${rawUrl.slice("ipfs://".length)}`;
-  }
-  return rawUrl;
-}
-
-function createBoardTextTexture(title, lines = [], accent = "#d9b24f") {
-  const canvas = document.createElement("canvas");
-  canvas.width = NFT_BOARD_CANVAS_WIDTH;
-  canvas.height = NFT_BOARD_CANVAS_HEIGHT;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return null;
-
-  ctx.fillStyle = "#18130f";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  ctx.fillStyle = "#2a211b";
-  ctx.fillRect(34, 34, canvas.width - 68, canvas.height - 68);
-
-  ctx.strokeStyle = accent;
-  ctx.lineWidth = 14;
-  ctx.strokeRect(34, 34, canvas.width - 68, canvas.height - 68);
-
-  ctx.fillStyle = accent;
-  ctx.font = "700 54px system-ui";
-  ctx.textAlign = "center";
-  ctx.fillText(title, canvas.width * 0.5, 132);
-
-  ctx.fillStyle = "#f0e7dc";
-  ctx.font = "600 34px system-ui";
-  let y = 238;
-  for (const line of lines) {
-    ctx.fillText(line, canvas.width * 0.5, y);
-    y += 56;
-  }
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.needsUpdate = true;
-  return texture;
-}
-
-function loadImageElement(src) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("NFT 이미지를 불러오지 못했습니다."));
-    img.src = src;
-  });
-}
-
-function createNftBoardDefaultSelection() {
-  return {
-    chainId: NFT_EXHIBIT_TARGET.chainId,
-    contractAddress: NFT_EXHIBIT_TARGET.contractAddress.toLowerCase(),
-    tokenId: NFT_EXHIBIT_TARGET.tokenId,
-    name: NFT_EXHIBIT_TARGET.title,
-    image: "",
-    subtitle: "",
-  };
-}
-
-function createNftBoardClearedSelection() {
-  return {
-    mode: "none",
-  };
-}
-
-function isValidHexAddress(value) {
-  return /^0x[a-fA-F0-9]{40}$/.test(String(value || "").trim());
-}
-
-function isValidChainId(value) {
-  return /^0x[a-fA-F0-9]+$/.test(String(value || "").trim());
-}
-
-function isValidTokenId(value) {
-  return /^[0-9]+$/.test(String(value || "").trim());
-}
-
-function isValidNftImageRef(value) {
-  const raw = String(value || "").trim();
-  if (!raw) return false;
-  return (
-    raw.startsWith("http://") ||
-    raw.startsWith("https://") ||
-    raw.startsWith("ipfs://") ||
-    raw.startsWith("data:image/")
-  );
-}
-
-function normalizeNftBoardSelection(raw) {
-  if (!raw || typeof raw !== "object") return null;
-  if (raw.mode === "none") {
-    return { mode: "none" };
-  }
-  const contractAddress = String(raw.contractAddress || "").trim().toLowerCase();
-  const tokenId = raw.tokenId == null ? "" : String(raw.tokenId).trim();
-  const chainId = String(raw.chainId || NFT_EXHIBIT_TARGET.chainId || "").trim() || NFT_EXHIBIT_TARGET.chainId;
-  if (!isValidHexAddress(contractAddress) || !isValidTokenId(tokenId) || !isValidChainId(chainId)) {
-    return null;
-  }
-  const image = String(raw.image || "").trim();
-  return {
-    chainId,
-    contractAddress,
-    tokenId,
-    name: String(raw.name || "NFT 작품").trim() || "NFT 작품",
-    image: isValidNftImageRef(image) ? image : "",
-    subtitle: String(raw.subtitle || "").trim(),
-  };
-}
-
-function isSameNftBoardSelection(a, b) {
-  const left = normalizeNftBoardSelection(a);
-  const right = normalizeNftBoardSelection(b);
-  if (!left && !right) return true;
-  if (!left || !right) return false;
-  if (left.mode === "none" || right.mode === "none") {
-    return left.mode === right.mode;
-  }
-  return (
-    left.chainId === right.chainId &&
-    left.contractAddress === right.contractAddress &&
-    left.tokenId === right.tokenId
-  );
-}
-
 function getActiveNftBoardSelection() {
   const normalized = normalizeNftBoardSelection(nftExhibitSelectedItem);
   if (normalized?.mode === "none") return normalized;
@@ -1240,39 +1057,13 @@ function getActiveNftBoardSelection() {
 }
 
 function updateNftBoardSelectionUi() {
-  nftBoardOverlay.style.display = nftExhibitSelectionOpen ? "flex" : "none";
-  nftBoardStatus.textContent = nftExhibitSelectionStatus || "지갑 NFT 목록을 준비하는 중입니다.";
-  const palette = {
-    neutral: {
-      bg: "rgba(0,0,0,0.05)",
-      color: "#444",
-      border: "rgba(0,0,0,0.06)",
-    },
-    loading: {
-      bg: "rgba(246,165,58,0.12)",
-      color: "#8f5a00",
-      border: "rgba(246,165,58,0.22)",
-    },
-    success: {
-      bg: "rgba(54,179,126,0.12)",
-      color: "#1f6a4a",
-      border: "rgba(54,179,126,0.22)",
-    },
-    empty: {
-      bg: "rgba(100,116,139,0.1)",
-      color: "#475569",
-      border: "rgba(100,116,139,0.18)",
-    },
-    error: {
-      bg: "rgba(220,38,38,0.1)",
-      color: "#9f1239",
-      border: "rgba(220,38,38,0.2)",
-    },
-  };
-  const style = palette[nftExhibitSelectionTone] ?? palette.neutral;
-  nftBoardStatus.style.background = style.bg;
-  nftBoardStatus.style.color = style.color;
-  nftBoardStatus.style.border = `1px solid ${style.border}`;
+  updateNftExhibitUiState({
+    overlay: nftBoardOverlay,
+    statusElement: nftBoardStatus,
+    open: nftExhibitSelectionOpen,
+    status: nftExhibitSelectionStatus,
+    tone: nftExhibitSelectionTone,
+  });
 }
 
 function closeNftBoardSelectionOverlay() {
@@ -1310,323 +1101,26 @@ function setNftBoardSelection(nextSelection, { save = true } = {}) {
 }
 
 function renderNftBoardTokenGrid() {
-  nftBoardGrid.innerHTML = "";
-
-  const selected = getActiveNftBoardSelection();
-
-  const renderStateCard = (title, desc, tone = "neutral", { showRetry = false } = {}) => {
-    const card = document.createElement("div");
-    card.style.gridColumn = "1 / -1";
-    card.style.minHeight = "220px";
-    card.style.display = "flex";
-    card.style.flexDirection = "column";
-    card.style.alignItems = "center";
-    card.style.justifyContent = "center";
-    card.style.padding = "28px 20px";
-    card.style.borderRadius = "18px";
-    card.style.border = "1px dashed rgba(0,0,0,0.14)";
-    card.style.background = "#fbfcfd";
-    card.style.textAlign = "center";
-
-    const icon = document.createElement("div");
-    icon.textContent =
-      tone === "loading" ? "..." :
-      tone === "error" ? "!" :
-      tone === "empty" ? "0" : "NFT";
-    icon.style.width = "54px";
-    icon.style.height = "54px";
-    icon.style.display = "flex";
-    icon.style.alignItems = "center";
-    icon.style.justifyContent = "center";
-    icon.style.borderRadius = "999px";
-    icon.style.background =
-      tone === "loading" ? "rgba(246,165,58,0.14)" :
-      tone === "error" ? "rgba(220,38,38,0.12)" :
-      tone === "empty" ? "rgba(100,116,139,0.12)" :
-      "rgba(59,130,246,0.12)";
-    icon.style.color =
-      tone === "loading" ? "#8f5a00" :
-      tone === "error" ? "#9f1239" :
-      tone === "empty" ? "#475569" :
-      "#1d4ed8";
-    icon.style.fontWeight = "900";
-    icon.style.fontSize = "22px";
-    card.appendChild(icon);
-
-    const titleEl = document.createElement("div");
-    titleEl.textContent = title;
-    titleEl.style.marginTop = "14px";
-    titleEl.style.fontSize = "16px";
-    titleEl.style.fontWeight = "900";
-    titleEl.style.color = "#1f2937";
-    card.appendChild(titleEl);
-
-    const descEl = document.createElement("div");
-    descEl.textContent = desc;
-    descEl.style.marginTop = "8px";
-    descEl.style.fontSize = "13px";
-    descEl.style.lineHeight = "1.6";
-    descEl.style.color = "#64748b";
-    descEl.style.maxWidth = "360px";
-    card.appendChild(descEl);
-
-    if (showRetry) {
-      const retryBtn = document.createElement("button");
-      retryBtn.type = "button";
-      retryBtn.textContent = "다시 시도";
-      retryBtn.style.marginTop = "16px";
-      retryBtn.style.padding = "10px 14px";
-      retryBtn.style.borderRadius = "12px";
-      retryBtn.style.border = "1px solid rgba(0,0,0,0.12)";
-      retryBtn.style.background = "#ffffff";
-      retryBtn.style.color = "#1f2937";
-      retryBtn.style.fontSize = "13px";
-      retryBtn.style.fontWeight = "800";
-      retryBtn.style.cursor = "pointer";
-      retryBtn.style.pointerEvents = "auto";
-      retryBtn.addEventListener("click", () => {
-        void reloadNftBoardSelectionList({ forceRefresh: true });
-      });
-      card.appendChild(retryBtn);
-    }
-
-    nftBoardGrid.appendChild(card);
-  };
-
-  if (nftExhibitSelectionLoading) {
-    setNftBoardSelectionStatus(
-      nftExhibitSelectionStatus || "지갑 NFT 목록을 불러오는 중입니다...",
-      "loading"
-    );
-    renderStateCard(
-      "NFT 목록을 불러오는 중",
-      "지갑과 체인에서 전시 가능한 NFT를 확인하고 있어요. 잠시만 기다려주세요.",
-      "loading"
-    );
-    return;
-  }
-
-  if (nftExhibitOwnedTokens.length === 0) {
-    const isError = nftExhibitSelectionTone === "error";
-    setNftBoardSelectionStatus(
-      nftExhibitSelectionStatus || "전시 가능한 NFT가 없습니다.",
-      isError ? "error" : "empty"
-    );
-    renderStateCard(
-      isError ? "NFT를 불러오지 못했습니다" : "전시 가능한 NFT 없음",
-      isError
-        ? "네트워크 또는 메타데이터 오류가 발생했습니다. 잠시 후 다시 열어보세요."
-        : "현재 로그인한 지갑에서 전시 가능한 NFT를 찾지 못했습니다.",
-      isError ? "error" : "empty",
-      { showRetry: true }
-    );
-    return;
-  }
-
-  setNftBoardSelectionStatus(
-    nftExhibitSelectionOwnershipMismatch
-      ? nftExhibitSelectionOwnershipMessage || "현재 선택한 NFT를 더 이상 보유하고 있지 않습니다."
-      : (nftExhibitSelectionStatus || "전시할 NFT를 하나 선택하세요."),
-    nftExhibitSelectionOwnershipMismatch ? "error" : "success"
-  );
-
-  if (nftExhibitSelectionOwnershipMismatch) {
-    const warningCard = document.createElement("div");
-    warningCard.style.gridColumn = "1 / -1";
-    warningCard.style.display = "flex";
-    warningCard.style.flexDirection = "column";
-    warningCard.style.padding = "14px 16px";
-    warningCard.style.borderRadius = "14px";
-    warningCard.style.background = "rgba(220,38,38,0.08)";
-    warningCard.style.border = "1px solid rgba(220,38,38,0.18)";
-
-    const warningTitle = document.createElement("div");
-    warningTitle.textContent = "현재 전시 NFT를 더 이상 보유하지 않습니다";
-    warningTitle.style.fontSize = "14px";
-    warningTitle.style.fontWeight = "900";
-    warningTitle.style.color = "#9f1239";
-    warningCard.appendChild(warningTitle);
-
-    const warningDesc = document.createElement("div");
-    warningDesc.textContent = "아래 목록에서 다시 선택하거나, 전시 해제를 눌러 보드를 비울 수 있습니다.";
-    warningDesc.style.marginTop = "6px";
-    warningDesc.style.fontSize = "12px";
-    warningDesc.style.lineHeight = "1.6";
-    warningDesc.style.color = "#7f1d1d";
-    warningCard.appendChild(warningDesc);
-
-    nftBoardGrid.appendChild(warningCard);
-  }
-
-  const clearCard = document.createElement("button");
-  clearCard.type = "button";
-  clearCard.style.display = "flex";
-  clearCard.style.flexDirection = "column";
-  clearCard.style.alignItems = "stretch";
-  clearCard.style.padding = "10px";
-  clearCard.style.borderRadius = "16px";
-  clearCard.style.border = "2px solid rgba(0,0,0,0.08)";
-  clearCard.style.background = "#ffffff";
-  clearCard.style.cursor = "pointer";
-  clearCard.style.textAlign = "left";
-  clearCard.style.pointerEvents = "auto";
-  clearCard.style.boxShadow = "0 8px 20px rgba(0,0,0,0.08)";
-  clearCard.style.transition = "transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease";
-
-  if (selected?.mode === "none") {
-    clearCard.style.borderColor = "#f6a53a";
-    clearCard.style.boxShadow = "0 10px 24px rgba(246,165,58,0.2)";
-  }
-
-  const clearThumb = document.createElement("div");
-  clearThumb.style.width = "100%";
-  clearThumb.style.aspectRatio = "1 / 1";
-  clearThumb.style.borderRadius = "12px";
-  clearThumb.style.background = "repeating-linear-gradient(135deg, #eef2f6 0 18px, #ffffff 18px 36px)";
-  clearThumb.style.border = "1px solid rgba(0,0,0,0.06)";
-  clearThumb.style.display = "flex";
-  clearThumb.style.alignItems = "center";
-  clearThumb.style.justifyContent = "center";
-  clearThumb.style.color = "#64748b";
-  clearThumb.style.fontSize = "14px";
-  clearThumb.style.fontWeight = "900";
-  clearThumb.textContent = "전시 해제";
-  clearCard.appendChild(clearThumb);
-
-  const clearName = document.createElement("div");
-  clearName.textContent = "NFT 전시 해제";
-  clearName.style.marginTop = "10px";
-  clearName.style.fontSize = "14px";
-  clearName.style.fontWeight = "800";
-  clearName.style.lineHeight = "1.4";
-  clearCard.appendChild(clearName);
-
-  const clearSub = document.createElement("div");
-  clearSub.textContent = "보드를 빈 상태로 둡니다";
-  clearSub.style.marginTop = "4px";
-  clearSub.style.fontSize = "12px";
-  clearSub.style.color = "#64748b";
-  clearCard.appendChild(clearSub);
-
-  if (selected?.mode === "none") {
-    const clearBadge = document.createElement("div");
-    clearBadge.textContent = "현재 적용됨";
-    clearBadge.style.marginTop = "8px";
-    clearBadge.style.alignSelf = "flex-start";
-    clearBadge.style.padding = "4px 8px";
-    clearBadge.style.borderRadius = "999px";
-    clearBadge.style.background = "rgba(246,165,58,0.16)";
-    clearBadge.style.color = "#c16b00";
-    clearBadge.style.fontSize = "11px";
-    clearBadge.style.fontWeight = "800";
-    clearCard.appendChild(clearBadge);
-  }
-
-  clearCard.addEventListener("mouseenter", () => {
-    clearCard.style.transform = "translateY(-2px)";
-  });
-  clearCard.addEventListener("mouseleave", () => {
-    clearCard.style.transform = "translateY(0)";
-  });
-  clearCard.addEventListener("click", () => {
-    const changed = setNftBoardSelection(createNftBoardClearedSelection());
-    if (changed) {
-      showUI("NFT 전시 해제", 1000);
-      lastMessageUntil = performance.now() + 1000;
-    }
-  });
-
-  nftBoardGrid.appendChild(clearCard);
-
-  for (const token of nftExhibitOwnedTokens) {
-    const card = document.createElement("button");
-    card.type = "button";
-    card.style.display = "flex";
-    card.style.flexDirection = "column";
-    card.style.alignItems = "stretch";
-    card.style.padding = "10px";
-    card.style.borderRadius = "16px";
-    card.style.border = "2px solid rgba(0,0,0,0.08)";
-    card.style.background = "#ffffff";
-    card.style.cursor = "pointer";
-    card.style.textAlign = "left";
-    card.style.pointerEvents = "auto";
-    card.style.boxShadow = "0 8px 20px rgba(0,0,0,0.08)";
-    card.style.transition = "transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease";
-
-    const isSelected =
-      selected.contractAddress === token.contractAddress.toLowerCase() &&
-      selected.tokenId === token.tokenId;
-
-    if (isSelected) {
-      card.style.borderColor = "#f6a53a";
-      card.style.boxShadow = "0 10px 24px rgba(246,165,58,0.2)";
-    }
-
-    const thumb = document.createElement("div");
-    thumb.style.width = "100%";
-    thumb.style.aspectRatio = "1 / 1";
-    thumb.style.borderRadius = "12px";
-    thumb.style.overflow = "hidden";
-    thumb.style.background = "#eef2f6";
-    thumb.style.display = "flex";
-    thumb.style.alignItems = "center";
-    thumb.style.justifyContent = "center";
-    thumb.style.border = "1px solid rgba(0,0,0,0.06)";
-    card.appendChild(thumb);
-
-    if (token.image) {
-      const img = document.createElement("img");
-      img.src = normalizeIpfsUrl(token.image);
-      img.alt = token.name;
-      img.style.width = "100%";
-      img.style.height = "100%";
-      img.style.objectFit = "cover";
-      thumb.appendChild(img);
-    } else {
-      const placeholder = document.createElement("div");
-      placeholder.textContent = "NFT";
-      placeholder.style.fontWeight = "900";
-      placeholder.style.color = "#475569";
-      thumb.appendChild(placeholder);
-    }
-
-    const name = document.createElement("div");
-    name.textContent = token.name;
-    name.style.marginTop = "10px";
-    name.style.fontSize = "14px";
-    name.style.fontWeight = "800";
-    name.style.lineHeight = "1.4";
-    card.appendChild(name);
-
-    const sub = document.createElement("div");
-    sub.textContent = `Token #${token.tokenId}`;
-    sub.style.marginTop = "4px";
-    sub.style.fontSize = "12px";
-    sub.style.color = "#64748b";
-    card.appendChild(sub);
-
-    if (isSelected) {
-      const badge = document.createElement("div");
-      badge.textContent = "현재 전시 중";
-      badge.style.marginTop = "8px";
-      badge.style.alignSelf = "flex-start";
-      badge.style.padding = "4px 8px";
-      badge.style.borderRadius = "999px";
-      badge.style.background = "rgba(246,165,58,0.16)";
-      badge.style.color = "#c16b00";
-      badge.style.fontSize = "11px";
-      badge.style.fontWeight = "800";
-      card.appendChild(badge);
-    }
-
-    card.addEventListener("mouseenter", () => {
-      card.style.transform = "translateY(-2px)";
-    });
-    card.addEventListener("mouseleave", () => {
-      card.style.transform = "translateY(0)";
-    });
-    card.addEventListener("click", () => {
+  renderNftExhibitTokenGrid({
+    grid: nftBoardGrid,
+    selected: getActiveNftBoardSelection(),
+    tokens: nftExhibitOwnedTokens,
+    loading: nftExhibitSelectionLoading,
+    status: nftExhibitSelectionStatus,
+    tone: nftExhibitSelectionTone,
+    ownershipMismatch: nftExhibitSelectionOwnershipMismatch,
+    ownershipMessage: nftExhibitSelectionOwnershipMessage,
+    setStatus: setNftBoardSelectionStatus,
+    normalizeImageUrl: normalizeIpfsUrl,
+    onRetry: () => { void reloadNftBoardSelectionList({ forceRefresh: true }); },
+    onClear: () => {
+      const changed = setNftBoardSelection(createNftBoardClearedSelection());
+      if (changed) {
+        showUI("NFT 전시 해제", 1000);
+        lastMessageUntil = performance.now() + 1000;
+      }
+    },
+    onSelect: (token) => {
       const changed = setNftBoardSelection({
         chainId: NFT_EXHIBIT_TARGET.chainId,
         contractAddress: token.contractAddress,
@@ -1639,82 +1133,9 @@ function renderNftBoardTokenGrid() {
         showUI(`${token.name} 전시`, 1000);
         lastMessageUntil = performance.now() + 1000;
       }
-    });
-
-    nftBoardGrid.appendChild(card);
-  }
+    },
+  });
 }
-
-async function createBoardImageTexture(imageUrl, title, subtitle = "") {
-  const img = await loadImageElement(normalizeIpfsUrl(imageUrl));
-  const canvas = document.createElement("canvas");
-  canvas.width = NFT_BOARD_CANVAS_WIDTH;
-  canvas.height = NFT_BOARD_CANVAS_HEIGHT;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return null;
-
-  ctx.fillStyle = "#f4f6f8";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(24, 24, canvas.width - 48, canvas.height - 48);
-
-  ctx.strokeStyle = "#2a2f37";
-  ctx.lineWidth = 10;
-  ctx.strokeRect(24, 24, canvas.width - 48, canvas.height - 48);
-
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(54, 96, canvas.width - 108, canvas.height - 248);
-
-  const frameX = 52;
-  const frameY = 68;
-  const frameW = canvas.width - 104;
-  const frameH = canvas.height - 190;
-  const scale = Math.min(frameW / img.width, frameH / img.height);
-  const drawW = img.width * scale;
-  const drawH = img.height * scale;
-  const drawX = frameX + (frameW - drawW) * 0.5;
-  const drawY = frameY + (frameH - drawH) * 0.5;
-  ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,0.22)";
-  ctx.shadowBlur = 24;
-  ctx.shadowOffsetY = 12;
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(drawX - 14, drawY - 14, drawW + 28, drawH + 28);
-  ctx.restore();
-  ctx.save();
-  ctx.filter = "brightness(1.42) contrast(1.16) saturate(1.08)";
-  ctx.drawImage(img, drawX, drawY, drawW, drawH);
-  ctx.restore();
-
-  ctx.fillStyle = "#eef2f6";
-  ctx.fillRect(42, canvas.height - 130, canvas.width - 84, 40);
-  ctx.strokeStyle = "#2a2f37";
-  ctx.lineWidth = 4;
-  ctx.strokeRect(42, canvas.height - 130, canvas.width - 84, 40);
-
-  ctx.fillStyle = "#f7f9fb";
-  ctx.fillRect(42, canvas.height - 82, canvas.width - 84, 28);
-  ctx.strokeStyle = "rgba(42,47,55,0.42)";
-  ctx.lineWidth = 2;
-  ctx.strokeRect(42, canvas.height - 82, canvas.width - 84, 28);
-
-  ctx.fillStyle = "#1f2730";
-  ctx.textAlign = "center";
-  ctx.font = "700 24px system-ui";
-  ctx.fillText(title, canvas.width * 0.5, canvas.height - 102);
-  if (subtitle) {
-    ctx.fillStyle = "#5d6a78";
-    ctx.font = "600 15px system-ui";
-    ctx.fillText(subtitle, canvas.width * 0.5, canvas.height - 62);
-  }
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.needsUpdate = true;
-  return texture;
-}
-
 function applyNftBoardTexture(texture) {
   if (!nftExhibitScreenMaterial) return;
   if (nftExhibitScreenMaterial.map && nftExhibitScreenMaterial.map !== texture) {
@@ -1730,194 +1151,13 @@ function setNftBoardMessage(title, lines, accent = "#d9b24f") {
   applyNftBoardTexture(texture);
 }
 
-function encodeUint256Call(selector, value) {
-  const encodedValue = BigInt(value).toString(16).padStart(64, "0");
-  return `${selector}${encodedValue}`;
-}
-
-function encodeAddressCall(selector, address) {
-  const encodedAddress = stripHexPrefix(String(address || "")).padStart(64, "0");
-  return `${selector}${encodedAddress}`;
-}
-
-function encodeAddressUintCall(selector, address, value) {
-  const encodedAddress = stripHexPrefix(String(address || "")).padStart(64, "0");
-  const encodedValue = BigInt(value).toString(16).padStart(64, "0");
-  return `${selector}${encodedAddress}${encodedValue}`;
-}
-
-function encodeSupportsInterfaceCall(interfaceIdHex) {
-  const encodedInterface = stripHexPrefix(interfaceIdHex).padStart(64, "0");
-  return `0x01ffc9a7${encodedInterface}`;
-}
-
-function decodeAbiAddress(resultHex) {
-  const clean = stripHexPrefix(resultHex);
-  if (clean.length < 64) return "";
-  return `0x${clean.slice(clean.length - 40)}`.toLowerCase();
-}
-
-function decodeAbiUint256(resultHex) {
-  const clean = stripHexPrefix(resultHex);
-  if (clean.length < 64) return 0n;
-  return BigInt(`0x${clean.slice(clean.length - 64)}`);
-}
-
-function decodeAbiString(resultHex) {
-  const clean = stripHexPrefix(resultHex);
-  if (clean.length < 128) return "";
-  const offset = Number.parseInt(clean.slice(0, 64), 16) * 2;
-  if (!Number.isFinite(offset) || offset < 0 || clean.length < offset + 64) return "";
-  const length = Number.parseInt(clean.slice(offset, offset + 64), 16);
-  if (!Number.isFinite(length) || length < 0) return "";
-  const dataHex = clean.slice(offset + 64, offset + 64 + length * 2);
-  const bytes = new Uint8Array(dataHex.match(/.{1,2}/g)?.map((pair) => Number.parseInt(pair, 16)) ?? []);
-  return new TextDecoder().decode(bytes);
-}
-
-async function fetchErc721Owner(contractAddress, tokenId) {
-  const result = await window.ethereum.request({
-    method: "eth_call",
-    params: [
-      {
-        to: contractAddress,
-        data: encodeUint256Call("0x6352211e", tokenId),
-      },
-      "latest",
-    ],
-  });
-  return decodeAbiAddress(result);
-}
-
-async function fetchErc721Balance(contractAddress, ownerAddress) {
-  const result = await window.ethereum.request({
-    method: "eth_call",
-    params: [
-      {
-        to: contractAddress,
-        data: encodeAddressCall("0x70a08231", ownerAddress),
-      },
-      "latest",
-    ],
-  });
-  return decodeAbiUint256(result);
-}
-
-async function fetchErc721TokenOfOwnerByIndex(contractAddress, ownerAddress, index) {
-  const result = await window.ethereum.request({
-    method: "eth_call",
-    params: [
-      {
-        to: contractAddress,
-        data: encodeAddressUintCall("0x2f745c59", ownerAddress, index),
-      },
-      "latest",
-    ],
-  });
-  return decodeAbiUint256(result).toString();
-}
-
-async function fetchSupportsInterface(contractAddress, interfaceIdHex) {
-  const result = await window.ethereum.request({
-    method: "eth_call",
-    params: [
-      {
-        to: contractAddress,
-        data: encodeSupportsInterfaceCall(interfaceIdHex),
-      },
-      "latest",
-    ],
-  });
-  return decodeAbiUint256(result) !== 0n;
-}
-
-async function fetchErc721TokenUri(contractAddress, tokenId) {
-  const result = await window.ethereum.request({
-    method: "eth_call",
-    params: [
-      {
-        to: contractAddress,
-        data: encodeUint256Call("0xc87b56dd", tokenId),
-      },
-      "latest",
-    ],
-  });
-  return decodeAbiString(result);
-}
-
-async function fetchNftMetadata(tokenUri) {
-  const normalizedUri = normalizeIpfsUrl(tokenUri);
-  if (normalizedUri.startsWith("data:application/json;base64,")) {
-    const encoded = normalizedUri.slice("data:application/json;base64,".length);
-    return JSON.parse(atob(encoded));
-  }
-  if (normalizedUri.startsWith("data:application/json,")) {
-    return JSON.parse(decodeURIComponent(normalizedUri.slice("data:application/json,".length)));
-  }
-  const response = await fetch(normalizedUri);
-  if (!response.ok) {
-    throw new Error("NFT 메타데이터를 불러오지 못했습니다.");
-  }
-  return response.json();
-}
-
 async function fetchWalletOwnedExhibitTokens() {
-  if (!walletAuth.address) return [];
-
-  const contractAddress = NFT_EXHIBIT_TARGET.contractAddress.toLowerCase();
-  const cacheIsValid =
-    nftExhibitOwnedTokensCache.walletAddress === walletAuth.address.toLowerCase() &&
-    nftExhibitOwnedTokensCache.chainId === (walletAuth.chainId || "") &&
-    nftExhibitOwnedTokensCache.contractAddress === contractAddress &&
-    Date.now() - nftExhibitOwnedTokensCache.fetchedAt < 30_000;
-  if (cacheIsValid) {
-    return nftExhibitOwnedTokensCache.items.map((item) => ({ ...item }));
-  }
-
-  const ownedTokens = [];
-  const enumerableSupported = await fetchSupportsInterface(contractAddress, "0x780e9d63").catch(() => false);
-
-  if (enumerableSupported) {
-    const balance = Number(await fetchErc721Balance(contractAddress, walletAuth.address));
-    const cappedBalance = Math.min(balance, 24);
-    for (let index = 0; index < cappedBalance; index++) {
-      const tokenId = await fetchErc721TokenOfOwnerByIndex(contractAddress, walletAuth.address, index);
-      const tokenUri = await fetchErc721TokenUri(contractAddress, tokenId);
-      const metadata = await fetchNftMetadata(tokenUri);
-      ownedTokens.push({
-        chainId: NFT_EXHIBIT_TARGET.chainId,
-        contractAddress,
-        tokenId,
-        name: String(metadata?.name || `NFT #${tokenId}`),
-        image: String(metadata?.image || metadata?.image_url || metadata?.imageUrl || ""),
-        subtitle: String(metadata?.description || ""),
-      });
-    }
-  } else {
-    const owner = await fetchErc721Owner(contractAddress, NFT_EXHIBIT_TARGET.tokenId);
-    if (owner.toLowerCase() === walletAuth.address.toLowerCase()) {
-      const tokenUri = await fetchErc721TokenUri(contractAddress, NFT_EXHIBIT_TARGET.tokenId);
-      const metadata = await fetchNftMetadata(tokenUri);
-      ownedTokens.push({
-        chainId: NFT_EXHIBIT_TARGET.chainId,
-        contractAddress,
-        tokenId: NFT_EXHIBIT_TARGET.tokenId,
-        name: String(metadata?.name || NFT_EXHIBIT_TARGET.title),
-        image: String(metadata?.image || metadata?.image_url || metadata?.imageUrl || ""),
-        subtitle: String(metadata?.description || ""),
-      });
-    }
-  }
-
-  nftExhibitOwnedTokensCache = {
-    walletAddress: walletAuth.address.toLowerCase(),
-    chainId: walletAuth.chainId || "",
-    contractAddress,
-    items: ownedTokens.map((item) => ({ ...item })),
-    fetchedAt: Date.now(),
-  };
-
-  return ownedTokens;
+  const result = await fetchWalletOwnedExhibitTokensFromModule({
+    walletAuth,
+    cache: nftExhibitOwnedTokensCache,
+  });
+  nftExhibitOwnedTokensCache = result.cache;
+  return result.items;
 }
 
 async function reloadNftBoardSelectionList({ forceRefresh = false } = {}) {
@@ -2499,13 +1739,7 @@ function clearWalletSession() {
   nftExhibitSelectionLoading = false;
   nftExhibitSelectionStatus = "";
   nftExhibitOwnedTokens = [];
-  nftExhibitOwnedTokensCache = {
-    walletAddress: "",
-    chainId: "",
-    contractAddress: "",
-    items: [],
-    fetchedAt: 0,
-  };
+  nftExhibitOwnedTokensCache = createNftOwnedTokensCache();
   updateNftBoardSelectionUi();
   updateWalletUi();
 }
@@ -12639,434 +11873,6 @@ function applyCameraShake() {
   camera.position.x += randRange(-scale, scale);
   camera.position.y += randRange(-scale * 0.8, scale * 0.8);
   camera.position.z += randRange(-scale, scale);
-}
-
-// ===== Pickaxe item =====
-function buildPickaxeModel(level = 0) {
-  const g = new THREE.Group();
-  const pickaxeLevel = Math.max(0, Math.min(5, level));
-  const steelColors = [0x9aa0a6, 0xa8afb8, 0xb4bcc6, 0x8ea3ba, 0x92a9c2, 0xc9b16d];
-  const accentColors = [0x705132, 0x7f5b37, 0x6f4720, 0x55718e, 0xa67a38, 0xd3922f];
-  const wrapColors = [0x8b5a2b, 0x8b5a2b, 0x674224, 0x62401f, 0x5d3816, 0x67340f];
-  const headWidth = 0.8 + Math.max(0, pickaxeLevel - 2) * 0.08;
-  const headHeight = 0.15 + Math.max(0, pickaxeLevel - 1) * 0.015;
-  const headDepth = 0.2 + Math.max(0, pickaxeLevel - 3) * 0.03;
-  const steelMat = new THREE.MeshStandardMaterial({
-    color: steelColors[pickaxeLevel],
-    roughness: pickaxeLevel >= 4 ? 0.46 : 0.62,
-    metalness: pickaxeLevel >= 3 ? 0.35 : 0.18,
-  });
-  const accentMat = new THREE.MeshStandardMaterial({
-    color: accentColors[pickaxeLevel],
-    roughness: 0.55,
-    metalness: pickaxeLevel >= 4 ? 0.4 : 0.15,
-  });
-  const wrapMat = new THREE.MeshStandardMaterial({
-    color: wrapColors[pickaxeLevel],
-    roughness: 0.92,
-  });
-
-  const handle = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.06, 0.06, 1.2, 8),
-    new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.9 })
-  );
-  handle.position.y = 0.6;
-
-  const head = new THREE.Mesh(
-    new THREE.BoxGeometry(headWidth, headHeight, headDepth),
-    steelMat
-  );
-  head.position.y = 1.2;
-
-  g.add(handle, head);
-
-  if (pickaxeLevel >= 1) {
-    const endCap = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.072, 0.07, 0.09, 8),
-      accentMat
-    );
-    endCap.position.y = 0.035;
-    g.add(endCap);
-  }
-
-  if (pickaxeLevel >= 2) {
-    const wrap = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.071, 0.071, 0.24, 10),
-      wrapMat
-    );
-    wrap.position.y = 0.43;
-    g.add(wrap);
-  }
-
-  if (pickaxeLevel >= 3) {
-    const collar = new THREE.Mesh(
-      new THREE.BoxGeometry(0.18, 0.2, 0.18),
-      accentMat
-    );
-    collar.position.y = 1.05;
-    g.add(collar);
-
-    const wingLeft = new THREE.Mesh(
-      new THREE.BoxGeometry(0.16, 0.11, 0.11),
-      steelMat
-    );
-    wingLeft.position.set(-(headWidth * 0.5 + 0.03), 1.2, 0);
-    wingLeft.rotation.z = Math.PI * 0.16;
-    g.add(wingLeft);
-
-    const wingRight = wingLeft.clone();
-    wingRight.position.x *= -1;
-    wingRight.rotation.z *= -1;
-    g.add(wingRight);
-  }
-
-  if (pickaxeLevel >= 4) {
-    const upperWrap = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.074, 0.074, 0.13, 10),
-      accentMat
-    );
-    upperWrap.position.y = 0.9;
-    g.add(upperWrap);
-
-    const spine = new THREE.Mesh(
-      new THREE.BoxGeometry(headWidth * 0.55, 0.055, 0.06),
-      accentMat
-    );
-    spine.position.set(0, 1.25, headDepth * 0.5 + 0.03);
-    g.add(spine);
-  }
-
-  if (pickaxeLevel >= 5) {
-    const crest = new THREE.Mesh(
-      new THREE.BoxGeometry(0.1, 0.34, 0.08),
-      accentMat
-    );
-    crest.position.set(0, 1.27, 0);
-    g.add(crest);
-
-    const sidePlateL = new THREE.Mesh(
-      new THREE.BoxGeometry(0.09, 0.18, 0.045),
-      accentMat
-    );
-    sidePlateL.position.set(-headWidth * 0.28, 1.19, headDepth * 0.52);
-    sidePlateL.rotation.z = Math.PI * 0.12;
-    g.add(sidePlateL);
-
-    const sidePlateR = sidePlateL.clone();
-    sidePlateR.position.x *= -1;
-    sidePlateR.rotation.z *= -1;
-    g.add(sidePlateR);
-  }
-
-  return g;
-}
-
-function buildShovelModel() {
-  const g = new THREE.Group();
-  const woodMat = new THREE.MeshStandardMaterial({ color: 0x84572e, roughness: 0.92 });
-  const gripMat = new THREE.MeshStandardMaterial({ color: 0x5f3d22, roughness: 0.9 });
-  const metalMat = new THREE.MeshStandardMaterial({
-    color: 0xa1a8b0,
-    roughness: 0.56,
-    metalness: 0.24,
-  });
-
-  const handle = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.055, 0.055, 1.18, 8),
-    woodMat
-  );
-  handle.position.y = 0.58;
-
-  const grip = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.07, 0.07, 0.16, 10),
-    gripMat
-  );
-  grip.position.y = 0.18;
-
-  const blade = new THREE.Mesh(
-    new THREE.BoxGeometry(0.34, 0.42, 0.08),
-    metalMat
-  );
-  blade.position.set(0, 1.08, 0);
-  blade.rotation.z = Math.PI * 0.06;
-
-  const bladeTip = new THREE.Mesh(
-    new THREE.ConeGeometry(0.17, 0.22, 4),
-    metalMat
-  );
-  bladeTip.position.set(0, 0.82, 0);
-  bladeTip.rotation.z = Math.PI;
-  bladeTip.rotation.y = Math.PI * 0.25;
-
-  const topGrip = new THREE.Mesh(
-    new THREE.BoxGeometry(0.28, 0.08, 0.1),
-    woodMat
-  );
-  topGrip.position.set(0, 1.2, 0);
-
-  g.add(handle, grip, blade, bladeTip, topGrip);
-  return g;
-}
-
-function buildSafetyHelmetModel(theme = "default") {
-  const g = new THREE.Group();
-
-  const isGoldenTheme = theme === "gold";
-  const shellColor = isGoldenTheme ? 0xd9b24f : 0xf7f7f9;
-  const ridgeColor = isGoldenTheme ? 0xf3d983 : 0xe8e8ee;
-  const trimColor = isGoldenTheme ? 0x8c5f18 : 0xd9d9de;
-
-  const shellMat = new THREE.MeshStandardMaterial({
-    color: shellColor,
-    roughness: isGoldenTheme ? 0.34 : 0.5,
-    metalness: isGoldenTheme ? 0.42 : 0.02,
-  });
-  const ridgeMat = new THREE.MeshStandardMaterial({
-    color: ridgeColor,
-    roughness: isGoldenTheme ? 0.28 : 0.42,
-    metalness: isGoldenTheme ? 0.55 : 0.03,
-  });
-  const trimMat = new THREE.MeshStandardMaterial({
-    color: trimColor,
-    roughness: isGoldenTheme ? 0.4 : 0.72,
-    metalness: isGoldenTheme ? 0.3 : 0,
-  });
-
-  const shell = new THREE.Mesh(
-    new THREE.SphereGeometry(0.37, 28, 20, 0, Math.PI * 2, 0, Math.PI * 0.64),
-    shellMat
-  );
-  shell.scale.set(1.03, 0.82, 1.14);
-  shell.position.y = 0.18;
-
-  const brim = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.37, 0.43, 0.045, 28),
-    shellMat
-  );
-  brim.scale.set(1.03, 1, 1.26);
-  brim.position.y = -0.02;
-
-  const frontLip = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.035, 0.42, 4, 10),
-    ridgeMat
-  );
-  frontLip.rotation.z = Math.PI / 2;
-  frontLip.position.set(0, 0.02, 0.38);
-
-  const shellBand = new THREE.Mesh(
-    new THREE.TorusGeometry(0.31, 0.03, 8, 28),
-    trimMat
-  );
-  shellBand.rotation.x = Math.PI / 2;
-  shellBand.scale.set(1.02, 1, 1.12);
-  shellBand.position.y = 0.02;
-
-  const ridge = new THREE.Mesh(
-    new THREE.BoxGeometry(0.11, 0.34, 0.14),
-    ridgeMat
-  );
-  ridge.position.set(0, 0.36, -0.01);
-  ridge.rotation.x = Math.PI * 0.08;
-
-  const rearRidge = new THREE.Mesh(
-    new THREE.BoxGeometry(0.08, 0.16, 0.12),
-    ridgeMat
-  );
-  rearRidge.position.set(0, 0.44, -0.08);
-  rearRidge.rotation.x = Math.PI * -0.08;
-
-  const brimEdge = new THREE.Mesh(
-    new THREE.TorusGeometry(0.33, 0.018, 8, 28),
-    trimMat
-  );
-  brimEdge.rotation.x = Math.PI / 2;
-  brimEdge.scale.set(1.04, 1, 1.22);
-  brimEdge.position.y = -0.005;
-
-  const frontBadge = new THREE.Mesh(
-    new THREE.BoxGeometry(0.12, 0.045, 0.05),
-    trimMat
-  );
-  frontBadge.position.set(0, -0.01, 0.39);
-
-  g.userData.headSeatOffsetY = -0.01;
-  g.userData.headSeatForwardZ = 0.04;
-
-  g.add(shell, brim, frontLip, shellBand, ridge, rearRidge, brimEdge, frontBadge);
-  return g;
-}
-
-function buildBasicShoesModel() {
-  const g = new THREE.Group();
-  const shoeMat = new THREE.MeshStandardMaterial({
-    color: 0xc49a6c,
-    roughness: 0.94,
-    metalness: 0.02,
-  });
-  const soleMat = new THREE.MeshStandardMaterial({
-    color: 0x7d6247,
-    roughness: 0.98,
-    metalness: 0.01,
-  });
-
-  const leftSole = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.08, 0.44), soleMat);
-  leftSole.position.set(-0.18, 0.04, 0.02);
-  g.add(leftSole);
-  const leftUpper = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.12, 0.34), shoeMat);
-  leftUpper.position.set(-0.18, 0.12, 0.02);
-  g.add(leftUpper);
-
-  const rightSole = leftSole.clone();
-  rightSole.position.x = 0.18;
-  g.add(rightSole);
-  const rightUpper = leftUpper.clone();
-  rightUpper.position.x = 0.18;
-  g.add(rightUpper);
-
-  return g;
-}
-
-function buildSingleBasicShoeModel() {
-  const g = new THREE.Group();
-  const shoeMat = new THREE.MeshStandardMaterial({
-    color: 0xc49a6c,
-    roughness: 0.94,
-    metalness: 0.02,
-  });
-  const soleMat = new THREE.MeshStandardMaterial({
-    color: 0x7d6247,
-    roughness: 0.98,
-    metalness: 0.01,
-  });
-
-  const sole = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.08, 0.44), soleMat);
-  sole.position.set(0, 0.04, 0.07);
-  g.add(sole);
-  const upper = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.12, 0.34), shoeMat);
-  upper.position.set(0, 0.11, 0.06);
-  g.add(upper);
-
-  return g;
-}
-
-function buildFreshAirCanisterModel() {
-  const g = new THREE.Group();
-  const shellMat = new THREE.MeshStandardMaterial({
-    color: 0x8fd7e8,
-    roughness: 0.42,
-    metalness: 0.18,
-  });
-  const capMat = new THREE.MeshStandardMaterial({
-    color: 0xd9eef5,
-    roughness: 0.28,
-    metalness: 0.34,
-  });
-  const strapMat = new THREE.MeshStandardMaterial({
-    color: 0x3f6472,
-    roughness: 0.74,
-    metalness: 0.04,
-  });
-
-  const body = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.16, 0.16, 0.52, 18),
-    shellMat
-  );
-  body.position.y = 0.26;
-  g.add(body);
-
-  const top = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.12, 0.14, 0.08, 16),
-    capMat
-  );
-  top.position.y = 0.56;
-  g.add(top);
-
-  const valve = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.03, 0.03, 0.12, 10),
-    capMat
-  );
-  valve.rotation.z = Math.PI * 0.5;
-  valve.position.set(0.09, 0.58, 0);
-  g.add(valve);
-
-  const band = new THREE.Mesh(
-    new THREE.TorusGeometry(0.115, 0.018, 8, 18),
-    strapMat
-  );
-  band.rotation.x = Math.PI * 0.5;
-  band.position.y = 0.21;
-  g.add(band);
-
-  return g;
-}
-
-function buildPurifyPowderModel() {
-  const g = new THREE.Group();
-  const jarMat = new THREE.MeshStandardMaterial({
-    color: 0xe8ecf1,
-    roughness: 0.26,
-    metalness: 0.12,
-    transparent: true,
-    opacity: 0.9,
-  });
-  const powderMat = new THREE.MeshStandardMaterial({
-    color: 0xc7f2dd,
-    roughness: 0.78,
-    metalness: 0.02,
-    emissive: 0x3fa57b,
-    emissiveIntensity: 0.22,
-  });
-  const capMat = new THREE.MeshStandardMaterial({
-    color: 0x5c6773,
-    roughness: 0.56,
-    metalness: 0.35,
-  });
-
-  const jar = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.15, 0.17, 0.3, 18),
-    jarMat
-  );
-  jar.position.y = 0.16;
-  g.add(jar);
-
-  const powder = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.125, 0.138, 0.18, 16),
-    powderMat
-  );
-  powder.position.y = 0.11;
-  g.add(powder);
-
-  const cap = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.11, 0.13, 0.08, 16),
-    capMat
-  );
-  cap.position.y = 0.34;
-  g.add(cap);
-
-  return g;
-}
-
-function alignWearableOnHead(headMesh, wearable, options = {}) {
-  if (!headMesh?.geometry || !wearable) return;
-
-  if (!headMesh.geometry.boundingBox) {
-    headMesh.geometry.computeBoundingBox();
-  }
-
-  const headBox = headMesh.geometry.boundingBox;
-  const headHeight = headBox.max.y - headBox.min.y;
-  const headDepth = headBox.max.z - headBox.min.z;
-  const seatY = wearable.userData.headSeatOffsetY ?? 0;
-  const seatForwardZ = wearable.userData.headSeatForwardZ ?? 0;
-  const verticalInset = options.verticalInset ?? 0.26;
-  const forwardBias = options.forwardBias ?? 0.12;
-
-  const targetSeatY = headBox.max.y - headHeight * verticalInset;
-  const targetZ = (headBox.min.z + headBox.max.z) * 0.5 + headDepth * forwardBias;
-
-  wearable.position.x = 0;
-  wearable.position.y = targetSeatY - seatY;
-  wearable.position.z = targetZ - seatForwardZ;
 }
 
 function makePickaxe(x, z, y = 0, rotation = null, level = 1) {
