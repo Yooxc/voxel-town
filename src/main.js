@@ -15,6 +15,86 @@ import {
   createBoardImageTexture,
 } from "./world/nftBoard.js";
 import {
+  createWastelandStructureMesh,
+  createWastelandFencePostMesh,
+  createWastelandFenceLinkMesh,
+  createWastelandPreviewCellMesh,
+} from "./world/wastelandModels.js";
+import { createWastelandSceneRuntime } from "./world/wastelandSceneRuntime.js";
+import { createFrontierSceneController } from "./world/frontierSceneController.js";
+import { renderResidenceNoticeBoardTexture } from "./world/residenceNoticeBoard.js";
+import { createAirPurifierModel } from "./world/airPurifierModel.js";
+import { createRefineryModel } from "./world/refineryModel.js";
+import { createTunnelFenceModel } from "./world/tunnelFenceModel.js";
+import { createPollutionField, updatePollutionFieldPositions } from "./world/pollutionField.js";
+import { createForgeAnvilModel } from "./world/forgeAnvilModel.js";
+import { createNftExhibitBoardModel } from "./world/nftExhibitBoardModel.js";
+import {
+  createHouseModel,
+  createSignModel,
+  createTutorialNpcModel,
+} from "./world/startAreaModels.js";
+import { createDynamicPropsRuntime } from "./world/dynamicProps.js";
+import { createPlayerGroundingRuntime } from "./world/playerGrounding.js";
+import { createMiningParticlesRuntime } from "./world/miningParticles.js";
+import {
+  findCaveRockSpawnPosition,
+  findMineRockSpawnPosition,
+  getRockSpawnBounds as getRockSpawnBoundsFromModule,
+} from "./world/rockPlacement.js";
+import {
+  createPickupBasicShoes,
+  createPickupPickaxe,
+  createPickupSafetyHelmet,
+  createPickupShovel,
+} from "./world/pickupEquipmentModels.js";
+import { createWorldPickupRuntime } from "./systems/worldPickups.js";
+import { createTutorialNpcRuntime } from "./systems/tutorialNpcs.js";
+import { createMiningFeedbackRuntime } from "./world/miningFeedback.js";
+import { createColliderRegistry } from "./world/colliderRegistry.js";
+import { renderQuestWindowUi } from "./ui/questWindow.js";
+import { createGatheringHud, getRockHpHudView } from "./ui/gatheringHud.js";
+import {
+  buildFrontierBuildingSign as buildFrontierBuildingSignFromModule,
+  buildFrontierBoothLabel as buildFrontierBoothLabelFromModule,
+  buildFrontierBoothProductVisual as buildFrontierBoothProductVisualFromModule,
+  buildFrontierDisplayBoothVisual as buildFrontierDisplayBoothVisualFromModule,
+} from "./world/frontierBoothModels.js";
+import {
+  WASTELAND_DIG_PROGRESS_GAIN,
+  getWastelandCellClearProgress,
+  syncWastelandCellStateFromProgress,
+  applyWastelandCellVisual,
+  clearWastelandCellHighlight,
+  applyWastelandCellHighlight,
+} from "./world/wastelandCells.js";
+import {
+  WASTELAND_BUILD_PART_DEFS,
+  isWastelandBuildPartItemId,
+  getWastelandBuildPartDef,
+  getWastelandStructureSlotLabel,
+  getWastelandStructureSurfaceY,
+  getWastelandStructureRotationQuarter,
+} from "./systems/wastelandBuilding.js";
+import {
+  REFINERY_RECIPES,
+  getDefaultRefineryRecipe as getDefaultRefineryRecipeFromModule,
+  getRefineryRecipeEntries as getRefineryRecipeEntriesFromModule,
+  getSelectedRefineryRecipe as getSelectedRefineryRecipeFromModule,
+  getRefineryRecipeDescription as getRefineryRecipeDescriptionFromModule,
+  createRefineryCraftPlan as createRefineryCraftPlanFromModule,
+} from "./systems/refinery.js";
+import {
+  createForgeUpgradeAttemptPlan,
+  createForgeUpgradeResultPlan,
+} from "./systems/forge.js";
+import { createWorkstationRuntime } from "./systems/workstationRuntime.js";
+import { createWastelandRuntime } from "./systems/wastelandRuntime.js";
+import {
+  createWastelandDraftGuide,
+  createWastelandFenceHudState,
+} from "./systems/wastelandDraftGuide.js";
+import {
   createNftExhibitUi,
   renderNftExhibitTokenGrid,
   updateNftExhibitUiState,
@@ -80,6 +160,12 @@ import {
   buildNormalizedPlayerSaveSource,
 } from "./save/playerSave.js";
 import {
+  createPlayerSaveExitPlan,
+  createPlayerSaveSchedulePlan,
+  hydratePlayerSaveRuntime,
+  pushPlayerSaveRuntime,
+} from "./save/playerSaveSync.js";
+import {
   createInitialWalletAuthState,
   createInitialWalletProfile,
   shortenWalletAddress as shortenWalletAddressFromModule,
@@ -121,10 +207,18 @@ import {
   setEquippedItem as setEquippedItemFromModule,
   equipFirstOwnedInventoryItem as equipFirstOwnedInventoryItemFromModule,
 } from "./systems/inventory.js";
+import { createInventoryRuntime } from "./systems/inventoryRuntime.js";
+import { createFrontierRuntime } from "./systems/frontierRuntime.js";
+import { createNftExhibitRuntime } from "./systems/nftExhibitRuntime.js";
+import { createInventoryController } from "./ui/inventoryController.js";
+import { createWorkstationController } from "./ui/workstationController.js";
+import { createWastelandController } from "./ui/wastelandController.js";
 import {
   createInventoryWindowUi,
   makeInventorySlotElement,
 } from "./ui/inventoryWindow.js";
+import { createInventoryRenderer } from "./ui/inventoryRenderer.js";
+import { createInteractionController } from "./ui/interactionController.js";
 import {
   renderFrontierBuildWindowUi,
   renderFrontierBoothDialogUi,
@@ -180,6 +274,27 @@ import {
   applyPickupReachPose,
   syncPreviewPlayerPose,
 } from "./core/player.js";
+import { findNearestByPosition } from "./core/proximity.js";
+import { findNearestInteractable, getInteractableHintText } from "./systems/interactions.js";
+import { updateInteractableHighlights } from "./world/interactableHighlights.js";
+import {
+  createCameraOcclusionState,
+  updateThirdPersonCameraOcclusion as updateThirdPersonCameraOcclusionFromModule,
+} from "./world/cameraOcclusion.js";
+import {
+  setHarvestTreeActive as setHarvestTreeActiveFromModule,
+  updateHarvestTrees as updateHarvestTreesFromModule,
+  updateRockFadeIns as updateRockFadeInsFromModule,
+  triggerRockHitReaction as triggerRockHitReactionFromModule,
+  updateRockHitReactions as updateRockHitReactionsFromModule,
+} from "./world/resourceVisuals.js";
+import { createHarvestTreeModel, createMineRockModel } from "./world/resourceModels.js";
+import { updatePlayerMovementRuntime } from "./core/playerMovementRuntime.js";
+import {
+  createTreeSpawnPositions,
+  createRockSpawnPlans,
+  getCaveMasonryRockOptions,
+} from "./world/resourceSpawn.js";
 import {
   createMainScene,
   applyMainSceneAtmosphere,
@@ -198,6 +313,12 @@ import {
   getOwnedMansionRoomPermitName as getOwnedMansionRoomPermitNameFromModule,
   destroyMansionRoomInstance as destroyMansionRoomInstanceFromModule,
   createMansionRoomInstance as createMansionRoomInstanceFromModule,
+  createDefaultResidenceNoticeBoardState as createDefaultResidenceNoticeBoardStateFromModule,
+  normalizeResidenceNoticeBoardEntry as normalizeResidenceNoticeBoardEntryFromModule,
+  normalizeResidenceNoticeBoardState as normalizeResidenceNoticeBoardStateFromModule,
+  getMansionRoomEntryPlan,
+  getMansionRoomExitPlan,
+  getMansionSleepPlan,
 } from "./systems/residence.js";
 import {
   TREE_HARVEST_RESPAWN_MS,
@@ -216,6 +337,17 @@ import {
   getHarvestTreeShakeRotation,
 } from "./systems/mining.js";
 import {
+  createRockMiningPlan,
+  createTreeHarvestPlan,
+} from "./systems/resourceGathering.js";
+import { createResourceWorldRuntime } from "./systems/resourceWorldRuntime.js";
+import {
+  canArchiveTutorialQuestStep,
+  getCurrentTutorialQuestStep,
+  getTutorialNpcLine as getTutorialNpcLineFromModule,
+  getTutorialQuestProgressPlan,
+} from "./systems/tutorialQuest.js";
+import {
   AIR_GAUGE_MAX,
   AIR_CANISTER_RESTORE_AMOUNT,
   AIR_RECOVERY_PER_SECOND,
@@ -229,8 +361,14 @@ import {
   canRecoverAirInMap as canRecoverAirInMapFromModule,
   getMapPollutionVisualStrength as getMapPollutionVisualStrengthFromModule,
   getAirOverlayVisualState,
+  getAirPurifierHintText as getAirPurifierHintTextFromModule,
+  getNextMapPurificationValue,
   updateAirValueForFrame,
 } from "./systems/air.js";
+import { createAirRuntime } from "./systems/airRuntime.js";
+import { createPlayerSaveRuntime } from "./save/playerSaveRuntime.js";
+import { createSessionRuntime } from "./auth/sessionRuntime.js";
+import { createSessionController } from "./auth/sessionController.js";
 import {
   RESIDENCE_MAP_ID,
   GROUND_SIZE,
@@ -248,12 +386,15 @@ import {
   createStartRingRuleHelpers,
   isPlayerPositionInConnectorTunnel,
   getEffectiveAirMapIdForPlayer,
+  findTriggeredMapGate as findTriggeredMapGateFromModule,
+  getMapGateHintText as getMapGateHintTextFromModule,
   getCurrentMapIdForPlayer,
   buildMinePerimeterCliffs,
   buildTravelGate,
   buildCampTestArea,
   buildFrontierArea as buildFrontierAreaFromMaps,
 } from "./systems/maps.js";
+import { createMapRuntime } from "./systems/mapRuntime.js";
 import {
   FRONTIER_BUILDING_HEIGHT,
   FRONTIER_BUILDING_SIGN_MAX_CHARS,
@@ -290,9 +431,20 @@ import {
   canEditFrontierShopListing as canEditFrontierShopListingFromModule,
   canManageFrontierDisplaySlot as canManageFrontierDisplaySlotFromModule,
   canUseFrontierDisplaySlot as canUseFrontierDisplaySlotFromModule,
+  getFrontierBoothInteractionPlan as getFrontierBoothInteractionPlanFromModule,
+  getSellableFrontierShopEntries as getSellableFrontierShopEntriesFromModule,
+  getFrontierShopRegistrationAccess as getFrontierShopRegistrationAccessFromModule,
   isFrontierDisplayableEntry as isFrontierDisplayableEntryFromModule,
   getDisplayableFrontierEntries as getDisplayableFrontierEntriesFromModule,
   getFrontierShopPurchaseFeedback as getFrontierShopPurchaseFeedbackFromModule,
+  createFrontierShopPurchasePlan as createFrontierShopPurchasePlanFromModule,
+  getFrontierShopListingClearPlan as getFrontierShopListingClearPlanFromModule,
+  applyFrontierShopListingClearState as applyFrontierShopListingClearStateFromModule,
+  getFrontierShopListingRegistrationPlan as getFrontierShopListingRegistrationPlanFromModule,
+  applyFrontierShopListingRegistrationState as applyFrontierShopListingRegistrationStateFromModule,
+  getFrontierShopSlotUserAssignmentPlan as getFrontierShopSlotUserAssignmentPlanFromModule,
+  getFrontierShopSlotUserClearPlan as getFrontierShopSlotUserClearPlanFromModule,
+  getFrontierShopListingPriceUpdatePlan as getFrontierShopListingPriceUpdatePlanFromModule,
   formatFrontierShopUserDisplay as formatFrontierShopUserDisplayFromModule,
   canAssignFrontierDisplayEntryState as canAssignFrontierDisplayEntryStateFromModule,
   assignFrontierDisplayEntryState as assignFrontierDisplayEntryStateFromModule,
@@ -317,6 +469,9 @@ import {
   getWastelandClaimPhaseState as getWastelandClaimPhaseStateFromModule,
   canBuildOnWastelandCellState as canBuildOnWastelandCellStateFromModule,
   getConflictingWastelandFencePostsForClaim as getConflictingWastelandFencePostsForClaimFromModule,
+  rebuildWastelandDraftsFromFencePosts as rebuildWastelandDraftsFromModule,
+  partitionExpiredWastelandClaims as partitionExpiredWastelandClaimsFromModule,
+  getExpiredWastelandDraftReservations as getExpiredWastelandDraftReservationsFromModule,
   serializeFrontierWastelandServerState as serializeFrontierWastelandServerStateFromModule,
   normalizeFrontierWastelandState as normalizeFrontierWastelandStateFromModule,
 } from "./systems/frontier.js";
@@ -346,86 +501,6 @@ const LOW_AIR_EDGE_BLUR_MAX_PX = 26;
 const AIR_HUD_POSITION_KEY = "excit_air_hud_position_v1";
 const SHIFT_CAMERA_ROTATE_SENSITIVITY = 0.0062;
 const FRONTIER_PARCEL_BORDER_COLOR = 0xf3b24e;
-const WASTELAND_BUILD_PART_DEFS = Object.freeze({
-  woodFloor: { itemId: "woodFloor", slot: "floor", label: "목재 바닥", inputItemId: "woodPlank", inputCount: 2 },
-  woodWall: { itemId: "woodWall", slot: "wall", label: "목재 벽", inputItemId: "woodPlank", inputCount: 3 },
-  woodPillar: { itemId: "woodPillar", slot: "pillar", label: "목재 기둥", inputItemId: "woodPlank", inputCount: 2 },
-  stoneFloor: { itemId: "stoneFloor", slot: "floor", label: "석재 바닥", inputItemId: "masonryStone", inputCount: 2 },
-  stoneWall: { itemId: "stoneWall", slot: "wall", label: "석재 벽", inputItemId: "masonryStone", inputCount: 3 },
-  stonePillar: { itemId: "stonePillar", slot: "pillar", label: "석재 기둥", inputItemId: "masonryStone", inputCount: 2 },
-});
-const WASTELAND_STRUCTURE_SLOT_LABELS = Object.freeze({
-  floor: "바닥",
-  wall: "벽",
-  pillar: "기둥",
-});
-const REFINERY_RECIPES = {
-  purifyPowder: {
-    id: "purifyPowder",
-    label: "정화 가루",
-    inputItemId: "stoneDust",
-    inputCount: 3,
-    outputItemId: "purifyPowder",
-    outputCount: 1,
-  },
-  woodPlank: {
-    id: "woodPlank",
-    label: "목재",
-    inputItemId: "woodChip",
-    inputCount: 2,
-    outputItemId: "woodPlank",
-    outputCount: 1,
-  },
-  woodFloor: {
-    id: "woodFloor",
-    label: "목재 바닥",
-    inputItemId: "woodPlank",
-    inputCount: 2,
-    outputItemId: "woodFloor",
-    outputCount: 1,
-  },
-  woodWall: {
-    id: "woodWall",
-    label: "목재 벽",
-    inputItemId: "woodPlank",
-    inputCount: 3,
-    outputItemId: "woodWall",
-    outputCount: 1,
-  },
-  woodPillar: {
-    id: "woodPillar",
-    label: "목재 기둥",
-    inputItemId: "woodPlank",
-    inputCount: 2,
-    outputItemId: "woodPillar",
-    outputCount: 1,
-  },
-  stoneFloor: {
-    id: "stoneFloor",
-    label: "석재 바닥",
-    inputItemId: "masonryStone",
-    inputCount: 2,
-    outputItemId: "stoneFloor",
-    outputCount: 1,
-  },
-  stoneWall: {
-    id: "stoneWall",
-    label: "석재 벽",
-    inputItemId: "masonryStone",
-    inputCount: 3,
-    outputItemId: "stoneWall",
-    outputCount: 1,
-  },
-  stonePillar: {
-    id: "stonePillar",
-    label: "석재 기둥",
-    inputItemId: "masonryStone",
-    inputCount: 2,
-    outputItemId: "stonePillar",
-    outputCount: 1,
-  },
-};
-
 const RESIDENCE_NOTICE_BOARD_KEYS = ["boardA", "boardB", "boardC"];
 const WASTELAND_LAND_DEED_ITEM_ID = "wastelandLandDeed";
 
@@ -461,20 +536,19 @@ document.body.appendChild(uiLayer);
 
 let mansionSleepOverlay = null;
 let mansionSleepDialog = null;
-let mansionSleepOpen = false;
-let mansionSleepPoseActive = false;
+const workstationUiController = createWorkstationController();
 let mansionSleepWakePoint = { x: 0, z: 0, rotationY: Math.PI };
 let wastelandClaimConfirmOverlay = null;
 let wastelandClaimConfirmDialog = null;
 let wastelandClaimConfirmBody = null;
-let wastelandClaimConfirmOpen = false;
 let wastelandClaimConfirmRect = null;
 let wastelandClaimCancelOverlay = null;
 let wastelandClaimCancelDialog = null;
-let wastelandClaimCancelOpen = false;
 let personalStorageOverlay = null;
 let personalStorageWin = null;
-let personalStorageOpen = false;
+const inventoryUiController = createInventoryController();
+const wastelandController = createWastelandController();
+const wastelandSceneRuntime = createWastelandSceneRuntime();
 let frontierShopRegisterOverlay = null;
 let frontierShopRegisterWin = null;
 let frontierShopRegisterOpen = false;
@@ -537,8 +611,23 @@ const DEV_PROFILE_START_OFFSETS = Object.freeze({
   dev_user_1: { x: -1.2, z: 0 },
   dev_user_2: { x: 1.2, z: 0 },
 });
+const sessionRuntime = createSessionRuntime({
+  devProfileIds: DEV_PROFILE_IDS,
+  fallbackProfileId: DEV_PROFILE_IDS[0],
+  devProfileSavePrefix: DEV_PROFILE_SAVE_PREFIX,
+  guestSaveKey: "voxel-town.guest-profile-save.v1",
+});
+const sessionController = createSessionController({
+  authApiBaseUrl: AUTH_API_BASE_URL,
+  devActiveProfileKey: DEV_ACTIVE_PROFILE_KEY,
+  devProfileIds: DEV_PROFILE_IDS,
+  devProfileStartOffsets: DEV_PROFILE_START_OFFSETS,
+  fallbackProfileId: DEV_PROFILE_IDS[0],
+  startX: START_X,
+});
 let playerSaveSyncInFlight = null;
 let lastPlayerSaveSnapshot = "";
+const playerSaveRuntime = createPlayerSaveRuntime();
 let lastPlayerSaveAttemptAt = 0;
 let playerSaveSyncPaused = false;
 let playerSaveStatusTimer = null;
@@ -547,7 +636,6 @@ let playerSaveBaselineState = "unknown";
 let activeDevProfileId = DEV_PROFILE_IDS[0];
 let nftExhibitBoard = null;
 let nftExhibitScreenMaterial = null;
-let nftExhibitRefreshToken = 0;
 let nftExhibitRefreshTimer = null;
 let nftExhibitSelectionOpen = false;
 let nftExhibitSelectionLoading = false;
@@ -558,6 +646,10 @@ let nftExhibitSelectedItem = null;
 let nftExhibitSelectionOwnershipMismatch = false;
 let nftExhibitSelectionOwnershipMessage = "";
 let nftExhibitOwnedTokensCache = createNftOwnedTokensCache();
+const nftExhibitRuntime = createNftExhibitRuntime({
+  normalizeSelection: normalizeNftBoardSelection,
+  isSameSelection: isSameNftBoardSelection,
+});
 let residenceNoticeBoardState = createDefaultResidenceNoticeBoardState();
 const residenceNoticeBoardVisuals = {};
 let quickUseAssignState = null;
@@ -970,15 +1062,15 @@ function getDevProfileDisplayName(profileId = activeDevProfileId) {
 }
 
 function sanitizeDevProfileId(profileId) {
-  return sanitizeDevProfileIdFromWallet(profileId, DEV_PROFILE_IDS, DEV_PROFILE_IDS[0]);
+  return sessionRuntime.sanitizeDevProfileId(profileId);
 }
 
 function isUiEscapeCloseHandled() {
-  if (wastelandClaimCancelOpen) {
+  if (wastelandController.isClaimCancelOpen()) {
     closeWastelandClaimCancelDialog();
     return true;
   }
-  if (wastelandClaimConfirmOpen) {
+  if (wastelandController.isClaimConfirmOpen()) {
     closeWastelandClaimConfirmDialog();
     return true;
   }
@@ -986,11 +1078,11 @@ function isUiEscapeCloseHandled() {
     closeNftBoardSelectionOverlay();
     return true;
   }
-  if (personalStorageTransferState) {
+  if (inventoryUiController.getTransferState()) {
     closePersonalStorageTransferDialog();
     return true;
   }
-  if (personalStorageOpen) {
+  if (inventoryUiController.isPersonalStorageOpen()) {
     setPersonalStorageOpen(false);
     return true;
   }
@@ -998,11 +1090,11 @@ function isUiEscapeCloseHandled() {
     setFrontierBuildOpen(false);
     return true;
   }
-  if (refineryOpen) {
+  if (workstationUiController.isRefineryOpen()) {
     setRefineryOpen(false);
     return true;
   }
-  if (forgeOpen) {
+  if (workstationUiController.isForgeOpen()) {
     setForgeOpen(false);
     return true;
   }
@@ -1010,7 +1102,7 @@ function isUiEscapeCloseHandled() {
     closeDiscardDialog();
     return true;
   }
-  if (invOpen) {
+  if (inventoryUiController.isInventoryOpen()) {
     setInvOpen(false);
     return true;
   }
@@ -1023,15 +1115,15 @@ function isUiEscapeCloseHandled() {
 
 function isWorkUiMovementLocked() {
   return (
-    personalStorageOpen ||
-    !!personalStorageTransferState ||
+    inventoryUiController.isPersonalStorageOpen() ||
+    !!inventoryUiController.getTransferState() ||
     frontierBuildOpen ||
     frontierBoothOpen ||
     frontierShopRegisterOpen ||
-    wastelandClaimCancelOpen ||
-    wastelandClaimConfirmOpen ||
-    refineryOpen ||
-    forgeOpen
+    wastelandController.isClaimCancelOpen() ||
+    wastelandController.isClaimConfirmOpen() ||
+    workstationUiController.isRefineryOpen() ||
+    workstationUiController.isForgeOpen()
   );
 }
 
@@ -1086,12 +1178,12 @@ function clearGameplayKeys() {
 }
 
 function setNftBoardSelection(nextSelection, { save = true } = {}) {
-  const normalizedSelection = normalizeNftBoardSelection(nextSelection);
-  if (isSameNftBoardSelection(nftExhibitSelectedItem, normalizedSelection)) {
+  const selectionPlan = nftExhibitRuntime.getSelectionPlan(nftExhibitSelectedItem, nextSelection);
+  if (!selectionPlan.changed) {
     closeNftBoardSelectionOverlay();
     return false;
   }
-  nftExhibitSelectedItem = normalizedSelection;
+  nftExhibitSelectedItem = selectionPlan.selection;
   closeNftBoardSelectionOverlay();
   scheduleNftExhibitBoardRefresh();
   if (save) {
@@ -1162,6 +1254,7 @@ async function fetchWalletOwnedExhibitTokens() {
 
 async function reloadNftBoardSelectionList({ forceRefresh = false } = {}) {
   if (!nftExhibitSelectionOpen) return;
+  const requestToken = nftExhibitRuntime.beginListRequest();
   nftExhibitSelectionLoading = true;
   nftExhibitSelectionStatus = "지갑 NFT 목록을 불러오는 중입니다...";
   nftExhibitSelectionTone = "loading";
@@ -1174,36 +1267,23 @@ async function reloadNftBoardSelectionList({ forceRefresh = false } = {}) {
       nftExhibitOwnedTokensCache.fetchedAt = 0;
     }
     const tokens = await fetchWalletOwnedExhibitTokens();
-    if (!nftExhibitSelectionOpen) return;
-    nftExhibitOwnedTokens = tokens;
-    const selected = getActiveNftBoardSelection();
-    if (selected?.mode !== "none" && selected?.contractAddress && selected?.tokenId) {
-      const stillOwned = tokens.some(
-        (token) =>
-          token.contractAddress.toLowerCase() === selected.contractAddress &&
-          token.tokenId === selected.tokenId
-      );
-      nftExhibitSelectionOwnershipMismatch = !stillOwned;
-      nftExhibitSelectionOwnershipMessage = stillOwned
-        ? ""
-        : "현재 선택한 NFT를 이 지갑이 보유하고 있지 않습니다.";
-    } else {
-      nftExhibitSelectionOwnershipMismatch = false;
-      nftExhibitSelectionOwnershipMessage = "";
-    }
-    nftExhibitSelectionStatus = tokens.length > 0
-      ? "전시할 NFT를 하나 선택하세요."
-      : "지갑에서 전시 가능한 NFT를 찾지 못했습니다.";
-    nftExhibitSelectionTone = nftExhibitSelectionOwnershipMismatch
-      ? "error"
-      : (tokens.length > 0 ? "success" : "empty");
+    if (!nftExhibitSelectionOpen || !nftExhibitRuntime.isCurrentListRequest(requestToken)) return;
+    const listState = nftExhibitRuntime.getListResultState({
+      tokens,
+      selected: getActiveNftBoardSelection(),
+    });
+    nftExhibitOwnedTokens = listState.tokens;
+    nftExhibitSelectionOwnershipMismatch = listState.ownershipMismatch;
+    nftExhibitSelectionOwnershipMessage = listState.ownershipMessage;
+    nftExhibitSelectionStatus = listState.status;
+    nftExhibitSelectionTone = listState.tone;
   } catch (error) {
-    if (!nftExhibitSelectionOpen) return;
+    if (!nftExhibitSelectionOpen || !nftExhibitRuntime.isCurrentListRequest(requestToken)) return;
     nftExhibitOwnedTokens = [];
     nftExhibitSelectionStatus = error?.message || "NFT 목록을 불러오지 못했습니다.";
     nftExhibitSelectionTone = "error";
   } finally {
-    if (!nftExhibitSelectionOpen) return;
+    if (!nftExhibitSelectionOpen || !nftExhibitRuntime.isCurrentListRequest(requestToken)) return;
     nftExhibitSelectionLoading = false;
     updateNftBoardSelectionUi();
     renderNftBoardTokenGrid();
@@ -1244,7 +1324,7 @@ function scheduleNftExhibitBoardRefresh() {
 
 async function refreshNftExhibitBoard() {
   if (!nftExhibitScreenMaterial) return;
-  const refreshToken = ++nftExhibitRefreshToken;
+  const refreshToken = nftExhibitRuntime.beginBoardRefresh();
   const selectedNft = getActiveNftBoardSelection();
 
   nftExhibitSelectionOwnershipMismatch = false;
@@ -1269,7 +1349,7 @@ async function refreshNftExhibitBoard() {
   }
 
   const chainId = walletAuth.chainId || (await window.ethereum?.request?.({ method: "eth_chainId" }).catch(() => ""));
-  if (refreshToken !== nftExhibitRefreshToken) return;
+  if (!nftExhibitRuntime.isCurrentBoardRefresh(refreshToken)) return;
   if (chainId !== selectedNft.chainId) {
     setNftBoardMessage(
       "지갑 NFT 전시",
@@ -1290,7 +1370,7 @@ async function refreshNftExhibitBoard() {
       selectedNft.contractAddress,
       selectedNft.tokenId
     );
-    if (refreshToken !== nftExhibitRefreshToken) return;
+    if (!nftExhibitRuntime.isCurrentBoardRefresh(refreshToken)) return;
     if (owner.toLowerCase() !== walletAuth.address.toLowerCase()) {
       nftExhibitSelectionOwnershipMismatch = true;
       nftExhibitSelectionOwnershipMessage = "현재 선택한 NFT를 이 지갑이 보유하고 있지 않습니다.";
@@ -1306,9 +1386,9 @@ async function refreshNftExhibitBoard() {
       selectedNft.contractAddress,
       selectedNft.tokenId
     );
-    if (refreshToken !== nftExhibitRefreshToken) return;
+    if (!nftExhibitRuntime.isCurrentBoardRefresh(refreshToken)) return;
     const metadata = await fetchNftMetadata(tokenUri);
-    if (refreshToken !== nftExhibitRefreshToken) return;
+    if (!nftExhibitRuntime.isCurrentBoardRefresh(refreshToken)) return;
 
     const imageUrl =
       metadata?.image ||
@@ -1333,10 +1413,10 @@ async function refreshNftExhibitBoard() {
       metadata?.name || selectedNft.name || NFT_EXHIBIT_TARGET.title,
       `소유자: ${ownerDisplayName}`
     );
-    if (refreshToken !== nftExhibitRefreshToken || !texture) return;
+    if (!nftExhibitRuntime.isCurrentBoardRefresh(refreshToken) || !texture) return;
     applyNftBoardTexture(texture);
   } catch (error) {
-    if (refreshToken !== nftExhibitRefreshToken) return;
+    if (!nftExhibitRuntime.isCurrentBoardRefresh(refreshToken)) return;
     setNftBoardMessage(
       "지갑 NFT 전시",
       [error?.message || "NFT를 불러오지 못했습니다."],
@@ -1363,46 +1443,18 @@ function canPlayGame() {
 }
 
 function validateNickname(raw) {
-  const nickname = raw.trim();
-  if (nickname.length < 2 || nickname.length > 12) {
-    return "닉네임은 2자 이상 12자 이하로 입력해주세요.";
-  }
-  if (!/^[A-Za-z0-9가-힣_]+$/.test(nickname)) {
-    return "닉네임은 한글, 영문, 숫자, 밑줄만 사용할 수 있습니다.";
-  }
-  return "";
+  return sessionRuntime.validateNickname(raw);
 }
 
 async function apiFetchJson(path, options = {}) {
-  try {
-    const { headers: optionHeaders = {}, ...restOptions } = options;
-    const response = await fetch(`${AUTH_API_BASE_URL}${path}`, {
-      ...restOptions,
-      headers: {
-        "Content-Type": "application/json",
-        ...optionHeaders,
-      },
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok || data?.ok === false) {
-    return {
-      ok: false,
-      status: response.status,
-      error: data?.error || "인증 서버 요청에 실패했습니다.",
-      data,
-    };
+  const result = await sessionController.apiFetchJson(path, options);
+  if (result.status === 0) {
+    return { ...result, error: "인증 서버에 연결하지 못했습니다. server를 먼저 실행해주세요." };
   }
-    return {
-      ok: true,
-      data,
-    };
-  } catch {
-    return {
-      ok: false,
-      status: 0,
-      error: "인증 서버에 연결하지 못했습니다. server를 먼저 실행해주세요.",
-    };
+  if (!result.ok && !result.data?.error) {
+    return { ...result, error: "인증 서버 요청에 실패했습니다." };
   }
+  return result;
 }
 
 function getAuthHeaders() {
@@ -1430,13 +1482,7 @@ function isServerBackedWalletSession() {
 }
 
 function getActivePlayerSaveKey() {
-  if (isDevSession()) {
-    return `${DEV_PROFILE_SAVE_PREFIX}${sanitizeDevProfileId(activeDevProfileId)}`;
-  }
-  if (isGuestSession()) {
-    return "voxel-town.guest-profile-save.v1";
-  }
-  return "";
+  return sessionRuntime.getPlayerSaveKey(walletAuth, activeDevProfileId);
 }
 
 function createDefaultSharedWorldSave() {
@@ -1537,22 +1583,26 @@ function loadSharedWorldStateFromLocal() {
 }
 
 function resetPlayerSaveProtectionState() {
+  playerSaveRuntime.reset();
   lastPlayerSaveSnapshot = "";
   lastKnownPlayerSaveUpdatedAt = "";
   playerSaveBaselineState = "unknown";
 }
 
 function beginPlayerSaveHydration() {
+  playerSaveRuntime.beginHydration();
   playerSaveSyncPaused = true;
   playerSaveBaselineState = "pending";
   lastPlayerSaveSnapshot = "";
 }
 
 function markPlayerSaveBaselineReady(mode = "hydrated") {
+  playerSaveRuntime.markBaselineReady(mode);
   playerSaveBaselineState = mode;
 }
 
 function blockPlayerSaveBaseline(message = "") {
+  playerSaveRuntime.blockBaseline();
   playerSaveBaselineState = "blocked";
   if (message) {
     walletLoginStatus.textContent = message;
@@ -1561,7 +1611,7 @@ function blockPlayerSaveBaseline(message = "") {
 }
 
 function hasConfirmedPlayerSaveBaseline() {
-  return playerSaveBaselineState === "hydrated" || playerSaveBaselineState === "fresh";
+  return playerSaveRuntime.hasConfirmedBaseline();
 }
 
 function hidePlayerSaveStatus(delay = 1400) {
@@ -1823,12 +1873,7 @@ function getDevCreditsMigrationKey(profileId = activeDevProfileId) {
 }
 
 function getDevProfileStartPosition(profileId = activeDevProfileId) {
-  const normalizedProfileId = sanitizeDevProfileId(profileId);
-  const offset = DEV_PROFILE_START_OFFSETS[normalizedProfileId] ?? DEV_PROFILE_START_OFFSETS[DEV_PROFILE_IDS[0]];
-  return {
-    x: START_X + (offset?.x ?? 0),
-    z: START_Z + (offset?.z ?? 0),
-  };
+  return sessionController.getDevProfileStartPosition(profileId);
 }
 
 function applyDevProfileStartPosition(profileId = activeDevProfileId) {
@@ -1840,23 +1885,20 @@ function applyDevProfileStartPosition(profileId = activeDevProfileId) {
 }
 
 function initializeDevProfileState(preferredProfileId = "") {
-  const rawProfile = localStorage.getItem(DEV_ACTIVE_PROFILE_KEY);
-  activeDevProfileId = sanitizeDevProfileId(preferredProfileId || rawProfile || activeDevProfileId);
+  const initialization = sessionController.getDevProfileInitializationPlan({
+    preferredProfileId,
+    storedProfileId: localStorage.getItem(DEV_ACTIVE_PROFILE_KEY),
+    activeProfileId: activeDevProfileId,
+  });
+  activeDevProfileId = initialization.profileId;
   resetPlayerSaveProtectionState();
   playerSaveSyncPaused = false;
   setWalletAuthState(
-    {
-      authenticated: true,
-      address: activeDevProfileId,
-      signature: "",
-      nonce: "",
-      issuedAt: new Date().toISOString(),
-      chainId: "development",
-      token: "",
-      sessionType: "dev",
-      nickname: getDevProfileDisplayName(activeDevProfileId),
-      devProfileId: activeDevProfileId,
-    },
+    sessionController.createDevSessionState(
+      activeDevProfileId,
+      getDevProfileDisplayName,
+      new Date().toISOString()
+    ),
     { persist: false }
   );
   const sharedWorld = loadSharedWorldStateFromLocal();
@@ -1889,7 +1931,7 @@ function initializeDevProfileState(preferredProfileId = "") {
   resetWastelandDraftUiState();
   refreshCurrentWastelandDraftUiState();
   saveActiveLocalProfileState();
-  localStorage.setItem(DEV_ACTIVE_PROFILE_KEY, activeDevProfileId);
+  localStorage.setItem(initialization.activeProfileKey, activeDevProfileId);
   walletLoginStatus.textContent = `${getDevProfileDisplayName(activeDevProfileId)}로 개발자 모드에 입장했습니다.`;
 }
 
@@ -1910,18 +1952,11 @@ function writeDevProfilePresetSnapshot(profileId) {
   const targetProfileId = sanitizeDevProfileId(profileId);
   activeDevProfileId = targetProfileId;
   setWalletAuthState(
-    {
-      authenticated: true,
-      address: targetProfileId,
-      signature: "",
-      nonce: "",
-      issuedAt: new Date().toISOString(),
-      chainId: "development",
-      token: "",
-      sessionType: "dev",
-      nickname: getDevProfileDisplayName(targetProfileId),
-      devProfileId: targetProfileId,
-    },
+    sessionController.createDevSessionState(
+      targetProfileId,
+      getDevProfileDisplayName,
+      new Date().toISOString()
+    ),
     { persist: false }
   );
   applyFreshPlayerStartState();
@@ -3151,230 +3186,17 @@ function setTabStyles() {
   }
 }
 
-// ===== Inventory Data (simple) =====
-// 앞으로 아이템이 늘어날 걸 대비해 "탭별 슬롯 배열" 형태로 준비
-const inventorySlots = {
-  equip: Array.from({ length: 25 }, () => null),
-  cons: Array.from({ length: 25 }, () => null),
-  misc: Array.from({ length: 25 }, () => null),
-};
-
-// 지금 있는 두 아이템을 슬롯에 "고정 배치" (원하면 나중에 드래그로 바꿀 수 있음)
-// - 곡괭이: 장비 탭 0번
-// - 돌가루: 소비 탭 0번
-function syncGameStateToSlots() {
-  // 탭별 UI 슬롯 배열을 매번 초기화
-  inventorySlots.equip.fill(null);
-  inventorySlots.cons.fill(null);
-  inventorySlots.misc.fill(null);
-
-  // 실제 인벤 슬롯을 탭별로 옮겨 담기
-  for (const s of inventory.slots) {
-    if (!s) continue;
-
-    const category = getInventoryEntryCategory(s);
-    if (!category) continue;
-
-    const itemUI = structuredClone(s);
-
-    if (category === "equip") {
-      // 장비 탭: 빈 칸에 순서대로 배치
-      const idx = inventorySlots.equip.findIndex((x) => x === null);
-      if (idx !== -1) inventorySlots.equip[idx] = itemUI;
-    } else if (category === "cons") {
-      const idx = inventorySlots.cons.findIndex((x) => x === null);
-      if (idx !== -1) inventorySlots.cons[idx] = itemUI;
-    } else {
-      const idx = inventorySlots.misc.findIndex((x) => x === null);
-      if (idx !== -1) inventorySlots.misc[idx] = itemUI;
-    }
-  }
-    }
-
-
 function renderInventoryWindow() {
-  syncGameStateToSlots();
-  setTabStyles();
-
-  // grid 초기화
-  invgrid.innerHTML = "";
-
-  const slots = inventorySlots[activeTab];
-  for (let i = 0; i < slots.length; i++) {
-    const slot = makeSlot();
-    const item = slots[i];
-
-    if (item) {
-      slot.draggable = true;
-      slot.style.cursor = "grab";
-      slot.addEventListener("dragstart", (event) => {
-        inventoryDraggedEntry = item;
-        if (event.dataTransfer) {
-          event.dataTransfer.effectAllowed = "move";
-          event.dataTransfer.setData("text/plain", getInventoryEntryDisplayName(item));
-        }
-        slot.style.opacity = "0.5";
-      });
-      slot.addEventListener("dragend", () => {
-        inventoryDraggedEntry = null;
-        slot.style.opacity = "1";
-        inventoryTrashDropZone.style.background = "rgba(255,255,255,0.72)";
-        inventoryTrashDropZone.style.borderColor = "rgba(120,120,120,0.38)";
-        inventoryTrashDropZone.style.transform = "scale(1)";
-      });
-
-      const icon = createInventoryEntryVisualElement(item, { size: 38 });
-      slot.appendChild(icon);
-
-      if (!isNftInventoryEntry(item) && item.count && item.count > 1) {
-        const badge = document.createElement("div");
-        badge.textContent = String(item.count);
-        badge.style.position = "absolute";
-        badge.style.right = "6px";
-        badge.style.bottom = "4px";
-        badge.style.fontSize = "12px";
-        badge.style.padding = "1px 6px";
-        badge.style.borderRadius = "10px";
-        badge.style.background = "rgba(0,0,0,0.65)";
-        badge.style.color = "white";
-        badge.style.pointerEvents = "none";
-        slot.appendChild(badge);
-      }
-
-      // ===== Equip toggle (double click) =====
-        const isEquipTab = activeTab === "equip";
-        const itemId = getSlotItemId(item);
-        const equipSlot = getInventoryEntryEquipSlot(item);
-        const isEquipped = equipSlot
-          ? isSameInventoryEntryAsEquipped(item, getEquippedItemRef(equipSlot))
-          : false;
-
-        // 장착된 아이템은 테두리 하이라이트
-        if (isEquipTab && isEquipped) {
-        slot.style.borderColor = "rgba(255,140,0,0.95)";
-        slot.style.boxShadow = "0 0 0 3px rgba(255,140,0,0.35), inset 0 1px 0 rgba(255,255,255,0.8)";   
-        }
-
-        // 장비 탭에서만 클릭 가능하도록 커서/효과
-        if (isEquipTab && equipSlot) {
-        slot.style.cursor = "grab";
-
-        slot.addEventListener("dblclick", () => {
-        toggleEquipItem(item);
-     });
-        }   
-
-      if (activeTab === "cons" && itemId === "freshAirCanister") {
-        slot.style.cursor = "pointer";
-        slot.addEventListener("dblclick", () => {
-        useFreshAirCanister();
-     });
-        }
-
-      if (activeTab === "misc" && itemId === "fencePost") {
-        slot.style.cursor = "pointer";
-        if (wastelandFencePlacementMode) {
-          slot.style.borderColor = "rgba(255,140,0,0.95)";
-          slot.style.boxShadow = "0 0 0 3px rgba(255,140,0,0.35), inset 0 1px 0 rgba(255,255,255,0.8)";
-        }
-        slot.addEventListener("dblclick", () => {
-          toggleWastelandFencePlacementMode();
-        });
-      }
-
-      if (activeTab === "misc" && isWastelandBuildPartItemId(itemId)) {
-        slot.style.cursor = "pointer";
-        if (selectedWastelandStructureItemId === itemId) {
-          slot.style.borderColor = "rgba(80,160,255,0.95)";
-          slot.style.boxShadow = "0 0 0 3px rgba(80,160,255,0.28), inset 0 1px 0 rgba(255,255,255,0.8)";
-        }
-        slot.addEventListener("dblclick", () => {
-          toggleWastelandStructurePlacementItem(itemId);
-        });
-      }
-
-      if (activeTab === "cons" && isQuickUseAssignableEntry(item)) {
-        const assignedKey = getAssignedQuickUseKeyForEntry(item);
-        const isAssignPending = isQuickUseAssignPendingForEntry(item);
-        const quickBtn = document.createElement("button");
-        quickBtn.type = "button";
-        quickBtn.textContent = assignedKey || "";
-        quickBtn.style.position = "absolute";
-        quickBtn.style.left = "4px";
-        quickBtn.style.top = "4px";
-        quickBtn.style.width = "18px";
-        quickBtn.style.height = "18px";
-        quickBtn.style.padding = "0";
-        quickBtn.style.borderRadius = "999px";
-        quickBtn.style.border = isAssignPending || assignedKey
-          ? "1px solid rgba(255,160,60,0.95)"
-          : "1px solid rgba(0,0,0,0.16)";
-        quickBtn.style.background = isAssignPending || assignedKey
-          ? "rgba(255,160,60,0.92)"
-          : "rgba(255,255,255,0.88)";
-        quickBtn.style.color = isAssignPending || assignedKey ? "#2f1700" : "#3f4650";
-        quickBtn.style.fontSize = "10px";
-        quickBtn.style.fontWeight = "800";
-        quickBtn.style.cursor = "pointer";
-        quickBtn.style.zIndex = "2";
-        quickBtn.title = isAssignPending
-          ? "1~5 중 원하는 키를 누르세요"
-          : assignedKey
-            ? `${assignedKey} 단축 해제`
-            : "단축키 지정";
-        quickBtn.addEventListener("click", (event) => {
-          event.stopPropagation();
-          if (assignedKey && !isAssignPending) {
-            clearQuickUseAssignmentForEntry(item);
-            return;
-          }
-          beginQuickUseAssignment(item);
-        });
-        slot.appendChild(quickBtn);
-      }
-
-      if (isNftInventoryEntry(item)) {
-        const nftBadge = document.createElement("div");
-        nftBadge.textContent = "NFT";
-        nftBadge.style.position = "absolute";
-        nftBadge.style.left = "6px";
-        nftBadge.style.top = "4px";
-        nftBadge.style.fontSize = "10px";
-        nftBadge.style.fontWeight = "800";
-        nftBadge.style.padding = "2px 6px";
-        nftBadge.style.borderRadius = "999px";
-        nftBadge.style.background = "rgba(106, 76, 255, 0.88)";
-        nftBadge.style.color = "white";
-        nftBadge.style.pointerEvents = "none";
-        slot.appendChild(nftBadge);
-      }
-
-
-      // 아주 가벼운 툴팁(hover)
-      const tooltipData = getInventoryEntryTooltipData(item);
-      slot.addEventListener("pointerenter", (e) => {
-        showItemTooltip(tooltipData, e.clientX, e.clientY);
-      });
-      slot.addEventListener("pointermove", (e) => {
-        showItemTooltip(tooltipData, e.clientX, e.clientY);
-      });
-      slot.addEventListener("pointerleave", () => {
-        hideItemTooltip();
-      });
-     }
-
-        invgrid.appendChild(slot);
-     }
+  inventoryRenderer.renderInventoryWindow();
 }
 
 function setPersonalStorageOpen(v) {
-  personalStorageOpen = v;
+  const open = inventoryUiController.setPersonalStorageOpen(v);
   if (!personalStorageOverlay || !personalStorageWin) return;
-  personalStorageOverlay.style.display = v ? "block" : "none";
-  personalStorageWin.style.display = v ? "block" : "none";
-  if (!v) {
+  personalStorageOverlay.style.display = open ? "block" : "none";
+  personalStorageWin.style.display = open ? "block" : "none";
+  if (!open) {
     closePersonalStorageTransferDialog();
-    inventoryDragState = null;
     personalStorageMessage.textContent = "";
     hideItemTooltip();
   } else {
@@ -3383,7 +3205,7 @@ function setPersonalStorageOpen(v) {
 }
 
 function closePersonalStorageTransferDialog() {
-  personalStorageTransferState = null;
+  inventoryUiController.closeTransfer();
   if (!personalStorageTransferCurtain || !personalStorageTransferDialog) return;
   personalStorageTransferCurtain.style.display = "none";
   personalStorageTransferDialog.style.display = "none";
@@ -3391,13 +3213,9 @@ function closePersonalStorageTransferDialog() {
 }
 
 function openPersonalStorageTransferDialog(config) {
-  if (!config || !config.entry) return false;
-  const maxCount = Math.max(1, getSlotItemCount(config.entry));
-  if (maxCount <= 1) return false;
-  personalStorageTransferState = {
-    ...config,
-    maxCount,
-  };
+  const transferState = inventoryUiController.openTransfer(config, getSlotItemCount);
+  if (!transferState) return false;
+  const { maxCount } = transferState;
   personalStorageTransferTitle.textContent = config.target === "storage" ? "창고로 옮길 개수" : "인벤토리로 옮길 개수";
   personalStorageTransferItemLabel.textContent = getInventoryEntryDisplayName(config.entry);
   personalStorageTransferOwnedCount.textContent = `현재 개수: ${maxCount}`;
@@ -3414,18 +3232,19 @@ function openPersonalStorageTransferDialog(config) {
 }
 
 function commitPersonalStorageTransferDialog() {
-  if (!personalStorageTransferState) return false;
-  const { target, entry, index, maxCount } = personalStorageTransferState;
-  const rawCount = Number.parseInt(personalStorageTransferCountInput.value, 10);
-  if (!Number.isFinite(rawCount) || rawCount < 1 || rawCount > maxCount) {
-    personalStorageTransferError.textContent = `1 ~ ${maxCount} 사이의 숫자를 입력하세요.`;
+  const transferPlan = inventoryUiController.getTransferCommitPlan(personalStorageTransferCountInput.value);
+  if (!transferPlan.ok) {
+    if (transferPlan.reason === "invalid-count") {
+      personalStorageTransferError.textContent = `1 ~ ${transferPlan.maxCount} 사이의 숫자를 입력하세요.`;
+    }
     return false;
   }
+  const { target, entry, index, count } = transferPlan;
 
   const result =
     target === "storage"
-      ? moveInventoryEntryToStorage(entry, rawCount)
-      : moveStorageEntryToInventory(index, rawCount);
+      ? moveInventoryEntryToStorage(entry, count)
+      : moveStorageEntryToInventory(index, count);
 
   if (!result.ok) {
     personalStorageTransferError.textContent = result.reason;
@@ -3441,175 +3260,100 @@ function commitPersonalStorageTransferDialog() {
 }
 
 function renderPersonalStorageWindow() {
-  inventoryStoragePanel.subtitle.textContent = `보유 슬롯 ${inventory.slots.filter(Boolean).length}/${inventory.slots.length}`;
-  personalStoragePanel.subtitle.textContent = `창고 슬롯 ${personalStorage.slots.filter(Boolean).length}/${personalStorage.slots.length}`;
-  inventoryStoragePanel.grid.innerHTML = "";
-  personalStoragePanel.grid.innerHTML = "";
-
-  function decorateStorageSlot(slotEl, entry) {
-    if (!entry) return;
-    const icon = createInventoryEntryVisualElement(entry, { size: 38 });
-    slotEl.appendChild(icon);
-    if (!isNftInventoryEntry(entry) && getSlotItemCount(entry) > 1) {
-      const badge = document.createElement("div");
-      badge.textContent = String(getSlotItemCount(entry));
-      badge.style.position = "absolute";
-      badge.style.right = "6px";
-      badge.style.bottom = "4px";
-      badge.style.fontSize = "12px";
-      badge.style.padding = "1px 6px";
-      badge.style.borderRadius = "10px";
-      badge.style.background = "rgba(0,0,0,0.65)";
-      badge.style.color = "white";
-      badge.style.pointerEvents = "none";
-      slotEl.appendChild(badge);
-    }
-    const tooltipData = getInventoryEntryTooltipData(entry);
-    slotEl.addEventListener("pointerenter", (e) => showItemTooltip(tooltipData, e.clientX, e.clientY));
-    slotEl.addEventListener("pointermove", (e) => showItemTooltip(tooltipData, e.clientX, e.clientY));
-    slotEl.addEventListener("pointerleave", hideItemTooltip);
-  }
-
-  for (let i = 0; i < inventory.slots.length; i += 1) {
-    const slotEl = makeSlot();
-    const entry = inventory.slots[i];
-    if (entry) {
-      slotEl.draggable = true;
-      slotEl.style.cursor = "grab";
-      slotEl.addEventListener("dragstart", (event) => {
-        inventoryDragState = { source: "inventory", entry };
-        if (event.dataTransfer) {
-          event.dataTransfer.effectAllowed = "move";
-          event.dataTransfer.setData("text/plain", getInventoryEntryDisplayName(entry));
-        }
-        slotEl.style.opacity = "0.5";
-      });
-      slotEl.addEventListener("dragend", () => {
-        inventoryDragState = null;
-        slotEl.style.opacity = "1";
-      });
-      decorateStorageSlot(slotEl, entry);
-    }
-    inventoryStoragePanel.grid.appendChild(slotEl);
-  }
-
-  for (let i = 0; i < personalStorage.slots.length; i += 1) {
-    const slotEl = makeSlot();
-    const entry = personalStorage.slots[i];
-    slotEl.addEventListener("dragover", (event) => {
-      if (!inventoryDragState) return;
-      event.preventDefault();
-      slotEl.style.background = "rgba(255,239,219,0.96)";
-      slotEl.style.borderColor = "rgba(232,120,66,0.9)";
-    });
-    slotEl.addEventListener("dragleave", () => {
-      slotEl.style.background = "rgba(255,255,255,0.95)";
-      slotEl.style.borderColor = "rgba(0,0,0,0.2)";
-    });
-    slotEl.addEventListener("drop", (event) => {
-      event.preventDefault();
-      slotEl.style.background = "rgba(255,255,255,0.95)";
-      slotEl.style.borderColor = "rgba(0,0,0,0.2)";
-      if (!inventoryDragState) return;
-      if (inventoryDragState.source !== "inventory") {
-        personalStorageMessage.textContent = "창고 안에서는 빈 인벤토리 칸으로만 다시 옮길 수 있습니다.";
-        inventoryDragState = null;
-        return;
-      }
-      const draggedEntry = inventoryDragState.entry;
-      inventoryDragState = null;
-      if (getSlotItemCount(draggedEntry) > 1) {
-        openPersonalStorageTransferDialog({
-          source: "inventory",
-          target: "storage",
-          entry: structuredClone(draggedEntry),
-        });
-      } else {
-        const result = moveInventoryEntryToStorage(draggedEntry);
-        personalStorageMessage.textContent = result.ok ? "" : result.reason;
-        if (result.ok) {
-          updateInventoryUI();
-          schedulePlayerSaveSync(true);
-        }
-      }
-      renderPersonalStorageWindow();
-    });
-    if (entry) {
-      slotEl.draggable = true;
-      slotEl.style.cursor = "grab";
-      slotEl.addEventListener("dragstart", (event) => {
-        inventoryDragState = { source: "storage", index: i, entry };
-        if (event.dataTransfer) {
-          event.dataTransfer.effectAllowed = "move";
-          event.dataTransfer.setData("text/plain", getInventoryEntryDisplayName(entry));
-        }
-        slotEl.style.opacity = "0.5";
-      });
-      slotEl.addEventListener("dragend", () => {
-        inventoryDragState = null;
-        slotEl.style.opacity = "1";
-      });
-      decorateStorageSlot(slotEl, entry);
-    }
-    personalStoragePanel.grid.appendChild(slotEl);
-  }
-
-  for (const child of inventoryStoragePanel.grid.children) {
-    child.addEventListener("dragover", (event) => {
-      if (!inventoryDragState || inventoryDragState.source !== "storage") return;
-      event.preventDefault();
-      child.style.background = "rgba(228,241,255,0.98)";
-      child.style.borderColor = "rgba(92,145,228,0.86)";
-    });
-    child.addEventListener("dragleave", () => {
-      child.style.background = "rgba(255,255,255,0.95)";
-      child.style.borderColor = "rgba(0,0,0,0.2)";
-    });
-    child.addEventListener("drop", (event) => {
-      event.preventDefault();
-      child.style.background = "rgba(255,255,255,0.95)";
-      child.style.borderColor = "rgba(0,0,0,0.2)";
-      if (!inventoryDragState || inventoryDragState.source !== "storage") return;
-      const draggedEntry = inventoryDragState.entry;
-      const draggedIndex = inventoryDragState.index;
-      inventoryDragState = null;
-      if (getSlotItemCount(draggedEntry) > 1) {
-        openPersonalStorageTransferDialog({
-          source: "storage",
-          target: "inventory",
-          index: draggedIndex,
-          entry: structuredClone(draggedEntry),
-        });
-      } else {
-        const result = moveStorageEntryToInventory(draggedIndex);
-        personalStorageMessage.textContent = result.ok ? "" : result.reason;
-        if (result.ok) {
-          updateInventoryUI();
-          schedulePlayerSaveSync(true);
-        }
-      }
-      renderPersonalStorageWindow();
-    });
-  }
+  inventoryRenderer.renderPersonalStorageWindow();
 }
 
 // I 키로 인벤 열고닫기
-let invOpen = false;
 function setInvOpen(v) {
   if (v && frontierBuildOpen) {
     setFrontierBuildOpen(false);
   }
-  invOpen = v;
+  const invOpen = inventoryUiController.setInventoryOpen(v);
   invWin.style.display = invOpen ? "block" : "none";
   equipWin.style.display = invOpen ? "block" : "none";
   if (!invOpen) {
     hideItemTooltip();
     inventoryDraggedEntry = null;
-    inventoryDragState = null;
     closeDiscardDialog();
   }
   if (invOpen) renderInventoryWindow();
 }
+
+const inventoryRenderer = createInventoryRenderer({
+  invgrid,
+  inventoryStoragePanel,
+  personalStoragePanel,
+  getInventory: () => inventory,
+  getStorage: () => personalStorage,
+  getActiveTab: () => activeTab,
+  getEntryCategory: getInventoryEntryCategory,
+  getEntryName: getInventoryEntryDisplayName,
+  getEntryCount: getSlotItemCount,
+  getEntryVisual: createInventoryEntryVisualElement,
+  createEntryVisual: createInventoryEntryVisualElement,
+  getTooltipData: getInventoryEntryTooltipData,
+  getItemId: getSlotItemId,
+  getEquipSlot: getInventoryEntryEquipSlot,
+  getEquippedItem: getEquippedItemRef,
+  isSameAsEquipped: isSameInventoryEntryAsEquipped,
+  isNftEntry: isNftInventoryEntry,
+  isBuildPartItemId: isWastelandBuildPartItemId,
+  isFencePlacementMode: () => wastelandController.isFencePlacementMode(),
+  getSelectedStructureItemId: () => wastelandController.getSelectedStructureItemId(),
+  isQuickUseAssignable: isQuickUseAssignableEntry,
+  getAssignedQuickUseKey: getAssignedQuickUseKeyForEntry,
+  isQuickUsePending: isQuickUseAssignPendingForEntry,
+  makeSlot,
+  setTabStyles,
+  showTooltip: showItemTooltip,
+  hideTooltip: hideItemTooltip,
+  toggleEquip: toggleEquipItem,
+  useFreshAirCanister,
+  toggleFencePlacementMode: toggleWastelandFencePlacementMode,
+  toggleStructurePlacement: toggleWastelandStructurePlacementItem,
+  clearQuickUse: clearQuickUseAssignmentForEntry,
+  beginQuickUse: beginQuickUseAssignment,
+  setInventoryDrag: (entry) => { inventoryDraggedEntry = entry; },
+  clearInventoryDrag: () => { inventoryDraggedEntry = null; },
+  resetTrashDropZone: () => {
+    inventoryTrashDropZone.style.background = "rgba(255,255,255,0.72)";
+    inventoryTrashDropZone.style.borderColor = "rgba(120,120,120,0.38)";
+    inventoryTrashDropZone.style.transform = "scale(1)";
+  },
+  highlightSlot: (slot, kind) => {
+    slot.style.borderColor = kind === "build" ? "rgba(80,160,255,0.95)" : "rgba(255,140,0,0.95)";
+    slot.style.boxShadow = kind === "build"
+      ? "0 0 0 3px rgba(80,160,255,0.28), inset 0 1px 0 rgba(255,255,255,0.8)"
+      : "0 0 0 3px rgba(255,140,0,0.35), inset 0 1px 0 rgba(255,255,255,0.8)";
+  },
+  beginStorageDrag: (state) => inventoryUiController.beginDrag(state),
+  clearStorageDrag: () => inventoryUiController.clearDrag(),
+  getStorageDrag: () => inventoryUiController.getDragState(),
+  highlightStorageDrop: (slot, active) => {
+    slot.style.background = active ? "rgba(255,239,219,0.96)" : "rgba(255,255,255,0.95)";
+    slot.style.borderColor = active ? "rgba(232,120,66,0.9)" : "rgba(0,0,0,0.2)";
+  },
+  highlightInventoryDrop: (slot, active) => {
+    slot.style.background = active ? "rgba(228,241,255,0.98)" : "rgba(255,255,255,0.95)";
+    slot.style.borderColor = active ? "rgba(92,145,228,0.86)" : "rgba(0,0,0,0.2)";
+  },
+  setStorageMessage: (message) => { personalStorageMessage.textContent = message; },
+  moveEntry: ({ source, target, entry, index }) => {
+    if (getSlotItemCount(entry) > 1) {
+      openPersonalStorageTransferDialog({ source, target, entry: structuredClone(entry), ...(index == null ? {} : { index }) });
+      return;
+    }
+    const result = target === "storage"
+      ? moveInventoryEntryToStorage(entry)
+      : moveStorageEntryToInventory(index);
+    personalStorageMessage.textContent = result.ok ? "" : result.reason;
+    if (result.ok) {
+      updateInventoryUI();
+      schedulePlayerSaveSync(true);
+    }
+    inventoryRenderer.renderPersonalStorageWindow();
+  },
+});
 
 let questOpen = false;
 let questDragState = null;
@@ -3678,9 +3422,9 @@ window.addEventListener("keydown", (e) => {
     e.preventDefault();
     return;
   }
-  if (personalStorageOpen) return;
+  if (inventoryUiController.isPersonalStorageOpen()) return;
   if (isTextInputActive()) return;
-  if (invOpen && logicalKey === "tab") {
+  if (inventoryUiController.isInventoryOpen() && logicalKey === "tab") {
     e.preventDefault();
     const order = ["equip", "cons", "misc"];
     const currentIndex = Math.max(0, order.indexOf(activeTab));
@@ -3694,7 +3438,7 @@ window.addEventListener("keydown", (e) => {
   const key = logicalKey;
   if (key === "i") {
     e.preventDefault();
-    setInvOpen(!invOpen);
+    setInvOpen(!inventoryUiController.isInventoryOpen());
   }
   if (key === "q") {
     e.preventDefault();
@@ -4040,55 +3784,40 @@ const tutorialQuest = {
 let questViewMode = "active";
 
 function getCurrentQuestStep() {
-  if (tutorialQuest.completed) return null;
-  return tutorialQuest.steps[tutorialQuest.currentStep] ?? null;
+  return getCurrentTutorialQuestStep(tutorialQuest, tutorialQuest.steps);
 }
 
 function getTutorialNpcLine() {
-  const step = getCurrentQuestStep();
-  if (!step) {
-    if (!inventory.mineKeyIssued) {
-      return "좋아, 이제 폐광에 들어갈 자격이 생겼다. 이 열쇠를 가져가서 북쪽 폐광 입구를 열어.";
-    }
-    if (!inventory.abandonedMineUnlocked) {
-      return "북쪽 폐광 입구로 가서 E키로 열쇠를 사용해. 한 번 열어두면 계속 드나들 수 있다.";
-    }
-    return "좋아, 폐광 통로도 열렸다. 더 깊은 곳으로 들어갈 준비가 됐군.";
-  }
-
-  const lines = [
-    "가판대에서 곡괭이와 안전모를 챙겨. 작업장에선 장비부터 갖추는 게 우선이야.",
-    "좋아. 이제 인벤토리를 열어서 안전모부터 써. 광산에선 보호구가 기본이야.",
-    "다음은 곡괭이를 손에 들어. 장비를 갖췄으면 바로 작업할 수 있게 준비해야지.",
-    "앞에 있는 돌을 하나 캐봐. 직접 해보는 게 제일 빠르다.",
-    "이제 모루로 가서 곡괭이를 세 번 강화해봐. 장비를 충분히 다뤄봐야 폐광 출입을 맡길 수 있어.",
-    "좋아, 준비는 끝났다. 나에게 말을 걸면 폐광 열쇠를 넘겨주지.",
-  ];
-  return lines[tutorialQuest.currentStep] ?? step.description;
+  return getTutorialNpcLineFromModule({
+    state: tutorialQuest,
+    steps: tutorialQuest.steps,
+    mineKeyIssued: inventory.mineKeyIssued,
+    abandonedMineUnlocked: inventory.abandonedMineUnlocked,
+  });
 }
 
 function refreshQuestProgress() {
-  let advanced = false;
-  while (!tutorialQuest.completed) {
-    const step = getCurrentQuestStep();
-    if (!step || !step.check()) break;
-    tutorialQuest.currentStep += 1;
-    advanced = true;
-    if (tutorialQuest.currentStep >= tutorialQuest.steps.length) {
-      tutorialQuest.completed = true;
+  const progress = getTutorialQuestProgressPlan({ state: tutorialQuest, steps: tutorialQuest.steps });
+  tutorialQuest.currentStep = progress.currentStep;
+  tutorialQuest.completed = progress.completed;
+  for (const event of progress.events) {
+    if (event.type === "completed") {
       showUI("튜토리얼 퀘스트 완료!", 1200);
-      break;
+    } else {
+      showUI(`퀘스트 갱신: ${event.step.title}`, 1100);
     }
-    showUI(`퀘스트 갱신: ${tutorialQuest.steps[tutorialQuest.currentStep].title}`, 1100);
   }
-  if (advanced) schedulePlayerSaveSync(true);
-  if (advanced && questOpen) renderQuestWindow();
+  if (progress.advanced) schedulePlayerSaveSync(true);
+  if (progress.advanced && questOpen) renderQuestWindow();
 }
 
 function archiveQuestStep(stepIndex) {
-  const isDone = stepIndex < tutorialQuest.currentStep || tutorialQuest.completed;
-  if (!isDone) return;
-  if (!tutorialQuest.archivedSteps.includes(stepIndex)) {
+  if (canArchiveTutorialQuestStep({
+    stepIndex,
+    currentStep: tutorialQuest.currentStep,
+    completed: tutorialQuest.completed,
+    archivedSteps: tutorialQuest.archivedSteps,
+  })) {
     tutorialQuest.archivedSteps.push(stepIndex);
     schedulePlayerSaveSync(true);
   }
@@ -4096,105 +3825,18 @@ function archiveQuestStep(stepIndex) {
 }
 
 function renderQuestWindow() {
-  questArchiveToggleBtn.textContent = questViewMode === "active" ? "완료 보기" : "진행 보기";
-  questTitle.textContent = tutorialQuest.title;
-  const currentStep = getCurrentQuestStep();
-  questDesc.textContent = questViewMode === "completed"
-    ? "완료 버튼을 눌러 정리한 단계들이 이곳에 모여 표시됩니다."
-    : tutorialQuest.completed
-      ? "작업 감독관의 기본 교육을 모두 마쳤습니다. 앞으로 새 기능이 생기면 이 창에서 진행 상황을 확인할 수 있습니다."
-      : currentStep?.description ?? tutorialQuest.description;
-
-  questStepList.innerHTML = "";
-  const visibleSteps = tutorialQuest.steps
-    .map((step, index) => ({ step, index }))
-    .filter(({ index }) => {
-      const isDone = index < tutorialQuest.currentStep || tutorialQuest.completed;
-      const isArchived = tutorialQuest.archivedSteps.includes(index);
-      return questViewMode === "completed"
-        ? isDone && isArchived
-        : !isDone || !isArchived;
-    });
-
-  if (visibleSteps.length === 0) {
-    const row = document.createElement("div");
-    row.style.padding = "10px 12px";
-    row.style.borderRadius = "10px";
-    row.style.background = "rgba(255,255,255,0.9)";
-    row.style.border = "1px solid rgba(0,0,0,0.1)";
-    row.style.fontFamily = "system-ui, -apple-system, sans-serif";
-    row.textContent = questViewMode === "completed"
-      ? "아직 보관한 완료 퀘스트가 없습니다."
-      : "진행 중인 퀘스트가 없습니다.";
-    questStepList.appendChild(row);
-  } else {
-    visibleSteps.forEach(({ step, index }) => {
-      const row = document.createElement("div");
-      const isDone = index < tutorialQuest.currentStep || tutorialQuest.completed;
-      const isActive = !tutorialQuest.completed && index === tutorialQuest.currentStep;
-      row.style.padding = "10px 12px";
-      row.style.borderRadius = "10px";
-      row.style.background = isActive ? "rgba(255,199,120,0.2)" : "rgba(255,255,255,0.9)";
-      row.style.border = isActive
-        ? "1px solid rgba(220,140,40,0.35)"
-        : "1px solid rgba(0,0,0,0.1)";
-      row.style.fontFamily = "system-ui, -apple-system, sans-serif";
-
-      const top = document.createElement("div");
-      top.style.display = "flex";
-      top.style.alignItems = "center";
-      top.style.justifyContent = "space-between";
-      top.style.gap = "8px";
-
-      const title = document.createElement("div");
-      title.textContent = step.title;
-      title.style.fontSize = "14px";
-      title.style.fontWeight = "800";
-      title.style.color = "#222";
-      top.appendChild(title);
-
-      if (isDone && questViewMode === "active") {
-        const archiveBtn = document.createElement("button");
-        archiveBtn.type = "button";
-        archiveBtn.textContent = "완료";
-        archiveBtn.style.padding = "4px 8px";
-        archiveBtn.style.borderRadius = "999px";
-        archiveBtn.style.border = "1px solid rgba(70,150,70,0.22)";
-        archiveBtn.style.background = "rgba(81,181,81,0.16)";
-        archiveBtn.style.color = "#2d7c2d";
-        archiveBtn.style.fontSize = "12px";
-        archiveBtn.style.fontWeight = "700";
-        archiveBtn.style.cursor = "pointer";
-        archiveBtn.style.pointerEvents = "auto";
-        archiveBtn.addEventListener("click", () => {
-          archiveQuestStep(index);
-        });
-        top.appendChild(archiveBtn);
-      } else {
-        const status = document.createElement("div");
-        status.textContent = isDone ? "완료됨" : isActive ? "진행 중" : "대기";
-        status.style.fontSize = "12px";
-        status.style.fontWeight = "700";
-        status.style.color = isDone ? "#2d7c2d" : isActive ? "#9a5c12" : "#888";
-        top.appendChild(status);
-      }
-
-      const desc = document.createElement("div");
-      desc.textContent = step.description;
-      desc.style.marginTop = "6px";
-      desc.style.fontSize = "12px";
-      desc.style.lineHeight = "1.5";
-      desc.style.color = "#555";
-
-      row.appendChild(top);
-      row.appendChild(desc);
-      questStepList.appendChild(row);
-    });
-  }
-
-  questFooter.textContent = questViewMode === "completed"
-    ? "완료 버튼을 눌러 정리한 단계는 여기서 다시 확인할 수 있습니다."
-    : "Q 키로 퀘스트를 열고, Space 키로 튜토리얼 NPC와 대화할 수 있습니다.";
+  renderQuestWindowUi({
+    quest: tutorialQuest,
+    viewMode: questViewMode,
+    currentStep: getCurrentQuestStep(),
+    onArchive: archiveQuestStep,
+  }, {
+    archiveToggleButton: questArchiveToggleBtn,
+    title: questTitle,
+    description: questDesc,
+    stepList: questStepList,
+    footer: questFooter,
+  });
 }
 
 
@@ -4367,11 +4009,10 @@ const playerBounds = new THREE.Box3().setFromObject(player);
 const PLAYER_FOOT_OFFSET = -playerBounds.min.y; // 플레이어 원점에서 "바닥"까지 거리
 
 // Colliders
-const colliders = [];
-const colliderBoxes = []; // 콜라이더 박스 캐시(정적 오브젝트용)
+const colliderRegistry = createColliderRegistry();
+const colliders = colliderRegistry.colliders;
+const colliderBoxes = colliderRegistry.boxes;
 
-const mineRocks = []; // 채집 가능한 돌 목록
-const harvestTrees = [];
 const connectorTunnelZones = [];
 const ROCK_RESPAWN_MS = 10000;
 const ROCK_COUNT = 50;
@@ -4379,190 +4020,79 @@ const CAVE_STONE_COUNT = 16;
 const ROCK_SPAWN_MARGIN = 6;
 const ROCK_SAFE_RADIUS = 8;
 const ROCK_MIN_GAP = 0.55; // 돌끼리 화면상 붙어 보이지 않게 여유
-// ===== Mining particles (stone dust) =====
-const particles = [];
+const miningParticles = createMiningParticlesRuntime(scene);
 const rockHitReactions = [];
-let hitStopTime = 0;
-let cameraShakeTime = 0;
-let cameraShakeStrength = 0;
+const resourceWorldRuntime = createResourceWorldRuntime({
+  getPlayerPosition: () => player.position,
+  findNearestByPosition,
+  setHarvestTreeActive: (tree, active) => setHarvestTreeActiveFromModule(tree, active, {
+    now: performance.now(),
+    respawnMs: TREE_HARVEST_RESPAWN_MS,
+    getCooldownUntil: getHarvestTreeCooldownUntil,
+  }),
+  updateHarvestTrees: (trees) => updateHarvestTreesFromModule(trees, {
+    now: performance.now(),
+    respawnMs: TREE_HARVEST_RESPAWN_MS,
+    getShakeRotation: getHarvestTreeShakeRotation,
+    getRegrowthProgress: getHarvestTreeRegrowthProgress,
+    isReady: isHarvestTreeReady,
+    getCooldownUntil: getHarvestTreeCooldownUntil,
+  }),
+  updateRockFadeIns: updateRockFadeInsFromModule,
+  rockRespawnMs: ROCK_RESPAWN_MS,
+  createRespawnRock: (spawn) => createRespawnRockFromSpawn(spawn),
+});
+const { mineRocks, harvestTrees } = resourceWorldRuntime;
 
 const HIT_STOP_DURATION = 0.045;
 const ROCK_HIT_REACTION_DURATION = 0.12;
 const CAMERA_SHAKE_DURATION = 0.11;
+const miningFeedback = createMiningFeedbackRuntime({
+  hitStopDuration: HIT_STOP_DURATION,
+  cameraShakeDuration: CAMERA_SHAKE_DURATION,
+  randomRange: randRange,
+});
 
 function getRockSpawnBounds() {
-  const half = GROUND_SIZE / 2;
-  return {
-    minX: -half + ROCK_SPAWN_MARGIN,
-    maxX: half - ROCK_SPAWN_MARGIN,
-    minZ: -half + ROCK_SPAWN_MARGIN,
-    maxZ: half - ROCK_SPAWN_MARGIN,
-  };
-}
-
-function isRockSpawnValid(x, z, s) {
-  // 시작 지점 주변은 비워둠
-  if ((x * x + z * z) < ROCK_SAFE_RADIUS * ROCK_SAFE_RADIUS) return false;
-
-  // 기존 돌과의 간격 확보
-  for (const rock of mineRocks) {
-    if (!rock || !rock.parent) continue;
-    const otherS = rock.userData?.spawn?.s ?? 1;
-    const minDist = (0.9 * s) + (0.9 * otherS) + ROCK_MIN_GAP;
-    const dx = x - rock.position.x;
-    const dz = z - rock.position.z;
-    if ((dx * dx + dz * dz) < (minDist * minDist)) return false;
-  }
-
-  return true;
+  return getRockSpawnBoundsFromModule(GROUND_SIZE, ROCK_SPAWN_MARGIN);
 }
 
 function findRockSpawnPosition(s, tries = 80) {
-  const b = getRockSpawnBounds();
-  for (let i = 0; i < tries; i++) {
-    const x = randRange(b.minX, b.maxX);
-    const z = randRange(b.minZ, b.maxZ);
-    if (isRockSpawnValid(x, z, s)) return { x, z };
-  }
-  return null;
+  return findMineRockSpawnPosition({
+    scale: s,
+    tries,
+    bounds: getRockSpawnBounds(),
+    rocks: mineRocks,
+    safeRadius: ROCK_SAFE_RADIUS,
+    minGap: ROCK_MIN_GAP,
+    randomRange: randRange,
+  });
 }
 
 function findCampStoneSpawnPosition(s, tries = 120) {
-  const half = GROUND_SIZE * 0.5 - 8;
-  for (let i = 0; i < tries; i += 1) {
-    const x = CAMP_MAP_X + randRange(-half, half);
-    const z = CAMP_MAP_Z + randRange(-half, half);
-
-    if (Math.abs(x - airPurifierStation?.position?.x ?? x) < 8 && Math.abs(z - (airPurifierStation?.position?.z ?? z)) < 8) continue;
-    if (Math.abs(x - campGate?.position?.x ?? x) < 7 && Math.abs(z - (campGate?.position?.z ?? z)) < 8) continue;
-
-    let blocked = false;
-    for (const rock of mineRocks) {
-      if (!rock || !rock.parent) continue;
-      const otherS = rock.userData?.spawnScale ?? 1;
-      const minDist = (0.9 * s) + (0.9 * otherS) + 0.8;
-      const dx = x - rock.position.x;
-      const dz = z - rock.position.z;
-      if ((dx * dx + dz * dz) < (minDist * minDist)) {
-        blocked = true;
-        break;
-      }
-    }
-    if (!blocked) return { x, z };
-  }
-  return null;
+  return findCaveRockSpawnPosition({
+    scale: s,
+    tries,
+    groundSize: GROUND_SIZE,
+    centerX: CAMP_MAP_X,
+    centerZ: CAMP_MAP_Z,
+    rocks: mineRocks,
+    airPurifierPosition: airPurifierStation?.position,
+    gatePosition: campGate?.position,
+    randomRange: randRange,
+  });
 }
 
 function spawnDustBurst(pos, count = 16) {
-  // 작은 큐브 파티클(가벼움)
-  const geo = new THREE.BoxGeometry(0.08, 0.08, 0.08);
-  const mat = new THREE.MeshStandardMaterial({ color: 0xd6d0c6, roughness: 1.0 });
-
-  for (let i = 0; i < count; i++) {
-    const m = new THREE.Mesh(geo, mat);
-
-    // 시작 위치(돌 근처)
-    m.position.copy(pos);
-    m.position.y += 0.6 + Math.random() * 0.6;
-
-    // 속도(위로 + 랜덤)
-    const v = new THREE.Vector3(
-      (Math.random() - 0.5) * 2.2,
-      2.2 + Math.random() * 2.2,
-      (Math.random() - 0.5) * 2.2
-    );
-
-    // 수명
-    m.userData.v = v;
-    m.userData.life = 0.6 + Math.random() * 0.5;
-    m.userData.maxLife = m.userData.life;
-    m.userData.kind = "dust";
-
-    scene.add(m);
-    particles.push(m);
-  }
+  miningParticles.spawnDustBurst(pos, count);
 }
 
 function spawnRockBreakBurst(rock) {
-  const rockScale = rock.userData.spawnScale ?? 1;
-  const chunkCount = Math.round(6 + rockScale * 3);
-  const baseColor = rock.material?.color?.getHex() ?? 0x6f6f72;
-
-  for (let i = 0; i < chunkCount; i++) {
-    const size = randRange(0.09, 0.18) * rockScale;
-    const chunk = new THREE.Mesh(
-      new THREE.DodecahedronGeometry(size, 0),
-      new THREE.MeshStandardMaterial({
-        color: baseColor,
-        roughness: 1.0,
-        transparent: true,
-        opacity: 1,
-      })
-    );
-
-    chunk.position.copy(rock.position);
-    chunk.position.add(new THREE.Vector3(
-      randRange(-0.08, 0.08),
-      randRange(0.15, 0.55) * rockScale,
-      randRange(-0.08, 0.08)
-    ));
-    chunk.rotation.set(randRange(0, Math.PI), randRange(0, Math.PI), randRange(0, Math.PI));
-
-    chunk.userData.v = new THREE.Vector3(
-      randRange(-1.7, 1.7) * rockScale,
-      randRange(1.2, 2.6) * rockScale,
-      randRange(-1.7, 1.7) * rockScale
-    );
-    chunk.userData.spin = new THREE.Vector3(
-      randRange(-7, 7),
-      randRange(-7, 7),
-      randRange(-7, 7)
-    );
-    chunk.userData.life = 0.42 + Math.random() * 0.22;
-    chunk.userData.maxLife = chunk.userData.life;
-    chunk.userData.kind = "rockChunk";
-
-    scene.add(chunk);
-    particles.push(chunk);
-  }
+  miningParticles.spawnRockBreakBurst(rock);
 }
 
 function updateParticles(dt) {
-  for (let i = particles.length - 1; i >= 0; i--) {
-    const p = particles[i];
-    p.userData.life -= dt;
-
-    // 중력
-    p.userData.v.y -= 7.5 * dt;
-
-    // 이동
-    p.position.addScaledVector(p.userData.v, dt);
-    if (p.userData.spin) {
-      p.rotation.x += p.userData.spin.x * dt;
-      p.rotation.y += p.userData.spin.y * dt;
-      p.rotation.z += p.userData.spin.z * dt;
-    }
-
-    // 바닥에 닿으면 살짝 감속
-    if (p.position.y < 0.05) {
-      p.position.y = 0.05;
-      p.userData.v.x *= 0.45;
-      p.userData.v.z *= 0.45;
-      p.userData.v.y *= p.userData.kind === "rockChunk" ? -0.18 : 0.1;
-    }
-
-    if (p.material?.transparent && typeof p.userData.maxLife === "number" && p.userData.maxLife > 0) {
-      p.material.opacity = Math.max(0, p.userData.life / p.userData.maxLife);
-    }
-
-    // 수명 끝나면 제거
-    if (p.userData.life <= 0) {
-      if (p.geometry) p.geometry.dispose();
-      if (p.material) p.material.dispose();
-      p.removeFromParent();
-      particles.splice(i, 1);
-    }
-  }
+  miningParticles.update(dt);
 }
 
 
@@ -4820,55 +4350,67 @@ function getEquippedMiningPower() {
 let playerCredits = 0;
 
 const personalStorage = createInitialPersonalStorageStateFromModule();
+const inventoryRuntime = createInventoryRuntime({
+  inventory,
+  personalStorage,
+  itemDefs: ITEM_DEFS,
+  getSlotItemId,
+  getSlotItemCount,
+  isNftInventoryEntry,
+  normalizeInventorySlotEntry,
+  normalizeEquippedItemRef,
+  createInventorySlotEntry,
+  createEquippedItemRef,
+  getInventoryStackMax,
+  getInventoryEntryEquipSlot,
+  isSameInventoryEntryAsEquipped,
+  isQuestCriticalItemBlockedFromDiscard,
+  getQuickUseAssignState: () => quickUseAssignState,
+  setQuickUseAssignState: (nextState) => { quickUseAssignState = nextState; },
+  onCreditsChanged: () => updateWalletUi(),
+});
+const frontierRuntime = createFrontierRuntime({ clampPlayerCredits });
 
 let inventoryDraggedEntry = null;
 let inventoryDiscardTargetEntry = null;
-let inventoryDragState = null;
-let personalStorageTransferState = null;
 
 const ALWAYS_DROP_BLOCKED_ITEM_IDS = new Set(["abandonedMineKey"]);
 const TUTORIAL_DROP_BLOCKED_ITEM_IDS = new Set(["pickaxe", "safetyHelmet"]);
 
 function findInventorySlotIndexByEntry(entry) {
-  return findInventorySlotIndexByEntryFromModule(inventory.slots, entry, {
-    isNftInventoryEntry,
-    getSlotItemId,
-  });
+  return inventoryRuntime.findInventorySlotIndex(entry);
 }
 
 function getInventorySlotEntryByEntry(entry) {
-  return getInventorySlotEntryByEntryFromModule(inventory.slots, entry, {
-    isNftInventoryEntry,
-    getSlotItemId,
-  });
+  return inventoryRuntime.getInventorySlotEntry(entry);
 }
 
 function clampPlayerCredits(value) {
-  return Math.max(0, Math.floor(Number.isFinite(value) ? value : 0));
+  return inventoryRuntime.clampCredits(value);
 }
 
 function getPlayerCredits() {
-  return playerCredits;
+  return inventoryRuntime.getCredits();
 }
 
 function setPlayerCredits(value) {
-  playerCredits = clampPlayerCredits(value);
-  updateWalletUi();
+  inventoryRuntime.setCredits(value);
+  playerCredits = inventoryRuntime.getCredits();
 }
 
 function grantPlayerCredits(amount) {
-  setPlayerCredits(playerCredits + amount);
+  inventoryRuntime.grantCredits(amount);
+  playerCredits = inventoryRuntime.getCredits();
 }
 
 function canAffordPlayerCredits(amount) {
-  return playerCredits >= clampPlayerCredits(amount);
+  return inventoryRuntime.canAffordCredits(amount);
 }
 
 function spendPlayerCredits(amount) {
-  const normalized = clampPlayerCredits(amount);
-  if (playerCredits < normalized) return false;
-  setPlayerCredits(playerCredits - normalized);
-  return true;
+  const spent = inventoryRuntime.spendCredits(amount);
+  playerCredits = inventoryRuntime.getCredits();
+  return spent;
 }
 
 function formatPlayerCreditsLabel(value = playerCredits) {
@@ -4884,49 +4426,11 @@ function isQuestCriticalItemBlockedFromDiscard(entry) {
 }
 
 function canDiscardInventoryEntry(entry) {
-  if (!entry) {
-    return { ok: false, reason: "아이템 정보가 없습니다." };
-  }
-  if (isNftInventoryEntry(entry)) {
-    return { ok: false, reason: "NFT 아이템은 버릴 수 없습니다." };
-  }
-  const itemId = getSlotItemId(entry);
-  if (ITEM_DEFS[itemId]?.isAuthorityItem) {
-    return { ok: false, reason: "권한 아이템은 버릴 수 없습니다." };
-  }
-  const equipSlot = getInventoryEntryEquipSlot(entry);
-  if (equipSlot && isSameInventoryEntryAsEquipped(entry, getEquippedItemRef(equipSlot))) {
-    return { ok: false, reason: "장착 중인 아이템은 먼저 해제해야 합니다." };
-  }
-  if (isQuestCriticalItemBlockedFromDiscard(entry)) {
-    return { ok: false, reason: "핵심 퀘스트 아이템은 버릴 수 없습니다." };
-  }
-  const count = getSlotItemCount(entry);
-  if (count <= 0) {
-    return { ok: false, reason: "버릴 수량이 없습니다." };
-  }
-  return { ok: true };
+  return inventoryRuntime.canDiscard(entry);
 }
 
 function canMoveInventoryEntryToPersonalStorage(entry) {
-  if (!entry) {
-    return { ok: false, reason: "아이템 정보가 없습니다." };
-  }
-  if (isNftInventoryEntry(entry)) {
-    return { ok: false, reason: "NFT 아이템은 창고에 보관할 수 없습니다." };
-  }
-  const itemId = getSlotItemId(entry);
-  if (ITEM_DEFS[itemId]?.isAuthorityItem) {
-    return { ok: false, reason: "권한 아이템은 창고에 보관할 수 없습니다." };
-  }
-  const equipSlot = getInventoryEntryEquipSlot(entry);
-  if (equipSlot && isSameInventoryEntryAsEquipped(entry, getEquippedItemRef(equipSlot))) {
-    return { ok: false, reason: "장착 중인 아이템은 먼저 해제해야 합니다." };
-  }
-  if (isQuestCriticalItemBlockedFromDiscard(entry)) {
-    return { ok: false, reason: "핵심 퀘스트 아이템은 창고에 보관할 수 없습니다." };
-  }
-  return { ok: true };
+  return inventoryRuntime.canStore(entry);
 }
 
 function findFirstEmptyStorageSlot() {
@@ -4943,48 +4447,19 @@ function createPartialInventoryEntry(entry, count) {
 }
 
 function addEntryToStorage(entry, count = getSlotItemCount(entry)) {
-  return addEntryToStorageFromModule(personalStorage.slots, entry, count, {
-    createPartialInventoryEntry,
-    getSlotItemId,
-    getInventoryStackMax,
-    getSlotItemCount,
-    isNftInventoryEntry,
-    createInventorySlotEntry,
-  });
+  return inventoryRuntime.addEntryToPersonalStorage(entry, count);
 }
 
 function addEntryToInventory(entry, count = getSlotItemCount(entry)) {
-  return addEntryToInventoryFromModule(inventory.slots, entry, count, {
-    createPartialInventoryEntry,
-    getSlotItemId,
-    getInventoryStackMax,
-    getSlotItemCount,
-    isNftInventoryEntry,
-    createInventorySlotEntry,
-  });
+  return inventoryRuntime.addEntryToPlayerInventory(entry, count);
 }
 
 function moveInventoryEntryToStorage(entry, count = getSlotItemCount(entry)) {
-  return moveInventoryEntryToStorageFromModule(inventory.slots, personalStorage.slots, entry, count, {
-    findInventorySlotIndexByEntry,
-    canMoveInventoryEntryToPersonalStorage,
-    addEntryToStorage,
-    getSlotItemCount,
-    pruneQuickUseBindings,
-  });
+  return inventoryRuntime.moveToStorage(entry, count);
 }
 
 function moveStorageEntryToInventory(storageIndex, count = null) {
-  return moveStorageEntryToInventoryFromModule(
-    inventory.slots,
-    personalStorage.slots,
-    storageIndex,
-    count,
-    {
-      addEntryToInventory,
-      getSlotItemCount,
-    }
-  );
+  return inventoryRuntime.moveToInventory(storageIndex, count);
 }
 
 function closeDiscardDialog() {
@@ -5060,44 +4535,32 @@ function commitDiscardDialog() {
   return true;
 }
 
-	    function findFirstSlotWithItem(id) {
-  return findFirstSlotWithItemFromModule(inventory.slots, id, { getSlotItemId });
+function findFirstSlotWithItem(id) {
+  return inventoryRuntime.findFirstInventorySlotWithItem(id);
 	    }
 
-    function getItemCount(id) {
-  return getItemCountFromModule(inventory.slots, id, { getSlotItemId, getSlotItemCount });
+function getItemCount(id) {
+  return inventoryRuntime.getOwnedItemCount(id);
     }
 
-	    function findFirstEmptySlot() {
-  return findFirstEmptySlotFromModule(inventory.slots);
+function findFirstEmptySlot() {
+  return inventoryRuntime.findFirstEmptyInventorySlot();
     }
 
-    function addItem(id, count = 1) {
-  return addItemFromModule(inventory.slots, ITEM_DEFS, id, count, {
-    getSlotItemId,
-    getInventoryStackMax,
-    isNftInventoryEntry,
-    getSlotItemCount,
-    createInventorySlotEntry,
-  });
+function addItem(id, count = 1) {
+  return inventoryRuntime.addItemToInventory(id, count);
 	    }
 
-    function consumeItem(id, count = 1) {
-  return consumeItemFromModule(inventory.slots, id, count, {
-    getItemCount,
-    getSlotItemId,
-    isNftInventoryEntry,
-    getSlotItemCount,
-    pruneQuickUseBindings,
-  });
+function consumeItem(id, count = 1) {
+  return inventoryRuntime.consumeInventoryItem(id, count);
     }
 
     function hasEquippedTool(id) {
   return getEquippedItemForSlot("tool") === id;
     }
 
-    function hasItem(id) {
-  return hasItemFromModule(inventory.slots, id, { getItemCount });
+function hasItem(id) {
+  return inventoryRuntime.hasOwnedItem(id);
     }
 
     const {
@@ -5169,25 +4632,20 @@ function commitDiscardDialog() {
   );
     }
 
-    function getEquippedItemRef(slotId) {
-  return getEquippedItemRefFromModule(inventory.equipped, slotId);
+function getEquippedItemRef(slotId) {
+  return inventoryRuntime.getEquippedRef(slotId);
     }
 
-    function getEquippedItemForSlot(slotId) {
-  return getEquippedItemForSlotFromModule(inventory.equipped, slotId);
+function getEquippedItemForSlot(slotId) {
+  return inventoryRuntime.getEquippedItem(slotId);
     }
 
-    function setEquippedItem(slotId, itemOrRef) {
-  setEquippedItemFromModule(inventory.equipped, slotId, itemOrRef, normalizeEquippedItemRef);
+function setEquippedItem(slotId, itemOrRef) {
+  inventoryRuntime.setEquippedRef(slotId, itemOrRef);
     }
 
-    function equipFirstOwnedInventoryItem(slotId, itemId) {
-  return equipFirstOwnedInventoryItemFromModule(inventory, slotId, itemId, {
-    findFirstSlotWithItem,
-    normalizeInventorySlotEntry,
-    setEquippedItem,
-    createEquippedItemRef,
-  });
+function equipFirstOwnedInventoryItem(slotId, itemId) {
+  return inventoryRuntime.equipFirstOwnedItem(slotId, itemId);
     }
 
     function toggleEquipItem(itemOrId) {
@@ -5443,10 +4901,10 @@ function updateInventoryUI() {
   if (forgeWin.style.display !== "none") renderForgeWindow();
   if (refineryWin.style.display !== "none") renderRefineryWindow();
   if (frontierBuildWin && frontierBuildWin.style.display !== "none") renderFrontierBuildWindow();
-  if (personalStorageOpen) renderPersonalStorageWindow();
+  if (inventoryUiController.isPersonalStorageOpen()) renderPersonalStorageWindow();
 
   // 인벤 창이 열려있으면 슬롯 표시 갱신
-  if (typeof invOpen !== "undefined" && invOpen) renderInventoryWindow();
+  if (inventoryUiController.isInventoryOpen()) renderInventoryWindow();
   schedulePlayerSaveSync(true);
     }
 
@@ -5455,10 +4913,7 @@ function updateInventoryUI() {
   invEl.style.zIndex = "999999";
 
 
-// ===== Pickup hint UI =====
-const pickupEl = document.createElement("div");
-  pickupEl.id = "pickupHint";
-  // ===== Persistent Hint (separate from toast) =====
+// ===== Persistent Hint (separate from toast) =====
     const hintEl = document.createElement("div");
     hintEl.id = "hintUI";
     hintEl.style.position = "fixed";
@@ -5488,90 +4943,11 @@ const pickupEl = document.createElement("div");
     let hintUntil = 0;
 
 
-  pickupEl.style.position = "fixed";
-  pickupEl.style.left = "50%";
-  pickupEl.style.bottom = "22%";
-  pickupEl.style.transform = "translateX(-50%)";
-  pickupEl.style.padding = "14px 20px";
-  pickupEl.style.background = "rgba(0,0,0,0.60)";
-  pickupEl.style.color = "white";
-  pickupEl.style.fontFamily = "system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
-  pickupEl.style.fontSize = "20px";
-  pickupEl.style.borderRadius = "14px";
-  pickupEl.style.backdropFilter = "blur(4px)";
-  pickupEl.style.boxShadow = "0 10px 25px rgba(0,0,0,0.35)";
-  pickupEl.style.border = "1px solid rgba(255,255,255,0.25)";
-  pickupEl.style.letterSpacing = "0.2px";
-  pickupEl.style.userSelect = "none";
-  pickupEl.style.zIndex = "9999";
-  pickupEl.style.display = "none";
-  uiLayer.appendChild(pickupEl);
-  pickupEl.style.zIndex = "999999";
+const gatheringHud = createGatheringHud(uiLayer);
 
-  function showPickupHint(text) {
-  pickupEl.textContent = text;
-  pickupEl.style.display = "block";
-}
-function hidePickupHint() {
-  pickupEl.style.display = "none";
-}
-
-const rockHpWrap = document.createElement("div");
-rockHpWrap.id = "rockHpBar";
-rockHpWrap.style.position = "fixed";
-rockHpWrap.style.left = "0";
-rockHpWrap.style.top = "0";
-rockHpWrap.style.width = "84px";
-rockHpWrap.style.padding = "6px 7px 7px";
-rockHpWrap.style.background = "rgba(20,20,20,0.64)";
-rockHpWrap.style.border = "1px solid rgba(255,255,255,0.22)";
-rockHpWrap.style.borderRadius = "10px";
-rockHpWrap.style.backdropFilter = "blur(4px)";
-rockHpWrap.style.pointerEvents = "none";
-rockHpWrap.style.display = "none";
-rockHpWrap.style.transform = "translate(-50%, -100%)";
-rockHpWrap.style.zIndex = "999999";
-
-const rockHpLabel = document.createElement("div");
-rockHpLabel.textContent = "채굴 대상";
-rockHpLabel.style.color = "white";
-rockHpLabel.style.fontFamily = "system-ui, -apple-system, sans-serif";
-rockHpLabel.style.fontSize = "11px";
-rockHpLabel.style.fontWeight = "700";
-rockHpLabel.style.marginBottom = "5px";
-rockHpLabel.style.textAlign = "center";
-
-const rockHpTrack = document.createElement("div");
-rockHpTrack.style.width = "100%";
-rockHpTrack.style.height = "8px";
-rockHpTrack.style.background = "rgba(255,255,255,0.14)";
-rockHpTrack.style.borderRadius = "999px";
-rockHpTrack.style.overflow = "hidden";
-rockHpTrack.style.boxShadow = "inset 0 1px 1px rgba(0,0,0,0.25)";
-
-const rockHpFill = document.createElement("div");
-rockHpFill.style.width = "100%";
-rockHpFill.style.height = "6px";
-rockHpFill.style.margin = "1px";
-rockHpFill.style.background = "linear-gradient(90deg, #ff8a4b, #ffd166)";
-rockHpFill.style.borderRadius = "999px";
-rockHpFill.style.transition = "width 120ms ease";
-
-rockHpTrack.appendChild(rockHpFill);
-rockHpWrap.appendChild(rockHpLabel);
-rockHpWrap.appendChild(rockHpTrack);
-uiLayer.appendChild(rockHpWrap);
-
-function hideRockHpBar() {
-  rockHpWrap.style.display = "none";
-}
-
-function formatStatNumber(value) {
-  if (Math.abs(value - Math.round(value)) < 1e-6) {
-    return String(Math.round(value));
-  }
-  return value.toFixed(2);
-}
+function showPickupHint(text) { gatheringHud.showPickup(text); }
+function hidePickupHint() { gatheringHud.hidePickup(); }
+function hideRockHpBar() { gatheringHud.hideRockHp(); }
 
 function updateRockHpBar(rock, options = {}) {
   if (!rock || !rock.parent) {
@@ -5579,50 +4955,21 @@ function updateRockHpBar(rock, options = {}) {
     return;
   }
 
-  const hp = Math.max(0, rock.userData.hp ?? 0);
-  const maxHp = Math.max(1, rock.userData.maxHp ?? 1);
-  const ratio = hp / maxHp;
   const screenPos = rock.position.clone();
   screenPos.y += 0.7 + (rock.userData.spawnScale ?? 1) * 0.55;
   screenPos.project(camera);
-
-  const isVisible =
-    screenPos.z > -1 &&
-    screenPos.z < 1 &&
-    screenPos.x >= -1.15 &&
-    screenPos.x <= 1.15 &&
-    screenPos.y >= -1.15 &&
-    screenPos.y <= 1.15;
-
-  if (!isVisible) {
-    hideRockHpBar();
-    return;
-  }
-
-  const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
-  const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
-  rockHpWrap.style.display = "block";
-  rockHpWrap.style.left = `${x}px`;
-  rockHpWrap.style.top = `${y}px`;
-  const dimmed = Boolean(options.dimmed);
-  rockHpWrap.style.opacity = dimmed ? "0.48" : "1";
-  rockHpWrap.style.background = dimmed ? "rgba(20,20,20,0.42)" : "rgba(20,20,20,0.64)";
-  rockHpWrap.style.border = dimmed
-    ? "1px solid rgba(255,255,255,0.14)"
-    : "1px solid rgba(255,255,255,0.22)";
-  rockHpLabel.style.color = dimmed ? "rgba(255,255,255,0.78)" : "white";
-  rockHpTrack.style.background = dimmed ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.14)";
-  rockHpFill.style.background = dimmed
-    ? "linear-gradient(90deg, rgba(255,138,75,0.72), rgba(255,209,102,0.72))"
-    : "linear-gradient(90deg, #ff8a4b, #ffd166)";
-  rockHpFill.style.width = `${Math.max(0, Math.min(1, ratio)) * 100}%`;
-  rockHpLabel.textContent = `${rock.userData.hpLabelPrefix ?? "돌 체력"} ${formatStatNumber(hp)}/${formatStatNumber(maxHp)}`;
+  gatheringHud.updateRockHp(getRockHpHudView({
+    hp: rock.userData.hp,
+    maxHp: rock.userData.maxHp,
+    labelPrefix: rock.userData.hpLabelPrefix ?? "돌 체력",
+    projectedPosition: screenPos,
+    viewport: { width: window.innerWidth, height: window.innerHeight },
+  }), options);
 }
 
 let activeMineRock = null;
 let activeHarvestTree = null;
 let activeWastelandCell = null;
-let wastelandFencePlacementMode = false;
 const WASTELAND_FENCE_MIN_WIDTH = 5;
 const WASTELAND_FENCE_MIN_HEIGHT = 5;
 const WASTELAND_CLAIM_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
@@ -5646,6 +4993,11 @@ const WASTELAND_CLAIM_PHASE = Object.freeze({
   COMPLETED: "claim_completed",
   FAILED: "claim_failed",
 });
+const wastelandRuntime = createWastelandRuntime({
+  getPlot: () => frontierWastelandPlot,
+  getOwnerId: () => getCurrentWastelandOwnerId(),
+  landDeedItemId: WASTELAND_LAND_DEED_ITEM_ID,
+});
 const latestMoveDir = new THREE.Vector3(0, 0, -1); // 월드 기준: -Z = 북, +X = 동
 
 function updateCompassFromDirection(dir) {
@@ -5653,149 +5005,11 @@ function updateCompassFromDirection(dir) {
 }
 
 function findNearestMineRock(radius = 2.2) {
-  const r2 = radius * radius;
-  let best = null;
-  let bestD2 = Infinity;
-
-  for (const rock of mineRocks) {
-    if (!rock || !rock.parent) continue; // 이미 제거된 것 제외
-    const dx = rock.position.x - player.position.x;
-    const dz = rock.position.z - player.position.z;
-    const d2 = dx * dx + dz * dz;
-    if (d2 < r2 && d2 < bestD2) {
-      bestD2 = d2;
-      best = rock;
-    }
-  }
-  return best;
+  return resourceWorldRuntime.findNearestMineRock(radius);
 }
 
 function findNearestHarvestTree(radius = 2.2) {
-  const r2 = radius * radius;
-  let best = null;
-  let bestD2 = Infinity;
-
-  for (const tree of harvestTrees) {
-    if (!tree || !tree.parent || tree.userData.harvestDisabled) continue;
-    const dx = tree.position.x - player.position.x;
-    const dz = tree.position.z - player.position.z;
-    const d2 = dx * dx + dz * dz;
-    if (d2 < r2 && d2 < bestD2) {
-      best = tree;
-      bestD2 = d2;
-    }
-  }
-
-  return best;
-}
-
-const WASTELAND_DIG_PROGRESS_GAIN = 25;
-const WASTELAND_CELL_VISUAL_STOPS = [
-  { progress: 0, color: 0xd8d8d8, opacity: 0.78, y: 0.125, scaleY: 1, visible: true },
-  { progress: 25, color: 0xa6a6a6, opacity: 0.95, y: 0.104, scaleY: 0.72, visible: true },
-  { progress: 50, color: 0x696969, opacity: 1, y: 0.083, scaleY: 0.46, visible: true },
-  { progress: 75, color: 0x303030, opacity: 1, y: 0.063, scaleY: 0.22, visible: true },
-  { progress: 100, color: 0x181818, opacity: 0, y: 0.052, scaleY: 0.04, visible: false },
-];
-
-function clampWastelandClearProgress(value) {
-  return Math.max(0, Math.min(100, Math.floor(Number(value) || 0)));
-}
-
-function getWastelandStateForProgress(progress) {
-  if (progress >= 100) return { state: "dug3", digStage: 3 };
-  if (progress >= 50) return { state: "dug2", digStage: 2 };
-  if (progress > 0) return { state: "dug1", digStage: 1 };
-  return { state: "idle", digStage: 0 };
-}
-
-function getFallbackWastelandProgressFromState(cell) {
-  if (cell?.state === "dug3") return 100;
-  if (cell?.state === "dug2") return 50;
-  if (cell?.state === "dug1") return 25;
-  return 0;
-}
-
-function getWastelandCellClearProgress(cell) {
-  return clampWastelandClearProgress(cell?.clearProgress ?? getFallbackWastelandProgressFromState(cell));
-}
-
-function syncWastelandCellStateFromProgress(cell) {
-  if (!cell) return;
-  cell.clearProgress = getWastelandCellClearProgress(cell);
-  const synced = getWastelandStateForProgress(cell.clearProgress);
-  cell.state = synced.state;
-  cell.digStage = synced.digStage;
-}
-
-function lerpNumber(a, b, t) {
-  return a + (b - a) * t;
-}
-
-function lerpHexColor(a, b, t) {
-  const ar = (a >> 16) & 255;
-  const ag = (a >> 8) & 255;
-  const ab = a & 255;
-  const br = (b >> 16) & 255;
-  const bg = (b >> 8) & 255;
-  const bb = b & 255;
-  return (
-    (Math.round(lerpNumber(ar, br, t)) << 16) |
-    (Math.round(lerpNumber(ag, bg, t)) << 8) |
-    Math.round(lerpNumber(ab, bb, t))
-  );
-}
-
-function getWastelandCellVisualForProgress(progress) {
-  const clamped = clampWastelandClearProgress(progress);
-  for (let i = 0; i < WASTELAND_CELL_VISUAL_STOPS.length - 1; i += 1) {
-    const from = WASTELAND_CELL_VISUAL_STOPS[i];
-    const to = WASTELAND_CELL_VISUAL_STOPS[i + 1];
-    if (clamped <= to.progress) {
-      const t = (clamped - from.progress) / (to.progress - from.progress || 1);
-      return {
-        color: lerpHexColor(from.color, to.color, t),
-        opacity: lerpNumber(from.opacity, to.opacity, t),
-        y: lerpNumber(from.y, to.y, t),
-        scaleY: lerpNumber(from.scaleY, to.scaleY, t),
-        visible: clamped >= 100 ? false : to.visible,
-      };
-    }
-  }
-  return WASTELAND_CELL_VISUAL_STOPS[WASTELAND_CELL_VISUAL_STOPS.length - 1];
-}
-
-function applyWastelandCellVisual(cell) {
-  const coverMesh = cell?.coverMesh ?? cell?.mesh;
-  const baseMesh = cell?.baseMesh;
-  if (!coverMesh?.material) return;
-  syncWastelandCellStateFromProgress(cell);
-  const visual = getWastelandCellVisualForProgress(cell.clearProgress);
-  if (baseMesh) baseMesh.visible = true;
-  coverMesh.visible = visual.visible;
-  coverMesh.position.y = visual.y;
-  coverMesh.scale.y = visual.scaleY;
-  coverMesh.material.color.set(visual.color);
-  coverMesh.material.opacity = visual.opacity;
-  coverMesh.material.transparent = visual.opacity < 1;
-  coverMesh.material.needsUpdate = true;
-}
-
-function clearWastelandCellHighlight(cell) {
-  const coverMesh = cell?.coverMesh ?? cell?.mesh;
-  if (!coverMesh?.material) return;
-  coverMesh.material.emissive?.set?.(0x000000);
-  coverMesh.material.emissiveIntensity = 0;
-  applyWastelandCellVisual(cell);
-}
-
-function applyWastelandCellHighlight(cell) {
-  const coverMesh = cell?.coverMesh ?? cell?.mesh;
-  if (!coverMesh?.material) return;
-  applyWastelandCellVisual(cell);
-  if (!coverMesh.visible) return;
-  coverMesh.material.emissive?.set?.(0xffb13d);
-  coverMesh.material.emissiveIntensity = 0.28;
+  return resourceWorldRuntime.findNearestHarvestTree(radius);
 }
 
 function setWastelandCellState(cell, state) {
@@ -5806,19 +5020,12 @@ function setWastelandCellState(cell, state) {
 }
 
 function findActiveFrontierWastelandCell(radius = 2.4) {
-  if (!frontierWastelandPlot?.cells?.length) return null;
-  let best = null;
-  let bestD2 = radius * radius;
-  for (const cell of frontierWastelandPlot.cells) {
-    const dx = cell.x - player.position.x;
-    const dz = cell.z - player.position.z;
-    const d2 = dx * dx + dz * dz;
-    if (d2 < bestD2) {
-      bestD2 = d2;
-      best = cell;
-    }
-  }
-  return best;
+  return findNearestByPosition({
+    entries: frontierWastelandPlot?.cells,
+    playerPosition: player.position,
+    radius,
+    getPosition: (cell) => cell,
+  });
 }
 
 function getFrontierWastelandProgress() {
@@ -5879,6 +5086,7 @@ function ensureFrontierWastelandRuntimeState() {
 function resetFrontierWastelandRuntimeState() {
   const plot = ensureFrontierWastelandRuntimeState();
   if (!plot) return;
+  const resetPlan = wastelandRuntime.createResetStatePlan(plot.cells);
   for (const root of [plot.fenceRoot, plot.fenceLinkRoot, plot.claimPreviewRoot, plot.structureRoot]) {
     if (!root) continue;
     while (root.children.length) {
@@ -5886,15 +5094,14 @@ function resetFrontierWastelandRuntimeState() {
       root.remove(root.children[0]);
     }
   }
-  plot.fencePosts = new Map();
-  plot.claimDrafts = new Map();
-  plot.claims = [];
-  plot.structures = [];
-  wastelandFencePlacementMode = false;
-  selectedWastelandStructureItemId = "";
+  plot.fencePosts = new Map(resetPlan.fencePosts.map((post) => [post.key, post]));
+  plot.claimDrafts = new Map(resetPlan.drafts.map((draft) => [draft.ownerId, draft]));
+  plot.claims = resetPlan.claims;
+  plot.structures = resetPlan.structures;
+  wastelandController.resetPlacementMode();
   closeWastelandClaimConfirmDialog();
   for (const cell of plot.cells ?? []) {
-    cell.clearProgress = 0;
+    cell.clearProgress = resetPlan.cellProgressById.get(cell.id) ?? 0;
     setWastelandCellState(cell, "idle");
   }
   updateWastelandClaimActionUi(null);
@@ -5903,7 +5110,7 @@ function resetFrontierWastelandRuntimeState() {
 function resetWastelandDraftUiState({ clearPlacementMode = true } = {}) {
   activeWastelandCell = null;
   if (clearPlacementMode) {
-    wastelandFencePlacementMode = false;
+    wastelandController.clearFencePlacementMode();
   }
   clearWastelandClaimPreview();
   closeWastelandClaimConfirmDialog();
@@ -5913,32 +5120,14 @@ function resetWastelandDraftUiState({ clearPlacementMode = true } = {}) {
 function rebuildAllWastelandDraftsFromFencePosts() {
   const plot = ensureFrontierWastelandRuntimeState();
   if (!plot?.claimDrafts) return null;
-  const claimedPostKeys = new Set(
-    (plot.claims ?? [])
-      .flatMap((claim) => claim.postKeys ?? [])
-  );
-  const previousDrafts = plot.claimDrafts;
-  const groupedPostKeys = new Map();
-  for (const post of [...(plot.fencePosts?.values?.() ?? [])]) {
-    if (!post?.ownerId || claimedPostKeys.has(post.key)) continue;
-    if (!groupedPostKeys.has(post.ownerId)) groupedPostKeys.set(post.ownerId, []);
-    groupedPostKeys.get(post.ownerId).push(post.key);
-  }
-  const nextDrafts = new Map();
-  const now = Date.now();
-  for (const [ownerId, postKeys] of groupedPostKeys.entries()) {
-    postKeys.sort();
-    const previousDraft = previousDrafts.get(ownerId);
-    nextDrafts.set(ownerId, {
-      ownerId,
-      postKeys,
-      lastPromptSignature: previousDraft?.lastPromptSignature ?? "",
-      reservedAt: previousDraft?.reservedAt ?? now,
-      updatedAt: previousDraft?.updatedAt ?? now,
-      expiresAt: previousDraft?.expiresAt ?? now + WASTELAND_DRAFT_RESERVATION_MS,
-      phase: previousDraft?.phase ?? WASTELAND_DRAFT_PHASE.ACTIVE,
-    });
-  }
+  const nextDrafts = rebuildWastelandDraftsFromModule({
+    fencePosts: plot.fencePosts,
+    claims: plot.claims,
+    previousDrafts: plot.claimDrafts,
+    now: Date.now(),
+    reservationMs: WASTELAND_DRAFT_RESERVATION_MS,
+    activePhase: WASTELAND_DRAFT_PHASE.ACTIVE,
+  });
   plot.claimDrafts = nextDrafts;
   return nextDrafts;
 }
@@ -5962,7 +5151,7 @@ function refreshCurrentWastelandDraftUiState({
   if (closeConfirm) closeWastelandClaimConfirmDialog();
   if (closeCancel) closeWastelandClaimCancelDialog();
   updateWastelandClaimActionUi(getCurrentWastelandClaimProgress());
-  if (wastelandFencePlacementMode) {
+  if (wastelandController.isFencePlacementMode()) {
     updateFrontierWastelandDraftPrompt();
     updateWastelandClaimPreview();
   }
@@ -5983,7 +5172,7 @@ function finalizeWastelandStateTransition({
   if (rebuildDrafts) rebuildAllWastelandDraftsFromFencePosts();
   if (rebuildLinks) rebuildFrontierWastelandFenceLinks();
   if (clearPlacementMode) {
-    wastelandFencePlacementMode = false;
+    wastelandController.clearFencePlacementMode();
   }
   if (refreshDraftUi) {
     refreshCurrentWastelandDraftUiState({
@@ -6010,9 +5199,15 @@ function getCurrentFrontierWastelandDraft() {
 
 function touchWastelandDraftReservation(draft, now = Date.now()) {
   if (!draft) return null;
-  draft.reservedAt = draft.reservedAt ?? now;
-  draft.updatedAt = now;
-  draft.expiresAt = now + WASTELAND_DRAFT_RESERVATION_MS;
+  const update = wastelandRuntime.createDraftReservationUpdate({
+    draft,
+    ownerId: draft.ownerId,
+    postKey: draft.postKeys?.[0],
+    now,
+    reservationMs: WASTELAND_DRAFT_RESERVATION_MS,
+  });
+  if (!update) return null;
+  Object.assign(draft, update);
   syncWastelandDraftPhase(draft);
   return draft;
 }
@@ -6030,24 +5225,13 @@ function getScopedWastelandDraftFencePosts(draft, ownerId = getCurrentWastelandO
 }
 
 function getCurrentFrontierWastelandClaim() {
-  const plot = ensureFrontierWastelandRuntimeState();
-  if (!plot) return null;
-  return plot.claims.find((claim) => claim.ownerId === getCurrentWastelandOwnerId()) ?? null;
+  ensureFrontierWastelandRuntimeState();
+  return wastelandRuntime.getCurrentClaim();
 }
 
 function getFrontierWastelandClaimByCell(cell) {
-  if (!cell) return null;
-  const plot = ensureFrontierWastelandRuntimeState();
-  if (!plot?.claims?.length) return null;
-  return (
-    plot.claims.find(
-      (claim) =>
-        cell.row >= claim.minRow &&
-        cell.row <= claim.maxRow &&
-        cell.col >= claim.minCol &&
-        cell.col <= claim.maxCol
-    ) ?? null
-  );
+  ensureFrontierWastelandRuntimeState();
+  return wastelandRuntime.getClaimForCell(cell);
 }
 
 function formatWastelandClaimRemaining(ms) {
@@ -6075,18 +5259,11 @@ function getWastelandDraftReservationHit(cell, buffer = 0) {
 }
 
 function getWastelandCellById(cellId) {
-  return frontierWastelandPlot?.cells?.find((cell) => cell.id === cellId) ?? null;
+  return wastelandRuntime.getCellById(cellId);
 }
 
 function buildWastelandClaimLandMeta(rect) {
-  if (!rect) return null;
-  const mapId = "frontier-wasteland";
-  return {
-    mapId,
-    landId: `${mapId}-r${rect.minRow}-${rect.maxRow}-c${rect.minCol}-${rect.maxCol}`,
-    displayName: `개척지 황무지 ${rect.minRow}-${rect.minCol} 구역`,
-    detailAddress: `${mapId} / r${rect.minRow}-${rect.maxRow} / c${rect.minCol}-${rect.maxCol}`,
-  };
+  return wastelandRuntime.buildLandMeta(rect);
 }
 
 function findIssuedWastelandLandDeed(landId) {
@@ -6108,18 +5285,10 @@ function findOwnedWastelandLandDeed(landId) {
 }
 
 function createWastelandLandDeedEntry(claim) {
-  if (!claim) return null;
-  const landMeta = buildWastelandClaimLandMeta(claim) ?? {};
-  return createInventorySlotEntry(WASTELAND_LAND_DEED_ITEM_ID, 1, {
-    landId: claim.landId || landMeta.landId || "",
-    mapId: claim.mapId || landMeta.mapId || "frontier-wasteland",
-    displayName: claim.displayName || landMeta.displayName || "개척지 황무지 토지권",
-    detailAddress: claim.detailAddress || landMeta.detailAddress || "frontier-wasteland",
-    minRow: claim.minRow,
-    maxRow: claim.maxRow,
-    minCol: claim.minCol,
-    maxCol: claim.maxCol,
-  });
+  const deedData = wastelandRuntime.createLandDeedData(claim);
+  if (!deedData) return null;
+  const { itemId, ...extra } = deedData;
+  return createInventorySlotEntry(itemId, 1, extra);
 }
 
 function getWastelandLandDeedInventoryEntries() {
@@ -6148,15 +5317,13 @@ function restoreMissingOwnedWastelandLandDeeds({ showMessage = false, saveProfil
   if (!plot || !ownerId) return 0;
   let restored = 0;
   let blocked = false;
-  for (const claim of plot.claims ?? []) {
-    if (
-      claim?.ownerId !== ownerId ||
-      claim?.status !== WASTELAND_CLAIM_STATUS.COMPLETED ||
-      !claim.landId ||
-      findIssuedWastelandLandDeed(claim.landId)
-    ) {
-      continue;
-    }
+  const missingClaims = wastelandRuntime.getMissingLandDeedClaims({
+    claims: plot.claims,
+    ownerId,
+    completedStatus: WASTELAND_CLAIM_STATUS.COMPLETED,
+    hasLandDeed: (landId) => Boolean(findIssuedWastelandLandDeed(landId)),
+  });
+  for (const claim of missingClaims) {
     const deedEntry = createWastelandLandDeedEntry(claim);
     if (!deedEntry || !addInventoryEntry(deedEntry)) {
       blocked = true;
@@ -6178,45 +5345,12 @@ function restoreMissingOwnedWastelandLandDeeds({ showMessage = false, saveProfil
   return restored;
 }
 
-function isWastelandBuildPartItemId(itemId) {
-  return Boolean(itemId && WASTELAND_BUILD_PART_DEFS[itemId]);
-}
-
-function getWastelandBuildPartDef(itemId = selectedWastelandStructureItemId) {
-  return WASTELAND_BUILD_PART_DEFS[itemId] ?? null;
-}
-
-function getWastelandStructureSlotLabel(slot) {
-  return WASTELAND_STRUCTURE_SLOT_LABELS[slot] ?? "건축";
-}
-
-function getWastelandStructureSurfaceY(cell) {
-  const baseY = Number(cell?.baseMesh?.position?.y);
-  if (Number.isFinite(baseY)) return Math.max(0.22, baseY + 0.14);
-  const coverY = Number(cell?.coverMesh?.position?.y ?? cell?.mesh?.position?.y);
-  if (Number.isFinite(coverY)) return Math.max(0.22, coverY + 0.1);
-  return 0.22;
-}
-
 function findWastelandStructureSlotConflict(cell, slot) {
-  if (!cell || !slot) return null;
-  const plot = ensureFrontierWastelandRuntimeState();
-  return (
-    plot?.structures?.find(
-      (structure) =>
-        Number(structure?.row) === cell.row &&
-        Number(structure?.col) === cell.col &&
-        String(structure?.slot ?? "") === slot
-    ) ?? null
-  );
+  ensureFrontierWastelandRuntimeState();
+  return wastelandRuntime.getStructureConflict(cell, slot);
 }
 
-function getWastelandStructureRotationQuarter() {
-  const yaw = ((player.rotation.y % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-  return Math.round(yaw / (Math.PI * 0.5)) % 4;
-}
-
-function getWastelandBuildCheck(cell, itemId = selectedWastelandStructureItemId) {
+function getWastelandBuildCheck(cell, itemId = wastelandController.getSelectedStructureItemId()) {
   const partDef = getWastelandBuildPartDef(itemId);
   const claim = getFrontierWastelandClaimByCell(cell);
   return canBuildOnWastelandCellStateFromModule({
@@ -6230,97 +5364,6 @@ function getWastelandBuildCheck(cell, itemId = selectedWastelandStructureItemId)
   });
 }
 
-function createWastelandStructurePartBox({
-  width,
-  height,
-  depth,
-  y,
-  color,
-  emissive,
-  outlineColor,
-}) {
-  const group = new THREE.Group();
-  const geometry = new THREE.BoxGeometry(width, height, depth);
-  const mesh = new THREE.Mesh(
-    geometry,
-    new THREE.MeshStandardMaterial({
-      color,
-      emissive,
-      emissiveIntensity: 0.18,
-      roughness: 0.86,
-      metalness: 0.02,
-    })
-  );
-  mesh.position.y = y;
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  mesh.renderOrder = 4;
-  const outline = new THREE.LineSegments(
-    new THREE.EdgesGeometry(geometry),
-    new THREE.LineBasicMaterial({
-      color: outlineColor,
-      transparent: true,
-      opacity: 0.95,
-      depthTest: false,
-    })
-  );
-  outline.position.y = y;
-  outline.renderOrder = 5;
-  group.add(mesh);
-  group.add(outline);
-  return group;
-}
-
-function createWastelandStructureMesh(structure) {
-  const type = structure?.type ?? "";
-  const def = getWastelandBuildPartDef(type);
-  if (!def) return null;
-  const surfaceY = Number.isFinite(Number(structure?.y)) ? Number(structure.y) : 0.22;
-  let mesh = null;
-  if (def.slot === "floor") {
-    mesh = createWastelandStructurePartBox({
-      width: 1.64,
-      height: 0.22,
-      depth: 1.64,
-      y: 0.11,
-      color: type.startsWith("stone") ? 0xd9dde6 : 0xb77a3e,
-      emissive: type.startsWith("stone") ? 0x3f4652 : 0x4a2108,
-      outlineColor: type.startsWith("stone") ? 0xf5f7ff : 0xffd09a,
-    });
-    mesh.position.set(structure.x, surfaceY + 0.035, structure.z);
-  } else if (def.slot === "wall") {
-    mesh = createWastelandStructurePartBox({
-      width: 1.74,
-      height: 1.78,
-      depth: 0.24,
-      y: 0.89,
-      color: type.startsWith("stone") ? 0xcbd0db : 0x9a6537,
-      emissive: type.startsWith("stone") ? 0x333b48 : 0x351808,
-      outlineColor: type.startsWith("stone") ? 0xf3f6ff : 0xffc47f,
-    });
-    mesh.position.set(structure.x, surfaceY + 0.02, structure.z);
-    mesh.rotation.y = (structure.rotationQuarter ?? 0) * (Math.PI * 0.5);
-  } else if (def.slot === "pillar") {
-    mesh = createWastelandStructurePartBox({
-      width: 0.44,
-      height: 1.88,
-      depth: 0.44,
-      y: 0.94,
-      color: type.startsWith("stone") ? 0xc1c6d0 : 0x89572f,
-      emissive: type.startsWith("stone") ? 0x323944 : 0x321707,
-      outlineColor: type.startsWith("stone") ? 0xf3f6ff : 0xffc47f,
-    });
-    mesh.position.set(structure.x, surfaceY + 0.02, structure.z);
-  }
-  if (!mesh) return null;
-  mesh.name = `wasteland-structure-${type}-${structure.row}-${structure.col}`;
-  mesh.userData.wastelandStructureKey = structure.key;
-  mesh.traverse((child) => {
-    child.frustumCulled = false;
-  });
-  return mesh;
-}
-
 function rebuildFrontierWastelandStructures() {
   const plot = ensureFrontierWastelandRuntimeState();
   if (!plot) return;
@@ -6332,13 +5375,14 @@ function rebuildFrontierWastelandStructures() {
     disposeObject3D(plot.structureRoot.children[0]);
     plot.structureRoot.remove(plot.structureRoot.children[0]);
   }
-  for (const structure of plot.structures ?? []) {
-    const cell = getFrontierWastelandCellByGrid(structure.row, structure.col);
-    if (!cell) continue;
-    structure.x = cell.x;
-    structure.z = cell.z;
-    structure.y = getWastelandStructureSurfaceY(cell);
-    const mesh = createWastelandStructureMesh(structure);
+  const plans = wastelandSceneRuntime.getStructureScenePlans({
+    structures: plot.structures,
+    getCellByGrid: getFrontierWastelandCellByGrid,
+    getSurfaceY: getWastelandStructureSurfaceY,
+  });
+  for (const { structure, position } of plans) {
+    Object.assign(structure, position);
+    const mesh = createWastelandStructureMesh(structure, getWastelandBuildPartDef);
     if (!mesh) continue;
     structure.mesh = mesh;
     plot.structureRoot.add(mesh);
@@ -6347,14 +5391,11 @@ function rebuildFrontierWastelandStructures() {
 
 function toggleWastelandStructurePlacementItem(itemId) {
   if (!isWastelandBuildPartItemId(itemId)) return false;
-  selectedWastelandStructureItemId = selectedWastelandStructureItemId === itemId ? "" : itemId;
-  if (selectedWastelandStructureItemId) {
-    wastelandFencePlacementMode = false;
-  }
+  const selectedStructureItemId = wastelandController.toggleStructurePlacement(itemId);
   updateInventoryUI();
   showUI(
-    selectedWastelandStructureItemId
-      ? `${ITEM_DEFS[selectedWastelandStructureItemId]?.name ?? itemId} 배치 모드`
+    selectedStructureItemId
+      ? `${ITEM_DEFS[selectedStructureItemId]?.name ?? itemId} 배치 모드`
       : "건축 부품 배치 모드 해제",
     1000
   );
@@ -6362,7 +5403,7 @@ function toggleWastelandStructurePlacementItem(itemId) {
   return true;
 }
 
-function placeWastelandStructure(cell, itemId = selectedWastelandStructureItemId) {
+function placeWastelandStructure(cell, itemId = wastelandController.getSelectedStructureItemId()) {
   const plot = ensureFrontierWastelandRuntimeState();
   const partDef = getWastelandBuildPartDef(itemId);
   if (!plot || !cell || !partDef) return false;
@@ -6382,17 +5423,17 @@ function placeWastelandStructure(cell, itemId = selectedWastelandStructureItemId
     return false;
   }
   const claim = getFrontierWastelandClaimByCell(cell);
-  const structure = {
+  const structure = wastelandRuntime.createStructureRecord({
     key: `wasteland_structure_${Date.now().toString(36)}_${cell.row}_${cell.col}`,
-    landId: claim?.landId ?? "",
+    claim,
     ownerId: getCurrentWastelandOwnerId(),
-    type: itemId,
+    itemId,
     slot: partDef.slot,
-    row: cell.row,
-    col: cell.col,
-    y: getWastelandStructureSurfaceY(cell),
-    rotationQuarter: partDef.slot === "wall" ? getWastelandStructureRotationQuarter() : 0,
-  };
+    cell,
+    surfaceY: getWastelandStructureSurfaceY(cell),
+    rotationQuarter: getWastelandStructureRotationQuarter(player.rotation.y),
+  });
+  if (!structure) return false;
   plot.structures.push(structure);
   rebuildFrontierWastelandStructures();
   updateInventoryUI();
@@ -6403,38 +5444,18 @@ function placeWastelandStructure(cell, itemId = selectedWastelandStructureItemId
 }
 
 function serializeFrontierWastelandState() {
-  const plot = ensureFrontierWastelandRuntimeState();
-  if (!plot) return normalizeFrontierWastelandStateFromModule(null);
-  return serializeFrontierWastelandServerStateFromModule({
-    cells: (plot.cells ?? []).map((cell) => ({
-      id: cell.id,
-      clearProgress: getWastelandCellClearProgress(cell),
-    })),
-    drafts: [...(plot.claimDrafts?.values?.() ?? [])].map((draft) => ({
-      ownerId: draft.ownerId,
-      postKeys: [...(draft.postKeys ?? [])],
-      reservedAt: draft.reservedAt ?? 0,
-      updatedAt: draft.updatedAt ?? 0,
-      expiresAt: draft.expiresAt ?? 0,
-      phase: draft.phase ?? WASTELAND_DRAFT_PHASE.ACTIVE,
-    })),
-    fencePosts: [...(plot.fencePosts?.values?.() ?? [])].map((post) => ({
-      key: post.key,
-      row: post.row,
-      col: post.col,
-      x: post.x,
-      z: post.z,
-      ownerId: post.ownerId,
-    })),
-    claims: plot.claims ?? [],
-    structures: plot.structures ?? [],
-  });
+  ensureFrontierWastelandRuntimeState();
+  const state = wastelandRuntime.serializeState(getWastelandCellClearProgress);
+  return state
+    ? serializeFrontierWastelandServerStateFromModule(state)
+    : normalizeFrontierWastelandStateFromModule(null);
 }
 
 function applyFrontierWastelandState(rawState) {
   const plot = ensureFrontierWastelandRuntimeState();
   if (!plot) return;
   const state = normalizeFrontierWastelandStateFromModule(rawState);
+  const restorePlan = wastelandRuntime.createRestoreStatePlan(state);
   for (const root of [plot.fenceRoot, plot.fenceLinkRoot, plot.claimPreviewRoot, plot.structureRoot]) {
     if (!root) continue;
     while (root.children.length) {
@@ -6442,14 +5463,13 @@ function applyFrontierWastelandState(rawState) {
       root.remove(root.children[0]);
     }
   }
-  const progressById = new Map(state.cells.map((cell) => [cell.id, cell.clearProgress]));
   for (const cell of plot.cells ?? []) {
-    cell.clearProgress = progressById.get(cell.id) ?? 0;
+    cell.clearProgress = restorePlan.cellProgressById.get(cell.id) ?? 0;
     syncWastelandCellStateFromProgress(cell);
     applyWastelandCellVisual(cell);
   }
   plot.fencePosts = new Map();
-  for (const savedPost of state.fencePosts) {
+  for (const savedPost of restorePlan.fencePosts) {
     const mesh = createWastelandFencePostMesh();
     mesh.position.set(savedPost.x, 0.02, savedPost.z);
     plot.fenceRoot.add(mesh);
@@ -6458,19 +5478,10 @@ function applyFrontierWastelandState(rawState) {
       mesh,
     });
   }
-  plot.claimDrafts = new Map(
-    (state.drafts ?? []).map((draft) => [
-      draft.ownerId,
-      {
-        ...draft,
-        lastPromptSignature: "",
-      },
-    ])
-  );
-  plot.claims = state.claims;
-  plot.structures = state.structures ?? [];
-  wastelandFencePlacementMode = false;
-  selectedWastelandStructureItemId = "";
+  plot.claimDrafts = new Map(restorePlan.drafts.map((draft) => [draft.ownerId, draft]));
+  plot.claims = restorePlan.claims;
+  plot.structures = restorePlan.structures;
+  wastelandController.resetPlacementMode();
   closeWastelandClaimConfirmDialog();
   closeWastelandClaimCancelDialog();
   rebuildAllWastelandDraftsFromFencePosts();
@@ -6480,32 +5491,6 @@ function applyFrontierWastelandState(rawState) {
   updateWastelandClaimActionUi(null);
 }
 
-function createWastelandFencePostMesh() {
-  const g = new THREE.Group();
-  const shaft = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.08, 0.1, 0.9, 8),
-    new THREE.MeshStandardMaterial({ color: 0x75573a, roughness: 0.95 })
-  );
-  shaft.position.y = 0.45;
-  g.add(shaft);
-  const cap = new THREE.Mesh(
-    new THREE.BoxGeometry(0.24, 0.12, 0.24),
-    new THREE.MeshStandardMaterial({ color: 0x4d3824, roughness: 0.92 })
-  );
-  cap.position.y = 0.93;
-  g.add(cap);
-  return g;
-}
-
-function createWastelandFenceLinkMesh(length, horizontal = true) {
-  const mesh = new THREE.Mesh(
-    new THREE.BoxGeometry(horizontal ? length : 0.12, 0.1, horizontal ? 0.12 : length),
-    new THREE.MeshStandardMaterial({ color: 0x8a6a49, roughness: 0.95 })
-  );
-  mesh.position.y = 0.62;
-  return mesh;
-}
-
 function rebuildFrontierWastelandFenceLinks() {
   const plot = ensureFrontierWastelandRuntimeState();
   if (!plot?.fenceLinkRoot) return;
@@ -6513,22 +5498,16 @@ function rebuildFrontierWastelandFenceLinks() {
     disposeObject3D(plot.fenceLinkRoot.children[0]);
     plot.fenceLinkRoot.remove(plot.fenceLinkRoot.children[0]);
   }
-  const byKey = plot.fencePosts;
-  for (const post of byKey.values()) {
-    const right = byKey.get(`${post.row}:${post.col + 1}`);
-    if (canLinkWastelandFencePostsByOwnerFromModule(post, right)) {
-      const mesh = createWastelandFenceLinkMesh(plot.cellSize, true);
-      mesh.position.x = (post.x + right.x) * 0.5;
-      mesh.position.z = post.z;
-      plot.fenceLinkRoot.add(mesh);
-    }
-    const down = byKey.get(`${post.row + 1}:${post.col}`);
-    if (canLinkWastelandFencePostsByOwnerFromModule(post, down)) {
-      const mesh = createWastelandFenceLinkMesh(plot.cellSize, false);
-      mesh.position.x = post.x;
-      mesh.position.z = (post.z + down.z) * 0.5;
-      plot.fenceLinkRoot.add(mesh);
-    }
+  const plans = wastelandSceneRuntime.getFenceLinkPlans({
+    fencePosts: plot.fencePosts,
+    cellSize: plot.cellSize,
+    canLinkPosts: canLinkWastelandFencePostsByOwnerFromModule,
+  });
+  for (const plan of plans) {
+    const mesh = createWastelandFenceLinkMesh(plan.length, plan.horizontal);
+    mesh.position.x = plan.x;
+    mesh.position.z = plan.z;
+    plot.fenceLinkRoot.add(mesh);
   }
 }
 
@@ -6644,49 +5623,48 @@ function getWastelandClaimForCell(cell) {
 
 function canClearWastelandCell(cell) {
   const claim = getWastelandClaimForCell(cell);
-  if (!claim) return { ok: false, reason: "울타리 구역을 먼저 확정해야 개간할 수 있습니다." };
-  const ownerId = getCurrentWastelandOwnerId();
-  if (!ownerId) return { ok: false, reason: "개간은 지갑 로그인이 필요합니다." };
-  if (claim.ownerId !== ownerId) return { ok: false, reason: "이 구역의 소유자만 개간할 수 있습니다." };
-  if (claim.status && claim.status !== WASTELAND_CLAIM_STATUS.ACTIVE) {
-    return { ok: false, reason: "진행 중인 개간 구역이 아닙니다." };
-  }
-  return { ok: true, claim };
+  const permission = wastelandRuntime.getCellClearPermission({
+    cell,
+    claim,
+    ownerId: getCurrentWastelandOwnerId(),
+    activeStatus: WASTELAND_CLAIM_STATUS.ACTIVE,
+  });
+  const reasonByCode = {
+    "claim-required": "울타리 구역을 먼저 확정해야 개간할 수 있습니다.",
+    "owner-required": "개간은 지갑 로그인이 필요합니다.",
+    "owner-mismatch": "이 구역의 소유자만 개간할 수 있습니다.",
+    "claim-inactive": "진행 중인 개간 구역이 아닙니다.",
+  };
+  return permission.ok ? permission : { ok: false, reason: reasonByCode[permission.reason] };
 }
 
 function canPlaceWastelandFencePost(cell) {
   const plot = ensureFrontierWastelandRuntimeState();
   const ownerId = getCurrentWastelandOwnerId();
-  if (!plot || !cell) return { ok: false, reason: "설치할 셀을 찾을 수 없습니다." };
-  if (!ownerId) {
-    return { ok: false, reason: "울타리 기둥 설치는 지갑 로그인이 필요합니다." };
-  }
-  if (getCurrentFrontierWastelandClaim()) {
-    return { ok: false, reason: "이미 확정된 개간 구역이 있습니다." };
-  }
-  if (plot.fencePosts.has(`${cell.row}:${cell.col}`)) {
-    return { ok: false, reason: "이미 울타리 기둥이 설치된 셀입니다." };
-  }
-  if (isCellInsideConfirmedWastelandClaim(cell)) {
-    return { ok: false, reason: "확정된 개간 구역과 겹치는 셀에는 설치할 수 없습니다." };
-  }
-  if (getConfirmedWastelandClaimBufferHit(cell, 2)) {
-    return { ok: false, reason: "확정된 개간 구역 주변 2셀 안에는 설치할 수 없습니다." };
-  }
   const reservationHit = getWastelandDraftReservationHit(cell, 2);
-  if (reservationHit) {
-    return {
-      ok: false,
-      reason:
-        reservationHit.buffer > 0
-          ? "다른 플레이어가 예약한 토지 선언 구역 주변 2셀 안에는 설치할 수 없습니다."
-          : "다른 플레이어가 예약한 토지 선언 구역입니다.",
-    };
-  }
-  if (!hasItem("fencePost")) {
-    return { ok: false, reason: "울타리 기둥이 없습니다." };
-  }
-  return { ok: true };
+  const decision = wastelandRuntime.getFencePostPlacementDecision({
+    cell,
+    ownerId,
+    hasCurrentClaim: Boolean(getCurrentFrontierWastelandClaim()),
+    hasExistingPost: Boolean(plot?.fencePosts?.has(`${cell?.row}:${cell?.col}`)),
+    isInsideConfirmedClaim: isCellInsideConfirmedWastelandClaim(cell),
+    hasConfirmedClaimBuffer: Boolean(getConfirmedWastelandClaimBufferHit(cell, 2)),
+    reservationHit,
+    hasFencePostItem: hasItem("fencePost"),
+  });
+  const reasonByCode = {
+    "missing-cell": "설치할 셀을 찾을 수 없습니다.",
+    "owner-required": "울타리 기둥 설치는 지갑 로그인이 필요합니다.",
+    "current-claim-exists": "이미 확정된 개간 구역이 있습니다.",
+    "post-exists": "이미 울타리 기둥이 설치된 셀입니다.",
+    "confirmed-claim-overlap": "확정된 개간 구역과 겹치는 셀에는 설치할 수 없습니다.",
+    "confirmed-claim-buffer": "확정된 개간 구역 주변 2셀 안에는 설치할 수 없습니다.",
+    "draft-reservation-buffer": "다른 플레이어가 예약한 토지 선언 구역 주변 2셀 안에는 설치할 수 없습니다.",
+    "draft-reservation-overlap": "다른 플레이어가 예약한 토지 선언 구역입니다.",
+    "fence-post-required": "울타리 기둥이 없습니다.",
+  };
+  if (!decision.ok) return { ok: false, reason: reasonByCode[decision.reason] };
+  return decision;
 }
 
 function removeWastelandDraftFencePost(cell) {
@@ -6743,34 +5721,29 @@ function placeWastelandFencePost(cell) {
     lastMessageUntil = performance.now() + 1000;
     return false;
   }
-  const key = `${cell.row}:${cell.col}`;
+  const postData = wastelandRuntime.createFencePostRecord(cell, ownerId);
+  if (!postData) return false;
+  const { key } = postData;
   const mesh = createWastelandFencePostMesh();
   mesh.position.set(cell.x, 0.02, cell.z);
   plot.fenceRoot.add(mesh);
-  plot.fencePosts.set(key, {
-    key,
-    row: cell.row,
-    col: cell.col,
-    x: cell.x,
-    z: cell.z,
+  plot.fencePosts.set(key, { ...postData, mesh });
+  const now = Date.now();
+  const draft = plot.claimDrafts.get(ownerId);
+  const draftUpdate = wastelandRuntime.createDraftReservationUpdate({
+    draft,
     ownerId,
-    mesh,
+    postKey: key,
+    now,
+    reservationMs: WASTELAND_DRAFT_RESERVATION_MS,
   });
-  let draft = plot.claimDrafts.get(ownerId);
-  if (!draft) {
-    const now = Date.now();
-    draft = {
-      ownerId,
-      postKeys: [],
-      lastPromptSignature: "",
-      reservedAt: now,
-      updatedAt: now,
-      expiresAt: now + WASTELAND_DRAFT_RESERVATION_MS,
-    };
-    plot.claimDrafts.set(ownerId, draft);
+  if (!draftUpdate) return false;
+  if (draft) {
+    Object.assign(draft, draftUpdate);
+    syncWastelandDraftPhase(draft);
+  } else {
+    plot.claimDrafts.set(ownerId, { ...draftUpdate, phase: WASTELAND_DRAFT_PHASE.ACTIVE });
   }
-  if (!draft.postKeys.includes(key)) draft.postKeys.push(key);
-  touchWastelandDraftReservation(draft);
   finalizeWastelandStateTransition({
     rebuildLinks: true,
     refreshDraftUi: true,
@@ -6810,91 +5783,31 @@ function syncWastelandDraftPhase(draft) {
 
 function getWastelandDraftGuide() {
   const draft = getCurrentFrontierWastelandDraft();
-  const postCount = draft?.postKeys?.length ?? 0;
-  if (!draft || postCount <= 0) {
-    return {
-      postCount,
-      text: `${WASTELAND_FENCE_MIN_WIDTH} x ${WASTELAND_FENCE_MIN_HEIGHT} 이상 테두리 필요`,
-    };
-  }
   const bounds = getWastelandDraftBounds(draft);
-  if (!bounds) {
-    return {
-      postCount,
-      text: `${WASTELAND_FENCE_MIN_WIDTH} x ${WASTELAND_FENCE_MIN_HEIGHT} 이상 테두리 필요`,
-    };
-  }
-  const width = bounds.maxCol - bounds.minCol + 1;
-  const height = bounds.maxRow - bounds.minRow + 1;
-  const draftPhase = getWastelandDraftPhase(draft);
-  const minSizeOk = Math.max(width, height) >= WASTELAND_FENCE_MIN_WIDTH && Math.min(width, height) >= WASTELAND_FENCE_MIN_HEIGHT;
-  const keySet = new Set(draft.postKeys);
-  let requiredBorderCount = 0;
-  let currentBorderCount = 0;
-  let innerPostCount = 0;
-  for (let row = bounds.minRow; row <= bounds.maxRow; row += 1) {
-    for (let col = bounds.minCol; col <= bounds.maxCol; col += 1) {
-      const isBorder =
-        row === bounds.minRow ||
-        row === bounds.maxRow ||
-        col === bounds.minCol ||
-        col === bounds.maxCol;
-      const hasPost = keySet.has(`${row}:${col}`);
-      if (isBorder) {
-        requiredBorderCount += 1;
-        if (hasPost) currentBorderCount += 1;
-      } else if (hasPost) {
-        innerPostCount += 1;
-      }
-    }
-  }
-  const missingBorderCount = Math.max(0, requiredBorderCount - currentBorderCount);
-  const validRect = draftPhase === WASTELAND_DRAFT_PHASE.CONFIRMABLE;
-  const sizeText = `${width} x ${height}`;
-  let text = `${sizeText} | ${WASTELAND_FENCE_MIN_WIDTH} x ${WASTELAND_FENCE_MIN_HEIGHT} 이상 필요`;
-  if (!minSizeOk) {
-    text = `${sizeText} | 최소 ${WASTELAND_FENCE_MIN_WIDTH} x ${WASTELAND_FENCE_MIN_HEIGHT} 필요`;
-  } else if (innerPostCount > 0) {
-    text = `${sizeText} | 내부 기둥 ${innerPostCount}개 제거 필요`;
-  } else if (missingBorderCount > 0) {
-    text = `${sizeText} | 테두리 ${missingBorderCount}칸 부족`;
-  } else if (validRect) {
-    text = `구역 확정 가능: ${sizeText}`;
-  }
-  return {
-    phase: draftPhase,
-    postCount,
-    width,
-    height,
-    requiredBorderCount,
-    currentBorderCount,
-    missingBorderCount,
-    innerPostCount,
-    canConfirm: Boolean(validRect),
-    text,
-  };
+  return createWastelandDraftGuide({
+    draft,
+    bounds,
+    phase: getWastelandDraftPhase(draft),
+    minWidth: WASTELAND_FENCE_MIN_WIDTH,
+    minHeight: WASTELAND_FENCE_MIN_HEIGHT,
+    confirmablePhase: WASTELAND_DRAFT_PHASE.CONFIRMABLE,
+  });
 }
 
 function getWastelandFenceHudState() {
-  if (!wastelandFencePlacementMode) {
-    return { visible: false };
-  }
   const guide = getWastelandDraftGuide();
-  const hasRect = Number.isFinite(guide.width) && Number.isFinite(guide.height);
   const draft = getCurrentFrontierWastelandDraft();
   const reservationText =
     draft?.expiresAt != null
       ? `예약 유지 ${formatWastelandClaimRemaining(draft.expiresAt - Date.now())}`
       : "예약 대기 중";
-  return {
-    visible: true,
-    postCount: guide.postCount ?? 0,
-    sizeText: hasRect
-      ? `현재 테두리 ${guide.width} x ${guide.height} | 최소 ${WASTELAND_FENCE_MIN_WIDTH} x ${WASTELAND_FENCE_MIN_HEIGHT}`
-      : `최소 ${WASTELAND_FENCE_MIN_WIDTH} x ${WASTELAND_FENCE_MIN_HEIGHT} 테두리 필요`,
-    requirementText: `${WASTELAND_FENCE_MIN_WIDTH} x ${WASTELAND_FENCE_MIN_HEIGHT} 이상 테두리 필요`,
-    statusText: `${reservationText} | ${guide.canConfirm ? "구역 확정 가능" : guide.text}`,
-  };
+  return createWastelandFenceHudState({
+    placementMode: wastelandController.isFencePlacementMode(),
+    guide,
+    reservationText,
+    minWidth: WASTELAND_FENCE_MIN_WIDTH,
+    minHeight: WASTELAND_FENCE_MIN_HEIGHT,
+  });
 }
 
 function clearWastelandClaimPreview() {
@@ -6907,69 +5820,24 @@ function clearWastelandClaimPreview() {
   }
 }
 
-function createWastelandPreviewCellMesh(cell, color, opacity, height = 0.018) {
-  const mesh = new THREE.Mesh(
-    new THREE.BoxGeometry(cell.size - 0.26, height, cell.size - 0.26),
-    new THREE.MeshStandardMaterial({
-      color,
-      transparent: true,
-      opacity,
-      roughness: 0.9,
-      depthWrite: false,
-    })
-  );
-  mesh.position.set(cell.x, 0.19, cell.z);
-  return mesh;
-}
-
 function updateWastelandClaimPreview() {
   const plot = ensureFrontierWastelandRuntimeState();
   clearWastelandClaimPreview();
   if (!plot?.claimPreviewRoot) return;
-  const currentOwnerId = getCurrentWastelandOwnerId();
-  const currentDraft = getCurrentFrontierWastelandDraft();
-  for (const [draftOwnerId, draft] of plot.claimDrafts ?? []) {
-    if (!draft?.postKeys?.length) continue;
-    const bounds = getWastelandDraftBoundsFromModule(
-      draft,
-      getScopedWastelandDraftFencePosts(draft, draftOwnerId)
-    );
-    if (!bounds) continue;
-    const isCurrentDraft = draftOwnerId === currentOwnerId;
-    if (isCurrentDraft && !wastelandFencePlacementMode) continue;
-    const guide = isCurrentDraft ? getWastelandDraftGuide() : null;
-    const color = isCurrentDraft
-      ? guide?.canConfirm
-        ? 0x35d66f
-        : guide?.innerPostCount > 0 || guide?.missingBorderCount > 0
-          ? 0xff5b4a
-          : 0xf2b84b
-      : 0xff5b4a;
-    const overlayOpacity = isCurrentDraft ? (guide?.canConfirm ? 0.22 : 0.16) : 0.12;
-    const markerOpacity = isCurrentDraft ? 0.62 : 0.46;
-    const keySet = new Set(draft.postKeys);
-    for (const cell of plot.cells ?? []) {
-      const inside =
-        cell.row >= bounds.minRow &&
-        cell.row <= bounds.maxRow &&
-        cell.col >= bounds.minCol &&
-        cell.col <= bounds.maxCol;
-      if (!inside) continue;
-      const isBorder =
-        cell.row === bounds.minRow ||
-        cell.row === bounds.maxRow ||
-        cell.col === bounds.minCol ||
-        cell.col === bounds.maxCol;
-      const hasPost = keySet.has(`${cell.row}:${cell.col}`);
-      const mesh = createWastelandPreviewCellMesh(cell, color, overlayOpacity);
-      plot.claimPreviewRoot.add(mesh);
-      if ((isCurrentDraft && ((isBorder && !hasPost) || (!isBorder && hasPost))) || (!isCurrentDraft && isBorder)) {
-        const marker = createWastelandPreviewCellMesh(cell, 0xff2f2f, markerOpacity, 0.032);
-        marker.scale.set(isCurrentDraft ? 0.54 : 0.82, 1, isCurrentDraft ? 0.54 : 0.82);
-        marker.position.y = 0.215;
-        plot.claimPreviewRoot.add(marker);
-      }
-    }
+  const plans = wastelandSceneRuntime.getClaimPreviewPlans({
+    cells: plot.cells,
+    draftEntries: plot.claimDrafts,
+    currentOwnerId: getCurrentWastelandOwnerId(),
+    isFencePlacementMode: wastelandController.isFencePlacementMode(),
+    getDraftBounds: getWastelandDraftBoundsFromModule,
+    getDraftFencePosts: getScopedWastelandDraftFencePosts,
+    getDraftGuide: getWastelandDraftGuide,
+  });
+  for (const plan of plans) {
+    const mesh = createWastelandPreviewCellMesh(plan.cell, plan.color, plan.opacity, plan.height);
+    mesh.scale.set(plan.scale, 1, plan.scale);
+    mesh.position.y = plan.y;
+    plot.claimPreviewRoot.add(mesh);
   }
 }
 
@@ -6990,14 +5858,14 @@ function removeWastelandClaimFences(claim) {
 }
 
 function closeWastelandClaimConfirmDialog() {
-  wastelandClaimConfirmOpen = false;
+  wastelandController.closeClaimConfirm();
   wastelandClaimConfirmRect = null;
   if (wastelandClaimConfirmOverlay) wastelandClaimConfirmOverlay.style.display = "none";
   if (wastelandClaimConfirmDialog) wastelandClaimConfirmDialog.style.display = "none";
 }
 
 function closeWastelandClaimCancelDialog() {
-  wastelandClaimCancelOpen = false;
+  wastelandController.closeClaimCancel();
   if (wastelandClaimCancelOverlay) wastelandClaimCancelOverlay.style.display = "none";
   if (wastelandClaimCancelDialog) wastelandClaimCancelDialog.style.display = "none";
 }
@@ -7009,7 +5877,7 @@ function openWastelandClaimCancelDialog() {
     lastMessageUntil = performance.now() + 1000;
     return false;
   }
-  wastelandClaimCancelOpen = true;
+  wastelandController.openClaimCancel();
   if (wastelandClaimCancelOverlay) wastelandClaimCancelOverlay.style.display = "block";
   if (wastelandClaimCancelDialog) wastelandClaimCancelDialog.style.display = "block";
   return true;
@@ -7018,7 +5886,7 @@ function openWastelandClaimCancelDialog() {
 function openWastelandClaimConfirmDialog(rect) {
   if (!rect || !wastelandClaimConfirmOverlay || !wastelandClaimConfirmDialog) return false;
   wastelandClaimConfirmRect = rect;
-  wastelandClaimConfirmOpen = true;
+  wastelandController.openClaimConfirm();
   wastelandClaimConfirmBody.innerHTML = "";
   const sizeLine = document.createElement("div");
   sizeLine.textContent = `${rect.width} x ${rect.height} 구역, 총 ${rect.cellIds.length}셀`;
@@ -7055,34 +5923,23 @@ function commitCurrentWastelandDraft() {
   if (!plot || !draft) return false;
   const rect = isValidWastelandDraftRectangle(draft);
   if (!rect) return false;
-  const hasOverlap = plot.claims.some(
-    (claim) =>
-      !(rect.maxRow < claim.minRow || rect.minRow > claim.maxRow || rect.maxCol < claim.minCol || rect.minCol > claim.maxCol)
-  );
+  const hasOverlap = wastelandRuntime.hasClaimOverlap(rect, plot.claims);
   if (hasOverlap) {
     showUI("다른 확정 구역과 겹치는 직사각형은 확정할 수 없습니다.", 1100);
     lastMessageUntil = performance.now() + 1100;
     return false;
   }
   const landMeta = buildWastelandClaimLandMeta(rect);
-  const claim = {
-    status: WASTELAND_CLAIM_STATUS.ACTIVE,
+  const claim = wastelandRuntime.createClaimRecord({
     ownerId,
-    mapId: landMeta.mapId,
-    landId: landMeta.landId,
-    displayName: landMeta.displayName,
-    detailAddress: landMeta.detailAddress,
-    minRow: rect.minRow,
-    maxRow: rect.maxRow,
-    minCol: rect.minCol,
-    maxCol: rect.maxCol,
-    width: rect.width,
-    height: rect.height,
-    cellIds: rect.cellIds,
-    postKeys: [...draft.postKeys],
-    confirmedAt: Date.now(),
-    expiresAt: Date.now() + WASTELAND_CLAIM_DURATION_MS,
-  };
+    rect,
+    draft,
+    landMeta,
+    now: Date.now(),
+    durationMs: WASTELAND_CLAIM_DURATION_MS,
+    activeStatus: WASTELAND_CLAIM_STATUS.ACTIVE,
+  });
+  if (!claim) return false;
   plot.claims.push(claim);
   plot.claimDrafts.delete(ownerId);
   const reclaimedCount = reclaimConflictingWastelandFencePostsForClaim(claim, 2);
@@ -7110,16 +5967,13 @@ function confirmCurrentWastelandDraft() {
   if (!ownerId || !plot || !draft) return false;
   const rect = isValidWastelandDraftRectangle(draft);
   if (!rect) return false;
-  const hasOverlap = plot.claims.some(
-    (claim) =>
-      !(rect.maxRow < claim.minRow || rect.minRow > claim.maxRow || rect.maxCol < claim.minCol || rect.minCol > claim.maxCol)
-  );
+  const hasOverlap = wastelandRuntime.hasClaimOverlap(rect, plot.claims);
   if (hasOverlap) {
     showUI("다른 확정 구역과 겹치는 직사각형은 확정할 수 없습니다.", 1100);
     lastMessageUntil = performance.now() + 1100;
     return false;
   }
-  if (wastelandClaimConfirmOpen) return true;
+  if (wastelandController.isClaimConfirmOpen()) return true;
   return openWastelandClaimConfirmDialog(rect);
 }
 
@@ -7138,16 +5992,19 @@ function expireOverdueFrontierWastelandClaims() {
   const plot = ensureFrontierWastelandRuntimeState();
   if (!plot?.claims?.length) return;
   const now = Date.now();
-  const expired = plot.claims.filter((claim) => claim.expiresAt <= now);
-  if (!expired.length) return;
+  const expirationPlan = wastelandRuntime.createClaimExpirationPlan({
+    claims: plot.claims,
+    now,
+    partitionExpiredClaims: partitionExpiredWastelandClaimsFromModule,
+    failedStatus: WASTELAND_CLAIM_STATUS.FAILED,
+  });
+  if (!expirationPlan.expired.length) return;
   const currentOwnerId = getCurrentWastelandOwnerId();
-  for (const claim of expired) {
-    setWastelandClaimStatus(claim, WASTELAND_CLAIM_STATUS.FAILED, {
-      failedAt: now,
-    });
+  for (const { claim, patch } of expirationPlan.expired) {
+    setWastelandClaimStatus(claim, patch);
   }
-  plot.claims = plot.claims.filter((claim) => claim.expiresAt > now);
-  for (const claim of expired) {
+  plot.claims = expirationPlan.active;
+  for (const { claim } of expirationPlan.expired) {
     removeWastelandClaimFences(claim);
     if (claim.ownerId === currentOwnerId) {
       showUI("개간 기한이 만료되어 울타리 기둥이 철거되었습니다.", 1300);
@@ -7166,9 +6023,9 @@ function expireOverdueWastelandDraftReservations() {
   if (!plot?.claimDrafts?.size) return;
   const now = Date.now();
   const currentOwnerId = getCurrentWastelandOwnerId();
+  const expiredDrafts = getExpiredWastelandDraftReservationsFromModule(plot.claimDrafts, now);
   let changed = false;
-  for (const [ownerId, draft] of [...plot.claimDrafts.entries()]) {
-    if (!draft?.postKeys?.length || !draft.expiresAt || draft.expiresAt > now) continue;
+  for (const [ownerId, draft] of expiredDrafts) {
     draft.phase = WASTELAND_DRAFT_PHASE.EXPIRED;
     for (const key of draft.postKeys) {
       const post = plot.fencePosts.get(key);
@@ -7208,10 +6065,9 @@ function getWastelandClaimPhase(progress = getCurrentWastelandClaimProgress()) {
   });
 }
 
-function setWastelandClaimStatus(claim, status, extra = {}) {
+function setWastelandClaimStatus(claim, patch) {
   if (!claim) return null;
-  claim.status = status;
-  Object.assign(claim, extra);
+  Object.assign(claim, patch);
   return claim;
 }
 
@@ -7221,20 +6077,29 @@ function canCompleteWastelandClaim(progress) {
 
 function completeCurrentWastelandClaim() {
   const progress = getCurrentWastelandClaimProgress();
-  if (!canCompleteWastelandClaim(progress)) {
+  const claim = progress?.claim;
+  const issuedEntry = claim ? findIssuedWastelandLandDeed(claim.landId) : null;
+  const rewardPlan = wastelandRuntime.getClaimCompletionRewardPlan({
+    canComplete: canCompleteWastelandClaim(progress),
+    hasIssuedDeed: Boolean(issuedEntry),
+  });
+  if (!rewardPlan.ok) {
     showUI("아직 완료할 수 없습니다.", 1000);
     lastMessageUntil = performance.now() + 1000;
     return false;
   }
-  const claim = progress.claim;
-  const issuedEntry = findIssuedWastelandLandDeed(claim.landId);
   const rewardIssuedAt = Date.now();
-  if (issuedEntry) {
-    setWastelandClaimStatus(claim, WASTELAND_CLAIM_STATUS.COMPLETED, {
+  if (rewardPlan.action === "confirm-issued") {
+    setWastelandClaimStatus(claim, wastelandRuntime.createClaimStatusPatch(
+      WASTELAND_CLAIM_STATUS.COMPLETED,
+      "",
+      rewardIssuedAt,
+      {
       completedAt: claim.completedAt || rewardIssuedAt,
       rewardItemId: WASTELAND_LAND_DEED_ITEM_ID,
       rewardIssuedAt: claim.rewardIssuedAt || rewardIssuedAt,
-    });
+      }
+    ));
     removeWastelandClaimFences(claim);
     finalizeWastelandStateTransition({
       updateClaimUi: true,
@@ -7256,11 +6121,15 @@ function completeCurrentWastelandClaim() {
     lastMessageUntil = performance.now() + 1400;
     return false;
   }
-  setWastelandClaimStatus(claim, WASTELAND_CLAIM_STATUS.COMPLETED, {
-    completedAt: rewardIssuedAt,
-    rewardItemId: WASTELAND_LAND_DEED_ITEM_ID,
+  setWastelandClaimStatus(claim, wastelandRuntime.createClaimStatusPatch(
+    WASTELAND_CLAIM_STATUS.COMPLETED,
+    "completedAt",
     rewardIssuedAt,
-  });
+    {
+      rewardItemId: WASTELAND_LAND_DEED_ITEM_ID,
+      rewardIssuedAt,
+    }
+  ));
   removeWastelandClaimFences(claim);
   finalizeWastelandStateTransition({
     updateClaimUi: true,
@@ -7280,17 +6149,23 @@ function canCancelWastelandClaim(progress) {
 function cancelCurrentWastelandClaim() {
   const plot = ensureFrontierWastelandRuntimeState();
   const claim = getCurrentFrontierWastelandClaim();
-  if (!plot || !claim || claim.status === WASTELAND_CLAIM_STATUS.COMPLETED || claim.rewardIssuedAt) {
+  const cancellationPlan = wastelandRuntime.getClaimCancellationPlan({
+    claim: plot ? claim : null,
+    completedStatus: WASTELAND_CLAIM_STATUS.COMPLETED,
+  });
+  if (!cancellationPlan.ok) {
     closeWastelandClaimCancelDialog();
     showUI("취소할 수 있는 확정 구역이 없습니다.", 1000);
     lastMessageUntil = performance.now() + 1000;
     return false;
   }
-  setWastelandClaimStatus(claim, WASTELAND_CLAIM_STATUS.CANCELLED, {
-    cancelledAt: Date.now(),
-  });
-  removeWastelandClaimFences(claim);
-  plot.claims = plot.claims.filter((entry) => entry !== claim);
+  setWastelandClaimStatus(cancellationPlan.claim, wastelandRuntime.createClaimStatusPatch(
+    WASTELAND_CLAIM_STATUS.CANCELLED,
+    "cancelledAt",
+    Date.now()
+  ));
+  removeWastelandClaimFences(cancellationPlan.claim);
+  plot.claims = plot.claims.filter((entry) => entry !== cancellationPlan.claim);
   finalizeWastelandStateTransition({
     closeCancel: true,
     updateClaimUi: true,
@@ -7343,67 +6218,43 @@ function toggleWastelandFencePlacementMode() {
     lastMessageUntil = performance.now() + 1000;
     return;
   }
-  wastelandFencePlacementMode = !wastelandFencePlacementMode;
-  if (wastelandFencePlacementMode) {
-    selectedWastelandStructureItemId = "";
-  }
-  if (!wastelandFencePlacementMode) {
+  const fencePlacementMode = wastelandController.toggleFencePlacementMode();
+  if (!fencePlacementMode) {
     clearWastelandClaimPreview();
   }
   showUI(
-    wastelandFencePlacementMode ? "울타리 기둥 설치 모드" : "울타리 기둥 설치 모드 해제",
+    fencePlacementMode ? "울타리 기둥 설치 모드" : "울타리 기둥 설치 모드 해제",
     1000
   );
   lastMessageUntil = performance.now() + 1000;
   updateInventoryUI();
-  if (wastelandFencePlacementMode) {
+  if (fencePlacementMode) {
     updateFrontierWastelandDraftPrompt();
   }
 }
 
 function removeColliderAt(idx) {
-  const removed = colliders[idx];
-  colliders.splice(idx, 1);
-  colliderBoxes.splice(idx, 1);
+  colliderRegistry.removeAt(idx);
+}
 
-  if (removed?.userData) {
-    removed.userData.colliderIndex = null;
+function getWastelandClaimHudStatusText(progress) {
+  const claimPhase = getWastelandClaimPhase(progress);
+  if (claimPhase === WASTELAND_CLAIM_PHASE.COMPLETED) return "개간 완료 | 토지권 지급 완료";
+  if (claimPhase === WASTELAND_CLAIM_PHASE.REWARD_PENDING) {
+    return `완료 가능 | 남은 시간 ${formatWastelandClaimRemaining(progress.claim.expiresAt - Date.now())}`;
   }
-
-  // 콜라이더 인덱스가 뒤로 밀리니까, 모든 오브젝트의 인덱스를 다시 맞춘다.
-  for (let i = 0; i < colliders.length; i++) {
-    const colliderObj = colliders[i];
-    if (!colliderObj?.userData) continue;
-    colliderObj.userData.colliderIndex = i;
-  }
+  if (claimPhase === WASTELAND_CLAIM_PHASE.FAILED) return "개간 실패 | 기한 만료";
+  return `개간률 ${progress.percent.toFixed(1)}% | 남은 시간 ${formatWastelandClaimRemaining(progress.claim.expiresAt - Date.now())}`;
 }
 
 
 // 콜라이더를 등록하면서 Box3를 한 번만 계산해 캐시해둠
 function addCollider(obj, shrink = 1.0) {
-  obj.userData.colliderShrink = shrink;
-
-  obj.updateWorldMatrix(true, true); // ✅ 월드 좌표 반영
-  const box = new THREE.Box3().setFromObject(obj);
-
-  if (shrink !== 1.0) {
-    const center = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3()).multiplyScalar(shrink);
-    box.setFromCenterAndSize(center, size);
-  }
-
-  const idx = colliders.length;
-  colliders.push(obj);
-  colliderBoxes.push(box);
-  obj.userData.colliderIndex = idx;
-  return idx;
-
+  return colliderRegistry.add(obj, shrink);
 }
 
 function getTrackedColliderIndex(obj, fallback = null) {
-  const tracked = obj?.userData?.colliderIndex;
-  if (typeof tracked === "number") return tracked;
-  return typeof fallback === "number" ? fallback : null;
+  return colliderRegistry.getTrackedIndex(obj, fallback);
 }
 
 // ===== Starting Zone collision wall (optional) =====
@@ -7483,156 +6334,39 @@ function buildStartStall() {
 const PROP_GRAVITY = 18;
 const PROP_SLEEP_VELOCITY = 0.08;
 const PROP_SURFACE_CLEARANCE = 0.01;
-const PROP_GROUND_RAY = new THREE.Raycaster();
-const dynamicProps = [];
-const supportSurfaces = [];
-
-function registerSupportSurface(mesh) {
-  supportSurfaces.push(mesh);
-  return mesh;
-}
-
-function enableDynamicProp(obj, options = {}) {
-  const body = {
-    obj,
-    velocityY: options.velocityY ?? 0,
-    sleeping: options.sleeping ?? false,
-    clearance: options.clearance ?? PROP_SURFACE_CLEARANCE,
-  };
-  dynamicProps.push(body);
-  obj.userData.dynamicPropBody = body;
-  return body;
-}
-
-function unregisterDynamicProp(obj) {
-  const body = obj?.userData?.dynamicPropBody;
-  if (!body) return;
-
-  const idx = dynamicProps.indexOf(body);
-  if (idx !== -1) dynamicProps.splice(idx, 1);
-  delete obj.userData.dynamicPropBody;
-}
-
-function getGroundYAt(x, z) {
-  PROP_GROUND_RAY.set(new THREE.Vector3(x, 40, z), new THREE.Vector3(0, -1, 0));
-  PROP_GROUND_RAY.far = 80;
-  const hits = PROP_GROUND_RAY.intersectObject(ground, false);
-  return hits.length > 0 ? hits[0].point.y : null;
-}
-
-function getHighestSupportY(box, excludeObj = null) {
-  let bestY = null;
-  const centerX = (box.min.x + box.max.x) * 0.5;
-  const centerZ = (box.min.z + box.max.z) * 0.5;
-  const groundY = getGroundYAt(centerX, centerZ);
-  if (groundY !== null) bestY = groundY;
-
-  for (const mesh of supportSurfaces) {
-    if (!mesh || mesh === excludeObj || !mesh.parent) continue;
-    const supportBox = new THREE.Box3().setFromObject(mesh);
-    const overlapsXZ =
-      box.max.x > supportBox.min.x &&
-      box.min.x < supportBox.max.x &&
-      box.max.z > supportBox.min.z &&
-      box.min.z < supportBox.max.z;
-
-    if (!overlapsXZ) continue;
-    if (supportBox.max.y > box.max.y) continue;
-    if (bestY === null || supportBox.max.y > bestY) bestY = supportBox.max.y;
-  }
-
-  for (const body of dynamicProps) {
-    const other = body.obj;
-    if (!other || other === excludeObj || !other.parent || !body.sleeping) continue;
-    const supportBox = new THREE.Box3().setFromObject(other);
-    const overlapsXZ =
-      box.max.x > supportBox.min.x &&
-      box.min.x < supportBox.max.x &&
-      box.max.z > supportBox.min.z &&
-      box.min.z < supportBox.max.z;
-
-    if (!overlapsXZ) continue;
-    if (supportBox.max.y > box.max.y) continue;
-    if (bestY === null || supportBox.max.y > bestY) bestY = supportBox.max.y;
-  }
-
-  return bestY;
-}
-
-function restPropOnSupport(obj, supportMesh, clearance = PROP_SURFACE_CLEARANCE) {
-  if (!obj || !supportMesh) return;
-  obj.updateWorldMatrix(true, true);
-  const objBox = new THREE.Box3().setFromObject(obj);
-  const supportBox = new THREE.Box3().setFromObject(supportMesh);
-  obj.position.y += supportBox.max.y + clearance - objBox.min.y;
-  obj.updateWorldMatrix(true, true);
-}
+const dynamicPropsRuntime = createDynamicPropsRuntime({
+  ground,
+  gravity: PROP_GRAVITY,
+  sleepVelocity: PROP_SLEEP_VELOCITY,
+  clearance: PROP_SURFACE_CLEARANCE,
+});
+const { registerSupportSurface, enableDynamicProp, unregisterDynamicProp, restPropOnSupport } = dynamicPropsRuntime;
 
 function updateDynamicProps(dt) {
-  for (const body of dynamicProps) {
-    const obj = body.obj;
-    if (!obj || !obj.parent || body.sleeping) continue;
-
-    obj.updateWorldMatrix(true, true);
-    const prevBox = new THREE.Box3().setFromObject(obj);
-    const prevMinY = prevBox.min.y;
-
-    body.velocityY -= PROP_GRAVITY * dt;
-    obj.position.y += body.velocityY * dt;
-    obj.updateWorldMatrix(true, true);
-
-    const nextBox = new THREE.Box3().setFromObject(obj);
-    const supportY = getHighestSupportY(nextBox, obj);
-    if (supportY === null) continue;
-
-    const crossedSupport =
-      body.velocityY <= 0 &&
-      prevMinY >= supportY - body.clearance &&
-      nextBox.min.y <= supportY + body.clearance;
-
-    if (!crossedSupport) continue;
-
-    obj.position.y += supportY + body.clearance - nextBox.min.y;
-    body.velocityY = 0;
-    if (Math.abs(body.velocityY) <= PROP_SLEEP_VELOCITY) {
-      body.sleeping = true;
-    }
-    obj.updateWorldMatrix(true, true);
-  }
+  dynamicPropsRuntime.update(dt);
 }
 
 
 // ===== Ground follow (raycast) =====
-const groundRay = new THREE.Raycaster();
-const rayOrigin = new THREE.Vector3();
-const rayDir = new THREE.Vector3(0, -1, 0);
-
-// 플레이어 발이 지면에 닿는 기준 오프셋(캡슐 크기에 맞게 조절)
-// const PLAYER_FOOT_OFFSET = 0.2; // 너무 뜨면 0.8, 파묻히면 1.2
+const playerGroundingRuntime = createPlayerGroundingRuntime({
+  groundSurfaces,
+  footOffset: PLAYER_FOOT_OFFSET,
+});
 
 function updatePlayerGroundY(dt) {
-  // player 위에서 아래로 레이를 쏴서 지면 높이 측정
-  rayOrigin.set(player.position.x, player.position.y + 20, player.position.z);
-  groundRay.set(rayOrigin, rayDir);
-  groundRay.far = 50;
-
-  const hits = groundRay.intersectObjects(groundSurfaces, false);
-  if (hits.length > 0) {
-    const targetY = hits[0].point.y + PLAYER_FOOT_OFFSET;
-
-    // 갑자기 튀지 않게 부드럽게 따라가기
-    const follow = 1 - Math.pow(0.001, dt); // dt 기반 부드러운 보간
-    player.position.y = player.position.y + (targetY - player.position.y) * follow;
-  }
+  playerGroundingRuntime.update(player, dt);
 }
 
 
 const interactables = []; // 상호작용 가능한 오브젝트 목록
 let activeInteractable = null; // 현재 가까운 대상
 let lastMessageUntil = 0; // 메시지 표시용 타이머
-const pickupItems = [];
+const worldPickups = createWorldPickupRuntime({
+  getItemName: (itemId) => ITEM_DEFS[itemId]?.name ?? itemId,
+});
 let activePickupItem = null;
-const tutorialNpcs = [];
+const tutorialNpcRuntime = createTutorialNpcRuntime();
+const tutorialNpcs = tutorialNpcRuntime.entries;
 let activeTutorialNpc = null;
 let forgeStation = null;
 let refineryStation = null;
@@ -7670,6 +6404,21 @@ const mapGates = [];
 let activeMapGate = null;
 let currentMapId = "광산";
 let lastAnnouncedMapId = currentMapId;
+const mapRuntime = createMapRuntime({
+  mapGates,
+  connectorTunnelZones,
+  getPlayerPosition: () => player.position,
+  getCurrentMapId: () => currentMapId,
+  setCurrentMapId: (mapId) => { currentMapId = mapId; },
+  getMapThresholds: () => ({
+    mineDoorThresholdZ: mineGate.position.z - 0.35,
+    campDoorThresholdZ: campGate.position.z + 0.35,
+    campNorthDoorThresholdZ: frontierCampGate.position.z - 0.35,
+    frontierDoorThresholdZ: frontierGate.position.z + 0.35,
+  }),
+  isInResidenceZone: () => isPlayerInResidenceMapZone(),
+  residenceMapId: RESIDENCE_MAP_ID,
+});
 let torchEquipped = false;
 let playerAirCurrent = AIR_GAUGE_MAX;
 let playerAirMax = AIR_GAUGE_MAX;
@@ -7679,6 +6428,16 @@ const mapPurificationProgress = {
   "폐광": 0,
   "개척지": 0,
 };
+const airRuntime = createAirRuntime({
+  initialAir: playerAirCurrent,
+  maxAir: playerAirMax,
+  mapPurificationProgress,
+  mapPollutionConfig: MAP_POLLUTION_CONFIG,
+  hasItem,
+  consumeItem,
+  getItemCount,
+  onAirChanged: (nextAir) => { playerAirCurrent = nextAir; },
+});
 let frontierBuildState = createDefaultFrontierBuildState();
 
 function createDefaultFrontierBuildState() {
@@ -7825,43 +6584,16 @@ function createDefaultFrontierDisplayState() {
   return createDefaultFrontierDisplayStateFromModule();
 }
 
-function createDefaultResidenceNoticeBoardEntry(key) {
-  const titleMap = {
-    boardA: "게시판 A",
-    boardB: "게시판 B",
-    boardC: "게시판 C",
-  };
-  return {
-    title: titleMap[key] ?? "게시판",
-    lines: ["공용 알림과 안내가", "표시될 예정입니다."],
-  };
-}
-
 function createDefaultResidenceNoticeBoardState() {
-  return Object.fromEntries(
-    RESIDENCE_NOTICE_BOARD_KEYS.map((key) => [key, createDefaultResidenceNoticeBoardEntry(key)])
-  );
+  return createDefaultResidenceNoticeBoardStateFromModule(RESIDENCE_NOTICE_BOARD_KEYS);
 }
 
 function normalizeResidenceNoticeBoardEntry(key, rawEntry) {
-  const defaults = createDefaultResidenceNoticeBoardEntry(key);
-  const source = rawEntry && typeof rawEntry === "object" ? rawEntry : {};
-  const rawLines = Array.isArray(source.lines) ? source.lines : defaults.lines;
-  const lines = rawLines
-    .map((line) => String(line ?? "").trim().slice(0, 36))
-    .filter(Boolean)
-    .slice(0, 4);
-  return {
-    title: String(source.title ?? defaults.title).trim().slice(0, 24) || defaults.title,
-    lines: lines.length > 0 ? lines : defaults.lines,
-  };
+  return normalizeResidenceNoticeBoardEntryFromModule(key, rawEntry);
 }
 
 function normalizeResidenceNoticeBoardState(rawState) {
-  const source = rawState && typeof rawState === "object" ? rawState : {};
-  return Object.fromEntries(
-    RESIDENCE_NOTICE_BOARD_KEYS.map((key) => [key, normalizeResidenceNoticeBoardEntry(key, source[key])])
-  );
+  return normalizeResidenceNoticeBoardStateFromModule(RESIDENCE_NOTICE_BOARD_KEYS, rawState);
 }
 
 function formatFrontierShopStatusText(itemId, quantity, price) {
@@ -8135,6 +6867,15 @@ function canUseFrontierDisplaySlot(parcelLabel = getSelectedFrontierParcelLabel(
   );
 }
 
+function getFrontierBoothInteractionPlan(interactable) {
+  return getFrontierBoothInteractionPlanFromModule(interactable, getSelectedFrontierParcelLabel(), {
+    canManageShopSlot: canManageFrontierShopSlot,
+    canUseShopSlot: canUseFrontierShopSlot,
+    canManageDisplaySlot: canManageFrontierDisplaySlot,
+    canUseDisplaySlot: canUseFrontierDisplaySlot,
+  });
+}
+
 function getDevProfileSaveKey(profileId) {
   return `${DEV_PROFILE_SAVE_PREFIX}${sanitizeDevProfileId(profileId)}`;
 }
@@ -8281,6 +7022,17 @@ function getFrontierConstructionRoot(parcelLabel) {
   return frontierParcelConstructionRoots[parcelLabel] ?? null;
 }
 
+const frontierSceneController = createFrontierSceneController({
+  interactables,
+  scene,
+  getMarkers: getFrontierParcelBoothInteractables,
+  setMarkers: (parcelLabel, markers) => { frontierParcelBoothInteractables[parcelLabel] = markers; },
+  getColliders: getFrontierConstructionColliders,
+  setColliders: (parcelLabel, colliders) => { frontierParcelConstructionColliders[parcelLabel] = colliders; },
+  getTrackedColliderIndex,
+  removeColliderAt,
+});
+
 function getFrontierConstructionGroup(parcelLabel) {
   return frontierParcelConstructionGroups[parcelLabel] ?? null;
 }
@@ -8309,25 +7061,11 @@ function getFrontierParcelSafeStandingPoint(parcelLabel) {
 }
 
 function clearFrontierConstructionColliders(parcelLabel) {
-  const colliders = getFrontierConstructionColliders(parcelLabel);
-  for (const collider of colliders) {
-    const colliderIndex = getTrackedColliderIndex(collider, collider?.userData?.colliderIndex);
-    if (typeof colliderIndex === "number") {
-      removeColliderAt(colliderIndex);
-    }
-    if (collider?.parent) collider.removeFromParent();
-  }
-  frontierParcelConstructionColliders[parcelLabel] = [];
+  frontierSceneController.clearColliders(parcelLabel);
 }
 
 function clearFrontierParcelBoothMarkers(parcelLabel) {
-  const markers = getFrontierParcelBoothInteractables(parcelLabel);
-  for (const marker of markers) {
-    const idx = interactables.indexOf(marker);
-    if (idx !== -1) interactables.splice(idx, 1);
-    if (marker?.obj?.parent) marker.obj.removeFromParent();
-  }
-  frontierParcelBoothInteractables[parcelLabel] = [];
+  frontierSceneController.clearMarkers(parcelLabel);
 }
 
 function rebuildAllFrontierConstructionVisuals() {
@@ -8351,268 +7089,30 @@ function getFrontierNextStageConfig(stage = getFrontierBuildState().stage) {
 }
 
 function buildFrontierBuildingSign(text) {
-  const wrap = new THREE.Group();
-  const signWidth = 4.5;
-  const signHeight = 0.95;
-
-  const board = new THREE.Mesh(
-    new THREE.BoxGeometry(signWidth, signHeight, 0.14),
-    new THREE.MeshStandardMaterial({ color: 0x3a2b1f, roughness: 0.9 })
-  );
-  wrap.add(board);
-
-  const faceCanvas = document.createElement("canvas");
-  faceCanvas.width = 1280;
-  faceCanvas.height = 320;
-  const faceCtx = faceCanvas.getContext("2d");
-  faceCtx.fillStyle = "#f4dfa4";
-  faceCtx.fillRect(0, 0, faceCanvas.width, faceCanvas.height);
-  faceCtx.fillStyle = "#3b2a1e";
-  faceCtx.fillRect(14, 14, faceCanvas.width - 28, faceCanvas.height - 28);
-  faceCtx.fillStyle = "#f8e6b8";
-  faceCtx.fillRect(24, 24, faceCanvas.width - 48, faceCanvas.height - 48);
-  const safeText = String(text || "P6").trim() || "P6";
-  let fontSize = 168;
-  do {
-    faceCtx.font = `900 ${fontSize}px Apple SD Gothic Neo, Malgun Gothic, system-ui, sans-serif`;
-    if (faceCtx.measureText(safeText).width <= 980 || fontSize <= 60) break;
-    fontSize -= 4;
-  } while (fontSize > 60);
-  faceCtx.fillStyle = "#2c1b0f";
-  faceCtx.textAlign = "center";
-  faceCtx.textBaseline = "middle";
-  faceCtx.fillText(safeText, faceCanvas.width * 0.5, faceCanvas.height * 0.52);
-
-  const faceTex = new THREE.CanvasTexture(faceCanvas);
-  faceTex.colorSpace = THREE.SRGBColorSpace;
-  const signFace = new THREE.Mesh(
-    new THREE.PlaneGeometry(signWidth - 0.32, signHeight - 0.18),
-    new THREE.MeshBasicMaterial({ map: faceTex, transparent: false })
-  );
-  signFace.position.z = 0.078;
-  wrap.add(signFace);
-
-  return wrap;
+  return buildFrontierBuildingSignFromModule(text);
 }
 
 function buildFrontierBoothLabel(titleText, statusText) {
-  const wrap = new THREE.Group();
-  const width = 1.9;
-  const height = 0.68;
-
-  const board = new THREE.Mesh(
-    new THREE.BoxGeometry(width, height, 0.08),
-    new THREE.MeshStandardMaterial({ color: 0x4f3b2d, roughness: 0.88 })
-  );
-  wrap.add(board);
-
-  const canvas = document.createElement("canvas");
-  canvas.width = 820;
-  canvas.height = 280;
-  const ctx = canvas.getContext("2d");
-  ctx.fillStyle = "#f4ead0";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = "#473528";
-  ctx.fillRect(12, 12, canvas.width - 24, canvas.height - 24);
-  ctx.fillStyle = "#fbf1d7";
-  ctx.fillRect(22, 22, canvas.width - 44, canvas.height - 44);
-
-  const safeTitle = String(titleText || "").trim() || "부스";
-  const safeStatus = String(statusText || "").trim() || "비어 있음";
-  ctx.fillStyle = "#2b1d14";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.font = "900 84px Apple SD Gothic Neo, Malgun Gothic, system-ui, sans-serif";
-  ctx.fillText(safeTitle, canvas.width * 0.5, 108);
-
-  let statusFont = 56;
-  do {
-    ctx.font = `800 ${statusFont}px Apple SD Gothic Neo, Malgun Gothic, system-ui, sans-serif`;
-    if (ctx.measureText(safeStatus).width <= 650 || statusFont <= 32) break;
-    statusFont -= 2;
-  } while (statusFont > 32);
-  ctx.fillStyle = "#7a6550";
-  ctx.fillText(safeStatus, canvas.width * 0.5, 198);
-
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  const face = new THREE.Mesh(
-    new THREE.PlaneGeometry(width - 0.16, height - 0.14),
-    new THREE.MeshBasicMaterial({ map: tex })
-  );
-  face.position.z = 0.046;
-  wrap.add(face);
-
-  return wrap;
+  return buildFrontierBoothLabelFromModule(titleText, statusText);
 }
 
 function buildFrontierBoothProductVisual(itemId, quantity = 0) {
-  const wrap = new THREE.Group();
-  if (!itemId || !ITEM_DEFS[itemId]) return wrap;
-
-  const def = ITEM_DEFS[itemId];
-  if (typeof def.makeInventoryModel === "function") {
-    const model = def.makeInventoryModel();
-    const box = new THREE.Box3().setFromObject(model);
-    const size = box.getSize(new THREE.Vector3());
-    const maxDim = Math.max(size.x, size.y, size.z) || 1;
-    model.scale.multiplyScalar(0.72 / maxDim);
-    const scaledBox = new THREE.Box3().setFromObject(model);
-    const center = scaledBox.getCenter(new THREE.Vector3());
-    model.position.sub(center);
-    model.position.y -= scaledBox.min.y;
-    wrap.add(model);
-  } else {
-    const canvas = document.createElement("canvas");
-    canvas.width = 300;
-    canvas.height = 300;
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "rgba(246, 235, 210, 0.96)";
-    ctx.beginPath();
-    ctx.roundRect(28, 28, 244, 244, 28);
-    ctx.fill();
-    ctx.fillStyle = "#5a4637";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.font = "900 140px Apple SD Gothic Neo, Malgun Gothic, system-ui, sans-serif";
-    ctx.fillText(def.icon ?? "?", canvas.width * 0.5, canvas.height * 0.48);
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    const plane = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.88, 0.88),
-      new THREE.MeshBasicMaterial({ map: tex, transparent: true })
-    );
-    wrap.add(plane);
-  }
-
-  const qtyCanvas = document.createElement("canvas");
-  qtyCanvas.width = 360;
-  qtyCanvas.height = 120;
-  const qtyCtx = qtyCanvas.getContext("2d");
-  qtyCtx.clearRect(0, 0, qtyCanvas.width, qtyCanvas.height);
-  qtyCtx.fillStyle = "rgba(48,36,28,0.88)";
-  qtyCtx.beginPath();
-  qtyCtx.roundRect(60, 16, 240, 88, 24);
-  qtyCtx.fill();
-  qtyCtx.fillStyle = "#fbf1d7";
-  qtyCtx.textAlign = "center";
-  qtyCtx.textBaseline = "middle";
-  qtyCtx.font = "800 58px Apple SD Gothic Neo, Malgun Gothic, system-ui, sans-serif";
-  qtyCtx.fillText(`x${quantity}`, qtyCanvas.width * 0.5, qtyCanvas.height * 0.52);
-  const qtyTex = new THREE.CanvasTexture(qtyCanvas);
-  qtyTex.colorSpace = THREE.SRGBColorSpace;
-  const qtyTag = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.72, 0.24),
-    new THREE.MeshBasicMaterial({ map: qtyTex, transparent: true })
-  );
-  qtyTag.position.set(0, 0.68, 0.02);
-  wrap.add(qtyTag);
-  return wrap;
+  return buildFrontierBoothProductVisualFromModule(itemId, quantity, { itemDefs: ITEM_DEFS });
 }
 
 function buildFrontierDisplayBoothVisual(entry) {
-  const wrap = new THREE.Group();
-  const normalizedEntry = normalizeInventorySlotEntry(entry);
-  if (!normalizedEntry) return wrap;
-
-  if (!isNftInventoryEntry(normalizedEntry)) {
-    const itemId = getSlotItemId(normalizedEntry);
-    const def = ITEM_DEFS[itemId];
-    if (def && typeof def.makeInventoryModel === "function") {
-      const model = def.makeInventoryModel();
-      const box = new THREE.Box3().setFromObject(model);
-      const size = box.getSize(new THREE.Vector3());
-      const maxDim = Math.max(size.x, size.y, size.z) || 1;
-      model.scale.multiplyScalar(0.64 / maxDim);
-      const scaledBox = new THREE.Box3().setFromObject(model);
-      const center = scaledBox.getCenter(new THREE.Vector3());
-      model.position.sub(center);
-      model.position.y -= scaledBox.min.y;
-      wrap.add(model);
-    }
-  }
-
-  const canvas = document.createElement("canvas");
-  canvas.width = 360;
-  canvas.height = 360;
-  const ctx = canvas.getContext("2d");
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = "rgba(246, 235, 210, 0.96)";
-  ctx.beginPath();
-  ctx.roundRect(30, 30, 300, 300, 30);
-  ctx.fill();
-  ctx.fillStyle = "#5a4637";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.font = "900 144px Apple SD Gothic Neo, Malgun Gothic, system-ui, sans-serif";
-  ctx.fillText(getInventoryEntryDisplayIcon(normalizedEntry), canvas.width * 0.5, canvas.height * 0.46);
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  const plane = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.86, 0.86),
-    new THREE.MeshBasicMaterial({ map: tex, transparent: true })
-  );
-  plane.position.y = 0.12;
-  if (wrap.children.length === 0) {
-    wrap.add(plane);
-  } else {
-    plane.position.y = 0.74;
-    plane.scale.setScalar(0.52);
-    wrap.add(plane);
-  }
-
-  const nameCanvas = document.createElement("canvas");
-  nameCanvas.width = 560;
-  nameCanvas.height = 120;
-  const nameCtx = nameCanvas.getContext("2d");
-  nameCtx.clearRect(0, 0, nameCanvas.width, nameCanvas.height);
-  nameCtx.fillStyle = "rgba(48,36,28,0.88)";
-  nameCtx.beginPath();
-  nameCtx.roundRect(24, 16, 512, 88, 24);
-  nameCtx.fill();
-  nameCtx.fillStyle = "#fbf1d7";
-  nameCtx.textAlign = "center";
-  nameCtx.textBaseline = "middle";
-  let fontSize = 44;
-  const safeName = getInventoryEntryDisplayName(normalizedEntry);
-  do {
-    nameCtx.font = `800 ${fontSize}px Apple SD Gothic Neo, Malgun Gothic, system-ui, sans-serif`;
-    if (nameCtx.measureText(safeName).width <= 460 || fontSize <= 24) break;
-    fontSize -= 2;
-  } while (fontSize > 24);
-  nameCtx.fillText(safeName, nameCanvas.width * 0.5, nameCanvas.height * 0.55);
-  const nameTex = new THREE.CanvasTexture(nameCanvas);
-  nameTex.colorSpace = THREE.SRGBColorSpace;
-  const nameTag = new THREE.Mesh(
-    new THREE.PlaneGeometry(1.02, 0.22),
-    new THREE.MeshBasicMaterial({ map: nameTex, transparent: true })
-  );
-  nameTag.position.set(0, 0.88, 0.02);
-  wrap.add(nameTag);
-  return wrap;
+  return buildFrontierDisplayBoothVisualFromModule(entry, {
+    itemDefs: ITEM_DEFS,
+    normalizeInventorySlotEntry,
+    isNftInventoryEntry,
+    getSlotItemId,
+    getInventoryEntryDisplayIcon,
+    getInventoryEntryDisplayName,
+  });
 }
 
 function registerFrontierBoothMarker(parcelLabel, type, title, x, y, z, slotKey = "") {
-  const marker = new THREE.Mesh(
-    new THREE.BoxGeometry(1.2, 1.6, 1.2),
-    new THREE.MeshBasicMaterial({ visible: false })
-  );
-  marker.position.set(x, y, z);
-  scene.add(marker);
-  const interactable = {
-    obj: marker,
-    board: marker,
-    highlightKind: "none",
-    type,
-    parcelLabel,
-    slotKey,
-    boothTitle: title,
-    text: `E : ${title}`,
-  };
-  interactables.push(interactable);
-  getFrontierParcelBoothInteractables(parcelLabel).push(interactable);
-  return interactable;
+  return frontierSceneController.registerBoothMarker({ parcelLabel, type, title, x, y, z, slotKey });
 }
 
 function rebuildFrontierParcelConstructionVisual(parcelLabel) {
@@ -8910,19 +7410,19 @@ function updateSceneFogForCurrentMap() {
 }
 
 function getMapPollutionConfig(mapId = currentMapId) {
-  return getMapPollutionConfigFromModule(mapId, MAP_POLLUTION_CONFIG);
+  return airRuntime.getPollutionConfig(mapId);
 }
 
 function isPollutedMap(mapId = currentMapId) {
-  return isPollutedMapFromModule(mapId, MAP_POLLUTION_CONFIG);
+  return airRuntime.isPollutedMap(mapId);
 }
 
 function getMapPurificationValue(mapId = currentMapId) {
-  return getMapPurificationValueFromModule(mapId, mapPurificationProgress, MAP_POLLUTION_CONFIG);
+  return airRuntime.getPurification(mapId);
 }
 
 function setMapPurificationValue(mapId, value) {
-  setMapPurificationValueFromModule(mapId, value, mapPurificationProgress, MAP_POLLUTION_CONFIG);
+  airRuntime.setPurification(mapId, value);
 }
 
 function resetAllMapPurificationValues() {
@@ -8930,16 +7430,11 @@ function resetAllMapPurificationValues() {
 }
 
 function getCurrentAirDrainPerSecond() {
-  const effectiveMapId = getEffectiveAirMapId();
-  return getCurrentAirDrainPerSecondFromModule(
-    effectiveMapId,
-    mapPurificationProgress,
-    MAP_POLLUTION_CONFIG
-  );
+  return airRuntime.getHudState(getEffectiveAirMapId()).drainPerSecond;
 }
 
 function canRecoverAirInMap(mapId = currentMapId) {
-  return canRecoverAirInMapFromModule(mapId, mapPurificationProgress, MAP_POLLUTION_CONFIG);
+  return airRuntime.getHudState(mapId).recoverable;
 }
 
 function updateAirHud() {
@@ -8997,64 +7492,16 @@ function updateAirHud() {
 }
 
 function buildPollutionFieldForMap(mapId, centerX, centerZ, halfSize) {
-  const geometry = new THREE.BufferGeometry();
-  const positions = new Float32Array(CAVE_POLLUTION_PARTICLE_COUNT * 3);
-  const phases = new Float32Array(CAVE_POLLUTION_PARTICLE_COUNT);
-  const base = new Float32Array(CAVE_POLLUTION_PARTICLE_COUNT * 3);
-
-  for (let i = 0; i < CAVE_POLLUTION_PARTICLE_COUNT; i += 1) {
-    const x = centerX + randRange(-halfSize, halfSize);
-    const y = randRange(0.55, 6.35);
-    const z = centerZ + randRange(-halfSize, halfSize);
-    const j = i * 3;
-    positions[j] = x;
-    positions[j + 1] = y;
-    positions[j + 2] = z;
-    base[j] = x;
-    base[j + 1] = y;
-    base[j + 2] = z;
-    phases[i] = randRange(0, Math.PI * 2);
-  }
-
-  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-  const particleTextureCanvas = document.createElement("canvas");
-  particleTextureCanvas.width = 64;
-  particleTextureCanvas.height = 64;
-  const particleTextureCtx = particleTextureCanvas.getContext("2d");
-  const particleGradient = particleTextureCtx.createRadialGradient(32, 32, 6, 32, 32, 32);
-  particleGradient.addColorStop(0, "rgba(255, 227, 173, 0.95)");
-  particleGradient.addColorStop(0.35, "rgba(230, 197, 131, 0.78)");
-  particleGradient.addColorStop(0.72, "rgba(160, 122, 74, 0.32)");
-  particleGradient.addColorStop(1, "rgba(0, 0, 0, 0)");
-  particleTextureCtx.fillStyle = particleGradient;
-  particleTextureCtx.fillRect(0, 0, 64, 64);
-  const particleTexture = new THREE.CanvasTexture(particleTextureCanvas);
-  particleTexture.colorSpace = THREE.SRGBColorSpace;
-
-  const material = new THREE.PointsMaterial({
-    color: 0xd8bb86,
-    size: 0.9,
-    map: particleTexture,
-    alphaMap: particleTexture,
-    transparent: true,
-    opacity: 0,
-    depthWrite: false,
-    depthTest: true,
-    sizeAttenuation: true,
-    blending: THREE.AdditiveBlending,
+  const pollutionField = createPollutionField({
+    centerX,
+    centerZ,
+    halfSize,
+    particleCount: CAVE_POLLUTION_PARTICLE_COUNT,
+    random: randRange,
   });
-
-  const field = new THREE.Points(geometry, material);
-  field.frustumCulled = false;
-  field.renderOrder = 4;
+  const { field } = pollutionField;
   scene.add(field);
-  mapPollutionFields[mapId] = {
-    field,
-    material,
-    base,
-    phase: phases,
-    strength: 0,
-  };
+  mapPollutionFields[mapId] = pollutionField;
 }
 
 function buildCavePollutionField() {
@@ -9088,19 +7535,14 @@ function updateCavePollutionVisuals(dt) {
 
     if (pollutionField.field.visible) {
       const positions = pollutionField.field.geometry.attributes.position.array;
-      for (let i = 0; i < CAVE_POLLUTION_PARTICLE_COUNT; i += 1) {
-        const j = i * 3;
-        const phase = pollutionField.phase[i];
-        positions[j] =
-          pollutionField.base[j] +
-          Math.sin(time * 0.31 + phase) * CAVE_POLLUTION_PARTICLE_SWAY * pollutionField.strength;
-        positions[j + 1] =
-          pollutionField.base[j + 1] +
-          Math.sin(time * 0.48 + phase * 1.7) * 0.08 * pollutionField.strength;
-        positions[j + 2] =
-          pollutionField.base[j + 2] +
-          Math.cos(time * 0.27 + phase * 1.3) * CAVE_POLLUTION_PARTICLE_SWAY * pollutionField.strength;
-      }
+      updatePollutionFieldPositions({
+        positions,
+        base: pollutionField.base,
+        phase: pollutionField.phase,
+        time,
+        strength: pollutionField.strength,
+        particleSway: CAVE_POLLUTION_PARTICLE_SWAY,
+      });
       pollutionField.field.geometry.attributes.position.needsUpdate = true;
     }
   }
@@ -9118,22 +7560,22 @@ function updateCavePollutionVisuals(dt) {
 }
 
 function useFreshAirCanister() {
-  if (!hasItem("freshAirCanister")) {
+  const result = airRuntime.useAirCanister();
+  if (!result.ok && result.reason === "missing-canister") {
     showUI("신선한 공기 캔이 없습니다.", 1000);
     lastMessageUntil = performance.now() + 1000;
     return false;
   }
-  if (playerAirCurrent >= playerAirMax) {
+  if (!result.ok && result.reason === "air-full") {
     showUI("공기 게이지가 이미 가득 찼습니다.", 900);
     lastMessageUntil = performance.now() + 900;
     return false;
   }
-  if (!consumeItem("freshAirCanister", 1)) {
+  if (!result.ok) {
     showUI("신선한 공기 캔을 사용할 수 없습니다.", 1000);
     lastMessageUntil = performance.now() + 1000;
     return false;
   }
-  playerAirCurrent = Math.min(playerAirMax, playerAirCurrent + AIR_CANISTER_RESTORE_AMOUNT);
   airDepletedNoticeUntil = 0;
   updateInventoryUI();
   updateAirHud();
@@ -9155,71 +7597,54 @@ function useQuickUseItem(key) {
 }
 
 function getDefaultRefineryRecipe() {
-  return REFINERY_RECIPES.purifyPowder;
+  return getDefaultRefineryRecipeFromModule();
 }
 
 function getRefineryRecipeEntries() {
-  return Object.values(REFINERY_RECIPES);
+  return getRefineryRecipeEntriesFromModule();
 }
 
 function getSelectedRefineryRecipe() {
-  return REFINERY_RECIPES[refinerySelectedRecipeId] ?? getDefaultRefineryRecipe();
+  return getSelectedRefineryRecipeFromModule(refinerySelectedRecipeId);
 }
 
 function getRefineryRecipeDescription(recipe) {
-  if (!recipe) return "";
-  if (recipe.outputItemId === "purifyPowder") {
-    return "정화 가루는 공기 정화탑에 사용할 수 있는 정화용 가공 분말입니다.";
-  }
-  if (recipe.outputItemId === "woodPlank") {
-    return "목재는 앞으로 빈 땅에 건축물을 세울 때 사용할 기본 건축 재료입니다.";
-  }
-  if (isWastelandBuildPartItemId(recipe.outputItemId)) {
-    return "재련대에서 제작하는 자유 건축용 기본 부품입니다.";
-  }
-  return `${ITEM_DEFS[recipe.outputItemId]?.name ?? recipe.outputItemId} 제작 결과물`;
+  return getRefineryRecipeDescriptionFromModule(recipe, {
+    isBuildPartItemId: isWastelandBuildPartItemId,
+    itemDefs: ITEM_DEFS,
+  });
 }
 
 function getRefineryHintText() {
-  if (refineryOpen) return "재련대 이용 중";
+  if (workstationUiController.isRefineryOpen()) return "재련대 이용 중";
   return "E : 작업대 사용";
 }
 
 function tryUseRefineryRecipe(recipe = getSelectedRefineryRecipe()) {
-  if (!recipe) return false;
-
-  const inputName = ITEM_DEFS[recipe.inputItemId]?.name ?? recipe.inputItemId;
-  const outputName = ITEM_DEFS[recipe.outputItemId]?.name ?? recipe.outputItemId;
-
-  if (getItemCount(recipe.inputItemId) < recipe.inputCount) {
-    showUI(`${inputName} ${recipe.inputCount}개가 필요합니다.`, 1100);
-    lastMessageUntil = performance.now() + 1100;
+  const result = workstationRuntime.craftRefineryRecipe(recipe);
+  if (!result.ok) {
+    if (result.kind === "plan" && result.plan.reason) {
+      showUI(result.plan.reason, result.plan.duration);
+      lastMessageUntil = performance.now() + result.plan.duration;
+    } else if (result.kind === "consume") {
+      showUI("재련 재료를 소모하지 못했습니다.", 1000);
+      lastMessageUntil = performance.now() + 1000;
+    } else if (result.kind === "inventory-full") {
+      showUI("인벤토리가 가득 차 재련할 수 없습니다.", 1100);
+      lastMessageUntil = performance.now() + 1100;
+    }
     return true;
   }
-
-  if (!consumeItem(recipe.inputItemId, recipe.inputCount)) {
-    showUI("재련 재료를 소모하지 못했습니다.", 1000);
-    lastMessageUntil = performance.now() + 1000;
-    return true;
-  }
-
-  if (!addItem(recipe.outputItemId, recipe.outputCount)) {
-    addItem(recipe.inputItemId, recipe.inputCount);
-    showUI("인벤토리가 가득 차 재련할 수 없습니다.", 1100);
-    lastMessageUntil = performance.now() + 1100;
-    return true;
-  }
-
-  refinerySuccessMessage = `${outputName} ${recipe.outputCount}개 재련 완료`;
-  refinerySuccessUntil = performance.now() + 1000;
+  refinerySuccessMessage = result.success.message;
+  refinerySuccessUntil = result.success.until;
   updateInventoryUI();
   schedulePlayerSaveSync(true);
   showUI(refinerySuccessMessage, 1000);
   lastMessageUntil = performance.now() + 1000;
-  if (refineryOpen) {
+  if (workstationUiController.isRefineryOpen()) {
     renderRefineryWindow();
     setTimeout(() => {
-      if (refineryOpen) renderRefineryWindow();
+      if (workstationUiController.isRefineryOpen()) renderRefineryWindow();
     }, 1020);
   }
   return true;
@@ -9233,31 +7658,30 @@ function getRefineryDistance() {
 function getAirPurifierHintText(mapId = "폐광") {
   const cfg = getMapPollutionConfig(mapId);
   const purify = getMapPurificationValue(mapId);
-  if (!cfg) return "E : 공기 정화탑 가동";
-  if (purify >= 100) return `${cfg.displayName} 정화 완료`;
-  if (currentMapId !== mapId) return `${cfg.displayName} 정화율 ${purify}%`;
-  if (getItemCount("purifyPowder") < cfg.purifierPowderCost) {
-    return `정화 가루 ${cfg.purifierPowderCost}개 필요`;
-  }
-  return `E : 공기 정화탑 가동 (+${cfg.purifierGain}% / 정화 가루 ${cfg.purifierPowderCost})`;
+  return getAirPurifierHintTextFromModule({
+    config: cfg,
+    purification: purify,
+    currentMapId,
+    mapId,
+    powderCount: getItemCount("purifyPowder"),
+  });
 }
 
 function tryUseAirPurifier(mapId = "폐광") {
-  const cfg = getMapPollutionConfig(mapId);
-  if (!cfg) return false;
-  const currentPurify = getMapPurificationValue(mapId);
-  if (currentPurify >= 100) {
+  const result = airRuntime.usePurifier(mapId);
+  if (!result.ok && result.reason === "missing-config") return false;
+  const cfg = result.config;
+  if (!result.ok && result.reason === "already-purified") {
     showUI(`${cfg.displayName} 공기 정화탑 가동이 이미 완료되었습니다.`, 1100);
     lastMessageUntil = performance.now() + 1100;
     return true;
   }
-  if (!consumeItem("purifyPowder", cfg.purifierPowderCost)) {
+  if (!result.ok && result.reason === "missing-powder") {
     showUI(`정화 가루 ${cfg.purifierPowderCost}개가 필요합니다.`, 1100);
     lastMessageUntil = performance.now() + 1100;
     return true;
   }
-  const nextPurify = Math.min(100, currentPurify + cfg.purifierGain);
-  setMapPurificationValue(mapId, nextPurify);
+  const nextPurify = result.purification;
   updateInventoryUI();
   updateAirHud();
   schedulePlayerSaveSync(true);
@@ -9272,18 +7696,15 @@ function tryUseAirPurifier(mapId = "폐광") {
 }
 
 function enterMansionOneRoom(roomKey = getOwnedMansionRoomKey()) {
-  const normalizedRoomKey = roomKey === "102" ? "102" : "101";
-  destroyMansionRoomInstance(normalizedRoomKey === "102" ? "101" : "102");
-  const instance = createMansionRoomInstance(normalizedRoomKey);
+  const entryPlan = getMansionRoomEntryPlan(roomKey, { x: 0, z: 0 }, player.position.y);
+  destroyMansionRoomInstance(entryPlan.roomToDestroy);
+  const instance = createMansionRoomInstance(entryPlan.activeRoomKey);
   const targetRoomRoot = instance?.root;
   if (!targetRoomRoot) return false;
-  mansionOneActiveRoomKey = normalizedRoomKey;
-  player.position.set(
-    targetRoomRoot.position.x,
-    player.position.y,
-    targetRoomRoot.position.z + 4.2
-  );
-  player.rotation.y = Math.PI;
+  const targetPlan = getMansionRoomEntryPlan(roomKey, targetRoomRoot.position, player.position.y);
+  mansionOneActiveRoomKey = targetPlan.activeRoomKey;
+  player.position.set(targetPlan.position.x, targetPlan.position.y, targetPlan.position.z);
+  player.rotation.y = targetPlan.rotationY;
   latestMoveDir.copy(getFacingDirectionFromYaw(player.rotation.y));
   snapCameraToPlayer();
   showUI(`Mansion ONE ${mansionOneActiveRoomKey}호 입장`, 1000);
@@ -9291,53 +7712,42 @@ function enterMansionOneRoom(roomKey = getOwnedMansionRoomKey()) {
 }
 
 function exitMansionOneRoom() {
-  const activeRoomKey = mansionOneActiveRoomKey === "102" ? "102" : "101";
-  mansionSleepPoseActive = false;
+  const exitPlan = getMansionRoomExitPlan(mansionOneActiveRoomKey, mansionOneExteriorReturn, player.position.y);
+  workstationUiController.closeSleep();
   setMansionSleepOpen(false);
   setPersonalStorageOpen(false);
-  player.position.set(
-    mansionOneExteriorReturn.x,
-    player.position.y,
-    mansionOneExteriorReturn.z
-  );
-  player.rotation.y = mansionOneExteriorReturn.rotationY;
+  player.position.set(exitPlan.position.x, exitPlan.position.y, exitPlan.position.z);
+  player.rotation.y = exitPlan.rotationY;
   latestMoveDir.copy(getFacingDirectionFromYaw(player.rotation.y));
   snapCameraToPlayer();
-  destroyMansionRoomInstance(activeRoomKey);
+  destroyMansionRoomInstance(exitPlan.roomToDestroy);
   showUI("Mansion ONE 외부로 나왔습니다.", 1000);
   return true;
 }
 
 function setMansionSleepOpen(v) {
-  mansionSleepOpen = v;
+  const sleepState = workstationUiController.setSleepOpen(v);
   if (!mansionSleepOverlay || !mansionSleepDialog) return;
-  mansionSleepOverlay.style.display = v ? "block" : "none";
-  mansionSleepDialog.style.display = v ? "block" : "none";
+  mansionSleepOverlay.style.display = sleepState.sleepOpen ? "block" : "none";
+  mansionSleepDialog.style.display = sleepState.sleepOpen ? "block" : "none";
 }
 
 function openMansionSleepDialog() {
   const bedInteractable =
     activeInteractable?.type === "mansionBed" ? activeInteractable : mansionOneBedInteractable;
   if (!bedInteractable) return;
-  mansionSleepWakePoint = {
-    x: bedInteractable.obj.position.x + 1.95,
-    z: bedInteractable.obj.position.z + 0.2,
-    rotationY: Math.PI * -0.5,
-  };
-  player.position.set(
-    bedInteractable.obj.position.x - 0.15,
-    player.position.y,
-    bedInteractable.obj.position.z
-  );
-  player.rotation.y = Math.PI * -0.5;
+  const sleepPlan = getMansionSleepPlan(bedInteractable.obj.position, player.position.y);
+  mansionSleepWakePoint = sleepPlan.wakePoint;
+  player.position.set(sleepPlan.sleepPosition.x, sleepPlan.sleepPosition.y, sleepPlan.sleepPosition.z);
+  player.rotation.y = sleepPlan.rotationY;
   latestMoveDir.copy(getFacingDirectionFromYaw(player.rotation.y));
-  mansionSleepPoseActive = true;
+  workstationUiController.openSleepDialog();
   snapCameraToPlayer();
   setMansionSleepOpen(true);
 }
 
 function closeMansionSleepDialog() {
-  mansionSleepPoseActive = false;
+  workstationUiController.closeSleep();
   setMansionSleepOpen(false);
   player.position.set(
     mansionSleepWakePoint.x,
@@ -9376,16 +7786,7 @@ function updateAirSystem(dt) {
   }
 
   const effectiveMapId = getEffectiveAirMapId();
-  const { nextAir, depletedThisFrame } = updateAirValueForFrame({
-    currentAir: playerAirCurrent,
-    maxAir: playerAirMax,
-    dt,
-    effectiveMapId,
-    mapPurificationProgress,
-    mapPollutionConfig: MAP_POLLUTION_CONFIG,
-    recoveryPerSecond: AIR_RECOVERY_PER_SECOND,
-  });
-  playerAirCurrent = nextAir;
+  const { depletedThisFrame } = airRuntime.updateFrame(dt, effectiveMapId);
   if (depletedThisFrame && performance.now() > airDepletedNoticeUntil) {
     showUI("공기가 바닥났습니다. R로 신선한 공기 캔을 사용하세요.", 1200);
     airDepletedNoticeUntil = performance.now() + 2200;
@@ -9395,106 +7796,52 @@ function updateAirSystem(dt) {
 }
 let mapTransitionLockUntil = 0;
 let mapTransitionPending = null;
-let forgeOpen = false;
-let refineryOpen = false;
 let refinerySelectedRecipeId = "purifyPowder";
 let refinerySuccessUntil = 0;
 let refinerySuccessMessage = "";
-let selectedWastelandStructureItemId = "";
 const FORGE_UPGRADE_DELAY_MS = 1050;
 let forgePendingUpgrade = null;
 let forgeLastResult = null;
+const workstationRuntime = createWorkstationRuntime({
+  createRefineryCraftPlan: createRefineryCraftPlanFromModule,
+  createForgeUpgradeAttemptPlan,
+  createForgeUpgradeResultPlan,
+  consumeItem,
+  addItem,
+  getItemCount,
+  getItemName: (itemId) => ITEM_DEFS[itemId]?.name,
+});
 
 function registerPickupItem(obj, itemId, text = null) {
-  const def = ITEM_DEFS[itemId];
-  const entry = {
-    obj,
-    itemId,
-    text: text ?? `E : ${def?.name ?? itemId} 줍기`,
-  };
-  pickupItems.push(entry);
-  obj.userData.pickupItemId = itemId;
-  return entry;
+  return worldPickups.register(obj, itemId, text);
 }
 
 function unregisterPickupItem(obj) {
-  const idx = pickupItems.findIndex((entry) => entry.obj === obj);
-  if (idx !== -1) pickupItems.splice(idx, 1);
-  delete obj.userData.pickupItemId;
+  worldPickups.unregister(obj);
 }
 
 function findNearestPickupItem(radius = 2.0) {
-  let best = null;
-  let bestD2 = radius * radius;
-  for (const entry of pickupItems) {
-    const obj = entry.obj;
-    if (!obj || !obj.parent) continue;
-    const dx = obj.position.x - player.position.x;
-    const dz = obj.position.z - player.position.z;
-    const d2 = dx * dx + dz * dz;
-    if (d2 < bestD2) {
-      best = entry;
-      bestD2 = d2;
-    }
-  }
-  return best;
+  return worldPickups.findNearest(player.position, radius);
 }
 
 function registerTutorialNpc(obj, name, hint = "Space : 대화") {
-  const entry = { obj, name, hint };
-  tutorialNpcs.push(entry);
-  return entry;
+  return tutorialNpcRuntime.register(obj, name, hint);
 }
 
 function findNearestTutorialNpc(radius = 2.2) {
-  let best = null;
-  let bestD2 = radius * radius;
-  for (const entry of tutorialNpcs) {
-    const obj = entry.obj;
-    if (!obj || !obj.parent) continue;
-    const dx = obj.position.x - player.position.x;
-    const dz = obj.position.z - player.position.z;
-    const d2 = dx * dx + dz * dz;
-    if (d2 < bestD2) {
-      best = entry;
-      bestD2 = d2;
-    }
-  }
-  return best;
+  return tutorialNpcRuntime.findNearest(player.position, radius);
 }
 
 function registerMapGate(entry) {
-  mapGates.push(entry);
-  return entry;
+  return mapRuntime.registerMapGate(entry);
 }
 
 function registerConnectorTunnelZone(centerX, minZ, maxZ, halfWidth = 7.2) {
-  connectorTunnelZones.push({
-    centerX,
-    minZ: Math.min(minZ, maxZ),
-    maxZ: Math.max(minZ, maxZ),
-    halfWidth,
-  });
+  return mapRuntime.registerConnectorTunnelZone(centerX, minZ, maxZ, halfWidth);
 }
 
 function findTriggeredMapGate() {
-  if (performance.now() < mapTransitionLockUntil) return null;
-  for (const gate of mapGates) {
-    if (gate.mapId !== currentMapId) continue;
-    const dx = player.position.x - gate.trigger.x;
-    const dz = player.position.z - gate.trigger.z;
-    if (typeof gate.trigger.width === "number" && typeof gate.trigger.depth === "number") {
-      if (
-        Math.abs(dx) <= gate.trigger.width * 0.5 &&
-        Math.abs(dz) <= gate.trigger.depth * 0.5
-      ) {
-        return gate;
-      }
-      continue;
-    }
-    if (dx * dx + dz * dz <= gate.trigger.radius * gate.trigger.radius) return gate;
-  }
-  return null;
+  return mapRuntime.findTriggeredGate();
 }
 
 function canUseMapGate(gate) {
@@ -9506,28 +7853,15 @@ function canUseMapGate(gate) {
 }
 
 function updateCurrentMapFromPlayerPosition() {
-  const mineDoorThresholdZ = mineGate.position.z - 0.35;
-  const campDoorThresholdZ = campGate.position.z + 0.35;
-  const campNorthDoorThresholdZ = frontierCampGate.position.z - 0.35;
-  const frontierDoorThresholdZ = frontierGate.position.z + 0.35;
-  currentMapId = getCurrentMapIdForPlayer({
-    playerPosition: player.position,
-    isInResidenceZone: isPlayerInResidenceMapZone(),
-    mineDoorThresholdZ,
-    campDoorThresholdZ,
-    campNorthDoorThresholdZ,
-    frontierDoorThresholdZ,
-    currentMapId,
-    residenceMapId: RESIDENCE_MAP_ID,
-  });
+  return mapRuntime.updateCurrentMap();
 }
 
 function isPlayerInConnectorTunnel() {
-  return isPlayerPositionInConnectorTunnel(player.position, connectorTunnelZones);
+  return mapRuntime.isInConnectorTunnel();
 }
 
 function getEffectiveAirMapId() {
-  return getEffectiveAirMapIdForPlayer(currentMapId, player.position, connectorTunnelZones);
+  return mapRuntime.getEffectiveAirMapId();
 }
 
 function isPlayerInsideFrontierParcel(parcelLabel) {
@@ -9587,18 +7921,6 @@ function setFrontierBuildOpen(v) {
   }
 }
 
-function isFrontierShopSellableEntry(entry) {
-  if (!entry || isNftInventoryEntry(entry)) return { ok: false, reason: "NFT 아이템은 판매 등록할 수 없습니다." };
-  const itemId = getSlotItemId(entry);
-  const def = ITEM_DEFS[itemId];
-  if (!def) return { ok: false, reason: "알 수 없는 아이템입니다." };
-  if (getInventoryEntryCategory(entry) === "equip") return { ok: false, reason: "장비 아이템은 판매 등록할 수 없습니다." };
-  if (def.isAuthorityItem) return { ok: false, reason: "권한 아이템은 판매 등록할 수 없습니다." };
-  if (isQuestCriticalItemBlockedFromDiscard(entry)) return { ok: false, reason: "퀘스트 아이템은 판매 등록할 수 없습니다." };
-  if (!["cons", "misc"].includes(def.category)) return { ok: false, reason: "이 아이템은 판매할 수 없습니다." };
-  return { ok: true, reason: "" };
-}
-
 function removeAllItemsById(itemId) {
   let removed = false;
   for (let i = 0; i < inventory.slots.length; i += 1) {
@@ -9630,25 +7952,23 @@ function ensureExactOwnedItemCount(itemId, count = 1) {
 }
 
 function getSellableFrontierShopEntries() {
-  return inventory.slots
-    .map((entry, index) => ({ entry, index }))
-    .filter(({ entry }) => entry)
-    .filter(({ entry }) => isFrontierShopSellableEntry(entry).ok);
+  return getSellableFrontierShopEntriesFromModule(inventory.slots, {
+    isNftInventoryEntry,
+    getSlotItemId,
+    itemDefs: ITEM_DEFS,
+    getInventoryEntryCategory,
+    isQuestCriticalItemBlockedFromDiscard,
+  });
 }
 
 function openFrontierShopRegisterDialog(parcelLabel = getSelectedFrontierParcelLabel()) {
-  if (getFrontierBuildState(parcelLabel).stage < 100) {
-    showUI("건축 완료 후 상점을 운영할 수 있습니다.", 1000);
-    lastMessageUntil = performance.now() + 1000;
-    return false;
-  }
-  if (!getFrontierShopAssignedWallet(parcelLabel)) {
-    showUI("상점 사용자 지정 필요", 1000);
-    lastMessageUntil = performance.now() + 1000;
-    return false;
-  }
-  if (!canUseFrontierShopSlot(parcelLabel)) {
-    showUI("상점 운영 권한이 없습니다.", 1000);
+  const access = getFrontierShopRegistrationAccessFromModule({
+    buildState: getFrontierBuildState(parcelLabel),
+    assignedWallet: getFrontierShopAssignedWallet(parcelLabel),
+    canUse: canUseFrontierShopSlot(parcelLabel),
+  });
+  if (!access.ok) {
+    showUI(access.reason, 1000);
     lastMessageUntil = performance.now() + 1000;
     return false;
   }
@@ -9673,25 +7993,22 @@ function closeFrontierShopRegisterDialog() {
 }
 
 function clearFrontierShopListing(parcelLabel = frontierShopRegisterParcelLabel) {
-  if (!parcelLabel) return false;
-  if (!canEditFrontierShopListing(parcelLabel)) return false;
   const shopState = getFrontierShopOperation(parcelLabel);
-  if (!shopState.itemId || shopState.quantity <= 0) {
-    showUI("현재 등록된 판매 물품이 없습니다.", 900);
-    lastMessageUntil = performance.now() + 900;
+  const result = frontierRuntime.clearShopListing({
+    parcelLabel,
+    canEdit: canEditFrontierShopListing(parcelLabel),
+    shopState,
+    addItem,
+  });
+  if (!result.ok) {
+    if (result.reason === "inventory-full") {
+      showUI("인벤토리가 가득 차 판매 물품을 회수할 수 없습니다.", 1200);
+      lastMessageUntil = performance.now() + 1200;
+    } else if (result.reason) {
+      showUI(result.reason, result.duration);
+      lastMessageUntil = performance.now() + result.duration;
+    }
     return false;
-  }
-  if (!addItem(shopState.itemId, shopState.quantity)) {
-    showUI("인벤토리가 가득 차 판매 물품을 회수할 수 없습니다.", 1200);
-    lastMessageUntil = performance.now() + 1200;
-    return false;
-  }
-  shopState.itemId = "";
-  shopState.quantity = 0;
-  shopState.price = 0;
-  shopState.statusText = "비어 있음";
-  if (clampPlayerCredits(shopState.pendingCredits || 0) <= 0) {
-    shopState.sellerWallet = "";
   }
   rebuildFrontierParcelConstructionVisual(parcelLabel);
   updateInventoryUI();
@@ -9704,52 +8021,29 @@ function clearFrontierShopListing(parcelLabel = frontierShopRegisterParcelLabel)
 }
 
 function tryPurchaseFrontierShopListing(parcelLabel, quantity) {
-  if (!parcelLabel) return { ok: false, reason: "상점 정보를 찾을 수 없습니다." };
   const shopState = getFrontierShopOperation(parcelLabel);
-  if (!shopState.itemId || shopState.quantity <= 0) {
-    return { ok: false, reason: "등록된 판매 물품이 없습니다." };
-  }
-  const purchaseQty = Math.max(1, Math.floor(Number(quantity) || 0));
-  if (purchaseQty <= 0) {
-    return { ok: false, reason: "구매 수량을 확인해주세요." };
-  }
-  if (purchaseQty > shopState.quantity) {
-    return { ok: false, reason: "재고가 부족합니다." };
-  }
-  const sellerWallet = normalizeFrontierWalletAddress(shopState.sellerWallet || shopState.userWallet);
-  const currentWallet = getCurrentFrontierWalletAddress();
-  if (sellerWallet && sellerWallet === currentWallet) {
-    return { ok: false, reason: "자신이 등록한 상품은 구매할 수 없습니다." };
-  }
-  const totalPrice = clampPlayerCredits(shopState.price * purchaseQty);
-  const purchasedItemId = shopState.itemId;
-  const purchasedItemName = ITEM_DEFS[purchasedItemId]?.name ?? purchasedItemId;
-  if (!canAffordPlayerCredits(totalPrice)) {
-    return { ok: false, reason: "개척 코인이 부족합니다." };
-  }
   const inventorySnapshot = inventory.slots.map((slot) => (slot ? structuredClone(slot) : null));
-  if (!addEntryToInventory(createInventorySlotEntry(purchasedItemId, purchaseQty), purchaseQty)) {
-    return { ok: false, reason: "인벤토리 공간이 부족합니다." };
-  }
-  if (!spendPlayerCredits(totalPrice)) {
-    for (let i = 0; i < inventory.slots.length; i += 1) inventory.slots[i] = inventorySnapshot[i];
-    return { ok: false, reason: "개척 코인을 차감하지 못했습니다." };
-  }
-  if (!sellerWallet) {
-    for (let i = 0; i < inventory.slots.length; i += 1) inventory.slots[i] = inventorySnapshot[i];
-    setPlayerCredits(getPlayerCredits() + totalPrice);
-    return { ok: false, reason: "판매자 정보를 찾을 수 없습니다." };
-  }
-  shopState.pendingCredits = clampPlayerCredits((shopState.pendingCredits || 0) + totalPrice);
-  shopState.lifetimeCredits = clampPlayerCredits((shopState.lifetimeCredits || 0) + totalPrice);
-  shopState.quantity -= purchaseQty;
-  if (shopState.quantity <= 0) {
-    shopState.itemId = "";
-    shopState.quantity = 0;
-    shopState.price = 0;
-    shopState.statusText = "비어 있음";
-  } else {
-    shopState.statusText = formatFrontierShopStatusText(shopState.itemId, shopState.quantity, shopState.price);
+  const purchase = frontierRuntime.purchaseShopListing({
+    parcelLabel,
+    shopState,
+    quantity,
+    currentWallet: getCurrentFrontierWalletAddress(),
+    canAffordPlayerCredits,
+    addEntry: (itemId, count) => addEntryToInventory(createInventorySlotEntry(itemId, count), count),
+    spendCredits: spendPlayerCredits,
+    restoreInventory: () => {
+      for (let i = 0; i < inventory.slots.length; i += 1) inventory.slots[i] = inventorySnapshot[i];
+    },
+    restoreCredits: grantPlayerCredits,
+    getStatusText: formatFrontierShopStatusText,
+  });
+  if (!purchase.ok) {
+    const messages = {
+      "inventory-full": "인벤토리 공간이 부족합니다.",
+      "credit-failed": "개척 코인을 차감하지 못했습니다.",
+      "seller-missing": "판매자 정보를 찾을 수 없습니다.",
+    };
+    return { ...purchase, reason: messages[purchase.reason] ?? purchase.reason };
   }
   rebuildFrontierParcelConstructionVisual(parcelLabel);
   updateInventoryUI();
@@ -9757,53 +8051,39 @@ function tryPurchaseFrontierShopListing(parcelLabel, quantity) {
   if (frontierBuildOpen) renderFrontierBuildWindow();
   return {
     ok: true,
-    itemName: purchasedItemName,
-    totalPrice,
+    itemName: ITEM_DEFS[purchase.plan.purchasedItemId]?.name ?? purchase.plan.purchasedItemId,
+    totalPrice: purchase.plan.totalPrice,
   };
 }
 
 function commitFrontierShopListing() {
   const parcelLabel = frontierShopRegisterParcelLabel || getSelectedFrontierParcelLabel();
-  if (!parcelLabel) return false;
-  if (!canRegisterFrontierShopListing(parcelLabel)) return false;
-  const itemId = frontierShopRegisterSelectedItemId;
-  if (!itemId) {
-    showUI("판매할 아이템을 먼저 선택하세요.", 1000);
-    lastMessageUntil = performance.now() + 1000;
-    return false;
-  }
-  const quantity = Math.max(1, Math.floor(Number(frontierShopQuantityInput.value) || 0));
-  const price = Math.max(0, Math.floor(Number(frontierShopPriceInput.value) || 0));
-  if (getItemCount(itemId) < quantity) {
-    showUI("판매 수량만큼 아이템을 보유하고 있지 않습니다.", 1000);
-    lastMessageUntil = performance.now() + 1000;
-    return false;
-  }
   const shopState = getFrontierShopOperation(parcelLabel);
-  let previousItemId = "";
-  let previousQuantity = 0;
-  if (shopState.itemId && shopState.quantity > 0) {
-    previousItemId = shopState.itemId;
-    previousQuantity = shopState.quantity;
-    if (!addItem(previousItemId, previousQuantity)) {
-      showUI("기존 판매 물품을 회수할 인벤토리 공간이 부족합니다.", 1200);
-      lastMessageUntil = performance.now() + 1200;
-      return false;
+  const listing = frontierRuntime.registerShopListing({
+    parcelLabel,
+    canRegister: canRegisterFrontierShopListing(parcelLabel),
+    itemId: frontierShopRegisterSelectedItemId,
+    quantity: frontierShopQuantityInput.value,
+    price: frontierShopPriceInput.value,
+    ownedCount: getItemCount(frontierShopRegisterSelectedItemId),
+    shopState,
+    sellerWallet: getCurrentFrontierWalletAddress(),
+    getStatusText: formatFrontierShopStatusText,
+    addItem,
+    consumeItem,
+  });
+  if (!listing.ok) {
+    const fallbackMessages = {
+      "inventory-full-previous": "기존 판매 물품을 회수할 인벤토리 공간이 부족합니다.",
+      "consume-failed": "판매 물품을 등록하지 못했습니다.",
+    };
+    const message = fallbackMessages[listing.reason] ?? listing.reason;
+    if (message) {
+      showUI(message, listing.duration ?? 1000);
+      lastMessageUntil = performance.now() + (listing.duration ?? 1000);
     }
-  }
-  if (!consumeItem(itemId, quantity)) {
-    if (previousItemId && previousQuantity > 0) {
-      consumeItem(previousItemId, previousQuantity);
-    }
-    showUI("판매 물품을 등록하지 못했습니다.", 1000);
-    lastMessageUntil = performance.now() + 1000;
     return false;
   }
-  shopState.itemId = itemId;
-  shopState.quantity = quantity;
-  shopState.price = price;
-  shopState.sellerWallet = getCurrentFrontierWalletAddress();
-  shopState.statusText = formatFrontierShopStatusText(itemId, quantity, price);
   rebuildFrontierParcelConstructionVisual(parcelLabel);
   updateInventoryUI();
   schedulePlayerSaveSync(true);
@@ -9903,37 +8183,40 @@ function renderFrontierShopRegisterDialog() {
 }
 
 function assignFrontierShopSlotUser(parcelLabel, walletAddress) {
-  if (!canManageFrontierShopSlot(parcelLabel)) return false;
-  const normalizedWallet = normalizeFrontierWalletAddress(walletAddress);
-  if (!normalizedWallet) {
-    showUI("지갑 주소를 입력해주세요.", 1000);
-    lastMessageUntil = performance.now() + 1000;
-    return false;
-  }
   const shopState = getFrontierShopOperation(parcelLabel);
-  if ((shopState.itemId && shopState.quantity > 0) || clampPlayerCredits(shopState.pendingCredits || 0) > 0) {
-    showUI("판매 물품 또는 정산금이 남아 있을 때는 상점 사용자를 변경할 수 없습니다.", 1200);
-    lastMessageUntil = performance.now() + 1200;
+  const assignment = frontierRuntime.assignShopUser({
+    canManage: canManageFrontierShopSlot(parcelLabel),
+    walletAddress,
+    shopState,
+    normalizeWalletAddress: normalizeFrontierWalletAddress,
+  });
+  if (!assignment.ok) {
+    if (assignment.reason) {
+      showUI(assignment.reason, assignment.duration);
+      lastMessageUntil = performance.now() + assignment.duration;
+    }
     return false;
   }
-  shopState.userWallet = normalizedWallet;
   schedulePlayerSaveSync(true);
   renderFrontierBuildWindow();
-  showUI(`상점 사용자를 ${shortenWalletAddress(normalizedWallet)}(으)로 지정했습니다.`, 1100);
+  showUI(`상점 사용자를 ${shortenWalletAddress(assignment.plan.walletAddress)}(으)로 지정했습니다.`, 1100);
   lastMessageUntil = performance.now() + 1100;
   return true;
 }
 
 function clearFrontierShopSlotUser(parcelLabel) {
-  if (!canManageFrontierShopSlot(parcelLabel)) return false;
   const shopState = getFrontierShopOperation(parcelLabel);
-  if ((shopState.itemId && shopState.quantity > 0) || clampPlayerCredits(shopState.pendingCredits || 0) > 0) {
-    showUI("판매 물품 또는 정산금이 남아 있을 때는 사용자를 해제할 수 없습니다.", 1200);
-    lastMessageUntil = performance.now() + 1200;
+  const cleared = frontierRuntime.clearShopUser({
+    canManage: canManageFrontierShopSlot(parcelLabel),
+    shopState,
+  });
+  if (!cleared.ok) {
+    if (cleared.reason) {
+      showUI(cleared.reason, cleared.duration);
+      lastMessageUntil = performance.now() + cleared.duration;
+    }
     return false;
   }
-  shopState.userWallet = "";
-  shopState.sellerWallet = "";
   schedulePlayerSaveSync(true);
   renderFrontierBuildWindow();
   showUI("상점 사용자를 해제했습니다.", 1000);
@@ -9942,18 +8225,20 @@ function clearFrontierShopSlotUser(parcelLabel) {
 }
 
 function updateFrontierShopListingPrice(parcelLabel, nextPrice) {
-  if (!parcelLabel) return false;
-  if (!canEditFrontierShopListing(parcelLabel)) return false;
   const shopState = getFrontierShopOperation(parcelLabel);
-  if (!shopState.itemId || shopState.quantity <= 0) return false;
-  const price = Math.max(0, Math.min(999999, Math.floor(Number(nextPrice) || 0)));
-  shopState.price = price;
-  shopState.statusText = formatFrontierShopStatusText(shopState.itemId, shopState.quantity, price);
+  const priceUpdate = frontierRuntime.updateShopPrice({
+    parcelLabel,
+    canEdit: canEditFrontierShopListing(parcelLabel),
+    shopState,
+    nextPrice,
+    getStatusText: formatFrontierShopStatusText,
+  });
+  if (!priceUpdate.ok) return false;
   rebuildFrontierParcelConstructionVisual(parcelLabel);
   schedulePlayerSaveSync(true);
   renderFrontierBoothDialog();
   if (frontierBuildOpen) renderFrontierBuildWindow();
-  showUI(`판매 가격을 ${price}원으로 수정했습니다.`, 1000);
+  showUI(`판매 가격을 ${priceUpdate.plan.price}원으로 수정했습니다.`, 1000);
   lastMessageUntil = performance.now() + 1000;
   return true;
 }
@@ -10061,13 +8346,13 @@ function setForgeOpen(v) {
   if (v && frontierBuildOpen) {
     setFrontierBuildOpen(false);
   }
-  if (v && refineryOpen) {
+  if (v && workstationUiController.isRefineryOpen()) {
     setRefineryOpen(false);
   }
-  forgeOpen = v;
+  const forgeOpen = workstationUiController.setForgeOpen(v).forgeOpen;
   forgeOverlay.style.display = forgeOpen ? "block" : "none";
   forgeWin.style.display = forgeOpen ? "block" : "none";
-  if (forgeOpen) renderForgeWindow();
+  if (workstationUiController.isForgeOpen()) renderForgeWindow();
 }
 
 function renderRefineryItemCard(card, heading, itemId, count, description, accentColor = "#2f1700") {
@@ -10135,10 +8420,10 @@ function setRefineryOpen(v) {
   if (v && frontierBuildOpen) {
     setFrontierBuildOpen(false);
   }
-  if (v && forgeOpen) {
+  if (v && workstationUiController.isForgeOpen()) {
     setForgeOpen(false);
   }
-  refineryOpen = v;
+  const refineryOpen = workstationUiController.setRefineryOpen(v).refineryOpen;
   refineryOverlay.style.display = refineryOpen ? "block" : "none";
   refineryWin.style.display = refineryOpen ? "block" : "none";
   if (!refineryOpen) {
@@ -10351,11 +8636,11 @@ function formatForgeSwingDuration(stats) {
 }
 
 function finishPendingForgeUpgrade() {
-  if (!forgePendingUpgrade) return;
-
-  const pending = forgePendingUpgrade;
-  forgePendingUpgrade = null;
-  const success = Math.random() < pending.successChance;
+  const completed = workstationRuntime.finishForgeUpgrade();
+  if (!completed) return;
+  const { pending, resultPlan } = completed;
+  forgePendingUpgrade = workstationRuntime.pendingForgeUpgrade;
+  const success = resultPlan.success;
 
   if (success && pending.itemId === "pickaxe") {
     const equippedPickaxeEntry = getEquippedInventoryEntry("tool");
@@ -10369,13 +8654,7 @@ function finishPendingForgeUpgrade() {
     }
   }
 
-  forgeLastResult = {
-    success,
-    text: success
-      ? `${pending.name} Lv.${pending.targetLevel} 강화 성공!`
-      : `${pending.name} 강화 실패...`,
-    until: performance.now() + 1600,
-  };
+  forgeLastResult = completed.result;
 
   updateInventoryUI();
   if (forgeOpen) renderForgeWindow();
@@ -10395,7 +8674,7 @@ function renderForgeWindow() {
   const forgeItemName = upgradeState?.name ?? "장착 장비";
   const isProcessing = Boolean(forgePendingUpgrade);
   const canUpgrade =
-    forgeOpen &&
+    workstationUiController.isForgeOpen() &&
     getForgeDistance() < 2.4 &&
     Boolean(upgradeState) &&
     Boolean(next) &&
@@ -10545,30 +8824,14 @@ function renderForgeWindow() {
 }
 
 function tryUpgradeEquippedItem() {
-  if (forgePendingUpgrade) return;
   const upgradeState = getForgeUpgradeState();
-  if (!upgradeState) {
-    showUI("장착 중인 강화 가능 장비가 필요합니다");
+  const result = workstationRuntime.beginForgeUpgrade(upgradeState, FORGE_UPGRADE_DELAY_MS);
+  if (!result.ok) {
+    if (result.plan.reason) showUI(result.plan.reason);
     return;
   }
-  const next = upgradeState.next;
-  if (!next) {
-    showUI(`${upgradeState.name}가 이미 최대 강화입니다`);
-    return;
-  }
-  if (getItemCount("stoneDust") < next.cost) {
-    showUI("돌가루가 부족합니다");
-    return;
-  }
-  if (!consumeItem("stoneDust", next.cost)) return;
-  forgePendingUpgrade = {
-    itemId: upgradeState.itemId,
-    name: upgradeState.name,
-    targetLevel: next.level,
-    successChance: next.successChance ?? 1,
-    resolveAt: performance.now() + FORGE_UPGRADE_DELAY_MS,
-  };
-  forgeLastResult = null;
+  forgePendingUpgrade = result.pending;
+  forgeLastResult = workstationRuntime.forgeLastResult;
   renderForgeWindow();
   showUI(`${upgradeState.name} 강화 시도 중...`, 900);
   lastMessageUntil = performance.now() + 900;
@@ -11359,14 +9622,7 @@ const CAMERA_OCCLUSION_MIN_DISTANCE = 4.2;
 const CAMERA_OCCLUSION_FADE_DISTANCE = 5.0;
 const CAMERA_OCCLUSION_FADE_OPACITY = 0.68;
 const CAMERA_OCCLUSION_RETURN_SPEED = 7.5;
-const cameraOcclusionRay = new THREE.Raycaster();
-const cameraOcclusionTarget = new THREE.Vector3();
-const cameraOcclusionDir = new THREE.Vector3();
-const cameraOcclusionResolvedPos = new THREE.Vector3();
-let cameraPreferredDistance = camera.position.distanceTo(controls.target);
-let cameraResolvedDistance = cameraPreferredDistance;
-let cameraWasOccludedLastFrame = false;
-const cameraOcclusionFadedMeshes = new Set();
+const cameraOcclusionState = createCameraOcclusionState(camera.position.distanceTo(controls.target));
 
 function snapCameraToPlayer() {
   const currentOffset = new THREE.Vector3().copy(camera.position).sub(controls.target);
@@ -11376,125 +9632,29 @@ function snapCameraToPlayer() {
   controls.update();
 }
 
-function clearCameraOcclusionFades() {
-  if (!cameraOcclusionFadedMeshes.size) return;
-  for (const mesh of cameraOcclusionFadedMeshes) {
-    if (!mesh?.material || !mesh.userData?.cameraFadeOriginal) continue;
-    const original = mesh.userData.cameraFadeOriginal;
-    if (Array.isArray(mesh.material)) {
-      for (const mat of mesh.material) {
-        mat.transparent = original.transparent;
-        mat.opacity = original.opacity;
-      }
-    } else {
-      mesh.material.transparent = original.transparent;
-      mesh.material.opacity = original.opacity;
-    }
-  }
-  cameraOcclusionFadedMeshes.clear();
-}
-
-function markCameraOcclusionFade(root, opacity = CAMERA_OCCLUSION_FADE_OPACITY) {
-  if (!root) return;
-  root.traverse((child) => {
-    if (!child?.isMesh || !child.material) return;
-    const materials = Array.isArray(child.material) ? child.material : [child.material];
-    if (!materials.some((mat) => (mat?.opacity ?? 1) > 0.05)) return;
-    if (!child.userData.cameraFadeOriginal) {
-      child.userData.cameraFadeOriginal = {
-        transparent: materials[0].transparent,
-        opacity: materials[0].opacity,
-      };
-    }
-    for (const mat of materials) {
-      mat.transparent = true;
-      mat.opacity = Math.min(mat.opacity, opacity);
-    }
-    cameraOcclusionFadedMeshes.add(child);
-  });
-}
-
-function getCameraFadeRootFromHit(hitObject) {
-  if (!hitObject) return null;
-  const hitMaterial = hitObject.material;
-  const hitOpacity = Array.isArray(hitMaterial) ? (hitMaterial[0]?.opacity ?? 1) : (hitMaterial?.opacity ?? 1);
-  if (hitObject.isMesh && hitOpacity > 0.05) return hitObject;
-
-  let node = hitObject.parent;
-  while (node && node !== scene) {
-    if (node.isMesh || node.type === "Group") return node;
-    node = node.parent;
-  }
-  return hitObject.parent && hitObject.parent !== scene ? hitObject.parent : null;
-}
-
 function updateThirdPersonCameraOcclusion(dt) {
-  clearCameraOcclusionFades();
-
-  cameraOcclusionTarget.copy(controls.target).addScalar(0);
-  cameraOcclusionTarget.y += 0.22;
-
-  const currentOffset = new THREE.Vector3().copy(camera.position).sub(controls.target);
-  let currentDistance = currentOffset.length();
-  if (currentDistance < 0.001) return;
-
-  cameraOcclusionDir.copy(currentOffset).normalize();
-
-  if (!cameraWasOccludedLastFrame || currentDistance > cameraResolvedDistance + 0.2) {
-    cameraPreferredDistance = THREE.MathUtils.clamp(currentDistance, CAMERA_OCCLUSION_MIN_DISTANCE, controls.maxDistance);
-  }
-
-  let desiredDistance = cameraPreferredDistance;
-  let resolvedDistance = desiredDistance;
-  cameraOcclusionRay.far = desiredDistance;
-  cameraOcclusionRay.set(cameraOcclusionTarget, cameraOcclusionDir);
-  const hits = cameraOcclusionRay.intersectObjects(colliders, false);
-
-  let fadeRoot = null;
-  if (hits.length) {
-    const hit = hits[0];
-    resolvedDistance = Math.max(CAMERA_OCCLUSION_MIN_DISTANCE, hit.distance - CAMERA_OCCLUSION_MARGIN);
-    cameraWasOccludedLastFrame = true;
-    if (resolvedDistance <= CAMERA_OCCLUSION_FADE_DISTANCE) {
-      fadeRoot = getCameraFadeRootFromHit(hit.object);
-    }
-  } else {
-    cameraWasOccludedLastFrame = false;
-    resolvedDistance = THREE.MathUtils.lerp(currentDistance, desiredDistance, Math.min(1, dt * CAMERA_OCCLUSION_RETURN_SPEED));
-  }
-
-  cameraResolvedDistance = resolvedDistance;
-  if (fadeRoot) {
-    markCameraOcclusionFade(fadeRoot);
-  }
-
-  cameraOcclusionResolvedPos.copy(controls.target).addScaledVector(cameraOcclusionDir, resolvedDistance);
-  camera.position.copy(cameraOcclusionResolvedPos);
+  updateThirdPersonCameraOcclusionFromModule({
+    camera,
+    controls,
+    colliders,
+    scene,
+    state: cameraOcclusionState,
+    dt,
+    config: {
+      margin: CAMERA_OCCLUSION_MARGIN,
+      minDistance: CAMERA_OCCLUSION_MIN_DISTANCE,
+      fadeDistance: CAMERA_OCCLUSION_FADE_DISTANCE,
+      fadeOpacity: CAMERA_OCCLUSION_FADE_OPACITY,
+      returnSpeed: CAMERA_OCCLUSION_RETURN_SPEED,
+    },
+  });
 }
 
 // Houses
 function makeHouse(x, z) {
-  const g = new THREE.Group();
-
-  const base = new THREE.Mesh(
-    new THREE.BoxGeometry(3, 2, 3),
-    new THREE.MeshStandardMaterial({ color: 0xf5f6fa })
-  );
-  base.position.y = 1.0;
-
-  const roof = new THREE.Mesh(
-    new THREE.ConeGeometry(2.4, 1.2, 4),
-    new THREE.MeshStandardMaterial({ color: 0xeb3b5a })
-  );
-  roof.position.y = 2.6;
-  roof.rotation.y = Math.PI / 4;
-
-  g.add(base, roof);
-  g.position.set(x, 0, z);
-
-  scene.add(g);
-  addCollider(base, 1.0);
-
+  const { group, collider } = createHouseModel(x, z);
+  scene.add(group);
+  addCollider(collider, 1.0);
 }
 
 /* HOUSES OFF
@@ -11509,139 +9669,23 @@ function randRange(min, max) {
 
 // 간단한 나무 (충돌은 일단 없음: 바위가 메인 장애물)
 function makeTree(x, z) {
-  const g = new THREE.Group();
-
-  const trunk = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.25, 0.35, 2.2, 8),
-    new THREE.MeshStandardMaterial({ color: 0x6b4f3a, roughness: 1.0 })
-  );
-  trunk.position.y = 1.1;
-
-  const leaves = new THREE.Mesh(
-    new THREE.SphereGeometry(1.2, 10, 10),
-    new THREE.MeshStandardMaterial({ color: 0x3f6b3a, roughness: 1.0 })
-  );
-  leaves.position.y = 2.6;
-
-  const stump = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.3, 0.38, 0.44, 8),
-    new THREE.MeshStandardMaterial({ color: 0x5f4633, roughness: 1.0, transparent: true, opacity: 0 })
-  );
-  stump.position.y = 0.22;
-  stump.visible = false;
-
-  const sproutStem = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.03, 0.05, 0.38, 6),
-    new THREE.MeshStandardMaterial({ color: 0x5b8a47, roughness: 1.0, transparent: true, opacity: 0 })
-  );
-  sproutStem.position.y = 0.38;
-
-  const sproutLeafLeft = new THREE.Mesh(
-    new THREE.SphereGeometry(0.12, 8, 8),
-    new THREE.MeshStandardMaterial({ color: 0x73a95c, roughness: 1.0, transparent: true, opacity: 0 })
-  );
-  sproutLeafLeft.position.set(-0.08, 0.6, 0);
-  sproutLeafLeft.scale.set(1.1, 0.6, 0.9);
-  sproutLeafLeft.rotation.z = -0.4;
-
-  const sproutLeafRight = new THREE.Mesh(
-    new THREE.SphereGeometry(0.12, 8, 8),
-    new THREE.MeshStandardMaterial({ color: 0x7cb563, roughness: 1.0, transparent: true, opacity: 0 })
-  );
-  sproutLeafRight.position.set(0.08, 0.62, 0);
-  sproutLeafRight.scale.set(1.05, 0.55, 0.85);
-  sproutLeafRight.rotation.z = 0.42;
-
-  const sprout = new THREE.Group();
-  sprout.add(sproutStem, sproutLeafLeft, sproutLeafRight);
-  sprout.visible = false;
-
-  g.add(trunk, leaves, stump, sprout);
-  g.position.set(x, 0, z);
-  scene.add(g);
-  // ✅ 나무 충돌(트렁크만): 너무 빡빡하지 않게 약간 줄임
+  const { tree, trunk } = createHarvestTreeModel(x, z);
+  scene.add(tree);
   trunk.updateWorldMatrix(true, true);
   addCollider(trunk, 0.75);
-
-  g.userData.isHarvestTree = true;
-  g.userData.harvestItemId = "woodChip";
-  g.userData.harvestCount = 1;
-  g.userData.harvestCooldownUntil = 0;
-  g.userData.harvestDisabled = false;
-  g.userData.trunk = trunk;
-  g.userData.leaves = leaves;
-  g.userData.stump = stump;
-  g.userData.sprout = sprout;
-  g.userData.trunkBaseY = trunk.position.y;
-  g.userData.leavesBaseY = leaves.position.y;
-  g.userData.baseRotationZ = 0;
-  g.userData.harvestShakeUntil = 0;
-  g.userData.harvestShakeStartedAt = 0;
-  harvestTrees.push(g);
-
-  return g;
+  return resourceWorldRuntime.registerHarvestTree(tree);
 }
 
 // 캐릭터급 바위 (충돌 포함)
 function makeRock(x, z, rockSizeDef = ROCK_SIZE_DEFS[1], fadeIn = false, options = {}) {
-  const scale = rockSizeDef.scale;
-  const rockColor = options.color ?? 0x6f6f72;
   const defaultResourceCount = getRockDefaultResourceCount(rockSizeDef, options);
-  const rockMat = new THREE.MeshStandardMaterial({
-    color: rockColor,
-    roughness: 1.0,
-    transparent: fadeIn,
-    opacity: fadeIn ? 0 : 1,
-  });
-  const rock = new THREE.Mesh(
-    new THREE.DodecahedronGeometry(0.9 * scale, options.detail ?? 0),
-    rockMat
-  );
-  rock.position.set(x, 0.9 * scale, z);
-
-  // 약간 울퉁불퉁한 느낌
-  rock.rotation.set(randRange(0, Math.PI), randRange(0, Math.PI), randRange(0, Math.PI));
-
+  const rock = createMineRockModel(x, z, rockSizeDef, fadeIn, options, { defaultResourceCount, randomRange: randRange });
   scene.add(rock);
-  // ✅ 충돌 등록(조금 더 타이트하게)
-  rock.userData.colliderShrink = 0.85; // 1보다 작을수록 더 타이트(0.8~0.9 추천)
-  mineRocks.push(rock);
-
-  const colliderIndex = addCollider(rock, 0.85);
-  rock.userData.isMineRock = true;
-  rock.userData.colliderIndex = colliderIndex;
-  rock.userData.rockSize = rockSizeDef.id;
-  rock.userData.spawnScale = scale;
-  rock.userData.hp = options.maxHp ?? rockSizeDef.maxHp;
-  rock.userData.maxHp = options.maxHp ?? rockSizeDef.maxHp;
-  rock.userData.spawn = {
-    x,
-    z,
-    rockSize: rockSizeDef.id,
-    mapId: options.mapId ?? "광산",
-    resourceItemId: options.resourceItemId ?? "stoneDust",
-    resourceCount: options.resourceCount ?? defaultResourceCount,
-    requiredPickaxeLevel: options.requiredPickaxeLevel ?? 0,
-    color: rockColor,
-    detail: options.detail ?? 0,
-    maxHp: options.maxHp ?? rockSizeDef.maxHp,
-  };
-  rock.userData.resourceItemId = options.resourceItemId ?? "stoneDust";
-  rock.userData.resourceCount = options.resourceCount ?? defaultResourceCount;
-  rock.userData.requiredPickaxeLevel = options.requiredPickaxeLevel ?? 0;
-  rock.userData.resourceHint = options.hint ?? "Space : 채굴";
-  rock.userData.hpLabelPrefix = options.hpLabelPrefix ?? "돌 체력";
-  rock.userData.bonusDropEnabled = options.bonusDropEnabled ?? rock.userData.resourceItemId === "stoneDust";
-  if (fadeIn) {
-    rock.userData.fadeInElapsed = 0;
-    rock.userData.fadeInDuration = 1.0;
-  }
-
-  return rock;
+  rock.userData.colliderIndex = addCollider(rock, 0.85);
+  return resourceWorldRuntime.registerMineRock(rock);
 }
 
-function scheduleRockRespawn(spawn) {
-  setTimeout(() => {
+function createRespawnRockFromSpawn(spawn) {
     const rockSizeDef =
       getRockSizeDefById(spawn?.rockSize, ROCK_SIZE_DEFS) ??
       ROCK_SIZE_DEFS[Math.floor(Math.random() * ROCK_SIZE_DEFS.length)];
@@ -11659,278 +9703,80 @@ function scheduleRockRespawn(spawn) {
       bonusDropEnabled: spawn?.resourceItemId === "stoneDust",
       hpLabelPrefix: spawn?.resourceItemId === "masonryStone" ? "석재 돌 체력" : "돌 체력",
     });
-  }, ROCK_RESPAWN_MS);
+}
+
+function scheduleRockRespawn(spawn) {
+  resourceWorldRuntime.scheduleRockRespawn(spawn);
 }
 
 function unregisterMineRock(rock) {
-  const idx = mineRocks.indexOf(rock);
-  if (idx !== -1) mineRocks.splice(idx, 1);
-
+  resourceWorldRuntime.unregisterMineRock(rock);
 }
 
 function setHarvestTreeActive(tree, active) {
-  if (!tree?.userData) return;
-  tree.userData.harvestDisabled = !active;
-  tree.userData.harvestCooldownUntil = active ? 0 : getHarvestTreeCooldownUntil(performance.now(), TREE_HARVEST_RESPAWN_MS);
-  updateHarvestTreeVisualState(tree, active, active ? 1 : 0);
-}
-
-function updateHarvestTreeVisualState(tree, active, regrowthProgress = 1) {
-  if (!tree?.userData) return;
-  const trunk = tree.userData.trunk;
-  const leaves = tree.userData.leaves;
-  const stump = tree.userData.stump;
-  const sprout = tree.userData.sprout;
-  const progress = THREE.MathUtils.clamp(regrowthProgress, 0, 1);
-  const trunkBaseY = tree.userData.trunkBaseY ?? 1.1;
-  const leavesBaseY = tree.userData.leavesBaseY ?? 2.6;
-
   if (active) {
-    if (trunk?.material) {
-      trunk.visible = true;
-      trunk.scale.y = 1;
-      trunk.position.y = trunkBaseY;
-      trunk.material.transparent = false;
-      trunk.material.opacity = 1;
-    }
-    if (leaves?.material) {
-      leaves.visible = true;
-      leaves.scale.setScalar(1);
-      leaves.position.y = leavesBaseY;
-      leaves.material.transparent = false;
-      leaves.material.opacity = 1;
-    }
-    if (stump?.material) {
-      stump.visible = false;
-      stump.material.opacity = 0;
-    }
-    if (sprout) {
-      sprout.visible = false;
-      sprout.scale.setScalar(0.2);
-      for (const child of sprout.children) {
-        if (child.material) child.material.opacity = 0;
-      }
-    }
+    setHarvestTreeActiveFromModule(tree, true, {
+      now: performance.now(),
+      respawnMs: TREE_HARVEST_RESPAWN_MS,
+      getCooldownUntil: getHarvestTreeCooldownUntil,
+    });
     return;
   }
-
-  const trunkScaleY = THREE.MathUtils.lerp(0.22, 1, progress);
-  const leavesScale = THREE.MathUtils.lerp(0.12, 1, progress);
-  const leavesOpacity = THREE.MathUtils.lerp(0.08, 0.92, progress);
-  const stumpOpacity = THREE.MathUtils.lerp(0.95, 0.18, progress);
-  const sproutOpacity = THREE.MathUtils.clamp(progress * 1.15, 0, 0.92);
-  const sproutScale = THREE.MathUtils.lerp(0.25, 1.05, progress);
-
-  if (trunk?.material) {
-    trunk.visible = true;
-    trunk.scale.y = trunkScaleY;
-    trunk.position.y = trunkBaseY * trunkScaleY;
-    trunk.material.transparent = true;
-    trunk.material.opacity = THREE.MathUtils.lerp(0.32, 0.9, progress);
-  }
-  if (leaves?.material) {
-    leaves.visible = true;
-    leaves.scale.setScalar(leavesScale);
-    leaves.position.y = THREE.MathUtils.lerp(0.95, leavesBaseY, progress);
-    leaves.material.transparent = true;
-    leaves.material.opacity = leavesOpacity;
-  }
-  if (stump?.material) {
-    stump.visible = true;
-    stump.material.transparent = true;
-    stump.material.opacity = stumpOpacity;
-  }
-  if (sprout) {
-    sprout.visible = true;
-    sprout.scale.setScalar(sproutScale);
-    for (const child of sprout.children) {
-      if (child.material) {
-        child.material.transparent = true;
-        child.material.opacity = sproutOpacity;
-      }
-    }
-  }
+  resourceWorldRuntime.deactivateHarvestTree(tree);
 }
 
 function updateHarvestTrees() {
-  const now = performance.now();
-  for (const tree of harvestTrees) {
-    if (!tree?.parent) continue;
-    const shakeUntil = tree.userData.harvestShakeUntil ?? 0;
-    if (shakeUntil > now) {
-      const startedAt = tree.userData.harvestShakeStartedAt ?? now;
-      tree.rotation.z = getHarvestTreeShakeRotation(
-        now,
-        startedAt,
-        shakeUntil,
-        tree.userData.baseRotationZ ?? 0,
-        THREE.MathUtils
-      );
-    } else {
-      tree.rotation.z = THREE.MathUtils.lerp(tree.rotation.z, tree.userData.baseRotationZ ?? 0, 0.24);
-    }
-
-    if (!tree.userData.harvestDisabled) continue;
-    updateHarvestTreeVisualState(
-      tree,
-      false,
-      getHarvestTreeRegrowthProgress(now, tree.userData.harvestCooldownUntil ?? 0, TREE_HARVEST_RESPAWN_MS, THREE.MathUtils)
-    );
-    if (isHarvestTreeReady(now, tree.userData.harvestCooldownUntil ?? 0)) {
-      setHarvestTreeActive(tree, true);
-    }
-  }
+  resourceWorldRuntime.updateHarvestTreeStates();
 }
 
 function updateRockFadeIns(dt) {
-  for (const rock of mineRocks) {
-    if (!rock || !rock.parent) continue;
-    const dur = rock.userData.fadeInDuration;
-    if (!dur) continue;
-
-    rock.userData.fadeInElapsed += dt;
-    const t = Math.min(1, rock.userData.fadeInElapsed / dur);
-    rock.material.opacity = t;
-
-    if (t >= 1) {
-      rock.material.transparent = false;
-      delete rock.userData.fadeInElapsed;
-      delete rock.userData.fadeInDuration;
-    }
-  }
+  resourceWorldRuntime.updateRockFadeStates(dt);
 }
 
 function triggerHitStop(duration = HIT_STOP_DURATION) {
-  hitStopTime = Math.max(hitStopTime, duration);
+  miningFeedback.triggerHitStop(duration);
 }
 
 function triggerCameraShake(strength = 0.045, duration = CAMERA_SHAKE_DURATION) {
-  cameraShakeTime = Math.max(cameraShakeTime, duration);
-  cameraShakeStrength = Math.max(cameraShakeStrength, strength);
+  miningFeedback.triggerCameraShake(strength, duration);
 }
 
 function triggerRockHitReaction(rock) {
-  if (!rock || !rock.parent) return;
-
-  const existing = rock.userData.hitReaction;
-  if (existing) {
-    existing.elapsed = 0;
-    return;
-  }
-
-  const reaction = {
-    rock,
-    elapsed: 0,
-    duration: ROCK_HIT_REACTION_DURATION,
-    basePosition: rock.position.clone(),
-    baseScale: rock.scale.clone(),
-    baseRotation: rock.rotation.clone(),
-  };
-  rock.userData.hitReaction = reaction;
-  rockHitReactions.push(reaction);
+  triggerRockHitReactionFromModule(rock, rockHitReactions, ROCK_HIT_REACTION_DURATION);
 }
 
 function updateRockHitReactions(dt) {
-  for (let i = rockHitReactions.length - 1; i >= 0; i--) {
-    const reaction = rockHitReactions[i];
-    const rock = reaction.rock;
-    if (!rock || !rock.parent) {
-      rockHitReactions.splice(i, 1);
-      continue;
-    }
-
-    reaction.elapsed += dt;
-    const t = Math.min(1, reaction.elapsed / reaction.duration);
-    const wave = Math.sin(t * Math.PI);
-
-    rock.position.copy(reaction.basePosition);
-    rock.position.x += Math.sin(t * 28) * 0.035;
-    rock.position.z += Math.cos(t * 22) * 0.025;
-    rock.position.y = reaction.basePosition.y - wave * 0.06;
-
-    rock.scale.set(
-      reaction.baseScale.x * (1 + wave * 0.08),
-      reaction.baseScale.y * (1 - wave * 0.14),
-      reaction.baseScale.z * (1 + wave * 0.08)
-    );
-
-    rock.rotation.copy(reaction.baseRotation);
-    rock.rotation.z += Math.sin(t * Math.PI) * 0.05;
-
-    if (t < 1) continue;
-
-    rock.position.copy(reaction.basePosition);
-    rock.scale.copy(reaction.baseScale);
-    rock.rotation.copy(reaction.baseRotation);
-    delete rock.userData.hitReaction;
-    rockHitReactions.splice(i, 1);
-  }
+  updateRockHitReactionsFromModule(rockHitReactions, dt);
 }
 
 function applyCameraShake() {
-  if (cameraShakeTime <= 0 || cameraShakeStrength <= 0) return;
-  const scale = cameraShakeStrength * (cameraShakeTime / CAMERA_SHAKE_DURATION);
-  camera.position.x += randRange(-scale, scale);
-  camera.position.y += randRange(-scale * 0.8, scale * 0.8);
-  camera.position.z += randRange(-scale, scale);
+  const offset = miningFeedback.getCameraShakeOffset();
+  if (!offset) return;
+  camera.position.x += offset.x;
+  camera.position.y += offset.y;
+  camera.position.z += offset.z;
 }
 
 function makePickaxe(x, z, y = 0, rotation = null, level = 1) {
-  const g = buildPickaxeModel(level);
-  g.position.set(x, y, z);
-
-  if (rotation) {
-    g.rotation.set(rotation.x, rotation.y, rotation.z);
-  } else {
-    // 기본값은 바닥에 떨어진 듯한 기울기
-    g.rotation.z = Math.PI * 0.15;
-  }
-
-  // 아이템 정보
-  g.userData.isPickaxe = true;
-  g.userData.pickaxeLevel = level;
-
+  const g = createPickupPickaxe({ buildPickaxeModel, x, z, y, rotation, level });
   scene.add(g);
   return g;
 }
 
 function makeShovel(x, z, y = 0, rotation = null) {
-  const g = buildShovelModel();
-  g.position.set(x, y, z);
-
-  if (rotation) {
-    g.rotation.set(rotation.x, rotation.y, rotation.z);
-  } else {
-    g.rotation.z = Math.PI * 0.12;
-  }
-
-  g.userData.isShovel = true;
+  const g = createPickupShovel({ buildShovelModel, x, z, y, rotation });
   scene.add(g);
   return g;
 }
 
 function makeSafetyHelmet(x, z, y = 0, rotation = null) {
-  const g = buildSafetyHelmetModel();
-  g.position.set(x, y, z);
-
-  if (rotation) {
-    g.rotation.set(rotation.x, rotation.y, rotation.z);
-  }
-
-  g.userData.isSafetyHelmet = true;
+  const g = createPickupSafetyHelmet({ buildSafetyHelmetModel, x, z, y, rotation });
   scene.add(g);
   return g;
 }
 
 function makeBasicShoes(x, z, y = 0, rotation = null) {
-  const g = buildBasicShoesModel();
-  g.position.set(x, y, z);
-
-  if (rotation) {
-    g.rotation.set(rotation.x, rotation.y, rotation.z);
-  }
-
-  g.userData.isBasicShoes = true;
+  const g = createPickupBasicShoes({ buildBasicShoesModel, x, z, y, rotation });
   scene.add(g);
   return g;
 }
@@ -11950,23 +9796,11 @@ function spawnTreesAndRocks() {
   // 나무/바위 개수 (원하면 여기 숫자만 조절)
   const TREE_COUNT = 20;
 
-  // 나무
-  for (let i = 0; i < TREE_COUNT; i++) {
-    let x = 0, z = 0;
-    let tries = 0;
+  for (const position of createTreeSpawnPositions({
+    count: TREE_COUNT, minX, maxX, minZ, maxZ, safeRadius, maxAttempts: 30, randomRange: randRange,
+  })) makeTree(position.x, position.z);
 
-    do {
-      x = randRange(minX, maxX);
-      z = randRange(minZ, maxZ);
-      tries++;
-    } while ((x * x + z * z) < safeRadius * safeRadius && tries < 30);
-
-    makeTree(x, z);
-  }
-
-  // 바위 (크기 조금씩 다르게)
-  for (let i = 0; i < ROCK_COUNT; i++) {
-    const rockSizeDef = ROCK_SIZE_DEFS[Math.floor(Math.random() * ROCK_SIZE_DEFS.length)];
+  for (const rockSizeDef of createRockSpawnPlans(ROCK_COUNT, ROCK_SIZE_DEFS, Math.random)) {
     const spawnPos = findRockSpawnPosition(rockSizeDef.scale, 120);
     if (!spawnPos) continue;
     makeRock(spawnPos.x, spawnPos.z, rockSizeDef);
@@ -11974,21 +9808,10 @@ function spawnTreesAndRocks() {
 }
 
 function spawnCaveMasonryRocks() {
-  for (let i = 0; i < CAVE_STONE_COUNT; i += 1) {
-    const rockSizeDef = ROCK_SIZE_DEFS[Math.floor(Math.random() * ROCK_SIZE_DEFS.length)];
+  for (const rockSizeDef of createRockSpawnPlans(CAVE_STONE_COUNT, ROCK_SIZE_DEFS, Math.random)) {
     const spawnPos = findCampStoneSpawnPosition(rockSizeDef.scale, 140);
     if (!spawnPos) continue;
-    makeRock(spawnPos.x, spawnPos.z, rockSizeDef, false, {
-      mapId: "폐광",
-      resourceItemId: "masonryStone",
-      requiredPickaxeLevel: 4,
-      hint: "Space : 석재 채굴",
-      color: 0x3f372f,
-      detail: 1,
-      maxHp: rockSizeDef.maxHp + 0.6,
-      bonusDropEnabled: false,
-      hpLabelPrefix: "석재 돌 체력",
-    });
+    makeRock(spawnPos.x, spawnPos.z, rockSizeDef, false, getCaveMasonryRockOptions(rockSizeDef));
   }
 }
 
@@ -12302,8 +10125,9 @@ function applyDevPreset() {
     ensureExactOwnedItemCount("mansionOneRoom101Permit", 1);
   }
 
-  playerAirCurrent = AIR_GAUGE_MAX;
   playerAirMax = AIR_GAUGE_MAX;
+  airRuntime.setMaxAir(playerAirMax);
+  airRuntime.setCurrentAir(AIR_GAUGE_MAX);
   resetAllMapPurificationValues();
 
   for (const nftEntry of DEV_MOCK_NFT_ITEMS) {
@@ -12375,8 +10199,9 @@ function applyFreshPlayerStartState() {
   tutorialQuest.upgradeCount = 0;
   tutorialQuest.completed = false;
   tutorialQuest.archivedSteps = [];
-  playerAirCurrent = AIR_GAUGE_MAX;
   playerAirMax = AIR_GAUGE_MAX;
+  airRuntime.setMaxAir(playerAirMax);
+  airRuntime.setCurrentAir(AIR_GAUGE_MAX);
   resetAllMapPurificationValues();
 
   restoreLockedMapGate(abandonedMineGate);
@@ -12467,7 +10292,8 @@ function applySerializedPlayerSave(rawSave, { preserveSharedWorld = false } = {}
     ? [...source.tutorial.archivedSteps]
     : [];
   playerAirMax = Math.max(1, Number(source.airSystem.max) || AIR_GAUGE_MAX);
-  playerAirCurrent = Math.max(0, Math.min(playerAirMax, Number(source.airSystem.current) || AIR_GAUGE_MAX));
+  airRuntime.setMaxAir(playerAirMax);
+  airRuntime.setCurrentAir(Number(source.airSystem.current) || AIR_GAUGE_MAX);
   if (!preserveSharedWorld) {
     for (const mapId of Object.keys(MAP_POLLUTION_CONFIG)) {
       setMapPurificationValue(mapId, Number(source.airSystem.mapPurification?.[mapId]) || 0);
@@ -12530,83 +10356,69 @@ function applySerializedPlayerSave(rawSave, { preserveSharedWorld = false } = {}
 }
 
 async function hydratePlayerSaveFromServer() {
-  if (!isServerBackedWalletSession()) return false;
-
-  setPlayerSaveStatus("저장 불러오는 중...", "saving", { persist: true });
-  const saveResponse = await apiFetchJson("/auth/save", {
-    method: "GET",
-    headers: getAuthHeaders(),
+  return hydratePlayerSaveRuntime({
+    isServerBackedSession: isServerBackedWalletSession,
+    setStatus: (status, tone, options) => {
+      const messages = {
+        loading: "저장 불러오는 중...",
+        fresh: "새로운 저장 데이터",
+        loaded: "저장 불러오기 완료",
+      };
+      setPlayerSaveStatus(messages[status], tone, options);
+    },
+    apiFetchJson,
+    getAuthHeaders,
+    blockBaseline: (error) => blockPlayerSaveBaseline(`저장 데이터 확인 실패: ${error}`),
+    serializeSave: serializePlayerSave,
+    setKnownUpdatedAt: (value) => { lastKnownPlayerSaveUpdatedAt = value; },
+    setSnapshot: (value) => { lastPlayerSaveSnapshot = value; },
+    markBaselineReady: markPlayerSaveBaselineReady,
+    applySave: applySerializedPlayerSave,
+    setWalletLoginStatus: () => { walletLoginStatus.textContent = "이전 플레이 기록을 불러왔습니다."; },
   });
-  if (!saveResponse.ok) {
-    blockPlayerSaveBaseline(`저장 데이터 확인 실패: ${saveResponse.error}`);
-    return false;
-  }
-
-  const serverSaveEntry = saveResponse.data.save ?? null;
-  const serverSave = serverSaveEntry?.data ?? null;
-  if (!serverSave) {
-    lastKnownPlayerSaveUpdatedAt = "";
-    lastPlayerSaveSnapshot = JSON.stringify(serializePlayerSave());
-    markPlayerSaveBaselineReady("fresh");
-    setPlayerSaveStatus("새로운 저장 데이터", "success");
-    return false;
-  }
-
-  applySerializedPlayerSave(serverSave);
-  lastKnownPlayerSaveUpdatedAt = serverSaveEntry.updatedAt ?? "";
-  markPlayerSaveBaselineReady("hydrated");
-  walletLoginStatus.textContent = "이전 플레이 기록을 불러왔습니다.";
-  setPlayerSaveStatus("저장 불러오기 완료", "success");
-  return true;
 }
 
 async function pushPlayerSaveToServer() {
-  if (!isServerBackedWalletSession()) return false;
-  if (!hasConfirmedPlayerSaveBaseline()) {
-    setPlayerSaveStatus("세이브 기준선 확인 전이라 저장 대기 중", "error");
-    return false;
-  }
-  const snapshot = JSON.stringify(serializePlayerSave());
-  if (snapshot === lastPlayerSaveSnapshot) return true;
-
-  setPlayerSaveStatus("저장 중...", "saving", { persist: true });
-
-  const response = await apiFetchJson("/auth/save", {
-    method: "PUT",
-    headers: getAuthHeaders(),
-    body: JSON.stringify({
-      save: JSON.parse(snapshot),
-      knownUpdatedAt: lastKnownPlayerSaveUpdatedAt,
-    }),
+  return pushPlayerSaveRuntime({
+    isServerBackedSession: isServerBackedWalletSession,
+    hasConfirmedBaseline: hasConfirmedPlayerSaveBaseline,
+    setStatus: (status, tone, options) => {
+      const messages = {
+        "baseline-pending": "세이브 기준선 확인 전이라 저장 대기 중",
+        saving: "저장 중...",
+        conflict: "다른 창의 최신 저장으로 동기화됨",
+        failed: "저장 실패",
+        saved: "저장됨",
+      };
+      setPlayerSaveStatus(messages[status], tone, options);
+    },
+    serializeSave: serializePlayerSave,
+    getSnapshot: () => lastPlayerSaveSnapshot,
+    getKnownUpdatedAt: () => lastKnownPlayerSaveUpdatedAt,
+    apiFetchJson,
+    getAuthHeaders,
+    applySave: applySerializedPlayerSave,
+    setKnownUpdatedAt: (value) => { lastKnownPlayerSaveUpdatedAt = value; },
+    setSnapshot: (value) => { lastPlayerSaveSnapshot = value; },
+    setWalletLoginStatus: () => { walletLoginStatus.textContent = "다른 탭의 더 최신 저장 기록을 불러왔습니다."; },
   });
-  if (!response.ok) {
-    if (response.status === 409 && response.data?.save?.data) {
-      applySerializedPlayerSave(response.data.save.data);
-      lastKnownPlayerSaveUpdatedAt = response.data.save.updatedAt ?? "";
-      walletLoginStatus.textContent = "다른 탭의 더 최신 저장 기록을 불러왔습니다.";
-      setPlayerSaveStatus("다른 창의 최신 저장으로 동기화됨", "error");
-      return false;
-    }
-    setPlayerSaveStatus("저장 실패", "error");
-    return false;
-  }
-  lastPlayerSaveSnapshot = snapshot;
-  lastKnownPlayerSaveUpdatedAt = response.data.save?.updatedAt ?? lastKnownPlayerSaveUpdatedAt;
-  setPlayerSaveStatus("저장됨", "success");
-  return true;
 }
 
 function flushPlayerSaveOnExit() {
-  if (isDevSession()) {
+  const plan = createPlayerSaveExitPlan({
+    isDevSession: isDevSession(),
+    isServerBackedSession: isServerBackedWalletSession(),
+    syncPaused: playerSaveSyncPaused,
+    hasConfirmedBaseline: hasConfirmedPlayerSaveBaseline(),
+    snapshot: JSON.stringify(serializePlayerSave()),
+    previousSnapshot: lastPlayerSaveSnapshot,
+  });
+  if (plan.type === "local") {
     saveActiveLocalProfileState();
     saveSharedWorldStateToLocal();
     return;
   }
-  if (!isServerBackedWalletSession()) return;
-  if (playerSaveSyncPaused || !hasConfirmedPlayerSaveBaseline()) return;
-
-  const snapshot = JSON.stringify(serializePlayerSave());
-  if (snapshot === lastPlayerSaveSnapshot) return;
+  if (plan.type !== "remote") return;
 
   try {
     fetch(`${AUTH_API_BASE_URL}/auth/save`, {
@@ -12616,28 +10428,35 @@ function flushPlayerSaveOnExit() {
         Authorization: `Bearer ${walletAuth.token}`,
       },
       body: JSON.stringify({
-        save: JSON.parse(snapshot),
+        save: JSON.parse(plan.snapshot),
         knownUpdatedAt: lastKnownPlayerSaveUpdatedAt,
       }),
       keepalive: true,
     });
-    lastPlayerSaveSnapshot = snapshot;
+    lastPlayerSaveSnapshot = plan.snapshot;
   } catch {}
 }
 
 function schedulePlayerSaveSync(force = false) {
-  if (isDevSession()) {
+  const plan = createPlayerSaveSchedulePlan({
+    isDevSession: isDevSession(),
+    isServerBackedSession: isServerBackedWalletSession(),
+    syncPaused: playerSaveSyncPaused,
+    hasConfirmedBaseline: hasConfirmedPlayerSaveBaseline(),
+    force,
+    now: performance.now(),
+    lastAttemptAt: lastPlayerSaveAttemptAt,
+    inFlight: Boolean(playerSaveSyncInFlight),
+    intervalMs: PLAYER_SAVE_INTERVAL_MS,
+  });
+  if (plan.type === "local") {
     saveActiveLocalProfileState();
     saveSharedWorldStateToLocal();
     return;
   }
-  if (!isServerBackedWalletSession()) return;
-  if (playerSaveSyncPaused || !hasConfirmedPlayerSaveBaseline()) return;
-  const now = performance.now();
-  if (!force && now - lastPlayerSaveAttemptAt < PLAYER_SAVE_INTERVAL_MS) return;
-  if (playerSaveSyncInFlight) return;
+  if (plan.type !== "sync") return;
 
-  lastPlayerSaveAttemptAt = now;
+  lastPlayerSaveAttemptAt = plan.attemptedAt;
   playerSaveSyncInFlight = pushPlayerSaveToServer().finally(() => {
     playerSaveSyncInFlight = null;
   });
@@ -12647,35 +10466,12 @@ applyDevPreset();
 
 
 function makeSign(x, z, text, rotationY = 0) {
-  const g = new THREE.Group();
-
-  const pole = new THREE.Mesh(
-    new THREE.BoxGeometry(0.2, 1.2, 0.2),
-    new THREE.MeshStandardMaterial({ color: 0x8b5a2b })
-  );
-  pole.position.y = 0.6;
-
-  const boardMat = new THREE.MeshStandardMaterial({ color: 0xfff3b0 });
-    boardMat.emissive.set(0x000000); // 기본은 발광 없음
-
-    const board = new THREE.Mesh(
-  new THREE.BoxGeometry(1.2, 0.6, 0.1),
-  boardMat
-);
-
-  board.position.set(0, 1.2, 0);
-
-  const signCollider = new THREE.Mesh(
-    new THREE.BoxGeometry(1.45, 1.75, 0.5),
-    new THREE.MeshBasicMaterial({ visible: false })
-  );
-  signCollider.position.set(0, 0.88, 0);
-
-  g.add(pole, board, signCollider);
-  g.position.set(x, 0, z);
-  g.rotation.y = rotationY;
-  scene.add(g);
-  g.userData.colliderIndex = addCollider(signCollider, 1.0);
+  const { group, board, collider } = createSignModel();
+  group.position.set(x, 0, z);
+  group.rotation.y = rotationY;
+  scene.add(group);
+  group.userData.colliderIndex = addCollider(collider, 1.0);
+  const g = group;
   console.log("SIGN CREATED:", text, "pos=", g.position.x, g.position.z);
 
   // 상호작용 대상 등록(텍스트 포함)
@@ -12684,90 +10480,17 @@ function makeSign(x, z, text, rotationY = 0) {
 }
 
 function makeTutorialNpc(x, z, rotationY = 0) {
-  const g = new THREE.Group();
-
-  const clothMat = new THREE.MeshStandardMaterial({ color: 0x7b6a58, roughness: 0.95 });
-  const skinMat = new THREE.MeshStandardMaterial({ color: 0xf0efe9, roughness: 0.92 });
-  const accentMat = new THREE.MeshStandardMaterial({ color: 0x324d73, roughness: 0.88 });
-
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.72, 1.05, 0.42), clothMat);
-  torso.position.y = 1.2;
-  g.add(torso);
-
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 18, 14), skinMat);
-  head.scale.set(0.95, 1.08, 0.95);
-  head.position.y = 1.95;
-  g.add(head);
-
-  const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.9, 0.18), clothMat);
-  leftArm.position.set(-0.48, 1.15, 0);
-  g.add(leftArm);
-
-  const rightArm = leftArm.clone();
-  rightArm.position.x *= -1;
-  g.add(rightArm);
-
-  const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.22, 1.0, 0.22), accentMat);
-  leftLeg.position.set(-0.16, 0.45, 0);
-  g.add(leftLeg);
-
-  const rightLeg = leftLeg.clone();
-  rightLeg.position.x *= -1;
-  g.add(rightLeg);
-
-  const npcCollider = new THREE.Mesh(
-    new THREE.BoxGeometry(0.95, 2.15, 0.95),
-    new THREE.MeshBasicMaterial({ visible: false })
-  );
-  npcCollider.position.set(0, 1.08, 0);
-  g.add(npcCollider);
-
-  const hardHat = buildSafetyHelmetModel();
-  hardHat.scale.setScalar(0.78);
-  hardHat.rotation.y = Math.PI * 0.04;
-  head.add(hardHat);
-  alignWearableOnHead(head, hardHat, {
-    verticalInset: 0.38,
-    forwardBias: 0.06,
-  });
-
+  const { group: g, collider } = createTutorialNpcModel();
   g.position.set(x, START_FLAT_Y, z);
   g.rotation.y = rotationY;
   scene.add(g);
-  g.userData.colliderIndex = addCollider(npcCollider, 1.0);
+  g.userData.colliderIndex = addCollider(collider, 1.0);
   registerTutorialNpc(g, "작업 감독관");
   return g;
 }
 
 function buildForgeAnvil(x, z) {
-  const g = new THREE.Group();
-
-  const stand = new THREE.Mesh(
-    new THREE.BoxGeometry(0.7, 0.55, 0.7),
-    new THREE.MeshStandardMaterial({ color: 0x67584a, roughness: 1.0 })
-  );
-  stand.position.y = 0.28;
-
-  const body = new THREE.Mesh(
-    new THREE.BoxGeometry(0.9, 0.24, 0.42),
-    new THREE.MeshStandardMaterial({ color: 0x4d5661, roughness: 0.9 })
-  );
-  body.position.y = 0.78;
-
-  const horn = new THREE.Mesh(
-    new THREE.BoxGeometry(0.5, 0.18, 0.18),
-    new THREE.MeshStandardMaterial({ color: 0x59636f, roughness: 0.85 })
-  );
-  horn.position.set(0.54, 0.81, 0);
-  horn.scale.set(1.2, 1, 0.7);
-
-  const topPlate = new THREE.Mesh(
-    new THREE.BoxGeometry(0.42, 0.08, 0.5),
-    new THREE.MeshStandardMaterial({ color: 0x717a87, roughness: 0.82 })
-  );
-  topPlate.position.set(-0.1, 0.94, 0);
-
-  g.add(stand, body, horn, topPlate);
+  const g = createForgeAnvilModel();
   g.position.set(x, START_FLAT_Y, z);
   scene.add(g);
   addCollider(g, 0.95);
@@ -12775,100 +10498,7 @@ function buildForgeAnvil(x, z) {
 }
 
 function buildNftExhibitBoard(x, z, rotationY = Math.PI * 0.5) {
-  const g = new THREE.Group();
-  const boardWidth = 4.02;
-  const boardHeight = 3.52;
-  const boardHalfWidth = boardWidth * 0.5;
-  const frameThickness = 0.12;
-
-  const frameMat = new THREE.MeshStandardMaterial({
-    color: 0x2d3138,
-    roughness: 0.55,
-    metalness: 0.45,
-  });
-  const panelMat = new THREE.MeshStandardMaterial({
-    color: 0xf8fafc,
-    roughness: 0.92,
-    metalness: 0.03,
-  });
-  const wheelMat = new THREE.MeshStandardMaterial({
-    color: 0x1d1f24,
-    roughness: 0.72,
-    metalness: 0.25,
-  });
-
-  const leftPost = new THREE.Mesh(
-    new THREE.BoxGeometry(0.12, 3.55, 0.12),
-    frameMat
-  );
-  leftPost.position.set(-boardHalfWidth - 0.12, 1.78, -0.12);
-  g.add(leftPost);
-
-  const rightPost = new THREE.Mesh(
-    new THREE.BoxGeometry(0.12, 3.55, 0.12),
-    frameMat
-  );
-  rightPost.position.set(boardHalfWidth + 0.12, 1.78, -0.12);
-  g.add(rightPost);
-
-  const bottomBeam = new THREE.Mesh(
-    new THREE.BoxGeometry(boardWidth + 0.18, 0.1, 0.1),
-    frameMat
-  );
-  bottomBeam.position.set(0, 0.42, -0.12);
-  g.add(bottomBeam);
-
-  const frame = new THREE.Mesh(
-    new THREE.BoxGeometry(boardWidth + frameThickness, boardHeight + frameThickness, 0.08),
-    frameMat
-  );
-  frame.position.set(0, 2.66, -0.02);
-  g.add(frame);
-
-  const backPanel = new THREE.Mesh(
-    new THREE.BoxGeometry(boardWidth, boardHeight, 0.04),
-    panelMat
-  );
-  backPanel.position.set(0, 2.66, 0.03);
-  g.add(backPanel);
-
-  const screenMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-  const screen = new THREE.Mesh(
-    new THREE.PlaneGeometry(boardWidth - 0.16, boardHeight - 0.16),
-    screenMat
-  );
-  screen.position.set(0, 2.66, 0.055);
-  g.add(screen);
-
-  const leftFoot = new THREE.Mesh(
-    new THREE.BoxGeometry(1.22, 0.08, 0.18),
-    frameMat
-  );
-  leftFoot.position.set(-boardHalfWidth + 0.42, 0.08, -0.12);
-  g.add(leftFoot);
-
-  const rightFoot = new THREE.Mesh(
-    new THREE.BoxGeometry(1.22, 0.08, 0.18),
-    frameMat
-  );
-  rightFoot.position.set(boardHalfWidth - 0.42, 0.08, -0.12);
-  g.add(rightFoot);
-
-  const wheelOffsets = [
-    [-boardHalfWidth - 0.08, 0.02, -0.08],
-    [-boardHalfWidth + 0.78, 0.02, 0.08],
-    [boardHalfWidth - 0.78, 0.02, -0.08],
-    [boardHalfWidth + 0.08, 0.02, 0.08],
-  ];
-  for (const [wx, wy, wz] of wheelOffsets) {
-    const wheel = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.045, 0.045, 0.03, 16),
-      wheelMat
-    );
-    wheel.rotation.z = Math.PI * 0.5;
-    wheel.position.set(wx, wy, wz);
-    g.add(wheel);
-  }
+  const { group: g, frame, screenMaterial } = createNftExhibitBoardModel();
 
   g.position.set(x, START_FLAT_Y + 0.22, z);
   g.rotation.y = rotationY;
@@ -12877,7 +10507,7 @@ function buildNftExhibitBoard(x, z, rotationY = Math.PI * 0.5) {
   interactables.push({ obj: g, text: "E : NFT 전시", board: frame, type: "nftBoard" });
 
   nftExhibitBoard = g;
-  nftExhibitScreenMaterial = screenMat;
+  nftExhibitScreenMaterial = screenMaterial;
   setNftBoardMessage(
     "지갑 NFT 전시",
     ["메타마스크 로그인 후", "작품을 불러옵니다."],
@@ -12891,24 +10521,11 @@ function renderResidenceNoticeBoard(boardKey) {
   const visual = residenceNoticeBoardVisuals[boardKey];
   if (!visual?.canvas || !visual?.texture) return;
   const entry = normalizeResidenceNoticeBoardEntry(boardKey, residenceNoticeBoardState[boardKey]);
-  const ctx = visual.canvas.getContext("2d");
-  if (!ctx) return;
-  ctx.clearRect(0, 0, visual.canvas.width, visual.canvas.height);
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, visual.canvas.width, visual.canvas.height);
-  ctx.fillStyle = "#1f2933";
-  ctx.font = "bold 54px Arial";
-  ctx.textAlign = "center";
-  ctx.fillText(entry.title, visual.canvas.width * 0.5, 92);
-  ctx.strokeStyle = "#d1d8e0";
-  ctx.lineWidth = 6;
-  ctx.strokeRect(58, 132, visual.canvas.width - 116, visual.canvas.height - 190);
-  ctx.fillStyle = "#425466";
-  ctx.font = "700 34px Arial";
-  entry.lines.forEach((line, index) => {
-    ctx.fillText(line, visual.canvas.width * 0.5, 252 + index * 74);
+  renderResidenceNoticeBoardTexture({
+    canvas: visual.canvas,
+    texture: visual.texture,
+    entry,
   });
-  visual.texture.needsUpdate = true;
 }
 
 function renderResidenceNoticeBoards() {
@@ -12918,52 +10535,7 @@ function renderResidenceNoticeBoards() {
 }
 
 function buildAirPurifierStation(x, z, rotationY = Math.PI, mapId = "폐광") {
-  const g = new THREE.Group();
-
-  const bodyMat = registerCaveDarkMaterial(
-    new THREE.MeshStandardMaterial({
-      color: 0x45505b,
-      roughness: 0.8,
-      metalness: 0.18,
-    }),
-    0.2
-  );
-  const glowMat = new THREE.MeshStandardMaterial({
-    color: 0x7ae2cb,
-    emissive: 0x2ebf96,
-    roughness: 0.38,
-    metalness: 0.08,
-  });
-  const accentMat = new THREE.MeshStandardMaterial({
-    color: 0x8398aa,
-    roughness: 0.54,
-    metalness: 0.12,
-  });
-
-  const base = new THREE.Mesh(new THREE.BoxGeometry(1.28, 1.1, 1.08), bodyMat);
-  base.position.y = 0.56;
-  g.add(base);
-
-  const chamber = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 1.08, 18), glowMat);
-  chamber.position.set(0, 1.18, 0);
-  g.add(chamber);
-
-  const cap = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.12, 0.72), accentMat);
-  cap.position.set(0, 1.78, 0);
-  g.add(cap);
-
-  const pipeLeft = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.7, 12), accentMat);
-  pipeLeft.rotation.z = Math.PI * 0.5;
-  pipeLeft.position.set(-0.36, 1.16, 0);
-  g.add(pipeLeft);
-
-  const pipeRight = pipeLeft.clone();
-  pipeRight.position.x *= -1;
-  g.add(pipeRight);
-
-  const screen = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.3, 0.05), glowMat);
-  screen.position.set(0, 1.05, 0.57);
-  g.add(screen);
+  const { group: g, chamber } = createAirPurifierModel(registerCaveDarkMaterial);
 
   g.position.set(x, START_FLAT_Y, z);
   g.rotation.y = rotationY;
@@ -12980,183 +10552,7 @@ function buildAirPurifierStation(x, z, rotationY = Math.PI, mapId = "폐광") {
 }
 
 function buildRefineryStation(x, z, y = START_FLAT_Y, rotationY = 0) {
-  const g = new THREE.Group();
-  const frameMat = new THREE.MeshStandardMaterial({
-    color: 0x48515c,
-    roughness: 0.72,
-    metalness: 0.28,
-  });
-  const chamberMat = new THREE.MeshStandardMaterial({
-    color: 0xa6ddc8,
-    roughness: 0.38,
-    metalness: 0.1,
-    emissive: 0x3f9372,
-    emissiveIntensity: 0.16,
-  });
-  const accentMat = new THREE.MeshStandardMaterial({
-    color: 0xc7ced8,
-    roughness: 0.28,
-    metalness: 0.44,
-  });
-  const trayMat = new THREE.MeshStandardMaterial({
-    color: 0x72543c,
-    roughness: 0.84,
-    metalness: 0.08,
-  });
-  const gaugeMat = new THREE.MeshStandardMaterial({
-    color: 0xf0f2f5,
-    roughness: 0.22,
-    metalness: 0.06,
-  });
-  const darkMat = new THREE.MeshStandardMaterial({
-    color: 0x2d3238,
-    roughness: 0.88,
-    metalness: 0.18,
-  });
-
-  const platform = new THREE.Mesh(
-    new THREE.BoxGeometry(1.9, 0.16, 1.16),
-    frameMat
-  );
-  platform.position.y = 0.08;
-  g.add(platform);
-
-  const legOffsets = [
-    [-0.76, 0.56, -0.42],
-    [0.76, 0.56, -0.42],
-    [-0.76, 0.56, 0.42],
-    [0.76, 0.56, 0.42],
-  ];
-  for (const [lx, ly, lz] of legOffsets) {
-    const leg = new THREE.Mesh(
-      new THREE.BoxGeometry(0.12, 0.96, 0.12),
-      darkMat
-    );
-    leg.position.set(lx, ly, lz);
-    g.add(leg);
-  }
-
-  const supportDeck = new THREE.Mesh(
-    new THREE.BoxGeometry(1.58, 0.12, 0.88),
-    frameMat
-  );
-  supportDeck.position.y = 0.64;
-  g.add(supportDeck);
-
-  const grinderCore = new THREE.Mesh(
-    new THREE.BoxGeometry(0.78, 0.68, 0.6),
-    frameMat
-  );
-  grinderCore.position.set(-0.22, 1.06, 0);
-  g.add(grinderCore);
-
-  const grinderHead = new THREE.Mesh(
-    new THREE.BoxGeometry(0.48, 0.3, 0.4),
-    accentMat
-  );
-  grinderHead.position.set(-0.22, 1.5, 0);
-  g.add(grinderHead);
-
-  const hopper = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.18, 0.34, 0.42, 22),
-    accentMat
-  );
-  hopper.position.set(-0.22, 1.86, 0);
-  g.add(hopper);
-
-  const chamber = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.22, 0.24, 0.84, 20),
-    chamberMat
-  );
-  chamber.position.set(0.56, 1.18, 0);
-  g.add(chamber);
-
-  const chamberCapTop = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.16, 0.18, 0.14, 18),
-    accentMat
-  );
-  chamberCapTop.position.set(0.56, 1.66, 0);
-  g.add(chamberCapTop);
-
-  const chamberCapBottom = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.17, 0.19, 0.14, 18),
-    accentMat
-  );
-  chamberCapBottom.position.set(0.56, 0.7, 0);
-  g.add(chamberCapBottom);
-
-  const conduit = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.055, 0.055, 0.96, 14),
-    accentMat
-  );
-  conduit.rotation.z = Math.PI * 0.5;
-  conduit.position.set(0.17, 1.26, 0);
-  g.add(conduit);
-
-  const dischargeTube = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.05, 0.065, 0.54, 14),
-    accentMat
-  );
-  dischargeTube.rotation.z = Math.PI * 0.34;
-  dischargeTube.position.set(0.84, 0.82, 0);
-  g.add(dischargeTube);
-
-  const dischargeTray = new THREE.Mesh(
-    new THREE.BoxGeometry(0.56, 0.08, 0.34),
-    trayMat
-  );
-  dischargeTray.position.set(0.98, 0.5, 0);
-  g.add(dischargeTray);
-
-  const powderJar = buildPurifyPowderModel();
-  powderJar.scale.setScalar(0.9);
-  powderJar.position.set(0.95, 0.62, 0.12);
-  g.add(powderJar);
-
-  const gaugeBody = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.12, 0.12, 0.04, 20),
-    gaugeMat
-  );
-  gaugeBody.rotation.x = Math.PI * 0.5;
-  gaugeBody.position.set(-0.63, 1.08, 0.34);
-  g.add(gaugeBody);
-
-  const gaugeNeedle = new THREE.Mesh(
-    new THREE.BoxGeometry(0.09, 0.01, 0.018),
-    darkMat
-  );
-  gaugeNeedle.rotation.z = -0.58;
-  gaugeNeedle.position.set(-0.61, 1.08, 0.37);
-  g.add(gaugeNeedle);
-
-  const leverBase = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.045, 0.05, 0.08, 16),
-    darkMat
-  );
-  leverBase.position.set(-0.72, 0.82, -0.32);
-  g.add(leverBase);
-
-  const leverHandle = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.022, 0.022, 0.34, 12),
-    accentMat
-  );
-  leverHandle.rotation.z = Math.PI * -0.22;
-  leverHandle.position.set(-0.78, 1.02, -0.32);
-  g.add(leverHandle);
-
-  const intakeLabel = new THREE.Mesh(
-    new THREE.BoxGeometry(0.34, 0.08, 0.02),
-    gaugeMat
-  );
-  intakeLabel.position.set(-0.22, 2.12, 0);
-  g.add(intakeLabel);
-
-  const collider = new THREE.Mesh(
-    new THREE.BoxGeometry(1.72, 2.26, 1.1),
-    new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 })
-  );
-  collider.position.set(0.1, 1.13, 0);
-  g.add(collider);
+  const { group: g, collider, grinderCore } = createRefineryModel(buildPurifyPowderModel);
 
   g.position.set(x, y, z);
   g.rotation.y = rotationY;
@@ -13173,53 +10569,7 @@ function buildRefineryStation(x, z, y = START_FLAT_Y, rotationY = 0) {
 }
 
 function buildTunnelFence(x, z, width, rotationY = 0) {
-  const g = new THREE.Group();
-  const woodMat = new THREE.MeshStandardMaterial({
-    color: 0x6f5138,
-    roughness: 0.98,
-  });
-
-  const railThickness = 0.2;
-  const postSize = 0.24;
-  const postHeight = 1.7;
-  const railInset = 0.28;
-
-  const topRail = new THREE.Mesh(
-    new THREE.BoxGeometry(width, railThickness, railThickness),
-    woodMat
-  );
-  topRail.position.set(0, 1.38, 0);
-  g.add(topRail);
-
-  const midRail = new THREE.Mesh(
-    new THREE.BoxGeometry(width, railThickness, railThickness),
-    woodMat
-  );
-  midRail.position.set(0, 0.8, 0);
-  g.add(midRail);
-
-  const postCount = 6;
-  for (let i = 0; i < postCount; i += 1) {
-    const t = postCount === 1 ? 0.5 : i / (postCount - 1);
-    const px = THREE.MathUtils.lerp(-width * 0.5 + railInset, width * 0.5 - railInset, t);
-    const post = new THREE.Mesh(
-      new THREE.BoxGeometry(postSize, postHeight, postSize),
-      woodMat
-    );
-    post.position.set(px, postHeight * 0.5, 0);
-    g.add(post);
-  }
-
-  const braceOffsets = [-width * 0.28, 0, width * 0.28];
-  for (const bx of braceOffsets) {
-    const brace = new THREE.Mesh(
-      new THREE.BoxGeometry(0.18, 1.35, 0.18),
-      woodMat
-    );
-    brace.position.set(bx, 0.72, 0);
-    brace.rotation.z = bx < 0 ? Math.PI * 0.18 : bx > 0 ? -Math.PI * 0.18 : 0;
-    g.add(brace);
-  }
+  const g = createTunnelFenceModel(width);
 
   g.position.set(x, START_FLAT_Y, z);
   g.rotation.y = rotationY;
@@ -13402,149 +10752,7 @@ window.addEventListener("pointermove", (e) => {
 });
 
 window.addEventListener("keydown", (e) => {
-  if (!canPlayGame()) return;
-  if (getLogicalInputKey(e) !== "escape" && isTextInputActive()) return;
-  if (nftExhibitSelectionOpen) return;
-  if (quickUseAssignState) return;
-  const k = getLogicalInputKey(e);
-  if (performance.now() < quickUseAssignmentConsumedUntil && QUICK_USE_ALLOWED_KEYS.includes(k)) {
-    e.preventDefault();
-    return;
-  }
-  console.log("KEYDOWN:", k);
-
-  if (isWorkUiMovementLocked() && (k in keys || k === "shift")) {
-    if (k in keys) keys[k] = false;
-    if (k === "shift") {
-      keys.shift = false;
-      shiftRotatePointerActive = false;
-      controls.enabled = canPlayGame() && !isWorkUiMovementLocked();
-    }
-    return;
-  }
-
-  // ===== E : 월드 아이템 줍기 =====
-  if (k === "e") {
-  const pickup = findNearestPickupItem(2.0);
-  if (pickup) {
-    triggerPickupReach(pickup.obj);
-    const added = pickup.itemId === "pickaxe" && Number.isFinite(pickup.obj?.userData?.pickaxeLevel)
-      ? addInventoryEntry(createInventorySlotEntry("pickaxe", 1, { pickaxeLevel: pickup.obj.userData.pickaxeLevel }))
-      : addItem(pickup.itemId, 1);
-    if (added) {
-      updateInventoryUI();
-      refreshQuestProgress();
-      const def = ITEM_DEFS[pickup.itemId];
-      const msg =
-        pickup.itemId === "pickaxe" ? HUD_MSG.PICKAXE_GET :
-        pickup.itemId === "shovel" ? "🪏 삽 획득!" :
-        pickup.itemId === "safetyHelmet" ? HUD_MSG.HELMET_GET :
-        pickup.itemId === "freshAirCanister" ? HUD_MSG.AIR_CAN_GET :
-        `${def?.name ?? pickup.itemId} 획득!`;
-      showUI(msg);
-      lastMessageUntil = performance.now() + 900;
-
-      unregisterDynamicProp(pickup.obj);
-      unregisterPickupItem(pickup.obj);
-      pickup.obj.removeFromParent();
-    }
-    return;
-  }
-
-  if (activeMapGate && !canUseMapGate(activeMapGate)) {
-    if (tryUnlockMapGate(activeMapGate)) {
-      return;
-    }
-    return;
-  }
-
-  if (forgeStation?.parent && getForgeDistance() < 2.4) {
-    setForgeOpen(!forgeOpen);
-    return;
-  }
-
-  if (activeInteractable?.type === "nftBoard") {
-    void openNftBoardSelectionOverlay();
-    return;
-  }
-
-  if (activeInteractable?.type === "frontierShopBooth") {
-    const parcelLabel = activeInteractable.parcelLabel ?? getSelectedFrontierParcelLabel();
-    const mode = canManageFrontierShopSlot(parcelLabel) || canUseFrontierShopSlot(parcelLabel) ? "manage" : "view";
-    openFrontierBoothDialog(parcelLabel, "shop", activeInteractable.boothTitle ?? "상점", mode);
-    return;
-  }
-
-  if (activeInteractable?.type === "frontierDisplayBooth") {
-    const parcelLabel = activeInteractable.parcelLabel ?? getSelectedFrontierParcelLabel();
-    const slotKey = activeInteractable.slotKey ?? "displayA";
-    const mode = canManageFrontierDisplaySlot(parcelLabel, slotKey) || canUseFrontierDisplaySlot(parcelLabel, slotKey) ? "manage" : "view";
-    openFrontierBoothDialog(parcelLabel, activeInteractable.slotKey ?? "displayA", activeInteractable.boothTitle ?? "전시", mode);
-    return;
-  }
-
-  if (activeInteractable?.type === "mansionEntry") {
-    if (!hasMansionOneResidenceAuthority()) {
-      showUI("거주권 필요", 1000);
-      return;
-    }
-    if (enterMansionOneRoom(getOwnedMansionRoomKey())) return;
-  }
-
-  if (activeInteractable?.type === "mansionExit") {
-    if (exitMansionOneRoom()) return;
-  }
-
-  if (activeInteractable?.type === "refinery") {
-    setRefineryOpen(!refineryOpen);
-    return;
-  }
-
-  if (activeInteractable?.type === "airPurifier") {
-    if (tryUseAirPurifier(activeInteractable.purifierMapId ?? "폐광")) {
-      return;
-    }
-  }
-  }
-
-  if (k === "t" && DEV_PRESET_ENABLED) {
-    torchEquipped = !torchEquipped;
-    showUI(torchEquipped ? "횃불 점화" : "횃불 소등", 900);
-    lastMessageUntil = performance.now() + 900;
-    return;
-  }
-
-  if (QUICK_USE_ALLOWED_KEYS.includes(k)) {
-    if (useQuickUseItem(k)) {
-      return;
-    }
-  }
-
-  if (k === "b") {
-    const frontierParcelLabel = getCurrentFrontierParcelLabel();
-    if (frontierParcelLabel) {
-      e.preventDefault();
-      frontierActiveParcelLabel = frontierParcelLabel;
-      const buildState = getFrontierBuildState(frontierParcelLabel);
-      if (!hasFrontierParcelAuthority(frontierParcelLabel)) {
-        showUI(`${frontierParcelLabel} 개발권 필요`, 1000);
-        lastMessageUntil = performance.now() + 1000;
-        return;
-      }
-      setFrontierBuildOpen(!frontierBuildOpen);
-      return;
-    }
-  }
-
-   // if (k === "p") {
-   // inventory.hasPickaxe = true;
-   // showUI("곡괭이를 얻었다!");
-   // lastMessageUntil = performance.now() + 1200;
-   // updateInventoryUI();
-  // }
-
-  if (k in keys) keys[k] = true;
-  if (k === "shift") keys.shift = true;
+  interactionController.handleKeyDown(e);
 });
 
 window.addEventListener("keyup", (e) => {
@@ -13699,337 +10907,256 @@ function triggerPickupReach(target = null) {
 }
 
 function updateMovement(dt) {
-  if (!canPlayGame()) {
-    for (const key of Object.keys(keys)) keys[key] = false;
-    updatePlayerGroundY(dt);
-    return;
-  }
-
-  if (isWorkUiMovementLocked()) {
-    for (const key of Object.keys(keys)) keys[key] = false;
-    shiftRotatePointerActive = false;
-    controls.enabled = canPlayGame() && !isWorkUiMovementLocked();
-    updatePlayerGroundY(dt);
-    return;
-  }
-
-  if (mansionSleepOpen || mansionSleepPoseActive) {
-    for (const key of Object.keys(keys)) keys[key] = false;
-    updatePlayerGroundY(dt);
-    applySleepPose({
-      torso,
-      head,
-      leftArmPivot,
-      rightArmPivot,
-      leftLegPivot,
-      rightLegPivot,
-    });
-    return;
-  }
-
-  const { forward, right } = getMovementBasisVectors(camera);
-
-  const move = buildMoveVector(keys, forward, right);
-  const isMoving = isMoveVectorActive(move);
-
-  if (isMoving) {
-    normalizeMoveVector(move);
-    updateLatestMoveDirection(latestMoveDir, move);
-    const isDevMovementMode = isDevSession();
-    const hasShoesEquipped = getEquippedItemForSlot("shoes") === "basicShoes";
-    const airMoveScalar =
-      isPollutedMap(currentMapId) && getMapPurificationValue(currentMapId) < 100 && playerAirCurrent <= 0
-        ? 0.12
-        : 1;
-    // ===== 이동속도 튜닝값 =====
-    // 값 수정은 src/core/movement.js 에서 진행하면 됩니다.
-    const { speed } = getMovementSpeed({
-      isDevMovementMode,
-      hasShoesEquipped,
-      shiftPressed: keys.shift,
-      airMoveScalar,
-    });
-     
-    const prevPos = player.position.clone();
-    const delta = getMovementDelta(move, speed, dt);
-
-    // 1) X축 이동만 먼저 시도
-    const { afterX } = applyMovementCollisionStep({
-      axis: "x",
-      position: player.position,
-      prevPos,
-      delta,
-      isInsideBounds: isInsideCurrentMapBounds,
-      intersectsAnyCollider: () => intersectsAnyCollider(getPlayerBox()),
-      isStartRingTransitionBlocked,
-      isCrossingBlockedStartRing,
-    });
-
-    // 2) Z축 이동만 시도
-    applyMovementCollisionStep({
-      axis: "z",
-      position: player.position,
-      prevPos: { ...prevPos, x: afterX },
-      delta,
-      isInsideBounds: isInsideCurrentMapBounds,
-      intersectsAnyCollider: () => intersectsAnyCollider(getPlayerBox()),
-      isStartRingTransitionBlocked,
-      isCrossingBlockedStartRing,
-    });
-
-    applyMovementPostCollisionCorrections({
-      position: player.position,
-      prevPos,
+  const state = updatePlayerMovementRuntime({
+    dt,
+    keys,
+    player,
+    camera,
+    controls,
+    state: {
+      miningSwingTime,
+      pickupReachTime,
+      currentMiningSwingDuration,
+      pickupReachDuration: PICKUP_REACH_DURATION,
+    },
+    rig: { torso, head, leftArmPivot, rightArmPivot, leftLegPivot, rightLegPivot },
+    canPlayGame,
+    isWorkUiMovementLocked,
+    isSleeping: () => workstationUiController.isSleepOpen() || workstationUiController.isSleepPoseActive(),
+    isDevSession,
+    hasShoesEquipped: () => getEquippedItemForSlot("shoes") === "basicShoes",
+    getAirMoveScalar: () => (
+      isPollutedMap(currentMapId) && getMapPurificationValue(currentMapId) < 100 && playerAirCurrent <= 0 ? 0.12 : 1
+    ),
+    getMovementBasisVectors,
+    buildMoveVector,
+    isMoveVectorActive,
+    normalizeMoveVector,
+    updateLatestMoveDirection: (move) => updateLatestMoveDirection(latestMoveDir, move),
+    getMovementSpeed,
+    getMovementDelta,
+    applyMovementCollisionStep,
+    isInsideBounds: isInsideCurrentMapBounds,
+    intersectsAnyCollider: () => intersectsAnyCollider(getPlayerBox()),
+    isStartRingTransitionBlocked,
+    isCrossingBlockedStartRing,
+    applyMovementPostCollisionCorrections,
+    getPostCollisionOptions: () => ({
       resolveStartRingPenetration,
       startWallOn: START_WALL_ON,
       startHardClamp: START_HARD_CLAMP,
       startX: START_X,
       startZ: START_Z,
       startRadius: START_RADIUS,
-    });
-
-    const targetYaw = getMovementYaw(move);
-    player.rotation.y = targetYaw;
-  }
-
-  // 간단 보행 모션
-  const walkT = performance.now() * 0.015;
-  const walkAnimSpeed = getWalkAnimationSpeed({
-    isMoving,
-    shiftPressed: keys.shift,
-    isDevSession: isDevSession(),
-    hasShoesEquipped: getEquippedItemForSlot("shoes") === "basicShoes",
+    }),
+    getMovementYaw,
+    getWalkAnimationSpeed,
+    applyWalkIdlePose,
+    applyMiningSwingPose,
+    applyPickupReachPose,
+    applySleepPose,
+    updatePlayerGroundY,
+    onWorkUiLocked: () => { shiftRotatePointerActive = false; },
+    now: performance.now(),
   });
-  const basePose = applyWalkIdlePose(
-    {
-      torso,
-      head,
-      leftArmPivot,
-      rightArmPivot,
-      leftLegPivot,
-      rightLegPivot,
-    },
-    { isMoving, walkT, walkAnimSpeed }
-  );
-
-  if (miningSwingTime > 0) {
-    miningSwingTime = Math.max(0, miningSwingTime - dt);
-    const phase = 1 - (miningSwingTime / currentMiningSwingDuration);
-
-    applyMiningSwingPose(
-      {
-        torso,
-        head,
-        leftArmPivot,
-        rightArmPivot,
-        leftLegPivot,
-        rightLegPivot,
-      },
-      phase,
-      basePose
-    );
-  }
-
-  if (pickupReachTime > 0 && miningSwingTime <= 0) {
-    pickupReachTime = Math.max(0, pickupReachTime - dt);
-    const phase = 1 - (pickupReachTime / PICKUP_REACH_DURATION);
-    const reach = Math.sin(phase * Math.PI);
-
-    applyPickupReachPose(
-      {
-        torso,
-        leftArmPivot,
-        rightArmPivot,
-        leftLegPivot,
-        rightLegPivot,
-      },
-      reach
-    );
-  }
-
-  updatePlayerGroundY(dt);
+  miningSwingTime = state.miningSwingTime;
+  pickupReachTime = state.pickupReachTime;
 }
+
+const interactionController = createInteractionController({
+  now: () => performance.now(),
+  hudMessages: HUD_MSG,
+  quickUseAllowedKeys: QUICK_USE_ALLOWED_KEYS,
+  getLogicalInputKey,
+  isTextInputActive,
+  canPlayGame,
+  isNftExhibitSelectionOpen: () => nftExhibitSelectionOpen,
+  isQuickUseAssigning: () => Boolean(quickUseAssignState),
+  getQuickUseAssignmentConsumedUntil: () => quickUseAssignmentConsumedUntil,
+  getKeys: () => keys,
+  isWorkUiMovementLocked,
+  resetShiftRotation: () => {
+    keys.shift = false;
+    shiftRotatePointerActive = false;
+    controls.enabled = canPlayGame() && !isWorkUiMovementLocked();
+  },
+  getInteractionState: () => ({
+    activeInteractable,
+    activeForgeStation,
+    activeHarvestTree,
+    activeWastelandCell,
+    activeTutorialNpc,
+    activeMapGate,
+    activePickupItem,
+    activeMineRock,
+  }),
+  setInteractionState: (state) => {
+    activeInteractable = state.activeInteractable;
+    activeForgeStation = state.activeForgeStation;
+    activeHarvestTree = state.activeHarvestTree;
+    activeWastelandCell = state.activeWastelandCell;
+    activeTutorialNpc = state.activeTutorialNpc;
+    activeMapGate = state.activeMapGate;
+    activePickupItem = state.activePickupItem;
+    activeMineRock = state.activeMineRock;
+  },
+  showUI,
+  setLastMessageUntil: (until) => { lastMessageUntil = until; },
+  findNearestPickupItem,
+  triggerPickupReach,
+  addInventoryEntry,
+  createInventorySlotEntry,
+  addItem,
+  updateInventoryUI,
+  refreshQuestProgress,
+  getItemDef: (itemId) => ITEM_DEFS[itemId],
+  unregisterDynamicProp,
+  unregisterPickupItem,
+  canUseMapGate,
+  tryUnlockMapGate,
+  hasNearbyForgeStation: () => forgeStation?.parent && getForgeDistance() < 2.4,
+  getForgeStation: () => forgeStation,
+  isForgeOpen: () => workstationUiController.isForgeOpen(),
+  setForgeOpen,
+  openNftBoardSelectionOverlay,
+  getFrontierBoothInteractionPlan,
+  openFrontierBoothDialog,
+  hasMansionOneResidenceAuthority,
+  getOwnedMansionRoomKey,
+  enterMansionOneRoom,
+  exitMansionOneRoom,
+  isRefineryOpen: () => workstationUiController.isRefineryOpen(),
+  setRefineryOpen,
+  tryUseAirPurifier,
+  isDevPresetEnabled: () => DEV_PRESET_ENABLED,
+  isTorchEquipped: () => torchEquipped,
+  setTorchEquipped: (equipped) => { torchEquipped = equipped; },
+  useQuickUseItem,
+  openPersonalStorage,
+  openMansionSleepDialog,
+  getCurrentQuestStep,
+  isMineKeyIssued: () => inventory.mineKeyIssued,
+  setMineKeyIssued: () => { inventory.mineKeyIssued = true; },
+  showNpcDialog,
+  getTutorialNpcLine,
+  renderQuestWindowIfOpen: () => { if (questOpen) renderQuestWindow(); },
+  triggerMiningSwing,
+  createTreeHarvestPlan,
+  setHarvestTreeActive,
+  placeWastelandFencePost,
+  hasWastelandFencePost: (cell) => frontierWastelandPlot?.fencePosts?.has(`${cell.row}:${cell.col}`),
+  placeWastelandStructure,
+  hasOwnedTool: (itemId) => findFirstSlotWithItem(itemId) !== -1,
+  canClearWastelandCell,
+  createWastelandClearPlan: (cell) => wastelandRuntime.createCellClearProgressPlan({
+    currentProgress: getWastelandCellClearProgress(cell),
+    gain: WASTELAND_DIG_PROGRESS_GAIN,
+  }),
+  syncWastelandCellState: syncWastelandCellStateFromProgress,
+  applyWastelandCellVisual,
+  saveSharedWorldStateToLocal,
+  createRockMiningPlan: (rock) => createRockMiningPlan({
+    hp: rock.userData.hp,
+    maxHp: rock.userData.maxHp ?? 1,
+    miningPower: hasEquippedTool("pickaxe") ? getEquippedMiningPower() : 0,
+    isPickaxeEquipped: hasEquippedTool("pickaxe"),
+    hasOwnedPickaxe: findFirstSlotWithItem("pickaxe") !== -1,
+    equippedPickaxeLevel: getEquippedPickaxeLevel(),
+    requiredPickaxeLevel: rock.userData.requiredPickaxeLevel ?? 0,
+  }),
+  triggerHitStop,
+  triggerRockHitReaction,
+  triggerCameraShake,
+  spawnDustBurst,
+  finishRockMining: (rock, spawn) => {
+    spawnRockBreakBurst(rock);
+    if (rock.userData.resourceItemId === "stoneDust") tutorialQuest.minedRockCount += 1;
+    addItem(rock.userData.resourceItemId ?? "stoneDust", rock.userData.resourceCount ?? 1);
+    if (rock.userData.bonusDropEnabled) {
+      if (Math.random() < getCurrentPickaxeStats().bonusDropChance) {
+        addItem("stoneDust", 1);
+        showUI("보너스 돌가루 획득!", 800);
+        lastMessageUntil = performance.now() + 800;
+      }
+    } else {
+      showUI(`${ITEM_DEFS[rock.userData.resourceItemId]?.name ?? "자원"} 획득!`, 800);
+      lastMessageUntil = performance.now() + 800;
+    }
+    updateInventoryUI();
+    refreshQuestProgress();
+    if (typeof rock.userData.colliderIndex === "number") removeColliderAt(rock.userData.colliderIndex);
+    unregisterMineRock(rock);
+    rock.removeFromParent();
+    scheduleRockRespawn(spawn);
+  },
+  hidePickupHint,
+  getCurrentFrontierParcelLabel,
+  setFrontierActiveParcelLabel: (label) => { frontierActiveParcelLabel = label; },
+  hasFrontierParcelAuthority,
+  isFrontierBuildOpen: () => frontierBuildOpen,
+  setFrontierBuildOpen,
+  findNearestTutorialNpc,
+  findTriggeredMapGate,
+  findNearestInteractable: (radius) => findNearestInteractable(interactables, player.position, radius),
+  updateInteractableHighlights: (target) => updateInteractableHighlights(interactables, target),
+  findNearestHarvestTree,
+  findNearestMineRock,
+  getEquippedPickaxeLevel,
+  findActiveFrontierWastelandCell,
+  isFencePlacementMode: () => wastelandController.isFencePlacementMode(),
+  getSelectedStructureItemId: () => wastelandController.getSelectedStructureItemId(),
+  getWastelandBuildPartDef,
+  getWastelandBuildCheck,
+  hasEquippedTool,
+  getFrontierWastelandClaimByCell,
+  getFrontierBuildState,
+  getInteractableHintText: (target, boothPlan) => getInteractableHintText(target, {
+    frontierBoothPlan: boothPlan,
+    getAirPurifierHintText,
+    hasMansionOneResidenceAuthority,
+    getOwnedMansionRoomPermitName,
+    getRefineryHintText,
+  }),
+  isMapTransitionPending: () => mapTransitionPending,
+  getMapGateHintText: (gate) => getMapGateHintTextFromModule(gate, {
+    canUseMapGate,
+    hasItem,
+    getItemName: (itemId) => ITEM_DEFS[itemId]?.name,
+  }),
+  canShowAirCanisterHint: () => Boolean(getQuickUseKeyForItemId("freshAirCanister") && hasItem("freshAirCanister") && playerAirCurrent < playerAirMax),
+  getAirCanisterHintText: () => `${getQuickUseKeyForItemId("freshAirCanister")} : 신선한 공기 캔 사용`,
+  showHint,
+  hideHint,
+  clearWastelandHighlights: () => {
+    for (const cell of frontierWastelandPlot?.cells ?? []) clearWastelandCellHighlight(cell);
+  },
+  applyWastelandCellHighlight,
+  updateWastelandClaimPreview,
+  updateWastelandHud: () => {
+    expireOverdueWastelandDraftReservations();
+    expireOverdueFrontierWastelandClaims();
+    const progress = getCurrentWastelandClaimProgress();
+    updateWastelandHudUi(wastelandHudWrap, wastelandHudValue, wastelandHudBarFill, wastelandHudStatus, {
+      visible: shouldShowFrontierWastelandHud(),
+      completed: progress?.completed ?? 0,
+      total: progress?.total ?? 0,
+      percent: progress?.percent ?? 0,
+      statusText: progress?.claim ? getWastelandClaimHudStatusText(progress) : "",
+    });
+    updateWastelandFenceHudUi(wastelandFenceHudWrap, wastelandFenceHudValue, wastelandFenceHudMeta, wastelandFenceHudStatus, getWastelandFenceHudState());
+    updateWastelandClaimActionUi(progress);
+  },
+  updateRockHpBar,
+  hideRockHpBar,
+});
 
 window.addEventListener("keydown", (e) => {
   if (!canPlayGame()) return;
-  if (nftExhibitSelectionOpen) return;
-  if (quickUseAssignState) return;
-  if (mansionSleepOpen) return;
-  if (wastelandClaimCancelOpen) return;
-  if (wastelandClaimConfirmOpen) return;
-  if (personalStorageOpen) return;
-  if (e.code !== "Space") return;
-  if (activeInteractable?.type === "mansionStorage") {
-    e.preventDefault();
-    openPersonalStorage();
-    return;
-  }
-  if (activeInteractable?.type === "mansionBed") {
-    e.preventDefault();
-    openMansionSleepDialog();
-    return;
-  }
-  if (activeTutorialNpc) {
-    const currentStep = getCurrentQuestStep();
-    if (currentStep?.title === "폐광 열쇠 수령" && !inventory.mineKeyIssued) {
-      inventory.mineKeyIssued = true;
-      addItem("abandonedMineKey", 1);
-      updateInventoryUI();
-      showUI(HUD_MSG.MINE_KEY_GET, 1200);
-      lastMessageUntil = performance.now() + 1200;
-      showNpcDialog("좋아, 이제 폐광에 들어갈 자격이 생겼다. 이 폐광 열쇠를 가져가서 북쪽 폐광 입구를 열어.", 3000);
-      refreshQuestProgress();
-      if (questOpen) renderQuestWindow();
-      return;
-    }
-    showNpcDialog(getTutorialNpcLine());
-    refreshQuestProgress();
-    if (questOpen) renderQuestWindow();
-    return;
-  }
-  if (activeHarvestTree) {
-    triggerMiningSwing(activeHarvestTree);
-    activeHarvestTree.userData.harvestShakeStartedAt = performance.now();
-    activeHarvestTree.userData.harvestShakeUntil = activeHarvestTree.userData.harvestShakeStartedAt + 380;
-    if (addItem(activeHarvestTree.userData.harvestItemId, activeHarvestTree.userData.harvestCount ?? 1)) {
-      setHarvestTreeActive(activeHarvestTree, false);
-      updateInventoryUI();
-      showUI(`${ITEM_DEFS[activeHarvestTree.userData.harvestItemId]?.name ?? "자원"} 획득!`, 900);
-      lastMessageUntil = performance.now() + 900;
-    }
-    return;
-  }
-  if (activeWastelandCell) {
-    if (e.repeat) return;
-    if (wastelandFencePlacementMode) {
-      if (placeWastelandFencePost(activeWastelandCell)) {
-        const key = `${activeWastelandCell.row}:${activeWastelandCell.col}`;
-        if (frontierWastelandPlot?.fencePosts?.has(key)) {
-          showUI("울타리 기둥을 설치했습니다.", 900);
-          lastMessageUntil = performance.now() + 900;
-        }
-      }
-      return;
-    }
-    if (selectedWastelandStructureItemId) {
-      placeWastelandStructure(activeWastelandCell, selectedWastelandStructureItemId);
-      return;
-    }
-    triggerMiningSwing(activeWastelandCell.mesh);
-    if (!hasEquippedTool("shovel")) {
-      if (findFirstSlotWithItem("shovel") !== -1) {
-        showUI(HUD_MSG.EQUIP_SHOVEL);
-      } else {
-        showUI(HUD_MSG.NEED_SHOVEL);
-      }
-      lastMessageUntil = performance.now() + 900;
-      return;
-    }
-    const clearCheck = canClearWastelandCell(activeWastelandCell);
-    if (!clearCheck.ok) {
-      showUI(clearCheck.reason, 1000);
-      lastMessageUntil = performance.now() + 1000;
-      return;
-    }
-    const currentProgress = getWastelandCellClearProgress(activeWastelandCell);
-    if (currentProgress >= 100) {
-      showUI("이미 개간한 셀입니다.", 900);
-      lastMessageUntil = performance.now() + 900;
-      return;
-    }
-    activeWastelandCell.clearProgress = clampWastelandClearProgress(
-      currentProgress + WASTELAND_DIG_PROGRESS_GAIN
-    );
-    syncWastelandCellStateFromProgress(activeWastelandCell);
-    applyWastelandCellVisual(activeWastelandCell);
-    showUI(activeWastelandCell.clearProgress >= 100 ? "황무지 개간 완료!" : `황무지 개간 ${activeWastelandCell.clearProgress}%`, 900);
-    lastMessageUntil = performance.now() + 900;
-    saveSharedWorldStateToLocal();
-    return;
-  }
-  if (!activeMineRock) return;
-  triggerMiningSwing(activeMineRock);
-  if (!hasEquippedTool("pickaxe")) {
-  // 곡괭이를 '가지고는' 있는데 장착이 안 된 상태면
-  if (findFirstSlotWithItem("pickaxe") !== -1) {
-    showUI(HUD_MSG.EQUIP_PICKAXE);
-  } else {
-    showUI(HUD_MSG.NEED_PICKAXE);
-  }
-  lastMessageUntil = performance.now() + 900;
-  return;
-}
-
-  const minedRock = activeMineRock;
-  const requiredPickaxeLevel = minedRock.userData.requiredPickaxeLevel ?? 0;
-  if (getEquippedPickaxeLevel() < requiredPickaxeLevel) {
-    showUI(`곡괭이 Lv.${requiredPickaxeLevel} 이상 필요`, 1000);
-    lastMessageUntil = performance.now() + 1000;
-    return;
-  }
-  const miningPower = getEquippedMiningPower();
-  if (miningPower <= 0) return;
-
-  minedRock.userData.hp = Math.max(0, (minedRock.userData.hp ?? 1) - miningPower);
-  if (
-    (minedRock.userData.maxHp ?? 1) <= 1 &&
-    (minedRock.userData.hp ?? 0) <= 0.15
-  ) {
-    minedRock.userData.hp = 0;
-  }
-  const remainingHp = minedRock.userData.hp ?? 0;
-
-  triggerHitStop();
-  triggerRockHitReaction(minedRock);
-  triggerCameraShake(remainingHp > 0 ? 0.035 : 0.06);
-
-  spawnDustBurst(minedRock.position, remainingHp > 0 ? 8 : 10);
-
-  if (remainingHp > 0) {
-    updateRockHpBar(minedRock);
-    showUI("채굴 중...");
-    lastMessageUntil = performance.now() + 700;
-    return;
-  }
-
-  const spawn = minedRock.userData.spawn
-    ? { ...minedRock.userData.spawn }
-    : { x: minedRock.position.x, z: minedRock.position.z, rockSize: "small" };
-
-  spawnRockBreakBurst(minedRock);
-  if (minedRock.userData.resourceItemId === "stoneDust") {
-    tutorialQuest.minedRockCount += 1;
-  }
-  addItem(minedRock.userData.resourceItemId ?? "stoneDust", minedRock.userData.resourceCount ?? 1);
-  if (minedRock.userData.bonusDropEnabled) {
-    const pickaxeStats = getCurrentPickaxeStats();
-    if (Math.random() < pickaxeStats.bonusDropChance) {
-      addItem("stoneDust", 1);
-      showUI("보너스 돌가루 획득!");
-      lastMessageUntil = performance.now() + 800;
-    }
-  } else {
-    showUI(`${ITEM_DEFS[minedRock.userData.resourceItemId]?.name ?? "자원"} 획득!`, 800);
-    lastMessageUntil = performance.now() + 800;
-  }
-  updateInventoryUI();
-  refreshQuestProgress();
-
-  // 콜라이더 제거
-  const idx = minedRock.userData.colliderIndex;
-  if (typeof idx === "number") removeColliderAt(idx);
-
-  // 목록/씬에서 제거
-  unregisterMineRock(minedRock);
-
-  // 씬에서 제거
-  minedRock.removeFromParent();
-  scheduleRockRespawn(spawn);
-
-  // 힌트 숨기기
-  activeMineRock = null;
-  hideRockHpBar();
-  hidePickupHint();
+  if (nftExhibitSelectionOpen || quickUseAssignState) return;
+  if (workstationUiController.isSleepOpen()) return;
+  if (wastelandController.isClaimCancelOpen() || wastelandController.isClaimConfirmOpen()) return;
+  if (inventoryUiController.isPersonalStorageOpen() || e.code !== "Space") return;
+  interactionController.handleWorldSpaceInteraction(e);
 });
 
 
@@ -14042,11 +11169,8 @@ function animate() {
   if (forgeLastResult && forgeLastResult.until <= performance.now()) {
     forgeLastResult = null;
   }
-  hitStopTime = Math.max(0, hitStopTime - rawDt);
-  cameraShakeTime = Math.max(0, cameraShakeTime - rawDt);
-  if (cameraShakeTime <= 0) cameraShakeStrength = 0;
-
-  const dt = hitStopTime > 0 ? 0 : rawDt;
+  const feedbackState = miningFeedback.update(rawDt);
+  const dt = feedbackState.hitStopped ? 0 : rawDt;
 
   updateMovement(dt);
   updateCurrentMapFromPlayerPosition();
@@ -14063,55 +11187,10 @@ function animate() {
   updateHarvestTrees();
   updateRockHitReactions(rawDt);
   updateRockFadeIns(dt);
-  if (invOpen) renderEquipmentPreview();
+  if (inventoryUiController.isInventoryOpen()) renderEquipmentPreview();
   updateCompassFromDirection(getCompassDirection(latestMoveDir, player.rotation.y));
 
-  // ===== 상호작용 대상 탐색 =====
-    activeInteractable = null;
-    activeForgeStation = null;
-    activeHarvestTree = null;
-    activeWastelandCell = null;
-    activeTutorialNpc = findNearestTutorialNpc(2.2);
-    activeMapGate = findTriggeredMapGate();
-
-    if (forgeStation?.parent && getForgeDistance() < 2.4) {
-  activeForgeStation = forgeStation;
-    }
-
-    let bestDist = Infinity;
-    for (const it of interactables) {
-  if (it.obj.visible === false) continue;
-  const d = it.obj.position.distanceTo(player.position);
-  if (d < 2.0 && d < bestDist) {
-    bestDist = d;
-    activeInteractable = it;
-  }
-    }
-
-    // ===== 하이라이트 처리 =====
-    for (const it of interactables) {
-  if (it.highlightKind === "line") {
-    for (const child of it.board.children) {
-      child.material.opacity = 0;
-    }
-  } else if (it.highlightKind === "none") {
-    // no-op
-  } else {
-    it.board.material.emissive.set(0x000000); // 기본: 발광 끔
-  }
-    }
-
-    if (activeInteractable) {
-  if (activeInteractable.highlightKind === "line") {
-    for (const child of activeInteractable.board.children) {
-      child.material.opacity = 0.9;
-    }
-  } else if (activeInteractable.highlightKind === "none") {
-    // no-op
-  } else {
-    activeInteractable.board.material.emissive.set(0xffaa00); // 하이라이트 ON
-  }
-    }
+  interactionController.updateFrame();
 
   framePlayerDelta.copy(player.position).sub(lastFollowPlayerPosition);
   if (framePlayerDelta.lengthSq() > 0) {
@@ -14124,190 +11203,16 @@ function animate() {
   updateTutorialNpcNameTag();
   updatePlayerNameTag();
   applyCameraShake();
-  if (forgeOpen) {
+  if (workstationUiController.isForgeOpen()) {
     if (getForgeDistance() >= 2.8) {
       setForgeOpen(false);
     }
   }
-  if (refineryOpen) {
+  if (workstationUiController.isRefineryOpen()) {
     if (getRefineryDistance() >= 2.8) {
       setRefineryOpen(false);
     }
   }
-
- // ===== 힌트(가까이 가면 뜨는 안내) =====
-// 우선순위: 1) 곡괭이 줍기 2) 모루 3) 돌 채집 4) 표지판 조사 5) 아무것도 없으면 숨김
-let hintText = "";
-
-// 1) 월드 장비 줍기 힌트
-activePickupItem = findNearestPickupItem(2.0);
-if (activePickupItem) {
-  hintText = activePickupItem.text;
-}
-
-// 2) 모루 강화 힌트
-if (!hintText && activeTutorialNpc) {
-  hintText = activeTutorialNpc.hint;
-}
-
-// 3) 모루 강화 힌트
-  if (!hintText && activeForgeStation) {
-    hintText = forgeOpen ? "대장간 이용 중" : "E : 장비 강화";
-}
-
-// 4) 나무 채집 힌트
-if (!hintText) {
-  activeHarvestTree = findNearestHarvestTree(2.2);
-  if (activeHarvestTree) {
-    hintText = "Space : 나무 채집";
-  }
-}
-
-// 5) 돌 채집 힌트
-if (!hintText) {
-  activeMineRock = findNearestMineRock(2.2);
-  if (activeMineRock) {
-    hintText = activeMineRock.userData.requiredPickaxeLevel > getEquippedPickaxeLevel()
-      ? `Space : 채굴 (곡괭이 Lv.${activeMineRock.userData.requiredPickaxeLevel} 이상 필요)`
-      : (activeMineRock.userData.resourceHint ?? "Space : 채굴");
-  }
-}
-
-// 6) 빈땅 개간 힌트
-if (!hintText) {
-  activeWastelandCell = findActiveFrontierWastelandCell(2.4);
-  if (activeWastelandCell) {
-    if (wastelandFencePlacementMode) {
-      hintText = "";
-    } else if (selectedWastelandStructureItemId) {
-      const partDef = getWastelandBuildPartDef();
-      const buildCheck = getWastelandBuildCheck(activeWastelandCell, selectedWastelandStructureItemId);
-      hintText = `Space : ${partDef?.label ?? "건축 부품"} 설치`;
-      hintText += buildCheck.ok ? " | 건축 가능" : ` | ${buildCheck.reason}`;
-    } else {
-      hintText = hasEquippedTool("shovel")
-        ? "Space : 땅 파기"
-        : "Space : 개간 (삽 장착 필요)";
-      if (activeWastelandCell.clearProgress >= 100 || getFrontierWastelandClaimByCell(activeWastelandCell)) {
-        const buildCheck = getWastelandBuildCheck(activeWastelandCell);
-        hintText += buildCheck.ok ? " | 건축 가능" : ` | ${buildCheck.reason}`;
-      }
-    }
-  }
-}
-
-// 7) 개척지 필지 건축 힌트
-const activeFrontierParcelLabel = getCurrentFrontierParcelLabel();
-if (!hintText && activeFrontierParcelLabel) {
-  const activeBuildState = getFrontierBuildState(activeFrontierParcelLabel);
-  if (activeBuildState.stage >= 100) {
-    if (hasFrontierParcelAuthority(activeFrontierParcelLabel)) {
-      hintText = "B : 건축 관리";
-    }
-  } else if (hasFrontierParcelAuthority(activeFrontierParcelLabel)) {
-    hintText = "B : 건축 진행";
-  }
-}
-
-// 8) 표지판 근접 문구 (위 힌트가 없을 때만)
-if (!hintText && activeInteractable) {
-  hintText = activeInteractable.type === "airPurifier"
-    ? getAirPurifierHintText(activeInteractable.purifierMapId ?? "폐광")
-    : activeInteractable.type === "frontierShopBooth"
-      ? ((canManageFrontierShopSlot(activeInteractable.parcelLabel) || canUseFrontierShopSlot(activeInteractable.parcelLabel)) ? "E : 판매 관리" : "E : 판매 보기")
-    : activeInteractable.type === "frontierDisplayBooth"
-      ? ((canManageFrontierDisplaySlot(activeInteractable.parcelLabel, activeInteractable.slotKey ?? "displayA") || canUseFrontierDisplaySlot(activeInteractable.parcelLabel, activeInteractable.slotKey ?? "displayA")) ? "E : 전시 관리" : "E : 전시 보기")
-      : activeInteractable.type === "mansionEntry"
-      ? (hasMansionOneResidenceAuthority() ? `E : ${getOwnedMansionRoomPermitName()} 입장` : "")
-    : activeInteractable.type === "mansionBed"
-      ? "Space : 취침"
-    : activeInteractable.type === "mansionStorage"
-      ? "Space : 창고 열기"
-    : activeInteractable.type === "mansionExit"
-      ? "E : 외부로 나가기"
-    : activeInteractable.type === "refinery"
-      ? getRefineryHintText()
-      : activeInteractable.text;
-}
-
-if (!hintText && activeMapGate && !mapTransitionPending) {
-  if (!canUseMapGate(activeMapGate)) {
-    hintText = activeMapGate.unlockWithItem && hasItem(activeMapGate.unlockWithItem)
-      ? `E : ${ITEM_DEFS[activeMapGate.unlockWithItem]?.name ?? "열쇠"} 사용`
-      : (activeMapGate.denyText ?? "잠겨 있습니다");
-  } else {
-    hintText = activeMapGate.hint ?? "";
-  }
-}
-
-if (
-  !hintText &&
-  getQuickUseKeyForItemId("freshAirCanister") &&
-  hasItem("freshAirCanister") &&
-  playerAirCurrent < playerAirMax
-) {
-  hintText = `${getQuickUseKeyForItemId("freshAirCanister")} : 신선한 공기 캔 사용`;
-}
-
-// 9) 최종 출력
-if (hintText) showHint(hintText);
-else hideHint();
-
-for (const cell of frontierWastelandPlot?.cells ?? []) {
-  clearWastelandCellHighlight(cell);
-}
-if (activeWastelandCell) {
-  applyWastelandCellHighlight(activeWastelandCell);
-}
-updateWastelandClaimPreview();
-
-expireOverdueWastelandDraftReservations();
-expireOverdueFrontierWastelandClaims();
-const frontierWastelandProgress = getCurrentWastelandClaimProgress();
-updateWastelandHudUi(
-  wastelandHudWrap,
-  wastelandHudValue,
-  wastelandHudBarFill,
-  wastelandHudStatus,
-  {
-    visible: shouldShowFrontierWastelandHud(),
-    completed: frontierWastelandProgress?.completed ?? 0,
-    total: frontierWastelandProgress?.total ?? 0,
-    percent: frontierWastelandProgress?.percent ?? 0,
-    statusText: frontierWastelandProgress?.claim
-      ? (() => {
-          const claimPhase = getWastelandClaimPhase(frontierWastelandProgress);
-          if (claimPhase === WASTELAND_CLAIM_PHASE.COMPLETED) {
-            return "개간 완료 | 토지권 지급 완료";
-          }
-          if (claimPhase === WASTELAND_CLAIM_PHASE.REWARD_PENDING) {
-            return `완료 가능 | 남은 시간 ${formatWastelandClaimRemaining(frontierWastelandProgress.claim.expiresAt - Date.now())}`;
-          }
-          if (claimPhase === WASTELAND_CLAIM_PHASE.FAILED) {
-            return "개간 실패 | 기한 만료";
-          }
-          return `개간률 ${frontierWastelandProgress.percent.toFixed(1)}% | 남은 시간 ${formatWastelandClaimRemaining(frontierWastelandProgress.claim.expiresAt - Date.now())}`;
-        })()
-      : "",
-  }
-);
-const wastelandFenceHudState = getWastelandFenceHudState();
-updateWastelandFenceHudUi(
-  wastelandFenceHudWrap,
-  wastelandFenceHudValue,
-  wastelandFenceHudMeta,
-  wastelandFenceHudStatus,
-  wastelandFenceHudState
-);
-updateWastelandClaimActionUi(frontierWastelandProgress);
-
-if (activeMineRock) {
-  updateRockHpBar(activeMineRock, {
-    dimmed: !hasEquippedTool("pickaxe"),
-  });
-} else {
-  hideRockHpBar();
-}
 
   renderer.render(scene, camera);
 }

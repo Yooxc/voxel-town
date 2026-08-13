@@ -257,6 +257,34 @@ export function getEffectiveAirMapIdForPlayer(currentMapId, playerPosition, conn
   );
 }
 
+export function isPositionInsideMapGateTrigger(playerPosition, trigger) {
+  if (!playerPosition || !trigger) return false;
+  const dx = playerPosition.x - trigger.x;
+  const dz = playerPosition.z - trigger.z;
+  if (typeof trigger.width === "number" && typeof trigger.depth === "number") {
+    return Math.abs(dx) <= trigger.width * 0.5 && Math.abs(dz) <= trigger.depth * 0.5;
+  }
+  return dx * dx + dz * dz <= trigger.radius * trigger.radius;
+}
+
+export function findTriggeredMapGate({ mapGates, currentMapId, playerPosition, isLocked = false }) {
+  if (isLocked) return null;
+  return (
+    mapGates?.find(
+      (gate) => gate?.mapId === currentMapId && isPositionInsideMapGateTrigger(playerPosition, gate.trigger)
+    ) ?? null
+  );
+}
+
+export function getMapGateHintText(gate, { canUseMapGate, hasItem, getItemName }) {
+  if (!gate) return "";
+  if (canUseMapGate(gate)) return gate.hint ?? "";
+  if (gate.unlockWithItem && hasItem(gate.unlockWithItem)) {
+    return `E : ${getItemName(gate.unlockWithItem) ?? "열쇠"} 사용`;
+  }
+  return gate.denyText ?? "잠겨 있습니다";
+}
+
 export function getCurrentMapIdForPlayer({
   playerPosition,
   isInResidenceZone = false,

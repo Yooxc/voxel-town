@@ -125,6 +125,18 @@ export function getAirOverlayVisualState({
   };
 }
 
+export function getAirPurifierHintText({ config, purification, currentMapId, mapId, powderCount }) {
+  if (!config) return "E : 공기 정화탑 가동";
+  if (purification >= 100) return `${config.displayName} 정화 완료`;
+  if (currentMapId !== mapId) return `${config.displayName} 정화율 ${purification}%`;
+  if (powderCount < config.purifierPowderCost) return `정화 가루 ${config.purifierPowderCost}개 필요`;
+  return `E : 공기 정화탑 가동 (+${config.purifierGain}% / 정화 가루 ${config.purifierPowderCost})`;
+}
+
+export function getNextMapPurificationValue(currentPurification, purifierGain) {
+  return Math.min(100, Math.max(0, Number(currentPurification) || 0) + (Number(purifierGain) || 0));
+}
+
 export function updateAirValueForFrame({
   currentAir,
   maxAir,

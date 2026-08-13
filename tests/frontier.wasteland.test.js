@@ -14,6 +14,19 @@ import {
   getWastelandClaimPhaseState,
   canBuildOnWastelandCellState,
   getConflictingWastelandFencePostsForClaim,
+  rebuildWastelandDraftsFromFencePosts,
+  partitionExpiredWastelandClaims,
+  getExpiredWastelandDraftReservations,
+  getFrontierBoothInteractionPlan,
+  getFrontierShopSellability,
+  getSellableFrontierShopEntries,
+  getFrontierShopRegistrationAccess,
+  createFrontierShopPurchasePlan,
+  getFrontierShopListingClearPlan,
+  getFrontierShopListingRegistrationPlan,
+  getFrontierShopSlotUserAssignmentPlan,
+  getFrontierShopSlotUserClearPlan,
+  getFrontierShopListingPriceUpdatePlan,
   normalizeFrontierWastelandState,
   serializeFrontierWastelandServerState,
 } from "../src/systems/frontier.js";
@@ -43,6 +56,112 @@ function createBorderKeys(minRow, maxRow, minCol, maxCol) {
   }
   return keys;
 }
+
+test("frontier booth interaction plan resolves defaults and access mode", () => {
+  const dependencies = {
+    canManageShopSlot: (parcelLabel) => parcelLabel === "P1",
+    canUseShopSlot: () => false,
+    canManageDisplaySlot: () => false,
+    canUseDisplaySlot: (parcelLabel, slotKey) => parcelLabel === "P2" && slotKey === "displayB",
+  };
+  assert.deepEqual(
+    getFrontierBoothInteractionPlan({ type: "frontierShopBooth", parcelLabel: "P1" }, "P9", dependencies),
+    { parcelLabel: "P1", slotKey: "shop", boothTitle: "상점", mode: "manage", hintText: "E : 판매 관리" }
+  );
+  assert.deepEqual(
+    getFrontierBoothInteractionPlan({ type: "frontierDisplayBooth", parcelLabel: "P2", slotKey: "displayB" }, "P9", dependencies),
+    { parcelLabel: "P2", slotKey: "displayB", boothTitle: "전시", mode: "manage", hintText: "E : 전시 관리" }
+  );
+  assert.equal(getFrontierBoothInteractionPlan({ type: "airPurifier" }, "P9", dependencies), null);
+});
+
+test("frontier shop candidates exclude restricted inventory entries", () => {
+  const dependencies = {
+    isNftInventoryEntry: (entry) => entry.kind === "nft",
+    getSlotItemId: (entry) => entry.itemId,
+    itemDefs: {
+      wood: { category: "misc" },
+      tool: { category: "misc" },
+      permit: { category: "misc", isAuthorityItem: true },
+    },
+    getInventoryEntryCategory: (entry) => entry.category,
+    isQuestCriticalItemBlockedFromDiscard: (entry) => entry.itemId === "quest",
+  };
+  assert.deepEqual(getFrontierShopSellability({ itemId: "wood", category: "misc" }, dependencies), { ok: true, reason: "" });
+  assert.equal(getFrontierShopSellability({ itemId: "tool", category: "equip" }, dependencies).ok, false);
+  assert.equal(getFrontierShopSellability({ itemId: "permit", category: "misc" }, dependencies).ok, false);
+  assert.deepEqual(
+    getSellableFrontierShopEntries([
+      { itemId: "wood", category: "misc" },
+      { itemId: "tool", category: "equip" },
+      null,
+    ], dependencies),
+    [{ entry: { itemId: "wood", category: "misc" }, index: 0 }]
+  );
+});
+
+test("frontier shop registration access requires completion, assignment, and permission", () => {
+  assert.equal(getFrontierShopRegistrationAccess({ buildState: { stage: 99 }, assignedWallet: "0x1", canUse: true }).ok, false);
+  assert.equal(getFrontierShopRegistrationAccess({ buildState: { stage: 100 }, assignedWallet: "", canUse: true }).reason, "상점 사용자 지정 필요");
+  assert.equal(getFrontierShopRegistrationAccess({ buildState: { stage: 100 }, assignedWallet: "0x1", canUse: false }).reason, "상점 운영 권한이 없습니다.");
+  assert.deepEqual(
+    getFrontierShopRegistrationAccess({ buildState: { stage: 100 }, assignedWallet: "0x1", canUse: true }),
+    { ok: true, reason: "" }
+  );
+});
+
+test("frontier shop purchase plan validates stock, buyer, and credits", () => {
+  const base = {
+    shopState: { itemId: "wood", quantity: 5, price: 12, sellerWallet: "0xSeller" },
+    quantity: 2,
+    currentWallet: "0xBuyer",
+    canAffordPlayerCredits: (amount) => amount <= 30,
+    clampPlayerCredits: (amount) => amount,
+  };
+  assert.equal(createFrontierShopPurchasePlan({ ...base, parcelLabel: "" }).reason, "상점 정보를 찾을 수 없습니다.");
+  assert.equal(createFrontierShopPurchasePlan({ ...base, parcelLabel: "P1", quantity: 6 }).reason, "재고가 부족합니다.");
+  assert.equal(createFrontierShopPurchasePlan({ ...base, parcelLabel: "P1", currentWallet: "0xseller" }).reason, "자신이 등록한 상품은 구매할 수 없습니다.");
+  assert.equal(createFrontierShopPurchasePlan({ ...base, parcelLabel: "P1", quantity: 3 }).reason, "개척 코인이 부족합니다.");
+  assert.deepEqual(
+    createFrontierShopPurchasePlan({ ...base, parcelLabel: "P1" }),
+    { ok: true, purchaseQty: 2, totalPrice: 24, purchasedItemId: "wood", sellerWallet: "0xseller" }
+  );
+});
+
+test("frontier shop operation plans preserve listing and user safeguards", () => {
+  const listedShop = { itemId: "wood", quantity: 3, price: 10, pendingCredits: 0 };
+  const clamp = (amount) => amount;
+  assert.deepEqual(
+    getFrontierShopListingClearPlan({ parcelLabel: "P1", canEdit: true, shopState: listedShop, clampPlayerCredits: clamp }),
+    { ok: true, itemId: "wood", quantity: 3, clearSellerWallet: true }
+  );
+  assert.equal(
+    getFrontierShopListingRegistrationPlan({
+      parcelLabel: "P1", canRegister: true, itemId: "wood", quantity: 4, price: 7, ownedCount: 3, shopState: listedShop,
+    }).reason,
+    "판매 수량만큼 아이템을 보유하고 있지 않습니다."
+  );
+  assert.deepEqual(
+    getFrontierShopListingRegistrationPlan({
+      parcelLabel: "P1", canRegister: true, itemId: "wood", quantity: 2, price: 7, ownedCount: 3, shopState: listedShop,
+    }),
+    { ok: true, itemId: "wood", quantity: 2, price: 7, previousItemId: "wood", previousQuantity: 3 }
+  );
+  assert.equal(
+    getFrontierShopSlotUserAssignmentPlan({
+      canManage: true, walletAddress: "", shopState: {}, normalizeWalletAddress: (value) => value, clampPlayerCredits: clamp,
+    }).reason,
+    "지갑 주소를 입력해주세요."
+  );
+  assert.equal(
+    getFrontierShopSlotUserClearPlan({ canManage: true, shopState: listedShop, clampPlayerCredits: clamp }).ok,
+    false
+  );
+  assert.deepEqual(
+    getFrontierShopListingPriceUpdatePlan({ parcelLabel: "P1", canEdit: true, shopState: listedShop, nextPrice: 1200000 }),
+    { ok: true, price: 999999 }
+  );
+});
 
 test("5x5 테두리는 직사각형 확정 판정을 통과한다", () => {
   const postKeys = createBorderKeys(0, 4, 0, 4);
@@ -320,4 +439,73 @@ test("황무지 서버 대상 상태는 drafts와 claim status를 정규화한�
   assert.equal(normalized.drafts[0].ownerId, "dev_1");
   assert.equal("lastPromptSignature" in normalized.drafts[0], false);
   assert.equal(normalized.claims[0].status, "failed");
+});
+
+test("울타리 기둥에서 소유자별 토지 선언 초안을 재구성한다", () => {
+  const fencePosts = new Map([
+    ["1:2", { key: "1:2", ownerId: "dev_1" }],
+    ["1:1", { key: "1:1", ownerId: "dev_1" }],
+    ["3:3", { key: "3:3", ownerId: "dev_2" }],
+    ["9:9", { key: "9:9", ownerId: "dev_1" }],
+  ]);
+  const previousDrafts = new Map([
+    [
+      "dev_1",
+      {
+        lastPromptSignature: "preserved",
+        reservedAt: 10,
+        updatedAt: 20,
+        expiresAt: 30,
+        phase: "draft_active",
+      },
+    ],
+  ]);
+  const drafts = rebuildWastelandDraftsFromFencePosts({
+    fencePosts,
+    claims: [{ postKeys: ["9:9"] }],
+    previousDrafts,
+    now: 100,
+    reservationMs: 500,
+    activePhase: "draft_active",
+  });
+
+  assert.deepEqual(drafts.get("dev_1"), {
+    ownerId: "dev_1",
+    postKeys: ["1:1", "1:2"],
+    lastPromptSignature: "preserved",
+    reservedAt: 10,
+    updatedAt: 20,
+    expiresAt: 30,
+    phase: "draft_active",
+  });
+  assert.deepEqual(drafts.get("dev_2"), {
+    ownerId: "dev_2",
+    postKeys: ["3:3"],
+    lastPromptSignature: "",
+    reservedAt: 100,
+    updatedAt: 100,
+    expiresAt: 600,
+    phase: "draft_active",
+  });
+});
+
+test("만료된 claim과 울타리 예약 초안만 선별한다", () => {
+  const expiredClaim = { ownerId: "dev_1", expiresAt: 100 };
+  const activeClaim = { ownerId: "dev_2", expiresAt: 101 };
+  const partitioned = partitionExpiredWastelandClaims(
+    [expiredClaim, activeClaim, { ownerId: "dev_3" }],
+    100
+  );
+  assert.deepEqual(partitioned.expired, [expiredClaim]);
+  assert.deepEqual(partitioned.active, [activeClaim, { ownerId: "dev_3" }]);
+
+  const expiredDraft = { postKeys: ["1:1"], expiresAt: 100 };
+  const drafts = new Map([
+    ["expired", expiredDraft],
+    ["active", { postKeys: ["2:2"], expiresAt: 101 }],
+    ["empty", { postKeys: [], expiresAt: 100 }],
+  ]);
+  assert.deepEqual(getExpiredWastelandDraftReservations(drafts, 100), [
+    ["expired", expiredDraft],
+  ]);
 });

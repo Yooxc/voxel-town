@@ -21,8 +21,73 @@ export function getOwnedMansionRoomPermitName(hasItem, itemDefs) {
   return "거주권";
 }
 
+export function createDefaultResidenceNoticeBoardEntry(key) {
+  const titleMap = {
+    boardA: "게시판 A",
+    boardB: "게시판 B",
+    boardC: "게시판 C",
+  };
+  return {
+    title: titleMap[key] ?? "게시판",
+    lines: ["공용 알림과 안내가", "표시될 예정입니다."],
+  };
+}
+
+export function createDefaultResidenceNoticeBoardState(boardKeys) {
+  return Object.fromEntries(
+    boardKeys.map((key) => [key, createDefaultResidenceNoticeBoardEntry(key)])
+  );
+}
+
+export function normalizeResidenceNoticeBoardEntry(key, rawEntry) {
+  const defaults = createDefaultResidenceNoticeBoardEntry(key);
+  const source = rawEntry && typeof rawEntry === "object" ? rawEntry : {};
+  const rawLines = Array.isArray(source.lines) ? source.lines : defaults.lines;
+  const lines = rawLines
+    .map((line) => String(line ?? "").trim().slice(0, 36))
+    .filter(Boolean)
+    .slice(0, 4);
+  return {
+    title: String(source.title ?? defaults.title).trim().slice(0, 24) || defaults.title,
+    lines: lines.length > 0 ? lines : defaults.lines,
+  };
+}
+
+export function normalizeResidenceNoticeBoardState(boardKeys, rawState) {
+  const source = rawState && typeof rawState === "object" ? rawState : {};
+  return Object.fromEntries(
+    boardKeys.map((key) => [key, normalizeResidenceNoticeBoardEntry(key, source[key])])
+  );
+}
+
 function normalizeMansionRoomKey(roomKey) {
   return roomKey === "102" ? "102" : "101";
+}
+
+export function getMansionRoomEntryPlan(roomKey, roomPosition, playerY) {
+  const activeRoomKey = normalizeMansionRoomKey(roomKey);
+  return {
+    activeRoomKey,
+    roomToDestroy: activeRoomKey === "102" ? "101" : "102",
+    position: { x: roomPosition.x, y: playerY, z: roomPosition.z + 4.2 },
+    rotationY: Math.PI,
+  };
+}
+
+export function getMansionRoomExitPlan(activeRoomKey, exteriorReturn, playerY) {
+  return {
+    roomToDestroy: normalizeMansionRoomKey(activeRoomKey),
+    position: { x: exteriorReturn.x, y: playerY, z: exteriorReturn.z },
+    rotationY: exteriorReturn.rotationY,
+  };
+}
+
+export function getMansionSleepPlan(bedPosition, playerY) {
+  return {
+    sleepPosition: { x: bedPosition.x - 0.15, y: playerY, z: bedPosition.z },
+    wakePoint: { x: bedPosition.x + 1.95, z: bedPosition.z + 0.2, rotationY: Math.PI * -0.5 },
+    rotationY: Math.PI * -0.5,
+  };
 }
 
 export function destroyMansionRoomInstance({

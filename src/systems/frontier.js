@@ -321,6 +321,74 @@ export function canUseFrontierDisplaySlot(displayState, walletAddress) {
   return isFrontierDisplaySlotUser(displayState?.userWallet, walletAddress);
 }
 
+export function getFrontierBoothInteractionPlan(interactable, fallbackParcelLabel, {
+  canManageShopSlot,
+  canUseShopSlot,
+  canManageDisplaySlot,
+  canUseDisplaySlot,
+}) {
+  if (interactable?.type === "frontierShopBooth") {
+    const parcelLabel = interactable.parcelLabel ?? fallbackParcelLabel;
+    const mode = canManageShopSlot(parcelLabel) || canUseShopSlot(parcelLabel) ? "manage" : "view";
+    return {
+      parcelLabel,
+      slotKey: "shop",
+      boothTitle: interactable.boothTitle ?? "상점",
+      mode,
+      hintText: mode === "manage" ? "E : 판매 관리" : "E : 판매 보기",
+    };
+  }
+  if (interactable?.type === "frontierDisplayBooth") {
+    const parcelLabel = interactable.parcelLabel ?? fallbackParcelLabel;
+    const slotKey = interactable.slotKey ?? "displayA";
+    const mode = canManageDisplaySlot(parcelLabel, slotKey) || canUseDisplaySlot(parcelLabel, slotKey)
+      ? "manage"
+      : "view";
+    return {
+      parcelLabel,
+      slotKey,
+      boothTitle: interactable.boothTitle ?? "전시",
+      mode,
+      hintText: mode === "manage" ? "E : 전시 관리" : "E : 전시 보기",
+    };
+  }
+  return null;
+}
+
+export function getFrontierShopSellability(entry, {
+  isNftInventoryEntry,
+  getSlotItemId,
+  itemDefs,
+  getInventoryEntryCategory,
+  isQuestCriticalItemBlockedFromDiscard,
+}) {
+  if (!entry || isNftInventoryEntry(entry)) return { ok: false, reason: "NFT 아이템은 판매 등록할 수 없습니다." };
+  const itemId = getSlotItemId(entry);
+  const def = itemDefs[itemId];
+  if (!def) return { ok: false, reason: "알 수 없는 아이템입니다." };
+  if (getInventoryEntryCategory(entry) === "equip") return { ok: false, reason: "장비 아이템은 판매 등록할 수 없습니다." };
+  if (def.isAuthorityItem) return { ok: false, reason: "권한 아이템은 판매 등록할 수 없습니다." };
+  if (isQuestCriticalItemBlockedFromDiscard(entry)) return { ok: false, reason: "퀘스트 아이템은 판매 등록할 수 없습니다." };
+  if (!["cons", "misc"].includes(def.category)) return { ok: false, reason: "이 아이템은 판매할 수 없습니다." };
+  return { ok: true, reason: "" };
+}
+
+export function getSellableFrontierShopEntries(inventorySlots, dependencies) {
+  return (inventorySlots ?? [])
+    .map((entry, index) => ({ entry, index }))
+    .filter(({ entry }) => entry)
+    .filter(({ entry }) => getFrontierShopSellability(entry, dependencies).ok);
+}
+
+export function getFrontierShopRegistrationAccess({ buildState, assignedWallet, canUse }) {
+  if ((buildState?.stage ?? 0) < 100) {
+    return { ok: false, reason: "건축 완료 후 상점을 운영할 수 있습니다." };
+  }
+  if (!assignedWallet) return { ok: false, reason: "상점 사용자 지정 필요" };
+  if (!canUse) return { ok: false, reason: "상점 운영 권한이 없습니다." };
+  return { ok: true, reason: "" };
+}
+
 export function isFrontierDisplayableEntry(entry, isQuestCriticalItemBlockedFromDiscard) {
   if (!entry) return { ok: false, reason: "전시할 아이템이 없습니다." };
   if (isQuestCriticalItemBlockedFromDiscard(entry)) {
@@ -373,6 +441,124 @@ export function getFrontierShopPurchaseFeedback({
     totalPrice,
     purchaseQty,
   };
+}
+
+export function createFrontierShopPurchasePlan({
+  parcelLabel,
+  shopState,
+  quantity,
+  currentWallet,
+  canAffordPlayerCredits,
+  clampPlayerCredits,
+}) {
+  if (!parcelLabel) return { ok: false, reason: "상점 정보를 찾을 수 없습니다." };
+  if (!shopState?.itemId || shopState.quantity <= 0) {
+    return { ok: false, reason: "등록된 판매 물품이 없습니다." };
+  }
+  const purchaseQty = Math.max(1, Math.floor(Number(quantity) || 0));
+  if (purchaseQty <= 0) return { ok: false, reason: "구매 수량을 확인해주세요." };
+  if (purchaseQty > shopState.quantity) return { ok: false, reason: "재고가 부족합니다." };
+  const sellerWallet = normalizeFrontierWalletAddress(shopState.sellerWallet || shopState.userWallet);
+  if (sellerWallet && sellerWallet === normalizeFrontierWalletAddress(currentWallet)) {
+    return { ok: false, reason: "자신이 등록한 상품은 구매할 수 없습니다." };
+  }
+  const totalPrice = clampPlayerCredits(shopState.price * purchaseQty);
+  if (!canAffordPlayerCredits(totalPrice)) return { ok: false, reason: "개척 코인이 부족합니다." };
+  return {
+    ok: true,
+    purchaseQty,
+    totalPrice,
+    purchasedItemId: shopState.itemId,
+    sellerWallet,
+  };
+}
+
+export function getFrontierShopListingClearPlan({ parcelLabel, canEdit, shopState, clampPlayerCredits }) {
+  if (!parcelLabel || !canEdit) return { ok: false, reason: "" };
+  if (!shopState?.itemId || shopState.quantity <= 0) {
+    return { ok: false, reason: "현재 등록된 판매 물품이 없습니다.", duration: 900 };
+  }
+  return {
+    ok: true,
+    itemId: shopState.itemId,
+    quantity: shopState.quantity,
+    clearSellerWallet: clampPlayerCredits(shopState.pendingCredits || 0) <= 0,
+  };
+}
+
+export function applyFrontierShopListingClearState(shopState, { clearSellerWallet }) {
+  shopState.itemId = "";
+  shopState.quantity = 0;
+  shopState.price = 0;
+  shopState.statusText = "비어 있음";
+  if (clearSellerWallet) shopState.sellerWallet = "";
+  return shopState;
+}
+
+export function getFrontierShopListingRegistrationPlan({
+  parcelLabel,
+  canRegister,
+  itemId,
+  quantity,
+  price,
+  ownedCount,
+  shopState,
+}) {
+  if (!parcelLabel || !canRegister) return { ok: false, reason: "" };
+  if (!itemId) return { ok: false, reason: "판매할 아이템을 먼저 선택하세요.", duration: 1000 };
+  const safeQuantity = Math.max(1, Math.floor(Number(quantity) || 0));
+  const safePrice = Math.max(0, Math.floor(Number(price) || 0));
+  if (ownedCount < safeQuantity) {
+    return { ok: false, reason: "판매 수량만큼 아이템을 보유하고 있지 않습니다.", duration: 1000 };
+  }
+  return {
+    ok: true,
+    itemId,
+    quantity: safeQuantity,
+    price: safePrice,
+    previousItemId: shopState?.itemId && shopState.quantity > 0 ? shopState.itemId : "",
+    previousQuantity: shopState?.itemId && shopState.quantity > 0 ? shopState.quantity : 0,
+  };
+}
+
+export function applyFrontierShopListingRegistrationState(shopState, { itemId, quantity, price, sellerWallet, statusText }) {
+  shopState.itemId = itemId;
+  shopState.quantity = quantity;
+  shopState.price = price;
+  shopState.sellerWallet = sellerWallet;
+  shopState.statusText = statusText;
+  return shopState;
+}
+
+export function getFrontierShopSlotUserAssignmentPlan({
+  canManage,
+  walletAddress,
+  shopState,
+  normalizeWalletAddress,
+  clampPlayerCredits,
+}) {
+  if (!canManage) return { ok: false, reason: "" };
+  const normalizedWalletAddress = normalizeWalletAddress(walletAddress);
+  if (!normalizedWalletAddress) return { ok: false, reason: "지갑 주소를 입력해주세요.", duration: 1000 };
+  if ((shopState?.itemId && shopState.quantity > 0) || clampPlayerCredits(shopState?.pendingCredits || 0) > 0) {
+    return { ok: false, reason: "판매 물품 또는 정산금이 남아 있을 때는 상점 사용자를 변경할 수 없습니다.", duration: 1200 };
+  }
+  return { ok: true, walletAddress: normalizedWalletAddress };
+}
+
+export function getFrontierShopSlotUserClearPlan({ canManage, shopState, clampPlayerCredits }) {
+  if (!canManage) return { ok: false, reason: "" };
+  if ((shopState?.itemId && shopState.quantity > 0) || clampPlayerCredits(shopState?.pendingCredits || 0) > 0) {
+    return { ok: false, reason: "판매 물품 또는 정산금이 남아 있을 때는 사용자를 해제할 수 없습니다.", duration: 1200 };
+  }
+  return { ok: true };
+}
+
+export function getFrontierShopListingPriceUpdatePlan({ parcelLabel, canEdit, shopState, nextPrice }) {
+  if (!parcelLabel || !canEdit || !shopState?.itemId || shopState.quantity <= 0) {
+    return { ok: false, reason: "" };
+  }
+  return { ok: true, price: Math.max(0, Math.min(999999, Math.floor(Number(nextPrice) || 0))) };
 }
 
 export function formatFrontierShopUserDisplay(assignedWallet, shortenWalletAddress) {
@@ -732,6 +918,60 @@ export function createEmptyFrontierWastelandState() {
     claims: [],
     structures: [],
   };
+}
+
+export function rebuildWastelandDraftsFromFencePosts({
+  fencePosts,
+  claims,
+  previousDrafts,
+  now,
+  reservationMs,
+  activePhase,
+}) {
+  const claimedPostKeys = new Set(
+    (claims ?? []).flatMap((claim) => claim?.postKeys ?? [])
+  );
+  const groupedPostKeys = new Map();
+  for (const post of [...(fencePosts?.values?.() ?? [])]) {
+    if (!post?.ownerId || claimedPostKeys.has(post.key)) continue;
+    if (!groupedPostKeys.has(post.ownerId)) groupedPostKeys.set(post.ownerId, []);
+    groupedPostKeys.get(post.ownerId).push(post.key);
+  }
+
+  const nextDrafts = new Map();
+  for (const [ownerId, postKeys] of groupedPostKeys.entries()) {
+    postKeys.sort();
+    const previousDraft = previousDrafts?.get(ownerId);
+    nextDrafts.set(ownerId, {
+      ownerId,
+      postKeys,
+      lastPromptSignature: previousDraft?.lastPromptSignature ?? "",
+      reservedAt: previousDraft?.reservedAt ?? now,
+      updatedAt: previousDraft?.updatedAt ?? now,
+      expiresAt: previousDraft?.expiresAt ?? now + reservationMs,
+      phase: previousDraft?.phase ?? activePhase,
+    });
+  }
+  return nextDrafts;
+}
+
+export function partitionExpiredWastelandClaims(claims, now) {
+  const expired = [];
+  const active = [];
+  for (const claim of claims ?? []) {
+    if (claim?.expiresAt <= now) {
+      expired.push(claim);
+    } else {
+      active.push(claim);
+    }
+  }
+  return { expired, active };
+}
+
+export function getExpiredWastelandDraftReservations(claimDrafts, now) {
+  return [...(claimDrafts?.entries?.() ?? [])].filter(
+    ([, draft]) => draft?.postKeys?.length && draft.expiresAt && draft.expiresAt <= now
+  );
 }
 
 export function serializeFrontierWastelandServerState(rawState) {
