@@ -9,3 +9,24 @@ test("validates profiles, nicknames, and local save keys", () => {
   assert.equal(runtime.getPlayerSaveKey({ sessionType: "dev" }, "b"), "dev.b");
   assert.equal(runtime.getPlayerSaveKey({ sessionType: "guest" }, "a"), "guest");
 });
+
+test("applies normalized auth state and parses restorable sessions", () => {
+  const runtime = createSessionRuntime({ devProfileIds: ["a", "b"], fallbackProfileId: "a", devProfileSavePrefix: "dev.", guestSaveKey: "guest" });
+  const auth = {};
+  const profile = {};
+  const activeProfileId = runtime.applyAuthState({
+    auth,
+    profile,
+    nextState: { authenticated: true, address: "invalid", sessionType: "dev" },
+    activeDevProfileId: "b",
+    getDevProfileDisplayName: (id) => `name:${id}`,
+  });
+  assert.equal(activeProfileId, "a");
+  assert.equal(auth.address, "a");
+  assert.equal(profile.nickname, "name:a");
+  assert.deepEqual(runtime.parseRestorableSession("saved", () => ({ sessionType: "guest" })), {
+    session: { sessionType: "guest" },
+    invalid: false,
+  });
+  assert.equal(runtime.shortenWalletAddress("guest-local", () => "remote"), "GUEST");
+});

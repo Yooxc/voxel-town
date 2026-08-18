@@ -1,4 +1,27 @@
 export function createWastelandSceneRuntime() {
+  function clearRoot(root, disposeObject) {
+    if (!root) return;
+    while (root.children.length) {
+      const child = root.children[0];
+      disposeObject(child);
+      root.remove(child);
+    }
+  }
+
+  function ensureState({ plot, createGroup }) {
+    if (!plot) return null;
+    for (const key of ["fenceRoot", "fenceLinkRoot", "claimPreviewRoot", "structureRoot"]) {
+      if (plot[key]) continue;
+      plot[key] = createGroup();
+      plot.root.add(plot[key]);
+    }
+    if (!plot.fencePosts) plot.fencePosts = new Map();
+    if (!plot.claimDrafts) plot.claimDrafts = new Map();
+    if (!plot.claims) plot.claims = [];
+    if (!plot.structures) plot.structures = [];
+    return plot;
+  }
+
   function getFenceLinkPlans({ fencePosts, cellSize, canLinkPosts }) {
     const plans = [];
     for (const post of fencePosts?.values?.() ?? []) {
@@ -90,9 +113,157 @@ export function createWastelandSceneRuntime() {
     return plans;
   }
 
+  function rebuildStructures({ plot, disposeObject, getCellByGrid, getSurfaceY, createMesh, getPartDef }) {
+    if (!plot) return;
+    clearRoot(plot.structureRoot, disposeObject);
+    const plans = getStructureScenePlans({ structures: plot.structures, getCellByGrid, getSurfaceY });
+    for (const { structure, position } of plans) {
+      Object.assign(structure, position);
+      const mesh = createMesh(structure, getPartDef);
+      if (!mesh) continue;
+      structure.mesh = mesh;
+      plot.structureRoot.add(mesh);
+    }
+  }
+
+  function rebuildFenceLinks({ plot, disposeObject, canLinkPosts, createMesh }) {
+    if (!plot?.fenceLinkRoot) return;
+    clearRoot(plot.fenceLinkRoot, disposeObject);
+    const plans = getFenceLinkPlans({
+      fencePosts: plot.fencePosts,
+      cellSize: plot.cellSize,
+      canLinkPosts,
+    });
+    for (const plan of plans) {
+      const mesh = createMesh(plan.length, plan.horizontal);
+      mesh.position.x = plan.x;
+      mesh.position.z = plan.z;
+      plot.fenceLinkRoot.add(mesh);
+    }
+  }
+
+  function clearClaimPreview({ plot, disposeObject }) {
+    clearRoot(plot?.claimPreviewRoot, disposeObject);
+  }
+
+  function updateClaimPreview({
+    plot,
+    disposeObject,
+    currentOwnerId,
+    isFencePlacementMode,
+    getDraftBounds,
+    getDraftFencePosts,
+    getDraftGuide,
+    createMesh,
+  }) {
+    clearClaimPreview({ plot, disposeObject });
+    if (!plot?.claimPreviewRoot) return;
+    const plans = getClaimPreviewPlans({
+      cells: plot.cells,
+      draftEntries: plot.claimDrafts,
+      currentOwnerId,
+      isFencePlacementMode,
+      getDraftBounds,
+      getDraftFencePosts,
+      getDraftGuide,
+    });
+    for (const plan of plans) {
+      const mesh = createMesh(plan.cell, plan.color, plan.opacity, plan.height);
+      mesh.scale.set(plan.scale, 1, plan.scale);
+      mesh.position.y = plan.y;
+      plot.claimPreviewRoot.add(mesh);
+    }
+  }
+
+  function resetState({ plot, resetPlan, disposeObject, resetPlacementMode, closeConfirm, closeCancel, setCellState, updateClaimActions }) {
+    if (!plot) return;
+    for (const root of [plot.fenceRoot, plot.fenceLinkRoot, plot.claimPreviewRoot, plot.structureRoot]) {
+      clearRoot(root, disposeObject);
+    }
+    plot.fencePosts = new Map(resetPlan.fencePosts.map((post) => [post.key, post]));
+    plot.claimDrafts = new Map(resetPlan.drafts.map((draft) => [draft.ownerId, draft]));
+    plot.claims = resetPlan.claims;
+    plot.structures = resetPlan.structures;
+    resetPlacementMode();
+    closeConfirm();
+    closeCancel();
+    for (const cell of plot.cells ?? []) {
+      cell.clearProgress = resetPlan.cellProgressById.get(cell.id) ?? 0;
+      setCellState(cell, "idle");
+    }
+    updateClaimActions(null);
+  }
+
+  function applyState({
+    plot,
+    restorePlan,
+    disposeObject,
+    syncCellState,
+    applyCellVisual,
+    createFencePostMesh,
+    resetPlacementMode,
+    closeConfirm,
+    closeCancel,
+    rebuildDrafts,
+    rebuildLinks,
+    rebuildStructures: rebuildStructureVisuals,
+    updateClaimActions,
+  }) {
+    if (!plot) return;
+    for (const root of [plot.fenceRoot, plot.fenceLinkRoot, plot.claimPreviewRoot, plot.structureRoot]) {
+      clearRoot(root, disposeObject);
+    }
+    for (const cell of plot.cells ?? []) {
+      cell.clearProgress = restorePlan.cellProgressById.get(cell.id) ?? 0;
+      syncCellState(cell);
+      applyCellVisual(cell);
+    }
+    plot.fencePosts = new Map();
+    for (const savedPost of restorePlan.fencePosts) {
+      const mesh = createFencePostMesh();
+      mesh.position.set(savedPost.x, 0.02, savedPost.z);
+      plot.fenceRoot.add(mesh);
+      plot.fencePosts.set(savedPost.key, { ...savedPost, mesh });
+    }
+    plot.claimDrafts = new Map(restorePlan.drafts.map((draft) => [draft.ownerId, draft]));
+    plot.claims = restorePlan.claims;
+    plot.structures = restorePlan.structures;
+    resetPlacementMode();
+    closeConfirm();
+    closeCancel();
+    rebuildDrafts();
+    rebuildLinks();
+    rebuildStructureVisuals();
+    clearClaimPreview({ plot, disposeObject });
+    updateClaimActions(null);
+  }
+
+  function removeClaimFences({ plot, claim, disposeObject, rebuildLinks }) {
+    if (!plot || !claim) return;
+    for (const key of claim.postKeys ?? []) {
+      const post = plot.fencePosts.get(key);
+      if (!post) continue;
+      if (post.mesh?.parent) {
+        disposeObject(post.mesh);
+        post.mesh.parent.remove(post.mesh);
+      }
+      plot.fencePosts.delete(key);
+    }
+    rebuildLinks();
+    clearClaimPreview({ plot, disposeObject });
+  }
+
   return {
+    ensureState,
     getFenceLinkPlans,
     getStructureScenePlans,
     getClaimPreviewPlans,
+    rebuildStructures,
+    rebuildFenceLinks,
+    clearClaimPreview,
+    updateClaimPreview,
+    resetState,
+    applyState,
+    removeClaimFences,
   };
 }
