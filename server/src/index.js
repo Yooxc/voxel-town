@@ -4,6 +4,7 @@ import cors from "cors";
 import { config } from "./config.js";
 import { store } from "./db/store.js";
 import { authRouter } from "./routes/authRoutes.js";
+import { worldRouter } from "./routes/worldRoutes.js";
 
 const app = express();
 
@@ -35,6 +36,7 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/auth", authRouter);
+app.use("/world", worldRouter);
 
 app.use((req, res) => {
   res.status(404).json({

@@ -216,6 +216,7 @@ export function createDevProfileOrchestrator({
   setActiveProfileId,
   getDisplayName,
   getCreditsMigrationKey,
+  getInventorySeedKey,
   getPlayerCredits,
   setPlayerCredits,
   isDevSession,
@@ -237,9 +238,21 @@ export function createDevProfileOrchestrator({
   refreshWastelandDraftUiState,
   createDefaultSharedWorldSave,
   resetFrontierWastelandRuntimeState,
+  resetTerrainLabState,
+  resetDevTestProfiles,
   notify,
   now = () => new Date().toISOString(),
 }) {
+  function runNonBlockingStep(label, task) {
+    try {
+      task();
+      return true;
+    } catch (error) {
+      console.error(`Developer profile ${label} failed.`, error);
+      return undefined;
+    }
+  }
+
   function initialize(preferredProfileId = "") {
     const initialization = sessionController.getDevProfileInitializationPlan({
       preferredProfileId,
@@ -254,81 +267,124 @@ export function createDevProfileOrchestrator({
       { persist: false }
     );
     const sharedWorld = loadSharedWorldState();
-    applySharedWorldState(sharedWorld);
+    runNonBlockingStep("shared world apply", () => applySharedWorldState(sharedWorld));
     const loadState = loadActiveLocalProfileState();
+    const usingRecoveryPreset = loadState === "apply_error";
     if (loadState === "apply_error") {
       applyFreshPlayerStartState();
       applyDevProfileStartPosition(initialization.profileId);
-      applySharedWorldState(sharedWorld);
+      runNonBlockingStep("shared world recovery", () => applySharedWorldState(sharedWorld));
       applyDevPreset();
       setWalletLoginStatus(
-        `${getDisplayName(initialization.profileId)} 저장본 적용 중 오류가 발생해 임시 프리셋으로 입장했습니다.`
+        `${getDisplayName(initialization.profileId)} 저장본 오류로 임시 개발자 상태로 입장했습니다. 기존 저장본은 유지됩니다.`
       );
-      notify("개발자 저장본 복원 중 오류가 발생했습니다.", 1300);
+      notify("개발자 저장본 오류: 임시 상태로 입장했습니다.", 1500);
     } else if (loadState !== "loaded") {
       applyFreshPlayerStartState();
       applyDevProfileStartPosition(initialization.profileId);
-      applySharedWorldState(sharedWorld);
+      runNonBlockingStep("shared world recovery", () => applySharedWorldState(sharedWorld));
       applyDevPreset();
       saveActiveLocalProfileState();
-      saveSharedWorldState();
+      runNonBlockingStep("shared world save", saveSharedWorldState);
     }
     const creditsMigrationKey = getCreditsMigrationKey(initialization.profileId);
     if (isDevSession() && !storage.getItem(creditsMigrationKey) && getPlayerCredits() === 0) {
       setPlayerCredits(500);
-      saveActiveLocalProfileState();
+      if (!usingRecoveryPreset) saveActiveLocalProfileState();
     }
     storage.setItem(creditsMigrationKey, "1");
-    applyDevProfileRoleOverrides();
-    restoreMissingLandDeeds();
-    resetWastelandDraftUiState();
-    refreshWastelandDraftUiState();
-    saveActiveLocalProfileState();
+    const inventorySeedKey = getInventorySeedKey(initialization.profileId);
+    if (!usingRecoveryPreset && !storage.getItem(inventorySeedKey)) {
+      const seeded = runNonBlockingStep("profile inventory seed", applyDevProfileRoleOverrides);
+      if (seeded) {
+        saveActiveLocalProfileState();
+        storage.setItem(inventorySeedKey, "1");
+      }
+    } else if (usingRecoveryPreset) {
+      runNonBlockingStep("recovery profile role setup", applyDevProfileRoleOverrides);
+    }
+    if (!usingRecoveryPreset) {
+      runNonBlockingStep("land deed recovery", restoreMissingLandDeeds);
+    }
+    runNonBlockingStep("wasteland UI reset", resetWastelandDraftUiState);
+    runNonBlockingStep("wasteland UI refresh", refreshWastelandDraftUiState);
+    if (!usingRecoveryPreset) saveActiveLocalProfileState();
     storage.setItem(initialization.activeProfileKey, initialization.profileId);
-    setWalletLoginStatus(`${getDisplayName(initialization.profileId)}로 개발자 모드에 입장했습니다.`);
+    if (!usingRecoveryPreset) {
+      setWalletLoginStatus(`${getDisplayName(initialization.profileId)}로 개발자 모드에 입장했습니다.`);
+    }
+    return true;
+  }
+
+  function seedActiveProfileInventory(profileId) {
+    const inventorySeedKey = getInventorySeedKey(profileId);
+    if (storage.getItem(inventorySeedKey)) return false;
+    const seeded = runNonBlockingStep("profile inventory seed", applyDevProfileRoleOverrides);
+    if (!seeded) return false;
+    saveActiveLocalProfileState();
+    storage.setItem(inventorySeedKey, "1");
+    return true;
   }
 
   function switchProfile(profileId) {
     if (!isDevSession()) return;
     const nextProfileId = sessionController.sanitizeDevProfileId(profileId);
-    if (nextProfileId === getActiveProfileId()) return;
-    resetWastelandDraftUiState();
-    saveActiveLocalProfileState();
-    saveSharedWorldState();
-    storage.setItem(activeProfileKey, nextProfileId);
-    initialize(nextProfileId);
-    notify(`${getDisplayName(nextProfileId)} 위치를 복원했습니다.`, 900);
-  }
-
-  function writePresetSnapshot(profileId) {
-    const targetProfileId = sessionController.sanitizeDevProfileId(profileId);
-    setActiveProfileId(targetProfileId);
-    setWalletAuthState(
-      sessionController.createDevSessionState(targetProfileId, getDisplayName, now()),
-      { persist: false }
-    );
-    applyFreshPlayerStartState();
-    applyDevProfileStartPosition(targetProfileId);
-    applySharedWorldState(createDefaultSharedWorldSave());
-    applyDevPreset();
-    applyDevProfileRoleOverrides();
-    saveActiveLocalProfileState();
-    storage.setItem(getCreditsMigrationKey(targetProfileId), "1");
+    if (nextProfileId === getActiveProfileId()) {
+      const seeded = seedActiveProfileInventory(nextProfileId);
+      notify(
+        seeded
+          ? `${getDisplayName(nextProfileId)} 기본 아이템을 지급했습니다.`
+          : `${getDisplayName(nextProfileId)} 계정이 이미 선택되어 있습니다.`,
+        900,
+      );
+      return true;
+    }
+    const previousProfileId = getActiveProfileId();
+    try {
+      runNonBlockingStep("wasteland UI reset", resetWastelandDraftUiState);
+      saveActiveLocalProfileState();
+      runNonBlockingStep("shared world save", saveSharedWorldState);
+      storage.setItem(activeProfileKey, nextProfileId);
+      initialize(nextProfileId);
+      notify(`${getDisplayName(nextProfileId)} 위치를 복원했습니다.`, 900);
+      return true;
+    } catch (error) {
+      console.error("Developer profile switch failed.", error);
+      storage.setItem(activeProfileKey, previousProfileId);
+      const restored = initialize(previousProfileId);
+      if (!restored) {
+        setWalletLoginStatus("개발자 프로필 전환에 실패했습니다. 저장본은 유지됩니다.");
+      }
+      notify(`${getDisplayName(nextProfileId)} 전환에 실패해 이전 프로필로 복원했습니다.`, 1600);
+      return false;
+    }
   }
 
   function resetTestingEnvironment() {
     if (!isDevSession()) return false;
     const currentProfileId = sessionController.sanitizeDevProfileId(getActiveProfileId());
     const blankWorld = createDefaultSharedWorldSave();
-    for (const profileId of profileIds) writePresetSnapshot(profileId);
-    storage.setItem(sharedWorldKey, JSON.stringify(blankWorld));
-    storage.setItem(activeProfileKey, currentProfileId);
-    initialize(currentProfileId);
-    resetFrontierWastelandRuntimeState();
-    saveSharedWorldState();
-    notify("개발자 테스트 환경을 초기화했습니다.", 1200);
-    return true;
+    setPlayerSaveSyncPaused(true);
+    try {
+      resetWastelandDraftUiState();
+      storage.setItem(sharedWorldKey, JSON.stringify(blankWorld));
+      storage.setItem(activeProfileKey, currentProfileId);
+      applySharedWorldState(blankWorld);
+      resetFrontierWastelandRuntimeState();
+      resetTerrainLabState();
+      resetDevTestProfiles(currentProfileId);
+      refreshWastelandDraftUiState();
+      saveSharedWorldState();
+      notify("공용 맵과 두 개발자 테스트 상태를 초기화했습니다.", 1500);
+      return true;
+    } catch (error) {
+      console.error("Developer test environment reset failed.", error);
+      notify("테스트 초기화에 실패했습니다. 기존 저장 상태를 확인해주세요.", 1800);
+      return false;
+    } finally {
+      setPlayerSaveSyncPaused(false);
+    }
   }
 
-  return { initialize, resetTestingEnvironment, switchProfile, writePresetSnapshot };
+  return { initialize, resetTestingEnvironment, switchProfile };
 }

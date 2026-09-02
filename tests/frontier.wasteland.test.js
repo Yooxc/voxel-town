@@ -431,7 +431,17 @@ test("황무지 서버 대상 상태는 drafts와 claim status를 정규화한�
         maxCol: 5,
       },
     ],
-    structures: [],
+    structures: [{
+      key: "door-1",
+      ownerId: "dev_1",
+      type: "woodDoor",
+      slot: "wall",
+      structureKind: "door",
+      row: 2,
+      col: 3,
+      rotationQuarter: 1,
+      isOpen: true,
+    }],
   });
 
   const normalized = normalizeFrontierWastelandState(state);
@@ -439,6 +449,8 @@ test("황무지 서버 대상 상태는 drafts와 claim status를 정규화한�
   assert.equal(normalized.drafts[0].ownerId, "dev_1");
   assert.equal("lastPromptSignature" in normalized.drafts[0], false);
   assert.equal(normalized.claims[0].status, "failed");
+  assert.equal(normalized.structures[0].structureKind, "door");
+  assert.equal(normalized.structures[0].isOpen, true);
 });
 
 test("울타리 기둥에서 소유자별 토지 선언 초안을 재구성한다", () => {

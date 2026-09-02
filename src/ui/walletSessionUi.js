@@ -246,7 +246,7 @@ export function createWalletSessionUi({ uiLayer, devProfileIds }) {
     devResetButton.addEventListener("click", () => {
       if (!canResetDev()) return;
       const confirmed = window.confirm(
-        "개발자 테스트 월드를 초기화할까요?\n개발자1/개발자2 상태와 개척지 월드 상태가 초기값으로 돌아갑니다."
+        "공용 테스트 상태를 초기화할까요?\n맵 상태와 두 개발자 캐릭터 위치가 초기화되며, 인벤토리와 개인 창고는 기본 지급 상태로 돌아가고 개척 코인은 500으로 복구됩니다."
       );
       if (confirmed) onResetDev();
     });

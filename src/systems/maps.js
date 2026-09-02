@@ -1,4 +1,6 @@
 import * as THREE from "three";
+import { createWastelandTerrainRuntime } from "../world/wastelandTerrainRuntime.js";
+import { createAbandonedMineVisuals } from "../world/abandonedMineVisuals.js";
 
 export const RESIDENCE_MAP_ID = "거주구역";
 
@@ -287,6 +289,7 @@ export function getMapGateHintText(gate, { canUseMapGate, hasItem, getItemName }
 
 export function getCurrentMapIdForPlayer({
   playerPosition,
+  isolatedMapZones = [],
   isInResidenceZone = false,
   mineDoorThresholdZ,
   campDoorThresholdZ,
@@ -295,6 +298,11 @@ export function getCurrentMapIdForPlayer({
   currentMapId = "광산",
   residenceMapId = RESIDENCE_MAP_ID,
 }) {
+  const isolatedZone = isolatedMapZones.find((zone) => (
+    Math.abs(playerPosition.x - zone.centerX) <= zone.width * 0.5
+    && Math.abs(playerPosition.z - zone.centerZ) <= zone.depth * 0.5
+  ));
+  if (isolatedZone) return isolatedZone.mapId;
   return getCurrentMapIdFromPosition({
     playerZ: playerPosition.z,
     isInResidenceZone,
@@ -477,28 +485,6 @@ export function buildCampTestArea({
   campMapZ = CAMP_MAP_Z,
 }) {
   const campSize = GROUND_SIZE;
-  const pillarMat = registerCaveDarkMaterial(
-    new THREE.MeshStandardMaterial({
-      color: 0x4a4037,
-      roughness: 1.0,
-    }),
-    0.18
-  );
-  const wallMat = registerCaveDarkMaterial(
-    new THREE.MeshStandardMaterial({
-      color: 0x2d251f,
-      roughness: 1.0,
-    }),
-    0.14
-  );
-  const ceilingMat = registerCaveDarkMaterial(
-    new THREE.MeshStandardMaterial({
-      color: 0x211b17,
-      roughness: 1.0,
-      side: THREE.DoubleSide,
-    }),
-    0.1
-  );
 
   const pad = new THREE.Mesh(
     new THREE.BoxGeometry(campSize, 0.18, campSize),
@@ -531,29 +517,6 @@ export function buildCampTestArea({
     { x: (campSize - southOpeningWidth) * 0.25 + southOpeningWidth * 0.5, z: campHalf + wallThickness * 0.24, sx: (campSize - southOpeningWidth) * 0.5 + 4, sy: wallHeight + 0.2, sz: wallThickness, ry: 0.015 },
   ];
 
-  for (const wall of wallDefs) {
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(wall.sx, wall.sy, wall.sz),
-      wallMat
-    );
-    mesh.position.set(campMapX + wall.x, wallBaseY, campMapZ + wall.z);
-    mesh.rotation.y = wall.ry;
-    scene.add(mesh);
-    addCollider(mesh, 1.0);
-
-    const cap = new THREE.Mesh(
-      new THREE.BoxGeometry(wall.sx * 0.86, 1.4, wall.sz * 0.88),
-      wallMat
-    );
-    cap.position.set(
-      mesh.position.x + Math.sin(wall.ry) * 0.35,
-      mesh.position.y + wall.sy * 0.5 - 0.15,
-      mesh.position.z + Math.cos(wall.ry) * 0.25
-    );
-    cap.rotation.y = wall.ry * 1.2;
-    scene.add(cap);
-  }
-
   const pillarDefs = [
     { x: -28, z: -36, sx: 4.6, sz: 9.6, sy: 6.72, ry: 0.14 },
     { x: -8, z: -40, sx: 2.4, sz: 2.0, sy: 6.24, ry: -0.08 },
@@ -577,109 +540,53 @@ export function buildCampTestArea({
     { x: 18, z: 46, sx: 3.7, sz: 2.4, sy: 6.56, ry: 0.1 },
   ];
 
-  for (const pillar of pillarDefs) {
-    const column = new THREE.Mesh(
-      new THREE.BoxGeometry(pillar.sx, pillar.sy, pillar.sz),
-      pillarMat
+  const mineVisuals = createAbandonedMineVisuals({
+    scene,
+    campMapX,
+    campMapZ,
+    campSize,
+    wallDefs,
+    wallBaseY,
+    pillarDefs,
+    registerCaveDarkMaterial,
+  });
+  const colliderMaterial = new THREE.MeshBasicMaterial({
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+  });
+
+  for (const wall of wallDefs) {
+    const collider = new THREE.Mesh(
+      new THREE.BoxGeometry(wall.sx, wall.sy, wall.sz),
+      colliderMaterial
     );
-    column.position.set(campMapX + pillar.x, pillar.sy * 0.5, campMapZ + pillar.z);
-    column.rotation.set(
+    collider.position.set(campMapX + wall.x, wallBaseY, campMapZ + wall.z);
+    collider.rotation.y = wall.ry;
+    scene.add(collider);
+    addCollider(collider, 1.0);
+  }
+
+  for (const pillar of pillarDefs) {
+    const collider = new THREE.Mesh(
+      new THREE.BoxGeometry(pillar.sx, pillar.sy, pillar.sz),
+      colliderMaterial
+    );
+    collider.position.set(campMapX + pillar.x, pillar.sy * 0.5, campMapZ + pillar.z);
+    collider.rotation.set(
       THREE.MathUtils.degToRad((pillar.x + pillar.z) * 0.08),
       pillar.ry,
       THREE.MathUtils.degToRad((pillar.x - pillar.z) * 0.05)
     );
-    scene.add(column);
-    addCollider(column, 0.96);
-  }
-
-  const ceilingSlabs = [
-    { x: 0, z: -34, sx: 104, sy: 3.0, sz: 30, rx: 0.05, rz: -0.03, topY: 10.24 },
-    { x: 0, z: -8, sx: 104, sy: 3.4, sz: 28, rx: -0.04, rz: 0.02, topY: 9.92 },
-    { x: 0, z: 18, sx: 104, sy: 3.2, sz: 28, rx: 0.03, rz: -0.04, topY: 10.08 },
-    { x: -18, z: 42, sx: 70, sy: 3.1, sz: 22, rx: -0.05, rz: 0.03, topY: 9.76 },
-    { x: 22, z: 42, sx: 68, sy: 2.9, sz: 22, rx: 0.04, rz: -0.02, topY: 9.96 },
-  ];
-
-  function getCeilingBottomY(localX, localZ) {
-    for (const slab of ceilingSlabs) {
-      const halfX = slab.sx * 0.5;
-      const halfZ = slab.sz * 0.5;
-      if (
-        localX >= slab.x - halfX &&
-        localX <= slab.x + halfX &&
-        localZ >= slab.z - halfZ &&
-        localZ <= slab.z + halfZ
-      ) {
-        return slab.topY;
-      }
-    }
-    return 10.08;
-  }
-
-  for (const slab of ceilingSlabs) {
-    const roof = new THREE.Mesh(
-      new THREE.BoxGeometry(slab.sx, slab.sy, slab.sz),
-      ceilingMat
-    );
-    roof.position.set(
-      campMapX + slab.x,
-      slab.topY + slab.sy * 0.5,
-      campMapZ + slab.z
-    );
-    roof.rotation.set(slab.rx, 0, slab.rz);
-    scene.add(roof);
-  }
-
-  function createTaperedConnectorGeometry(bottomX, bottomZ, topX, topZ, height) {
-    const hx0 = bottomX * 0.5;
-    const hz0 = bottomZ * 0.5;
-    const hx1 = topX * 0.5;
-    const hz1 = topZ * 0.5;
-    const y0 = -height * 0.5;
-    const y1 = height * 0.5;
-    const vertices = [
-      -hx0, y0, -hz0,
-       hx0, y0, -hz0,
-       hx0, y0,  hz0,
-      -hx0, y0,  hz0,
-      -hx1, y1, -hz1,
-       hx1, y1, -hz1,
-       hx1, y1,  hz1,
-      -hx1, y1,  hz1,
-    ];
-    const indices = [
-      0, 1, 2, 0, 2, 3,
-      4, 6, 5, 4, 7, 6,
-      0, 4, 5, 0, 5, 1,
-      1, 5, 6, 1, 6, 2,
-      2, 6, 7, 2, 7, 3,
-      3, 7, 4, 3, 4, 0,
-    ];
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
-    geometry.setIndex(indices);
-    geometry.computeVertexNormals();
-    return geometry;
-  }
-
-  for (const pillar of pillarDefs) {
-    const localBottomY = getCeilingBottomY(pillar.x, pillar.z);
-    const connectorHeight = Math.max(0.45, localBottomY - pillar.sy);
-    const bottomX = pillar.sx;
-    const bottomZ = pillar.sz;
-    const topX = Math.max(bottomX + 4.2, pillar.sx + 5.0);
-    const topZ = Math.max(bottomZ + 4.2, pillar.sz + 5.0);
-    const connector = new THREE.Mesh(
-      createTaperedConnectorGeometry(bottomX, bottomZ, topX, topZ, connectorHeight),
-      ceilingMat
-    );
-    connector.position.set(
-      campMapX + pillar.x,
-      pillar.sy + connectorHeight * 0.5,
-      campMapZ + pillar.z
-    );
-    connector.rotation.set(0, pillar.ry * 0.65, 0);
-    scene.add(connector);
+    scene.add(collider);
+    addCollider(collider, {
+      preciseShape: {
+        type: "orientedBox",
+        halfX: Math.max(0.08, pillar.sx * 0.5 - 0.06),
+        halfZ: Math.max(0.08, pillar.sz * 0.5 - 0.06),
+        rotationY: pillar.ry,
+      },
+    });
   }
 
   const airPurifierStation = buildAirPurifierStation(
@@ -696,6 +603,7 @@ export function buildCampTestArea({
 
   return {
     airPurifierStation,
+    mineVisuals,
   };
 }
 
@@ -899,8 +807,6 @@ export function buildFrontierArea({
   );
   wastelandPad.position.set(frontierWastelandCenterX, 0.07, frontierWastelandCenterZ);
   frontierWastelandGroup.add(wastelandPad);
-  groundSurfaces.push(wastelandPad);
-  registerWalkableSurface("개척지", wastelandPad, 0.4);
 
   const wastelandBorderMat = new THREE.MeshStandardMaterial({
     color: 0x5f5143,
@@ -1012,6 +918,25 @@ export function buildFrontierArea({
       });
     }
   }
+  const wastelandTerrainRuntime = createWastelandTerrainRuntime({
+    width: frontierWastelandSize,
+    depth: frontierWastelandSize,
+    rows: frontierWastelandDivisions,
+    cols: frontierWastelandDivisions,
+    cellSize: frontierWastelandCellSize,
+    centerX: frontierWastelandCenterX,
+    centerZ: frontierWastelandCenterZ,
+  });
+  wastelandTerrainRuntime.mesh.position.set(frontierWastelandCenterX, 0.145, frontierWastelandCenterZ);
+  frontierWastelandGroup.add(wastelandTerrainRuntime.mesh);
+  groundSurfaces.push(wastelandTerrainRuntime.mesh);
+  registerWalkableSurface("개척지", wastelandTerrainRuntime.mesh, 0.4);
+  wastelandPad.visible = false;
+  for (const cell of frontierWastelandCells) {
+    cell.terrainRuntime = wastelandTerrainRuntime;
+    cell.baseMesh.visible = false;
+    cell.coverMesh.visible = false;
+  }
   const frontierWastelandPlot = {
     label: "WASTELAND_ALPHA",
     x: frontierWastelandCenterX,
@@ -1026,6 +951,7 @@ export function buildFrontierArea({
     root: frontierWastelandGroup,
     pad: wastelandPad,
     grid: wastelandGrid,
+    terrainRuntime: wastelandTerrainRuntime,
   };
   frontierWastelandGroup.userData.frontierWastelandPlot = frontierWastelandPlot;
 

@@ -1,6 +1,9 @@
 import { QUICK_USE_ALLOWED_KEYS } from "./items.js";
 
-export function createInitialInventoryState(slotCount = 30) {
+export const PLAYER_INVENTORY_SLOT_COUNT = 30;
+export const DEVELOPER_INVENTORY_SLOT_COUNT = 100;
+
+export function createInitialInventoryState(slotCount = PLAYER_INVENTORY_SLOT_COUNT) {
   return {
     slots: Array.from({ length: slotCount }, () => null),
     pickaxeLevel: 1,

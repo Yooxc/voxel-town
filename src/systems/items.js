@@ -18,6 +18,10 @@ export const DEV_BULK_GRANT_ITEM_IDS = [
   "purifyPowder",
   "stoneDust",
   "masonryStone",
+  "woodStairs",
+  "stoneStairs",
+  "woodRoof",
+  "stoneRoof",
 ];
 
 export const DEV_MOCK_NFT_ITEMS = [
@@ -252,6 +256,20 @@ export function createItemDefs({
       stackMax: 200,
       purposeText: "자유 건축용 목재 벽 부품이다",
     },
+    woodDoor: {
+      category: "misc",
+      name: "목재 문",
+      icon: "🚪",
+      stackMax: 200,
+      purposeText: "자유 건축용 목재 출입문 부품이다",
+    },
+    woodWindow: {
+      category: "misc",
+      name: "목재 창문",
+      icon: "🪟",
+      stackMax: 200,
+      purposeText: "자유 건축용 목재 창문 부품이다",
+    },
     woodPillar: {
       category: "misc",
       name: "목재 기둥",
@@ -273,12 +291,54 @@ export function createItemDefs({
       stackMax: 200,
       purposeText: "자유 건축용 석재 벽 부품이다",
     },
+    stoneDoor: {
+      category: "misc",
+      name: "석재 문",
+      icon: "🚪",
+      stackMax: 200,
+      purposeText: "자유 건축용 석재 출입문 부품이다",
+    },
+    stoneWindow: {
+      category: "misc",
+      name: "석재 창문",
+      icon: "🪟",
+      stackMax: 200,
+      purposeText: "자유 건축용 석재 창문 부품이다",
+    },
+    woodStairs: {
+      category: "misc",
+      name: "목재 계단",
+      icon: "🪜",
+      stackMax: 200,
+      purposeText: "1층과 2층을 연결하는 목재 계단 부품이다",
+    },
+    woodRoof: {
+      category: "misc",
+      name: "목재 지붕",
+      icon: "🏠",
+      stackMax: 200,
+      purposeText: "건축물 최상단을 마감하는 목재 지붕 부품이다",
+    },
     stonePillar: {
       category: "misc",
       name: "석재 기둥",
       icon: "🗿",
       stackMax: 200,
       purposeText: "자유 건축용 석재 기둥 부품이다",
+    },
+    stoneStairs: {
+      category: "misc",
+      name: "석재 계단",
+      icon: "🪨",
+      stackMax: 200,
+      purposeText: "1층과 2층을 연결하는 석재 계단 부품이다",
+    },
+    stoneRoof: {
+      category: "misc",
+      name: "석재 지붕",
+      icon: "🏛️",
+      stackMax: 200,
+      purposeText: "건축물 최상단을 마감하는 석재 지붕 부품이다",
     },
   };
 }

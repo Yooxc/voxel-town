@@ -78,9 +78,14 @@ export function getWastelandCellVisualForProgress(progress) {
 export function applyWastelandCellVisual(cell) {
   const coverMesh = cell?.coverMesh ?? cell?.mesh;
   const baseMesh = cell?.baseMesh;
-  if (!coverMesh?.material) return;
   syncWastelandCellStateFromProgress(cell);
+  if (!coverMesh?.material) return;
   const visual = getWastelandCellVisualForProgress(cell.clearProgress);
+  if (cell?.terrainRuntime) {
+    if (baseMesh) baseMesh.visible = false;
+    coverMesh.visible = false;
+    return;
+  }
   if (baseMesh) baseMesh.visible = true;
   coverMesh.visible = visual.visible;
   coverMesh.position.y = visual.y;

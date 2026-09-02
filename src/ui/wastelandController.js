@@ -1,6 +1,11 @@
 export function createWastelandController() {
   let fencePlacementMode = false;
   let selectedStructureItemId = "";
+  let buildModeActive = false;
+  let buildToolMode = "place";
+  let buildRotationQuarter = 0;
+  let buildLevel = 0;
+  let selectedStructureKey = "";
   let claimConfirmOpen = false;
   let claimCancelOpen = false;
 
@@ -10,6 +15,83 @@ export function createWastelandController() {
 
   function getSelectedStructureItemId() {
     return selectedStructureItemId;
+  }
+
+  function isBuildModeActive() {
+    return buildModeActive;
+  }
+
+  function getBuildRotationQuarter() {
+    return buildRotationQuarter;
+  }
+
+  function getBuildToolMode() {
+    return buildToolMode;
+  }
+
+  function getBuildLevel() {
+    return buildLevel;
+  }
+
+  function isDemolishMode() {
+    return buildModeActive && buildToolMode === "demolish";
+  }
+
+  function getSelectedStructureKey() {
+    return selectedStructureKey;
+  }
+
+  function enterBuildMode(itemId = "") {
+    buildModeActive = true;
+    fencePlacementMode = false;
+    selectedStructureItemId = itemId;
+    buildToolMode = "place";
+    buildRotationQuarter = 0;
+    buildLevel = 0;
+    selectedStructureKey = "";
+  }
+
+  function exitBuildMode() {
+    buildModeActive = false;
+    selectedStructureItemId = "";
+    buildToolMode = "place";
+    buildRotationQuarter = 0;
+    buildLevel = 0;
+    selectedStructureKey = "";
+  }
+
+  function selectBuildPart(itemId) {
+    selectedStructureItemId = itemId ?? "";
+    buildToolMode = "place";
+    selectedStructureKey = "";
+    return selectedStructureItemId;
+  }
+
+  function setBuildToolMode(mode) {
+    buildToolMode = mode === "demolish" ? "demolish" : "place";
+    selectedStructureKey = "";
+    return buildToolMode;
+  }
+
+  function setBuildLevel(level) {
+    const value = Number(level);
+    buildLevel = Number.isInteger(value) && value >= 0 && value <= 1 ? value : 0;
+    selectedStructureKey = "";
+    return buildLevel;
+  }
+
+  function selectStructure(structureKey) {
+    selectedStructureKey = buildToolMode === "demolish" ? String(structureKey ?? "") : "";
+    return selectedStructureKey;
+  }
+
+  function clearSelectedStructure() {
+    selectedStructureKey = "";
+  }
+
+  function rotateBuildPart() {
+    buildRotationQuarter = (buildRotationQuarter + 1) % 4;
+    return buildRotationQuarter;
   }
 
   function isClaimConfirmOpen() {
@@ -23,11 +105,23 @@ export function createWastelandController() {
   function resetPlacementMode() {
     fencePlacementMode = false;
     selectedStructureItemId = "";
+    buildModeActive = false;
+    buildToolMode = "place";
+    buildRotationQuarter = 0;
+    buildLevel = 0;
+    selectedStructureKey = "";
   }
 
   function toggleFencePlacementMode() {
     fencePlacementMode = !fencePlacementMode;
-    if (fencePlacementMode) selectedStructureItemId = "";
+    if (fencePlacementMode) {
+      selectedStructureItemId = "";
+      buildModeActive = false;
+      buildToolMode = "place";
+      buildRotationQuarter = 0;
+      buildLevel = 0;
+      selectedStructureKey = "";
+    }
     return fencePlacementMode;
   }
 
@@ -148,6 +242,20 @@ export function createWastelandController() {
   return {
     isFencePlacementMode,
     getSelectedStructureItemId,
+    isBuildModeActive,
+    getBuildRotationQuarter,
+    getBuildToolMode,
+    getBuildLevel,
+    isDemolishMode,
+    getSelectedStructureKey,
+    enterBuildMode,
+    exitBuildMode,
+    selectBuildPart,
+    setBuildToolMode,
+    setBuildLevel,
+    selectStructure,
+    clearSelectedStructure,
+    rotateBuildPart,
     isClaimConfirmOpen,
     isClaimCancelOpen,
     resetPlacementMode,

@@ -1,21 +1,5 @@
 export function createInventoryWindowUi({
   uiLayer,
-  onWalletLogout,
-  onWalletCopy,
-  onTabChange,
-  onTrashDragOver,
-  onTrashDragLeave,
-  onTrashDrop,
-  onDiscardOverlayClick,
-  onDiscardCancel,
-  onDiscardConfirm,
-  onDiscardKeyDown,
-  onPersonalStorageOverlayClick,
-  onPersonalStorageClose,
-  onPersonalStorageCurtainClick,
-  onPersonalStorageTransferCancel,
-  onPersonalStorageTransferConfirm,
-  onPersonalStorageTransferKeyDown,
 }) {
   const invWin = document.createElement("div");
   invWin.id = "invWindow";
@@ -222,7 +206,6 @@ export function createInventoryWindowUi({
     fontSize: "12px",
     fontWeight: "700",
   });
-  equipProfileLogoutBtn.addEventListener("click", onWalletLogout);
   equipProfileCard.appendChild(equipProfileLogoutBtn);
 
   const equipProfileInfo = document.createElement("div");
@@ -265,7 +248,6 @@ export function createInventoryWindowUi({
     fontSize: "11px",
     fontWeight: "700",
   });
-  equipProfileCopyBtn.addEventListener("click", onWalletCopy);
   equipProfileAddressRow.appendChild(equipProfileCopyBtn);
 
   const equipProfileChain = document.createElement("div");
@@ -315,7 +297,6 @@ export function createInventoryWindowUi({
       background: "rgba(255,255,255,0.9)",
       color: "#222",
     });
-    btn.addEventListener("click", () => onTabChange(tab.id));
     tabButtons[tab.id] = btn;
     tabBar.appendChild(btn);
   }
@@ -377,9 +358,6 @@ export function createInventoryWindowUi({
     transition: "background 120ms ease, border-color 120ms ease, transform 120ms ease",
   });
   inventoryTrashDropZone.textContent = "🗑️ 아이템을 여기로 드래그해 버리기";
-  inventoryTrashDropZone.addEventListener("dragover", onTrashDragOver);
-  inventoryTrashDropZone.addEventListener("dragleave", onTrashDragLeave);
-  inventoryTrashDropZone.addEventListener("drop", onTrashDrop);
   inventoryTrashRow.appendChild(inventoryTrashDropZone);
 
   const discardOverlay = document.createElement("div");
@@ -392,7 +370,6 @@ export function createInventoryWindowUi({
     pointerEvents: "auto",
     zIndex: "1000003",
   });
-  discardOverlay.addEventListener("click", onDiscardOverlayClick);
   uiLayer.appendChild(discardOverlay);
 
   const discardDialog = document.createElement("div");
@@ -470,7 +447,6 @@ export function createInventoryWindowUi({
     fontSize: "15px",
     background: "rgba(255,255,255,0.96)",
   });
-  discardCountInput.addEventListener("keydown", onDiscardKeyDown);
   discardDialog.appendChild(discardCountInput);
 
   const discardError = document.createElement("div");
@@ -505,7 +481,6 @@ export function createInventoryWindowUi({
     cursor: "pointer",
     fontWeight: "700",
   });
-  discardCancelBtn.addEventListener("click", onDiscardCancel);
   discardButtonRow.appendChild(discardCancelBtn);
 
   const discardConfirmBtn = document.createElement("button");
@@ -521,7 +496,6 @@ export function createInventoryWindowUi({
     cursor: "pointer",
     fontWeight: "800",
   });
-  discardConfirmBtn.addEventListener("click", onDiscardConfirm);
   discardButtonRow.appendChild(discardConfirmBtn);
 
   const personalStorageOverlay = document.createElement("div");
@@ -534,7 +508,6 @@ export function createInventoryWindowUi({
     pointerEvents: "auto",
     zIndex: "1000003",
   });
-  personalStorageOverlay.addEventListener("click", onPersonalStorageOverlayClick);
   uiLayer.appendChild(personalStorageOverlay);
 
   const personalStorageWin = document.createElement("div");
@@ -588,7 +561,6 @@ export function createInventoryWindowUi({
     fontWeight: "800",
     cursor: "pointer",
   });
-  personalStorageCloseBtn.addEventListener("click", onPersonalStorageClose);
   personalStorageHeader.appendChild(personalStorageCloseBtn);
 
   const personalStorageGuide = document.createElement("div");
@@ -631,7 +603,6 @@ export function createInventoryWindowUi({
     zIndex: "5",
     borderRadius: "18px",
   });
-  personalStorageTransferCurtain.addEventListener("click", onPersonalStorageCurtainClick);
   personalStorageWin.appendChild(personalStorageTransferCurtain);
 
   const personalStorageTransferDialog = document.createElement("div");
@@ -704,7 +675,6 @@ export function createInventoryWindowUi({
     fontWeight: "800",
     boxSizing: "border-box",
   });
-  personalStorageTransferCountInput.addEventListener("keydown", onPersonalStorageTransferKeyDown);
   personalStorageTransferDialog.appendChild(personalStorageTransferCountInput);
 
   const personalStorageTransferError = document.createElement("div");
@@ -737,7 +707,6 @@ export function createInventoryWindowUi({
     fontWeight: "800",
     cursor: "pointer",
   });
-  personalStorageTransferCancelBtn.addEventListener("click", onPersonalStorageTransferCancel);
   personalStorageTransferActions.appendChild(personalStorageTransferCancelBtn);
 
   const personalStorageTransferConfirmBtn = document.createElement("button");
@@ -752,7 +721,6 @@ export function createInventoryWindowUi({
     fontWeight: "900",
     cursor: "pointer",
   });
-  personalStorageTransferConfirmBtn.addEventListener("click", onPersonalStorageTransferConfirm);
   personalStorageTransferActions.appendChild(personalStorageTransferConfirmBtn);
 
   function createPersonalStoragePanel(titleText) {
@@ -810,7 +778,33 @@ export function createInventoryWindowUi({
   personalStorageColumns.appendChild(inventoryStoragePanel.panel);
   personalStorageColumns.appendChild(personalStoragePanel.panel);
 
+  let eventsBound = false;
+  function bindEvents(handlers) {
+    if (eventsBound) return;
+    eventsBound = true;
+
+    equipProfileLogoutBtn.addEventListener("click", handlers.onWalletLogout);
+    equipProfileCopyBtn.addEventListener("click", handlers.onWalletCopy);
+    for (const tab of tabs) {
+      tabButtons[tab.id].addEventListener("click", () => handlers.onTabChange(tab.id));
+    }
+    inventoryTrashDropZone.addEventListener("dragover", handlers.onTrashDragOver);
+    inventoryTrashDropZone.addEventListener("dragleave", handlers.onTrashDragLeave);
+    inventoryTrashDropZone.addEventListener("drop", handlers.onTrashDrop);
+    discardOverlay.addEventListener("click", handlers.onDiscardOverlayClick);
+    discardCountInput.addEventListener("keydown", handlers.onDiscardKeyDown);
+    discardCancelBtn.addEventListener("click", handlers.onDiscardCancel);
+    discardConfirmBtn.addEventListener("click", handlers.onDiscardConfirm);
+    personalStorageOverlay.addEventListener("click", handlers.onPersonalStorageOverlayClick);
+    personalStorageCloseBtn.addEventListener("click", handlers.onPersonalStorageClose);
+    personalStorageTransferCurtain.addEventListener("click", handlers.onPersonalStorageCurtainClick);
+    personalStorageTransferCountInput.addEventListener("keydown", handlers.onPersonalStorageTransferKeyDown);
+    personalStorageTransferCancelBtn.addEventListener("click", handlers.onPersonalStorageTransferCancel);
+    personalStorageTransferConfirmBtn.addEventListener("click", handlers.onPersonalStorageTransferConfirm);
+  }
+
   return {
+    bindEvents,
     invWin,
     equipWin,
     previewCanvasWrap,

@@ -51,6 +51,7 @@ export function createPlayerGameplayCoordinator({
   let shiftRotatePointerActive = false;
   let shiftRotateLastX = 0;
   let shiftRotateLastY = 0;
+  let buildCameraSnapshot = null;
 
   function initializeCamera({ camera, controls, colliders, scene, config }) {
     cameraRuntime = {
@@ -73,8 +74,47 @@ export function createPlayerGameplayCoordinator({
     controls.update();
   }
 
+  function enterBuildCamera({ center, extent = 10 } = {}) {
+    if (!cameraRuntime || !center) return false;
+    const { camera, controls } = cameraRuntime;
+    if (!buildCameraSnapshot) {
+      buildCameraSnapshot = {
+        position: camera.position.clone(),
+        target: controls.target.clone(),
+        controlsEnabled: controls.enabled,
+      };
+    }
+    const safeExtent = Math.max(6, Number(extent) || 10);
+    controls.enabled = false;
+    controls.target.set(center.x, center.y ?? 0, center.z);
+    camera.position.set(
+      center.x + safeExtent * 0.72,
+      (center.y ?? 0) + Math.max(7, safeExtent * 0.82),
+      center.z + safeExtent * 0.9,
+    );
+    camera.lookAt(controls.target);
+    controls.update();
+    return true;
+  }
+
+  function exitBuildCamera() {
+    if (!cameraRuntime || !buildCameraSnapshot) return false;
+    const { camera, controls } = cameraRuntime;
+    camera.position.copy(buildCameraSnapshot.position);
+    controls.target.copy(buildCameraSnapshot.target);
+    controls.enabled = buildCameraSnapshot.controlsEnabled;
+    buildCameraSnapshot = null;
+    lastFollowPlayerPosition.copy(player.position);
+    controls.update();
+    return true;
+  }
+
+  function isBuildCameraActive() {
+    return Boolean(buildCameraSnapshot);
+  }
+
   function updateCameraOcclusion(dt) {
-    if (!cameraRuntime) return;
+    if (!cameraRuntime || buildCameraSnapshot) return;
     const { camera, controls, colliders, scene, state, config } = cameraRuntime;
     updateThirdPersonCameraOcclusion({ camera, controls, colliders, scene, state, dt, config });
   }
@@ -82,6 +122,10 @@ export function createPlayerGameplayCoordinator({
   function updateCameraFollow() {
     if (!cameraRuntime) return;
     const { camera, controls } = cameraRuntime;
+    if (buildCameraSnapshot) {
+      controls.update();
+      return;
+    }
     framePlayerDelta.copy(player.position).sub(lastFollowPlayerPosition);
     if (framePlayerDelta.lengthSq() > 0) {
       camera.position.add(framePlayerDelta);
@@ -217,6 +261,9 @@ export function createPlayerGameplayCoordinator({
     harvestTrees: resourceWorldRuntime.harvestTrees,
     initializeCamera,
     snapCameraToPlayer,
+    enterBuildCamera,
+    exitBuildCamera,
+    isBuildCameraActive,
     updateCameraOcclusion,
     updateCameraFollow,
     beginShiftCameraRotation,

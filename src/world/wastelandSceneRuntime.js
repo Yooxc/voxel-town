@@ -1,4 +1,19 @@
+import { getWastelandStairLandingCell, normalizeWastelandBuildLevel } from "../systems/wastelandBuilding.js";
+
 export function createWastelandSceneRuntime() {
+  function isStairCollider(child) {
+    return child?.userData?.isWastelandStairSideCollider || child?.userData?.isWastelandStairRearCollider;
+  }
+
+  function isStairLandingFloor(structures, structure) {
+    if (structure?.slot !== "floor" || (normalizeWastelandBuildLevel(structure.level) ?? 0) !== 1) return false;
+    return (structures ?? []).some((candidate) => {
+      if (candidate?.slot !== "stairs" || (normalizeWastelandBuildLevel(candidate.level) ?? 0) !== 0) return false;
+      const landing = getWastelandStairLandingCell(candidate, candidate.rotationQuarter);
+      return Number(landing?.row) === Number(structure.row)
+        && Number(landing?.col) === Number(structure.col);
+    });
+  }
   function clearRoot(root, disposeObject) {
     if (!root) return;
     while (root.children.length) {
@@ -8,9 +23,27 @@ export function createWastelandSceneRuntime() {
     }
   }
 
+  function clearStructureRoot(plot, disposeObject, unregisterCollider, unregisterInteractable, unregisterSurface, unregisterCeiling) {
+    if (!plot?.structureRoot) return;
+    for (const mesh of [...plot.structureRoot.children]) {
+      unregisterCollider?.(mesh);
+      mesh.traverse?.((child) => { if (child !== mesh && isStairCollider(child)) unregisterCollider?.(child); });
+      unregisterInteractable?.(mesh);
+      unregisterSurface?.(mesh);
+      unregisterCeiling?.(mesh);
+    }
+    clearRoot(plot.structureRoot, disposeObject);
+  }
+
+  function clearFoundationRoot(plot, disposeObject, unregisterSurface) {
+    if (!plot?.foundationRoot) return;
+    for (const mesh of [...plot.foundationRoot.children]) unregisterSurface?.(mesh);
+    clearRoot(plot.foundationRoot, disposeObject);
+  }
+
   function ensureState({ plot, createGroup }) {
     if (!plot) return null;
-    for (const key of ["fenceRoot", "fenceLinkRoot", "claimPreviewRoot", "structureRoot"]) {
+    for (const key of ["fenceRoot", "fenceLinkRoot", "claimPreviewRoot", "structureRoot", "foundationRoot"]) {
       if (plot[key]) continue;
       plot[key] = createGroup();
       plot.root.add(plot[key]);
@@ -19,6 +52,7 @@ export function createWastelandSceneRuntime() {
     if (!plot.claimDrafts) plot.claimDrafts = new Map();
     if (!plot.claims) plot.claims = [];
     if (!plot.structures) plot.structures = [];
+    if (!plot.foundations) plot.foundations = [];
     return plot;
   }
 
@@ -53,7 +87,12 @@ export function createWastelandSceneRuntime() {
       if (!cell) return [];
       return [{
         structure,
-        position: { x: cell.x, y: getSurfaceY(cell), z: cell.z },
+        position: {
+          x: cell.x,
+          y: getSurfaceY(cell),
+          z: cell.z,
+          ...(Number.isFinite(Number(cell.size)) ? { cellSize: Number(cell.size) } : {}),
+        },
       }];
     });
   }
@@ -113,16 +152,59 @@ export function createWastelandSceneRuntime() {
     return plans;
   }
 
-  function rebuildStructures({ plot, disposeObject, getCellByGrid, getSurfaceY, createMesh, getPartDef }) {
+  function rebuildStructures({
+    plot,
+    disposeObject,
+    getCellByGrid,
+    getSurfaceY,
+    createMesh,
+    getPartDef,
+    registerCollider,
+    unregisterCollider,
+    registerInteractable,
+    unregisterInteractable,
+    registerSurface,
+    unregisterSurface,
+    registerCeiling,
+    unregisterCeiling,
+  }) {
     if (!plot) return;
-    clearRoot(plot.structureRoot, disposeObject);
+    clearStructureRoot(plot, disposeObject, unregisterCollider, unregisterInteractable, unregisterSurface, unregisterCeiling);
     const plans = getStructureScenePlans({ structures: plot.structures, getCellByGrid, getSurfaceY });
     for (const { structure, position } of plans) {
       Object.assign(structure, position);
+      const partDef = getPartDef(structure.type);
       const mesh = createMesh(structure, getPartDef);
       if (!mesh) continue;
       structure.mesh = mesh;
       plot.structureRoot.add(mesh);
+      const isOpenDoor = partDef?.structureKind === "door" && Boolean(structure.isOpen);
+      if (partDef?.blocksMovement && !isOpenDoor) registerCollider?.(mesh);
+      mesh.traverse?.((child) => { if (child !== mesh && isStairCollider(child)) registerCollider?.(child); });
+      if (partDef?.structureKind === "door") registerInteractable?.(mesh, structure);
+      if (partDef?.walkable) registerSurface?.(mesh);
+      if (
+        partDef?.slot === "roof"
+        || (partDef?.slot === "floor" && !isStairLandingFloor(plot.structures, structure))
+      ) registerCeiling?.(mesh);
+    }
+  }
+
+  function rebuildFoundations({
+    plot,
+    disposeObject,
+    createMesh,
+    registerSurface,
+    unregisterSurface,
+  }) {
+    if (!plot?.foundationRoot) return;
+    clearFoundationRoot(plot, disposeObject, unregisterSurface);
+    for (const foundation of plot.foundations ?? []) {
+      if (foundation.status !== "completed") continue;
+      const mesh = createMesh(foundation, plot);
+      if (!mesh) continue;
+      plot.foundationRoot.add(mesh);
+      registerSurface?.(mesh);
     }
   }
 
@@ -175,15 +257,33 @@ export function createWastelandSceneRuntime() {
     }
   }
 
-  function resetState({ plot, resetPlan, disposeObject, resetPlacementMode, closeConfirm, closeCancel, setCellState, updateClaimActions }) {
+  function resetState({
+    plot,
+    resetPlan,
+    disposeObject,
+    unregisterStructureCollider,
+    unregisterStructureInteractable,
+    unregisterStructureSurface,
+    unregisterStructureCeiling,
+    unregisterFoundationSurface,
+    resetPlacementMode,
+    closeConfirm,
+    closeCancel,
+    setCellState,
+    updateClaimActions,
+  }) {
     if (!plot) return;
-    for (const root of [plot.fenceRoot, plot.fenceLinkRoot, plot.claimPreviewRoot, plot.structureRoot]) {
+    clearStructureRoot(plot, disposeObject, unregisterStructureCollider, unregisterStructureInteractable, unregisterStructureSurface, unregisterStructureCeiling);
+    clearFoundationRoot(plot, disposeObject, unregisterFoundationSurface);
+    for (const root of [plot.fenceRoot, plot.fenceLinkRoot, plot.claimPreviewRoot]) {
       clearRoot(root, disposeObject);
     }
     plot.fencePosts = new Map(resetPlan.fencePosts.map((post) => [post.key, post]));
     plot.claimDrafts = new Map(resetPlan.drafts.map((draft) => [draft.ownerId, draft]));
     plot.claims = resetPlan.claims;
     plot.structures = resetPlan.structures;
+    plot.foundations = resetPlan.foundations ?? [];
+    plot.revision = resetPlan.revision ?? 0;
     resetPlacementMode();
     closeConfirm();
     closeCancel();
@@ -207,10 +307,17 @@ export function createWastelandSceneRuntime() {
     rebuildDrafts,
     rebuildLinks,
     rebuildStructures: rebuildStructureVisuals,
+    unregisterStructureCollider,
+    unregisterStructureInteractable,
+    unregisterStructureSurface,
+    unregisterStructureCeiling,
+    unregisterFoundationSurface,
     updateClaimActions,
   }) {
     if (!plot) return;
-    for (const root of [plot.fenceRoot, plot.fenceLinkRoot, plot.claimPreviewRoot, plot.structureRoot]) {
+    clearStructureRoot(plot, disposeObject, unregisterStructureCollider, unregisterStructureInteractable, unregisterStructureSurface, unregisterStructureCeiling);
+    clearFoundationRoot(plot, disposeObject, unregisterFoundationSurface);
+    for (const root of [plot.fenceRoot, plot.fenceLinkRoot, plot.claimPreviewRoot]) {
       clearRoot(root, disposeObject);
     }
     for (const cell of plot.cells ?? []) {
@@ -228,6 +335,8 @@ export function createWastelandSceneRuntime() {
     plot.claimDrafts = new Map(restorePlan.drafts.map((draft) => [draft.ownerId, draft]));
     plot.claims = restorePlan.claims;
     plot.structures = restorePlan.structures;
+    plot.foundations = restorePlan.foundations ?? [];
+    plot.revision = restorePlan.revision ?? 0;
     resetPlacementMode();
     closeConfirm();
     closeCancel();
@@ -259,6 +368,7 @@ export function createWastelandSceneRuntime() {
     getStructureScenePlans,
     getClaimPreviewPlans,
     rebuildStructures,
+    rebuildFoundations,
     rebuildFenceLinks,
     clearClaimPreview,
     updateClaimPreview,

@@ -173,12 +173,17 @@ export function createWorkstationWindowsUi({
     boxSizing: "border-box", height: "100%", overflow: "hidden",
   });
   refineryWindow.appendChild(refineryBody);
-  const refineryListPanel = createElement("div", { display: "flex", flexDirection: "column", gap: "8px", minWidth: "0" });
+  const refineryListPanel = createElement("div", {
+    display: "flex", flexDirection: "column", gap: "8px", minWidth: "0", minHeight: "0", overflow: "hidden",
+  });
   refineryBody.appendChild(refineryListPanel);
   refineryListPanel.appendChild(createElement("div", {
     fontFamily: "system-ui, -apple-system, sans-serif", fontSize: "12px", fontWeight: "800", color: "rgba(70,70,70,0.76)",
   }, "재련 목록"));
-  const refineryRecipeList = createElement("div", { display: "flex", flexDirection: "column", gap: "6px", overflow: "auto" });
+  const refineryRecipeList = createElement("div", {
+    display: "flex", flexDirection: "column", gap: "6px", minHeight: "0", flex: "1 1 auto",
+    overflowX: "hidden", overflowY: "auto", scrollbarGutter: "stable",
+  });
   refineryListPanel.appendChild(refineryRecipeList);
   const refineryDetailPanel = createElement("div", {
     display: "grid", gridTemplateRows: "360px 88px 124px", gap: "14px", minWidth: "0", height: "100%", overflow: "hidden",
@@ -239,7 +244,7 @@ export function createWorkstationWindowsUi({
 
   function setRefineryOpen(open) {
     refineryOverlay.style.display = open ? "block" : "none";
-    refineryWindow.style.display = open ? "block" : "none";
+    refineryWindow.style.display = open ? "grid" : "none";
   }
 
   return {

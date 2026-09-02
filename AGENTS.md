@@ -13,6 +13,20 @@ These rules apply when working in this project.
 - Do not read files or folders outside `C:\AI_AGENT_WORKSPACE\voxel-town` unless XC explicitly allows it.
 - Do not access `C:\Users\YSJ\Desktop`, `Documents`, `Downloads`, `AppData`, `.ssh`, `.codex`, `.openclaw`, browser profiles, cookies, passwords, or session data.
 
+## Feature Architecture
+
+- Treat `src/main.js` as the application composition root, not as the default location for feature implementation.
+- When adding a feature, first identify and extend the existing module that already owns the relevant responsibility under areas such as `src/core`, `src/systems`, `src/ui`, `src/world`, `src/save`, or `src/auth`.
+- Keep only imports, initialization, dependency wiring, top-level state connections, and lifecycle calls in `src/main.js`.
+- Do not implement substantial UI creation, event handling, gameplay rules, state management, persistence logic, or Three.js model construction directly in `src/main.js`.
+- Prefer extending an existing feature coordinator, controller, runtime, facade, or integration module when it already owns the relevant responsibility.
+- Do not mechanically create one JavaScript file for every small feature, option, handler, or patch. Keep closely related behavior together in its established owning module.
+- Create a new abstraction only when the feature has a distinct responsibility or when it removes meaningful complexity or duplication.
+- Create a new JavaScript file only for a genuinely separate subsystem or responsibility, or when adding the code to an existing module would clearly mix responsibilities or make that module difficult to maintain.
+- Before implementing a new feature, report which module will own it and the exact connection code expected in `src/main.js`.
+- Add focused tests for new feature modules, and run the relevant tests plus the full test suite and build when the change affects shared behavior.
+- A very small connection may remain in `src/main.js`, but code expected to grow or require independent maintenance must be separated from the beginning.
+
 ## Allowed Without Extra Approval
 
 - Inspect the `C:\AI_AGENT_WORKSPACE\voxel-town` folder structure.

@@ -1,3 +1,10 @@
+import {
+  getWastelandStructureDependencyError,
+  getWastelandStructureFootprintCells,
+  getWastelandStairLandingCell,
+  getWastelandStructurePlacementKey,
+} from "./wastelandBuilding.js";
+
 export const FRONTIER_BUILDING_HEIGHT = 4.4;
 export const FRONTIER_BUILDING_SIGN_MAX_CHARS = 8;
 
@@ -798,18 +805,22 @@ export function validateWastelandDraftRectangle({
 
 export function getWastelandClaimProgress(claim, getCellById) {
   if (!claim) return null;
-  let completed = 0;
+  let preparedPercent = 0;
   for (const cellId of claim.cellIds ?? []) {
     const cell = getCellById(cellId);
-    if (cell?.state === "dug3") completed += 1;
+    const progress = Number.isFinite(Number(cell?.clearProgress))
+      ? Number(cell.clearProgress)
+      : cell?.state === "dug3" ? 100 : cell?.state === "dug2" ? 50 : cell?.state === "dug1" ? 25 : 0;
+    preparedPercent += Math.max(0, Math.min(100, progress));
   }
   const total = claim.cellIds?.length ?? 0;
+  const percent = total > 0 ? preparedPercent / total : 0;
   return {
     claim,
-    completed,
+    completed: Math.round((percent / 100) * total),
     total,
-    percent: total > 0 ? (completed / total) * 100 : 0,
-    readyToComplete: total > 0 && completed >= total,
+    percent,
+    readyToComplete: total > 0 && percent >= 80,
   };
 }
 
@@ -853,7 +864,12 @@ export function canBuildOnWastelandCellState({
   hasLandDeed,
   currentOwnerId,
   structures = [],
+  foundations,
   structureSlot = "",
+  structurePlacementKey = "",
+  structureItemId = "",
+  buildLevel = 0,
+  structureRotationQuarter = 0,
   minSpacing = 2,
 }) {
   if (!currentOwnerId) {
@@ -873,17 +889,60 @@ export function canBuildOnWastelandCellState({
   if (!hasLandDeed) {
     return { ok: false, reason: "해당 토지권을 보유해야 건축할 수 있습니다." };
   }
-  if (Math.floor(Number(cell.clearProgress) || 0) < 100) {
-    return { ok: false, reason: "100% 개간된 셀에서만 건축할 수 있습니다" };
+  const foundation = Array.isArray(foundations) && foundations.find((entry) => (
+    entry?.status === "completed"
+    && entry.ownerId === currentOwnerId
+    && cell.row >= entry.bounds.minRow && cell.row <= entry.bounds.maxRow
+    && cell.col >= entry.bounds.minCol && cell.col <= entry.bounds.maxCol
+  ));
+  if (Array.isArray(foundations) && !foundation) {
+    return { ok: false, reason: "완성된 건축 기초 위에서만 건축할 수 있습니다" };
   }
-  if (
-    structures.some(
-      (structure) =>
-        Number(structure?.row) === cell.row &&
-        Number(structure?.col) === cell.col &&
-        (!structureSlot || String(structure?.slot ?? "") === structureSlot)
-    )
-  ) {
+  if (structurePlacementKey && structures.some((structure) => (
+    structure?.placementKey || getWastelandStructurePlacementKey({
+      cell: structure,
+      slot: structure?.slot,
+      rotationQuarter: structure?.rotationQuarter,
+      level: structure?.level,
+    })
+  ) === structurePlacementKey)) {
+    return { ok: false, reason: "이미 해당 변에 건축물이 있습니다." };
+  }
+  const dependencyError = structureItemId
+    ? getWastelandStructureDependencyError({
+      structures,
+      row: cell.row,
+      col: cell.col,
+      itemId: structureItemId,
+      level: buildLevel,
+      rotationQuarter: structureRotationQuarter,
+    })
+    : "";
+  if (dependencyError) return { ok: false, reason: dependencyError };
+  if (structureSlot === "stairs") {
+    const footprint = getWastelandStructureFootprintCells(cell, structureSlot, structureRotationQuarter);
+    const stairCells = [...footprint, getWastelandStairLandingCell(cell, structureRotationQuarter)];
+    if (foundation && stairCells.some((candidate) => (
+      candidate.row < foundation.bounds.minRow || candidate.row > foundation.bounds.maxRow
+      || candidate.col < foundation.bounds.minCol || candidate.col > foundation.bounds.maxCol
+    ))) return { ok: false, reason: "계단이 건축 기초 영역을 벗어납니다." };
+    const hasOverlap = structures.some((structure) => {
+      if (structure?.slot !== "stairs") return false;
+      const existingFootprint = Array.isArray(structure.footprintCells)
+        ? structure.footprintCells
+        : getWastelandStructureFootprintCells(structure, structure.slot, structure.rotationQuarter);
+      return existingFootprint.some((existing) => footprint.some((candidate) => (
+        Number(existing.row) === candidate.row && Number(existing.col) === candidate.col
+      )));
+    });
+    if (hasOverlap) return { ok: false, reason: "계단이 다른 계단과 겹칩니다." };
+  }
+  if (!structurePlacementKey && structures.some(
+    (structure) =>
+      Number(structure?.row) === cell.row &&
+      Number(structure?.col) === cell.col &&
+      (!structureSlot || String(structure?.slot ?? "") === structureSlot)
+  )) {
     return { ok: false, reason: "이미 건축물이 있는 셀입니다." };
   }
   if (
@@ -917,6 +976,9 @@ export function createEmptyFrontierWastelandState() {
     fencePosts: [],
     claims: [],
     structures: [],
+    foundations: [],
+    terrainDepthByCell: {},
+    revision: 0,
   };
 }
 
@@ -1028,9 +1090,26 @@ export function normalizeFrontierWastelandState(rawState) {
           ownerId: String(structure?.ownerId ?? ""),
           type: String(structure?.type ?? ""),
           slot: String(structure?.slot ?? ""),
+          structureKind: String(structure?.structureKind ?? structure?.slot ?? ""),
           row: Number(structure?.row),
           col: Number(structure?.col),
           rotationQuarter: Number(structure?.rotationQuarter) || 0,
+          level: Number(structure?.level) === 1 ? 1 : 0,
+          edge: String(structure?.edge ?? ""),
+          placementKey: String(structure?.placementKey ?? ""),
+          cellSize: Number(structure?.cellSize) || 0,
+          isOpen: Boolean(structure?.isOpen),
+          createdAt: Number(structure?.createdAt) || 0,
+        }))
+        .map((structure) => ({
+          ...structure,
+          edge: structure.slot === "wall" ? (["north", "east", "south", "west"][structure.rotationQuarter % 4] ?? "north") : "",
+          placementKey: structure.placementKey || getWastelandStructurePlacementKey({
+            cell: structure,
+            slot: structure.slot,
+            rotationQuarter: structure.rotationQuarter,
+            level: structure.level,
+          }),
         }))
         .filter(
           (structure) =>
@@ -1075,5 +1154,49 @@ export function normalizeFrontierWastelandState(rawState) {
             Number.isFinite(claim.maxCol)
         )
     : [];
-  return { cells, drafts, fencePosts, claims, structures };
+  const foundations = Array.isArray(raw.foundations)
+    ? raw.foundations
+        .map((foundation) => ({
+          id: String(foundation?.id ?? ""),
+          ownerId: String(foundation?.ownerId ?? ""),
+          landId: String(foundation?.landId ?? ""),
+          status: foundation?.status === "completed" ? "completed" : "excavating",
+          bounds: {
+            minRow: Number(foundation?.bounds?.minRow),
+            maxRow: Number(foundation?.bounds?.maxRow),
+            minCol: Number(foundation?.bounds?.minCol),
+            maxCol: Number(foundation?.bounds?.maxCol),
+            width: Number(foundation?.bounds?.width),
+            height: Number(foundation?.bounds?.height),
+          },
+          postKeys: Array.isArray(foundation?.postKeys) ? foundation.postKeys.map(String).filter(Boolean) : [],
+          createdAt: Number(foundation?.createdAt) || 0,
+          completedAt: Number(foundation?.completedAt) || 0,
+        }))
+        .filter((foundation) => foundation.id && foundation.ownerId && [
+          foundation.bounds.minRow,
+          foundation.bounds.maxRow,
+          foundation.bounds.minCol,
+          foundation.bounds.maxCol,
+        ].every(Number.isFinite))
+    : [];
+  const terrainDepthByCell = Object.fromEntries(
+    Object.entries(raw.terrainDepthByCell && typeof raw.terrainDepthByCell === "object" ? raw.terrainDepthByCell : {})
+      .filter(([key, value]) => /^-?\d+:-?\d+$/.test(key) && Number.isFinite(Number(value)))
+      .map(([key, value]) => [key, Math.max(0, Math.min(1.5, Number(value)))])
+  );
+  const terrainHeights = Array.isArray(raw.terrainHeights)
+    ? raw.terrainHeights.map((height) => Math.max(-1.5, Math.min(0, Number(height) || 0)))
+    : [];
+  return {
+    cells,
+    drafts,
+    fencePosts,
+    claims,
+    structures,
+    foundations,
+    terrainDepthByCell,
+    terrainHeights,
+    revision: Math.max(0, Math.floor(Number(raw.revision) || 0)),
+  };
 }

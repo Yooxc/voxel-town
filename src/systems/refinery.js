@@ -3,10 +3,18 @@ export const REFINERY_RECIPES = Object.freeze({
   woodPlank: { id: "woodPlank", label: "목재", inputItemId: "woodChip", inputCount: 2, outputItemId: "woodPlank", outputCount: 1 },
   woodFloor: { id: "woodFloor", label: "목재 바닥", inputItemId: "woodPlank", inputCount: 2, outputItemId: "woodFloor", outputCount: 1 },
   woodWall: { id: "woodWall", label: "목재 벽", inputItemId: "woodPlank", inputCount: 3, outputItemId: "woodWall", outputCount: 1 },
-  woodPillar: { id: "woodPillar", label: "목재 기둥", inputItemId: "woodPlank", inputCount: 2, outputItemId: "woodPillar", outputCount: 1 },
+  woodDoor: { id: "woodDoor", label: "목재 문", inputItemId: "woodPlank", inputCount: 4, outputItemId: "woodDoor", outputCount: 1 },
+  woodWindow: { id: "woodWindow", label: "목재 창문", inputItemId: "woodPlank", inputCount: 3, outputItemId: "woodWindow", outputCount: 1 },
+  woodStairs: { id: "woodStairs", label: "목재 계단", inputItemId: "woodPlank", inputCount: 8, outputItemId: "woodStairs", outputCount: 1 },
+  woodRoof: { id: "woodRoof", label: "목재 지붕", inputItemId: "woodPlank", inputCount: 5, outputItemId: "woodRoof", outputCount: 1 },
+  woodPillar: { id: "woodPillar", label: "목재 기둥", inputItemId: "woodPlank", inputCount: 2, outputItemId: "woodPillar", outputCount: 1, hidden: true },
   stoneFloor: { id: "stoneFloor", label: "석재 바닥", inputItemId: "masonryStone", inputCount: 2, outputItemId: "stoneFloor", outputCount: 1 },
   stoneWall: { id: "stoneWall", label: "석재 벽", inputItemId: "masonryStone", inputCount: 3, outputItemId: "stoneWall", outputCount: 1 },
-  stonePillar: { id: "stonePillar", label: "석재 기둥", inputItemId: "masonryStone", inputCount: 2, outputItemId: "stonePillar", outputCount: 1 },
+  stoneDoor: { id: "stoneDoor", label: "석재 문", inputItemId: "masonryStone", inputCount: 4, outputItemId: "stoneDoor", outputCount: 1 },
+  stoneWindow: { id: "stoneWindow", label: "석재 창문", inputItemId: "masonryStone", inputCount: 3, outputItemId: "stoneWindow", outputCount: 1 },
+  stoneStairs: { id: "stoneStairs", label: "석재 계단", inputItemId: "masonryStone", inputCount: 8, outputItemId: "stoneStairs", outputCount: 1 },
+  stoneRoof: { id: "stoneRoof", label: "석재 지붕", inputItemId: "masonryStone", inputCount: 5, outputItemId: "stoneRoof", outputCount: 1 },
+  stonePillar: { id: "stonePillar", label: "석재 기둥", inputItemId: "masonryStone", inputCount: 2, outputItemId: "stonePillar", outputCount: 1, hidden: true },
 });
 
 export function getDefaultRefineryRecipe(recipes = REFINERY_RECIPES) {
@@ -14,11 +22,11 @@ export function getDefaultRefineryRecipe(recipes = REFINERY_RECIPES) {
 }
 
 export function getRefineryRecipeEntries(recipes = REFINERY_RECIPES) {
-  return Object.values(recipes);
+  return Object.values(recipes).filter((recipe) => !recipe.hidden);
 }
 
 export function getSelectedRefineryRecipe(recipeId, recipes = REFINERY_RECIPES) {
-  return recipes[recipeId] ?? getDefaultRefineryRecipe(recipes);
+  return recipes[recipeId] && !recipes[recipeId].hidden ? recipes[recipeId] : getDefaultRefineryRecipe(recipes);
 }
 
 export function createRefineryCraftPlan(recipe, { inputOwned, getItemName }) {

@@ -10,8 +10,14 @@ import {
 } from "../src/systems/refinery.js";
 
 test("provides default, selected, and listed refinery recipes", () => {
+  const listedRecipes = getRefineryRecipeEntries();
   assert.equal(getDefaultRefineryRecipe().id, "purifyPowder");
-  assert.equal(getRefineryRecipeEntries().length, 8);
+  assert.equal(listedRecipes.length, 14);
+  assert.equal(listedRecipes.some((recipe) => recipe.outputItemId === "woodPillar"), false);
+  assert.equal(listedRecipes.some((recipe) => recipe.outputItemId === "woodStairs"), true);
+  assert.equal(listedRecipes.some((recipe) => recipe.outputItemId === "stoneStairs"), true);
+  assert.equal(listedRecipes.some((recipe) => recipe.outputItemId === "woodRoof"), true);
+  assert.equal(listedRecipes.some((recipe) => recipe.outputItemId === "stoneRoof"), true);
   assert.equal(getSelectedRefineryRecipe("stoneWall").inputCount, 3);
   assert.equal(getSelectedRefineryRecipe("missing"), REFINERY_RECIPES.purifyPowder);
 });

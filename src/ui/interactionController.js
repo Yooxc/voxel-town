@@ -15,6 +15,23 @@ export function createInteractionController(ctx) {
       return;
     }
 
+    if (ctx.isWastelandBuildModeActive()) {
+      if (key === "escape") {
+        event.preventDefault();
+        ctx.exitWastelandBuildMode();
+        return;
+      }
+      if (key === "r") {
+        event.preventDefault();
+        ctx.rotateWastelandBuildPart();
+        return;
+      }
+      const keys = ctx.getKeys();
+      if (key in keys) keys[key] = false;
+      if (key === "shift") ctx.resetShiftRotation(false);
+      return;
+    }
+
     const keys = ctx.getKeys();
     if (ctx.isWorkUiMovementLocked() && (key in keys || key === "shift")) {
       if (key in keys) keys[key] = false;
@@ -57,6 +74,11 @@ export function createInteractionController(ctx) {
       }
       if (state.activeInteractable?.type === "nftBoard") {
         void ctx.openNftBoardSelectionOverlay();
+        return;
+      }
+      if (state.activeInteractable?.type === "wastelandDoor") {
+        if (event.repeat) return;
+        void ctx.toggleWastelandDoor(state.activeInteractable.structureKey);
         return;
       }
       const boothPlan = ctx.getFrontierBoothInteractionPlan(state.activeInteractable);
@@ -108,6 +130,7 @@ export function createInteractionController(ctx) {
   }
 
   function handleWorldSpaceInteraction(event) {
+    if (ctx.isWastelandBuildModeActive()) return;
     const state = ctx.getInteractionState();
     if (state.activeInteractable?.type === "mansionStorage") {
       event.preventDefault();
@@ -170,21 +193,30 @@ export function createInteractionController(ctx) {
         showTimedMessage(ctx.hasOwnedTool("shovel") ? ctx.hudMessages.EQUIP_SHOVEL : ctx.hudMessages.NEED_SHOVEL);
         return;
       }
-      const clearCheck = ctx.canClearWastelandCell(state.activeWastelandCell);
-      if (!clearCheck.ok) {
-        showTimedMessage(clearCheck.reason, 1000);
+      const result = ctx.tryDigWastelandTerrain?.();
+      if (!result?.ok) {
+        showTimedMessage(result?.reason ?? "이 구역은 파낼 수 없습니다.", 1000);
         return;
       }
-      const plan = ctx.createWastelandClearPlan(state.activeWastelandCell);
-      if (!plan.ok) {
-        showTimedMessage("이미 개간한 셀입니다.");
-        return;
-      }
-      state.activeWastelandCell.clearProgress = plan.progress;
-      ctx.syncWastelandCellState(state.activeWastelandCell);
-      ctx.applyWastelandCellVisual(state.activeWastelandCell);
-      showTimedMessage(plan.completed ? "황무지 개간 완료!" : `황무지 개간 ${plan.progress}%`);
-      ctx.saveSharedWorldStateToLocal();
+      showTimedMessage(`황무지 개간 ${Math.round(result.progress?.percent ?? 0)}%`, 800);
+      return;
+    }
+    const terrainDigResult = ctx.tryDigTerrain?.();
+    if (terrainDigResult?.ok) {
+      ctx.triggerMiningSwing(terrainDigResult.target.mesh);
+      showTimedMessage("땅을 팠습니다.", 600);
+      return;
+    }
+    if (terrainDigResult?.reason === "need-shovel") {
+      showTimedMessage(ctx.hasOwnedTool("shovel") ? ctx.hudMessages.EQUIP_SHOVEL : ctx.hudMessages.NEED_SHOVEL);
+      return;
+    }
+    if (terrainDigResult?.reason === "blocked") {
+      showTimedMessage("이 구역은 파낼 수 없습니다.");
+      return;
+    }
+    if (terrainDigResult?.reason === "max-depth") {
+      showTimedMessage("더 이상 깊게 팔 수 없습니다.");
       return;
     }
     if (!state.activeMineRock) return;
@@ -225,6 +257,13 @@ export function createInteractionController(ctx) {
     state.activeWastelandCell = null;
     state.activeTutorialNpc = ctx.findNearestTutorialNpc(2.2);
     state.activeMapGate = ctx.findTriggeredMapGate();
+    if (ctx.isWastelandBuildModeActive()) {
+      ctx.hideHint();
+      ctx.clearWastelandHighlights();
+      ctx.updateWastelandBuildModeUi();
+      ctx.setInteractionState(state);
+      return;
+    }
     if (ctx.hasNearbyForgeStation()) state.activeForgeStation = ctx.getForgeStation();
     state.activeInteractable = ctx.findNearestInteractable(2.0);
     ctx.updateInteractableHighlights(state.activeInteractable);
@@ -238,6 +277,9 @@ export function createInteractionController(ctx) {
     if (!hintText) {
       state.activeHarvestTree = ctx.findNearestHarvestTree(2.2);
       if (state.activeHarvestTree) hintText = "Space : 나무 채집";
+    }
+    if (!hintText) {
+      hintText = ctx.getTerrainDigHint?.() ?? "";
     }
     if (!hintText) {
       state.activeMineRock = ctx.findNearestMineRock(2.2);

@@ -22,6 +22,7 @@ export function updatePlayerMovementRuntime({
   applyMovementCollisionStep,
   isInsideBounds,
   intersectsAnyCollider,
+  getColliderPenetration,
   isStartRingTransitionBlocked,
   isCrossingBlockedStartRing,
   applyMovementPostCollisionCorrections,
@@ -74,11 +75,11 @@ export function updatePlayerMovementRuntime({
     const delta = getMovementDelta(move, speed, dt);
     const { afterX } = applyMovementCollisionStep({
       axis: "x", position: player.position, prevPos: previousPosition, delta,
-      isInsideBounds, intersectsAnyCollider, isStartRingTransitionBlocked, isCrossingBlockedStartRing,
+      isInsideBounds, intersectsAnyCollider, getColliderPenetration, isStartRingTransitionBlocked, isCrossingBlockedStartRing,
     });
     applyMovementCollisionStep({
       axis: "z", position: player.position, prevPos: { ...previousPosition, x: afterX }, delta,
-      isInsideBounds, intersectsAnyCollider, isStartRingTransitionBlocked, isCrossingBlockedStartRing,
+      isInsideBounds, intersectsAnyCollider, getColliderPenetration, isStartRingTransitionBlocked, isCrossingBlockedStartRing,
     });
     applyMovementPostCollisionCorrections({
       position: player.position,

@@ -29,3 +29,15 @@ test("reindexes remaining colliders after removal and resolves fallbacks", () =>
   assert.equal(registry.getTrackedIndex(second, 4), 0);
   assert.equal(registry.getTrackedIndex({}, 4), 4);
 });
+
+test("stores optional oriented-box collision data alongside a broad-phase box", () => {
+  const registry = createColliderRegistry();
+  const mesh = boxMesh();
+  registry.add(mesh, {
+    preciseShape: { type: "orientedBox", halfX: 0.7, halfZ: 1.4, rotationY: Math.PI * 0.25 },
+  });
+
+  assert.equal(registry.boxes[0].userData.preciseShape.type, "orientedBox");
+  assert.equal(registry.boxes[0].userData.preciseShape.halfX, 0.7);
+  assert.equal(registry.boxes[0].userData.preciseShape.halfZ, 1.4);
+});

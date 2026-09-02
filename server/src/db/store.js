@@ -10,6 +10,7 @@ const defaultState = {
   sessions: [],
   playerSaves: [],
   playerSaveBackups: [],
+  worlds: {},
 };
 
 function ensureStorage() {
@@ -30,6 +31,7 @@ function readState() {
       sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
       playerSaves: Array.isArray(parsed.playerSaves) ? parsed.playerSaves : [],
       playerSaveBackups: Array.isArray(parsed.playerSaveBackups) ? parsed.playerSaveBackups : [],
+      worlds: parsed.worlds && typeof parsed.worlds === "object" ? parsed.worlds : {},
     };
   } catch {
     return structuredClone(defaultState);

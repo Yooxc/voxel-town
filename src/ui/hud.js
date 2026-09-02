@@ -335,6 +335,52 @@ export function createHudUi({ uiLayer, lastPatchedAt }) {
   };
 }
 
+export function createGameHudOverlays({ uiLayer }) {
+  const npcDialog = document.createElement("div");
+  Object.assign(npcDialog.style, {
+    position: "fixed", left: "0", top: "0", transform: "translate(-50%, -100%)",
+    maxWidth: "min(460px, calc(100vw - 32px))", padding: "12px 14px",
+    background: "rgba(255,255,255,0.94)", border: "1px solid rgba(0,0,0,0.16)",
+    borderRadius: "14px", boxShadow: "0 12px 26px rgba(0,0,0,0.18)",
+    fontFamily: "system-ui, -apple-system, sans-serif", fontSize: "13px", lineHeight: "1.6",
+    color: "#333", display: "none", pointerEvents: "none", zIndex: "1000002",
+    willChange: "transform, left, top",
+  });
+  uiLayer.appendChild(npcDialog);
+
+  const npcDialogText = document.createElement("div");
+  npcDialog.appendChild(npcDialogText);
+  const npcDialogTail = document.createElement("div");
+  Object.assign(npcDialogTail.style, {
+    position: "absolute", left: "50%", bottom: "-10px", width: "0", height: "0",
+    transform: "translateX(-50%)", borderLeft: "10px solid transparent",
+    borderRight: "10px solid transparent", borderTop: "12px solid rgba(255,255,255,0.94)",
+    filter: "drop-shadow(0 2px 1px rgba(0,0,0,0.08))",
+  });
+  npcDialog.appendChild(npcDialogTail);
+
+  const createNameTag = (color) => {
+    const tag = document.createElement("div");
+    Object.assign(tag.style, {
+      position: "fixed", left: "0", top: "0", transform: "translate(-50%, -50%)",
+      padding: "5px 10px", borderRadius: "999px", background: "rgba(20,20,20,0.72)",
+      border: "1px solid rgba(255,255,255,0.18)", color,
+      fontFamily: "system-ui, -apple-system, sans-serif", fontSize: "12px", fontWeight: "800",
+      letterSpacing: "0.02em", pointerEvents: "none", opacity: "1",
+      transition: "opacity 120ms ease", display: "none",
+    });
+    uiLayer.appendChild(tag);
+    return tag;
+  };
+
+  const tutorialNpcNameTag = createNameTag("#fff6d2");
+  tutorialNpcNameTag.style.zIndex = "999998";
+  const playerNameTag = createNameTag("#dff7ff");
+  playerNameTag.style.zIndex = "999997";
+
+  return { npcDialog, npcDialogText, tutorialNpcNameTag, playerNameTag };
+}
+
 export function createWastelandHudActionButtons(wastelandHudWrap) {
   const completeBtn = document.createElement("button");
   completeBtn.type = "button";
@@ -368,9 +414,135 @@ export function createWastelandHudActionButtons(wastelandHudWrap) {
   abortBtn.style.pointerEvents = "auto";
   wastelandHudWrap.appendChild(abortBtn);
 
+  const buildModeBtn = document.createElement("button");
+  buildModeBtn.type = "button";
+  buildModeBtn.textContent = "건축 모드";
+  Object.assign(buildModeBtn.style, {
+    display: "none",
+    marginTop: "8px",
+    width: "100%",
+    padding: "9px 10px",
+    border: "1px solid rgba(124, 220, 170, 0.5)",
+    borderRadius: "8px",
+    background: "rgba(66, 153, 108, 0.92)",
+    color: "white",
+    fontWeight: "900",
+    cursor: "pointer",
+    pointerEvents: "auto",
+  });
+  wastelandHudWrap.appendChild(buildModeBtn);
+
   return {
     wastelandClaimCompleteBtn: completeBtn,
     wastelandClaimAbortBtn: abortBtn,
+    wastelandBuildModeBtn: buildModeBtn,
+  };
+}
+
+export function createWastelandBuildModeUi({ uiLayer, parts }) {
+  const wrap = document.createElement("div");
+  Object.assign(wrap.style, {
+    position: "fixed",
+    left: "50%",
+    bottom: "18px",
+    transform: "translateX(-50%)",
+    display: "none",
+    alignItems: "center",
+    gap: "8px",
+    maxWidth: "calc(100vw - 24px)",
+    padding: "10px",
+    background: "rgba(24, 28, 30, 0.9)",
+    border: "1px solid rgba(255,255,255,0.2)",
+    borderRadius: "8px",
+    color: "white",
+    fontFamily: "system-ui, -apple-system, sans-serif",
+    pointerEvents: "auto",
+    zIndex: "1000003",
+    overflowX: "auto",
+  });
+  uiLayer.appendChild(wrap);
+
+  const partButtons = new Map();
+  for (const part of parts) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.itemId = part.itemId;
+    Object.assign(button.style, {
+      flex: "0 0 86px",
+      minHeight: "52px",
+      padding: "7px 6px",
+      border: "1px solid rgba(255,255,255,0.22)",
+      borderRadius: "6px",
+      background: "rgba(255,255,255,0.08)",
+      color: "white",
+      cursor: "pointer",
+      fontWeight: "800",
+    });
+    wrap.appendChild(button);
+    partButtons.set(part.itemId, button);
+  }
+
+  const levelButtons = new Map();
+  for (const [level, label] of [[0, "1층"], [1, "2층"]]) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.buildLevel = String(level);
+    button.textContent = label;
+    Object.assign(button.style, {
+      flex: "0 0 52px",
+      minHeight: "40px",
+      border: "1px solid rgba(255,255,255,0.22)",
+      borderRadius: "6px",
+      background: "rgba(255,255,255,0.08)",
+      color: "white",
+      cursor: "pointer",
+      fontWeight: "800",
+    });
+    wrap.appendChild(button);
+    levelButtons.set(level, button);
+  }
+
+  const status = document.createElement("div");
+  Object.assign(status.style, {
+    flex: "0 0 170px",
+    fontSize: "12px",
+    lineHeight: "1.35",
+    color: "#dfe8e3",
+  });
+  wrap.appendChild(status);
+
+  const createCommandButton = (label) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = label;
+    Object.assign(button.style, {
+      flex: "0 0 auto",
+      width: "58px",
+      height: "40px",
+      border: "1px solid rgba(255,255,255,0.24)",
+      borderRadius: "6px",
+      background: "rgba(255,255,255,0.12)",
+      color: "white",
+      cursor: "pointer",
+      fontWeight: "800",
+    });
+    wrap.appendChild(button);
+    return button;
+  };
+
+  const placeModeButton = createCommandButton("설치");
+  const demolishModeButton = createCommandButton("철거");
+
+  return {
+    wrap,
+    partButtons,
+    levelButtons,
+    status,
+    placeModeButton,
+    demolishModeButton,
+    inspectButton: createCommandButton("점검"),
+    rotateButton: createCommandButton("회전"),
+    exitButton: createCommandButton("종료"),
   };
 }
 

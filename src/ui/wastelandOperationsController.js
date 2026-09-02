@@ -1,7 +1,19 @@
+import { getWastelandStructureRemovalDependencyError } from "../systems/wastelandBuilding.js";
+
 export function createWastelandOperationsController(ctx) {
+  const pendingDoorKeys = new Set();
+
   function notify(message, duration = 1000) {
     ctx.showUI(message, duration);
     ctx.setLastMessageUntil(ctx.now() + duration);
+  }
+
+  async function dispatchStructureAction(request) {
+    try {
+      return await ctx.dispatchStructureAction(request);
+    } catch {
+      return { ok: false, status: 0, error: "황무지 서버에 연결할 수 없습니다.", world: null };
+    }
   }
 
   function getCurrentDraft() {
@@ -133,16 +145,32 @@ export function createWastelandOperationsController(ctx) {
 
   function getBuildCheck(cell, itemId = ctx.getSelectedStructureItemId()) {
     const part = ctx.getBuildPart(itemId);
+    const rotationQuarter = ctx.getStructureRotationQuarter();
+    const level = ctx.getBuildLevel?.() ?? 0;
     const claim = getClaimByCell(cell);
-    return ctx.canBuildOnCell({
+    const baseCheck = ctx.canBuildOnCell({
       cell,
       claim,
       hasLandDeed: Boolean(claim?.landId && findOwnedLandDeed(claim.landId)),
       currentOwnerId: ctx.getOwnerId(),
       structures: ctx.ensurePlot()?.structures ?? [],
+      foundations: ctx.ensurePlot()?.foundations ?? [],
       structureSlot: part?.slot ?? "",
+      structurePlacementKey: ctx.getStructurePlacementKey(cell, part?.slot, rotationQuarter, level),
+      structureItemId: itemId,
+      buildLevel: level,
+      structureRotationQuarter: rotationQuarter,
       minSpacing: 0,
     });
+    if (!baseCheck.ok) return baseCheck;
+    const occupancyError = ctx.getBuildOccupancyError?.({
+      cell,
+      itemId,
+      part,
+      rotationQuarter,
+      level,
+    });
+    return occupancyError ? { ok: false, reason: occupancyError } : baseCheck;
   }
 
   function findIssuedLandDeed(landId) {
@@ -240,7 +268,8 @@ export function createWastelandOperationsController(ctx) {
   }
 
   function canCompleteClaim(progress) {
-    return ctx.canCompleteClaimState(progress, ctx.getOwnerId());
+    return Boolean(ctx.canBypassClaimCompletion?.(progress))
+      || ctx.canCompleteClaimState(progress, ctx.getOwnerId());
   }
 
   function canCancelClaim(progress) {
@@ -320,14 +349,19 @@ export function createWastelandOperationsController(ctx) {
     return restored;
   }
 
-  function placeStructure(cell, itemId = ctx.getSelectedStructureItemId()) {
+  async function placeStructure(cell, itemId = ctx.getSelectedStructureItemId()) {
     const plot = ctx.ensurePlot();
     const part = ctx.getBuildPart(itemId);
     if (!plot || !cell || !part) return false;
     const buildCheck = getBuildCheck(cell, itemId);
     if (!buildCheck.ok) {
-      const conflict = ctx.getStructureConflict(cell, part.slot);
-      notify(conflict ? `이미 이 셀에 ${ctx.getStructureSlotLabel(part.slot)} 부품이 있습니다.` : buildCheck.reason);
+      const conflict = ctx.getStructureConflict(
+        cell,
+        part.slot,
+        ctx.getStructureRotationQuarter(),
+        ctx.getBuildLevel?.() ?? 0,
+      );
+      notify(conflict ? `이미 해당 위치에 ${ctx.getStructureSlotLabel(part.slot)} 부품이 있습니다.` : buildCheck.reason);
       return false;
     }
     if (!ctx.consumeItem(itemId, 1)) {
@@ -335,6 +369,12 @@ export function createWastelandOperationsController(ctx) {
       return false;
     }
     const claim = getClaimByCell(cell);
+    const foundation = plot.foundations?.find((entry) => (
+      entry?.status === "completed"
+      && entry.ownerId === ctx.getOwnerId()
+      && cell.row >= entry.bounds.minRow && cell.row <= entry.bounds.maxRow
+      && cell.col >= entry.bounds.minCol && cell.col <= entry.bounds.maxCol
+    ));
     const structure = ctx.runtime.createStructureRecord({
       key: `wasteland_structure_${ctx.dateNow().toString(36)}_${cell.row}_${cell.col}`,
       claim,
@@ -344,14 +384,144 @@ export function createWastelandOperationsController(ctx) {
       cell,
       surfaceY: ctx.getStructureSurfaceY(cell),
       rotationQuarter: ctx.getStructureRotationQuarter(),
+      cellSize: cell.size,
+      level: ctx.getBuildLevel?.() ?? 0,
     });
-    if (!structure) return false;
-    plot.structures.push(structure);
-    ctx.rebuildStructures();
+    if (!structure) {
+      ctx.addItem(itemId, 1);
+      return false;
+    }
+    if (ctx.usesRemoteStructureWorld?.()) {
+      const result = await dispatchStructureAction({
+        action: {
+          type: "structure.place",
+          foundationId: foundation?.id ?? "",
+          landId: claim?.landId ?? "",
+          itemId,
+          row: cell.row,
+          col: cell.col,
+          rotationQuarter: structure.rotationQuarter,
+          cellSize: cell.size,
+          level: structure.level,
+        },
+        knownRevision: Number(plot.revision) || 0,
+        wastelandState: ctx.serializeState(),
+      });
+      if (!result?.ok) {
+        ctx.addItem(itemId, 1);
+        if (result?.world) ctx.applyRemoteStructureWorld(result.world);
+        ctx.updateInventoryUI();
+        ctx.saveProfile();
+        notify(result?.error ?? "건축물 설치에 실패했습니다.", 1300);
+        return false;
+      }
+      ctx.applyRemoteStructureWorld(result.world);
+      ctx.requestPlayerCollisionRecovery?.({ source: "build", immediate: true });
+    } else {
+      plot.structures.push(structure);
+      plot.revision = (Number(plot.revision) || 0) + 1;
+      ctx.rebuildStructures();
+      ctx.requestPlayerCollisionRecovery?.({ source: "build", immediate: true });
+      ctx.saveWorld();
+    }
     ctx.updateInventoryUI();
-    ctx.saveWorld();
+    ctx.saveProfile();
     notify(`${ctx.getItemName(itemId)} 설치 완료`, 900);
     return true;
+  }
+
+  async function removeStructure(structureKey) {
+    const plot = ctx.ensurePlot();
+    const structure = plot?.structures?.find((entry) => entry?.key === structureKey);
+    if (!plot || !structure) {
+      notify("철거할 건축물을 찾을 수 없습니다.");
+      return false;
+    }
+    if (structure.ownerId !== ctx.getOwnerId()) {
+      notify("자신이 설치한 건축물만 철거할 수 있습니다.", 1200);
+      return false;
+    }
+    const dependencyError = getWastelandStructureRemovalDependencyError({
+      structures: plot.structures,
+      structureKey: structure.key,
+    });
+    if (dependencyError) {
+      notify(dependencyError, 1300);
+      return false;
+    }
+    if (!ctx.addItem(structure.type, 1)) {
+      notify("인벤토리 공간을 확보해야 철거할 수 있습니다.", 1300);
+      return false;
+    }
+    if (ctx.usesRemoteStructureWorld?.()) {
+      const result = await dispatchStructureAction({
+        action: { type: "structure.remove", structureKey: structure.key },
+        knownRevision: Number(plot.revision) || 0,
+        wastelandState: ctx.serializeState(),
+      });
+      if (!result?.ok) {
+        ctx.consumeItem(structure.type, 1);
+        if (result?.world) ctx.applyRemoteStructureWorld(result.world);
+        ctx.updateInventoryUI();
+        ctx.saveProfile();
+        notify(result?.error ?? "건축물 철거에 실패했습니다.", 1300);
+        return false;
+      }
+      ctx.applyRemoteStructureWorld(result.world);
+    } else {
+      plot.structures = plot.structures.filter((entry) => entry !== structure);
+      plot.revision = (Number(plot.revision) || 0) + 1;
+      ctx.rebuildStructures();
+      ctx.saveWorld();
+    }
+    ctx.updateInventoryUI();
+    ctx.saveProfile();
+    notify(`${ctx.getItemName(structure.type)} 철거 완료`, 1000);
+    return true;
+  }
+
+  async function toggleDoor(structureKey) {
+    const plot = ctx.ensurePlot();
+    const structure = plot?.structures?.find((entry) => entry?.key === structureKey);
+    const part = structure ? ctx.getBuildPart(structure.type) : null;
+    if (!plot || !structure || part?.structureKind !== "door") {
+      notify("사용할 문을 찾을 수 없습니다.");
+      return false;
+    }
+    if (structure.ownerId !== ctx.getOwnerId()) {
+      notify("자신이 설치한 문만 사용할 수 있습니다.", 1200);
+      return false;
+    }
+    if (pendingDoorKeys.has(structure.key)) return false;
+    pendingDoorKeys.add(structure.key);
+    try {
+      let isOpen = Boolean(structure.isOpen);
+      if (ctx.usesRemoteStructureWorld?.()) {
+        const result = await dispatchStructureAction({
+          action: { type: "structure.toggle", structureKey: structure.key },
+          knownRevision: Number(plot.revision) || 0,
+          wastelandState: ctx.serializeState(),
+        });
+        if (!result?.ok) {
+          if (result?.world) ctx.applyRemoteStructureWorld(result.world);
+          notify(result?.error ?? "문 상태를 변경하지 못했습니다.", 1300);
+          return false;
+        }
+        isOpen = Boolean(result.world?.structures?.find((entry) => entry?.key === structure.key)?.isOpen);
+        ctx.applyRemoteStructureWorld(result.world);
+      } else {
+        structure.isOpen = !Boolean(structure.isOpen);
+        isOpen = structure.isOpen;
+        plot.revision = (Number(plot.revision) || 0) + 1;
+        ctx.rebuildStructures();
+        ctx.saveWorld();
+      }
+      ctx.requestPlayerCollisionRecovery?.({ source: "door", immediate: true });
+      notify(isOpen ? "문을 열었습니다." : "문을 닫았습니다.", 800);
+      return true;
+    } finally {
+      pendingDoorKeys.delete(structure.key);
+    }
   }
 
   function removeDraftFencePost(cell) {
@@ -484,6 +654,8 @@ export function createWastelandOperationsController(ctx) {
   }
 
   function completeClaim() {
+    const plot = ctx.ensurePlot();
+    if (!plot) return false;
     const progress = getClaimProgress();
     const claim = progress?.claim;
     const issued = claim ? findIssuedLandDeed(claim.landId) : null;
@@ -493,8 +665,30 @@ export function createWastelandOperationsController(ctx) {
       return false;
     }
     const issuedAt = ctx.dateNow();
+    const ensureFoundation = () => {
+      if (plot.foundations.some((foundation) => foundation.landId === claim.landId && foundation.status === "completed")) return;
+      const foundation = {
+        id: `foundation_${claim.landId}`,
+        ownerId: claim.ownerId,
+        landId: claim.landId,
+        status: "completed",
+        bounds: {
+          minRow: claim.minRow,
+          maxRow: claim.maxRow,
+          minCol: claim.minCol,
+          maxCol: claim.maxCol,
+          width: claim.width,
+          height: claim.height,
+        },
+        completedAt: issuedAt,
+      };
+      plot.foundations.push(foundation);
+      ctx.gradeFoundationTerrain?.(foundation);
+      ctx.rebuildFoundations();
+    };
     if (reward.action === "confirm-issued") {
       ctx.setClaimStatus(claim, ctx.runtime.createClaimStatusPatch(ctx.constants.claimStatus.completed, "", issuedAt, { completedAt: claim.completedAt || issuedAt, rewardItemId: ctx.constants.landDeedItemId, rewardIssuedAt: claim.rewardIssuedAt || issuedAt }));
+      ensureFoundation();
       ctx.removeClaimFences(claim);
       finalize({ updateClaimUi: true, updateInventory: true, save: true });
       ctx.saveProfile();
@@ -508,6 +702,7 @@ export function createWastelandOperationsController(ctx) {
       return false;
     }
     ctx.setClaimStatus(claim, ctx.runtime.createClaimStatusPatch(ctx.constants.claimStatus.completed, "completedAt", issuedAt, { rewardItemId: ctx.constants.landDeedItemId, rewardIssuedAt: issuedAt }));
+    ensureFoundation();
     ctx.removeClaimFences(claim);
     finalize({ updateClaimUi: true, updateInventory: true, save: true });
     ctx.saveProfile();
@@ -565,6 +760,8 @@ export function createWastelandOperationsController(ctx) {
     finalize,
     restoreMissingDeeds,
     placeStructure,
+    removeStructure,
+    toggleDoor,
     removeDraftFencePost,
     placeFencePost,
     commitDraft,

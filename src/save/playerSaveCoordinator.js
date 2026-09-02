@@ -106,7 +106,11 @@ export function createPlayerSaveCoordinator({
     try {
       const snapshot = serializeSave();
       delete snapshot.frontierBuild;
-      if (isDevSession()) delete snapshot.displayBoard;
+      if (isDevSession()) {
+        delete snapshot.displayBoard;
+        if (snapshot.airSystem) delete snapshot.airSystem.mapPurification;
+        if (snapshot.inventory) delete snapshot.inventory.abandonedMineUnlocked;
+      }
       const serialized = JSON.stringify(snapshot);
       storage.setItem(saveKey, serialized);
       runtime.lastSnapshot = serialized;

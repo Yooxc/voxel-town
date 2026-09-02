@@ -1,10 +1,4 @@
 export function createInventoryRenderer(deps) {
-  const inventorySlots = {
-    equip: Array.from({ length: 25 }, () => null),
-    cons: Array.from({ length: 25 }, () => null),
-    misc: Array.from({ length: 25 }, () => null),
-  };
-
   function addCountBadge(slot, count) {
     if (count <= 1) return;
     const badge = document.createElement("div");
@@ -30,23 +24,34 @@ export function createInventoryRenderer(deps) {
     event.dataTransfer.setData("text/plain", deps.getEntryName(entry));
   }
 
-  function syncSlots() {
-    Object.values(inventorySlots).forEach((slots) => slots.fill(null));
-    for (const entry of deps.getInventory().slots) {
+  function getTabSlots() {
+    const inventory = deps.getInventory();
+    const slotsByCategory = {
+      equip: [],
+      cons: [],
+      misc: [],
+    };
+    const occupiedSlotCount = inventory.slots.filter(Boolean).length;
+    const availableSlotCount = Math.max(0, inventory.slots.length - occupiedSlotCount);
+
+    for (const entry of inventory.slots) {
       if (!entry) continue;
       const category = deps.getEntryCategory(entry);
-      const slots = inventorySlots[category] ?? inventorySlots.misc;
-      const index = slots.findIndex((value) => value === null);
-      if (index !== -1) slots[index] = structuredClone(entry);
+      const slots = slotsByCategory[category] ?? slotsByCategory.misc;
+      slots.push(structuredClone(entry));
     }
+    for (const slots of Object.values(slotsByCategory)) {
+      slots.push(...Array.from({ length: availableSlotCount }, () => null));
+    }
+    return slotsByCategory;
   }
 
   function renderInventoryWindow() {
-    syncSlots();
+    const slotsByCategory = getTabSlots();
     deps.setTabStyles();
     const activeTab = deps.getActiveTab();
     deps.invgrid.innerHTML = "";
-    for (const item of inventorySlots[activeTab]) {
+    for (const item of slotsByCategory[activeTab]) {
       const slot = deps.makeSlot();
       if (item) {
         const itemId = deps.getItemId(item);

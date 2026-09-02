@@ -1,6 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import * as THREE from "three";
 import { updatePlayerMovementRuntime } from "../src/core/playerMovementRuntime.js";
+import {
+  getPlayerBoxFromPosition,
+  intersectsAnyColliderBox,
+  resolvePlayerColliderPenetration,
+} from "../src/core/collisions.js";
 
 function createRuntime(overrides = {}) {
   const calls = [];
@@ -74,4 +80,38 @@ test("updates mining before pickup pose timing", () => {
   assert.equal(result.pickupReachTime, 0);
   assert.equal(calls.includes("mining"), true);
   assert.equal(calls.includes("pickup"), true);
+});
+
+test("uses the true rotated pillar outline instead of its oversized broad-phase box", () => {
+  const collider = new THREE.Box3(
+    new THREE.Vector3(-2.2, 0, -2.2),
+    new THREE.Vector3(2.2, 4, 2.2),
+  );
+  collider.userData = {
+    preciseShape: { type: "orientedBox", centerX: 0, centerZ: 0, halfX: 0.35, halfZ: 2, rotationY: Math.PI * 0.25, minY: 0, maxY: 4 },
+  };
+  const openCornerPlayer = getPlayerBoxFromPosition(new THREE.Vector3(1.5, 0, 0));
+  const touchingPlayer = getPlayerBoxFromPosition(new THREE.Vector3(0.5, 0, -0.5));
+
+  assert.equal(intersectsAnyColliderBox(openCornerPlayer, [collider]), false);
+  assert.equal(intersectsAnyColliderBox(touchingPlayer, [collider]), true);
+});
+
+test("pushes a player out of a rotated pillar without leaving them embedded", () => {
+  const collider = new THREE.Box3(
+    new THREE.Vector3(-2.2, 0, -2.2),
+    new THREE.Vector3(2.2, 4, 2.2),
+  );
+  collider.userData = {
+    preciseShape: { type: "orientedBox", centerX: 0, centerZ: 0, halfX: 0.4, halfZ: 1.8, rotationY: Math.PI * 0.25, minY: 0, maxY: 4 },
+  };
+  const position = new THREE.Vector3(0, 0, 0);
+  const result = resolvePlayerColliderPenetration({
+    position,
+    getPlayerBox: () => getPlayerBoxFromPosition(position),
+    colliderBoxes: [collider],
+  });
+
+  assert.equal(result.resolved, true);
+  assert.equal(intersectsAnyColliderBox(getPlayerBoxFromPosition(position), [collider]), false);
 });

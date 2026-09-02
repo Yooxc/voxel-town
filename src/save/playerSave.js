@@ -21,6 +21,9 @@ export function createDefaultSharedWorldSave({
       fencePosts: [],
       claims: [],
       structures: [],
+      foundations: [],
+      terrainDepthByCell: {},
+      revision: 0,
     },
   };
 }
@@ -48,6 +51,9 @@ export function serializeSharedWorldStateData({
       fencePosts: [],
       claims: [],
       structures: [],
+      foundations: [],
+      terrainDepthByCell: {},
+      revision: 0,
     }),
   };
 }

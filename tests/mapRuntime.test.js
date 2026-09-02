@@ -5,11 +5,13 @@ import { createMapRuntime } from "../src/systems/mapRuntime.js";
 function createRuntime({ now = () => 100 } = {}) {
   const mapGates = [];
   const connectorTunnelZones = [];
+  const isolatedMapZones = [];
   const player = { x: 0, z: 0 };
   let mapId = "mine";
   const runtime = createMapRuntime({
     mapGates,
     connectorTunnelZones,
+    isolatedMapZones,
     getPlayerPosition: () => player,
     getCurrentMapId: () => mapId,
     setCurrentMapId: (nextMapId) => { mapId = nextMapId; },
@@ -23,7 +25,7 @@ function createRuntime({ now = () => 100 } = {}) {
     residenceMapId: "residence",
     now,
   });
-  return { runtime, mapGates, connectorTunnelZones, player, getMapId: () => mapId };
+  return { runtime, mapGates, connectorTunnelZones, isolatedMapZones, player, getMapId: () => mapId };
 }
 
 test("registers and finds gates unless a transition is locked", () => {
@@ -40,6 +42,15 @@ test("registers and finds gates unless a transition is locked", () => {
   assert.equal(runtime.findTriggeredGate(), gate);
   player.z = 5;
   assert.equal(runtime.findTriggeredGate(), null);
+});
+
+test("registers an isolated map zone for a disconnected test area", () => {
+  const { runtime, player, isolatedMapZones } = createRuntime();
+  runtime.registerIsolatedMapZone({ mapId: "terrain-lab", centerX: 500, centerZ: 500, width: 30, depth: 30 });
+  player.x = 500;
+  player.z = 500;
+  assert.equal(runtime.updateCurrentMap(), "terrain-lab");
+  assert.equal(isolatedMapZones.length, 1);
 });
 
 test("updates map identity and excludes connector tunnels from air maps", () => {

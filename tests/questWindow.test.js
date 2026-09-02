@@ -1,12 +1,35 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getQuestWindowView } from "../src/ui/questWindow.js";
+import { createQuestWindowUi, getQuestWindowView } from "../src/ui/questWindow.js";
 
 const steps = [
   { title: "첫 단계", description: "첫 설명" },
   { title: "둘째 단계", description: "둘째 설명" },
   { title: "셋째 단계", description: "셋째 설명" },
 ];
+
+function createDocumentStub() {
+  return {
+    createElement(tagName) {
+      return {
+        tagName,
+        style: {},
+        children: [],
+        appendChild(child) { this.children.push(child); },
+        append(...children) { this.children.push(...children); },
+      };
+    },
+  };
+}
+
+test("creates the quest window with the renderer element contract", () => {
+  const uiLayer = { children: [], appendChild(child) { this.children.push(child); } };
+  const elements = createQuestWindowUi({ uiLayer, documentRef: createDocumentStub() });
+  assert.equal(uiLayer.children.length, 1);
+  assert.equal(elements.window.id, "questWindow");
+  assert.equal(elements.header.children[1], elements.archiveToggleButton);
+  assert.equal(elements.window.children.length, 2);
+});
 
 test("shows active and unarchived quest steps with archive availability", () => {
   const view = getQuestWindowView({

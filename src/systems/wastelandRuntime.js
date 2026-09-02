@@ -1,3 +1,12 @@
+import {
+  getWastelandBuildPartDef,
+  getWastelandStructureFootprintCells,
+  getWastelandStructureDependencyError,
+  getWastelandStructurePlacementKey,
+  getWastelandWallEdge,
+  normalizeWastelandStructureCollection,
+} from "./wastelandBuilding.js";
+
 export function createWastelandRuntime({ getPlot, getOwnerId, landDeedItemId }) {
   function getPlotState() {
     return getPlot?.() ?? null;
@@ -24,13 +33,19 @@ export function createWastelandRuntime({ getPlot, getOwnerId, landDeedItemId }) 
     return getPlotState()?.cells?.find((cell) => cell.id === cellId) ?? null;
   }
 
-  function getStructureConflict(cell, slot) {
+  function getStructureConflict(cell, slot, rotationQuarter = 0, level = 0) {
     if (!cell || !slot) return null;
+    const placementKey = getWastelandStructurePlacementKey({ cell, slot, rotationQuarter, level });
     return getPlotState()?.structures?.find(
-      (structure) =>
-        Number(structure?.row) === cell.row &&
-        Number(structure?.col) === cell.col &&
-        String(structure?.slot ?? "") === slot
+      (structure) => {
+        const existingKey = structure?.placementKey || getWastelandStructurePlacementKey({
+          cell: structure,
+          slot: structure?.slot,
+          rotationQuarter: structure?.rotationQuarter,
+          level: structure?.level,
+        });
+        return existingKey === placementKey;
+      }
     ) ?? null;
   }
 
@@ -150,17 +165,25 @@ export function createWastelandRuntime({ getPlot, getOwnerId, landDeedItemId }) 
       drafts: [],
       claims: [],
       structures: [],
+      foundations: [],
+      revision: 0,
     };
   }
 
   function createRestoreStatePlan(state) {
     const source = state ?? {};
+    const normalizedStructures = normalizeWastelandStructureCollection({
+      structures: source.structures,
+      foundations: source.foundations,
+    });
     return {
       cellProgressById: new Map((source.cells ?? []).map((cell) => [cell.id, cell.clearProgress ?? 0])),
       fencePosts: [...(source.fencePosts ?? [])],
       drafts: (source.drafts ?? []).map((draft) => ({ ...draft, lastPromptSignature: "" })),
       claims: [...(source.claims ?? [])],
-      structures: [...(source.structures ?? [])],
+      structures: normalizedStructures.structures,
+      foundations: [...(source.foundations ?? [])],
+      revision: Math.max(0, Math.floor(Number(source.revision) || 0)),
     };
   }
 
@@ -173,18 +196,31 @@ export function createWastelandRuntime({ getPlot, getOwnerId, landDeedItemId }) 
     cell,
     surfaceY,
     rotationQuarter = 0,
+    cellSize = 0,
+    level = 0,
   }) {
     if (!key || !ownerId || !itemId || !slot || !cell) return null;
+    const normalizedRotationQuarter = slot === "wall" || slot === "stairs"
+      ? ((Math.round(Number(rotationQuarter) || 0) % 4) + 4) % 4
+      : 0;
+    const placementKey = getWastelandStructurePlacementKey({ cell, slot, rotationQuarter: normalizedRotationQuarter, level });
     return {
       key,
       landId: claim?.landId ?? "",
       ownerId,
       type: itemId,
       slot,
+      structureKind: getWastelandBuildPartDef(itemId)?.structureKind ?? slot,
       row: cell.row,
       col: cell.col,
+      ...(Number(level) > 0 ? { level: 1 } : {}),
+      ...(slot === "stairs" ? { footprintCells: getWastelandStructureFootprintCells(cell, slot, normalizedRotationQuarter) } : {}),
       y: surfaceY,
-      rotationQuarter: slot === "wall" ? rotationQuarter : 0,
+      rotationQuarter: normalizedRotationQuarter,
+      edge: slot === "wall" ? getWastelandWallEdge(normalizedRotationQuarter) : "",
+      placementKey,
+      cellSize: Number(cellSize) || Number(cell?.size) || 0,
+      ...(getWastelandBuildPartDef(itemId)?.structureKind === "door" ? { isOpen: false } : {}),
     };
   }
 
@@ -247,6 +283,10 @@ export function createWastelandRuntime({ getPlot, getOwnerId, landDeedItemId }) 
   function serializeState(getClearProgress) {
     const plot = getPlotState();
     if (!plot) return null;
+    const normalizedStructures = normalizeWastelandStructureCollection({
+      structures: plot.structures,
+      foundations: plot.foundations,
+    });
     return {
       cells: (plot.cells ?? []).map((cell) => ({ id: cell.id, clearProgress: getClearProgress(cell) })),
       drafts: [...(plot.claimDrafts?.values?.() ?? [])].map((draft) => ({
@@ -259,7 +299,9 @@ export function createWastelandRuntime({ getPlot, getOwnerId, landDeedItemId }) 
       })),
       fencePosts: [...(plot.fencePosts?.values?.() ?? [])].map(({ mesh: _mesh, ...post }) => post),
       claims: plot.claims ?? [],
-      structures: plot.structures ?? [],
+      structures: normalizedStructures.structures.map(({ mesh: _mesh, x: _x, y: _y, z: _z, ...structure }) => structure),
+      foundations: plot.foundations ?? [],
+      revision: Math.max(0, Math.floor(Number(plot.revision) || 0)),
     };
   }
 

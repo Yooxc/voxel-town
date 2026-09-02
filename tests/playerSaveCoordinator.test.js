@@ -24,7 +24,12 @@ test("local developer saves exclude shared-world-only fields", () => {
     getAuthToken: () => "",
     isDevSession: () => true,
     isServerBackedSession: () => false,
-    serializeSave: () => ({ inventory: { slots: [] }, frontierBuild: { parcels: [] }, displayBoard: { tokenId: "1" } }),
+    serializeSave: () => ({
+      inventory: { slots: [], abandonedMineUnlocked: true },
+      airSystem: { current: 80, mapPurification: { "폐광": 50 } },
+      frontierBuild: { parcels: [] },
+      displayBoard: { tokenId: "1" },
+    }),
     applySave: () => {},
     getActiveProfileId: () => "dev_user_1",
     setPlayerCredits: () => {},
@@ -35,7 +40,10 @@ test("local developer saves exclude shared-world-only fields", () => {
   });
 
   assert.equal(coordinator.saveActiveLocalProfileState(), true);
-  assert.deepEqual(JSON.parse(storage.getItem("profile-a")), { inventory: { slots: [] } });
+  assert.deepEqual(JSON.parse(storage.getItem("profile-a")), {
+    inventory: { slots: [] },
+    airSystem: { current: 80 },
+  });
 });
 
 test("local profile hydration preserves shared world in developer sessions", () => {

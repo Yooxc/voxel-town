@@ -75,3 +75,28 @@ test("faces interaction targets and applies mining feedback to the camera", () =
   coordinator.applyCameraShake();
   assert.notDeepEqual(camera.position.toArray(), before.toArray());
 });
+
+test("focuses the build camera and restores its previous transform", () => {
+  const { coordinator } = createCoordinator();
+  const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
+  camera.position.set(0, 4, 8);
+  const controls = {
+    target: new THREE.Vector3(0, 1, 0),
+    enabled: true,
+    update: () => {},
+  };
+  coordinator.initializeCamera({ camera, controls, colliders: [], scene: new THREE.Scene(), config: {} });
+  const originalPosition = camera.position.clone();
+  const originalTarget = controls.target.clone();
+
+  assert.equal(coordinator.enterBuildCamera({ center: { x: 10, y: 0, z: -5 }, extent: 12 }), true);
+  assert.equal(coordinator.isBuildCameraActive(), true);
+  assert.equal(controls.enabled, false);
+  assert.deepEqual(controls.target.toArray(), [10, 0, -5]);
+
+  assert.equal(coordinator.exitBuildCamera(), true);
+  assert.equal(coordinator.isBuildCameraActive(), false);
+  assert.deepEqual(camera.position.toArray(), originalPosition.toArray());
+  assert.deepEqual(controls.target.toArray(), originalTarget.toArray());
+  assert.equal(controls.enabled, true);
+});

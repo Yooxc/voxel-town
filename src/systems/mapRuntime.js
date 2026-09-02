@@ -8,6 +8,7 @@ import {
 export function createMapRuntime({
   mapGates,
   connectorTunnelZones,
+  isolatedMapZones = [],
   getPlayerPosition,
   getCurrentMapId,
   setCurrentMapId,
@@ -35,6 +36,11 @@ export function createMapRuntime({
     return zone;
   }
 
+  function registerIsolatedMapZone(zone) {
+    isolatedMapZones.push(zone);
+    return zone;
+  }
+
   function findTriggeredGate() {
     return findTriggeredMapGate({
       mapGates,
@@ -48,6 +54,7 @@ export function createMapRuntime({
     const nextMapId = getCurrentMapIdForPlayer({
       playerPosition: getPlayerPosition(),
       isInResidenceZone: isInResidenceZone(),
+      isolatedMapZones,
       ...getMapThresholds(),
       currentMapId: getCurrentMapId(),
       residenceMapId,
@@ -71,6 +78,7 @@ export function createMapRuntime({
   return {
     registerMapGate,
     registerConnectorTunnelZone,
+    registerIsolatedMapZone,
     findTriggeredGate,
     updateCurrentMap,
     isInConnectorTunnel,

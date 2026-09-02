@@ -124,6 +124,7 @@ test("creates reset and restore plans without carrying scene objects", () => {
   const resetPlan = runtime.createResetStatePlan([{ id: "W1" }]);
   assert.equal(resetPlan.cellProgressById.get("W1"), 0);
   assert.deepEqual(resetPlan.claims, []);
+  assert.equal(resetPlan.revision, 0);
 
   const restorePlan = runtime.createRestoreStatePlan({
     cells: [{ id: "W1", clearProgress: 75 }],
@@ -131,10 +132,30 @@ test("creates reset and restore plans without carrying scene objects", () => {
     drafts: [{ ownerId: "owner", lastPromptSignature: "stale" }],
     claims: [{ ownerId: "owner" }],
     structures: [{ key: "floor" }],
+    revision: 7,
   });
   assert.equal(restorePlan.cellProgressById.get("W1"), 75);
   assert.equal(restorePlan.drafts[0].lastPromptSignature, "");
   assert.deepEqual(restorePlan.fencePosts, [{ key: "0:0" }]);
+  assert.equal(restorePlan.revision, 7);
+});
+
+test("excludes malformed structures while restoring saved wasteland state", () => {
+  const { runtime } = createRuntime();
+  const restorePlan = runtime.createRestoreStatePlan({
+    foundations: [{
+      ownerId: "owner",
+      landId: "land-1",
+      status: "completed",
+      bounds: { minRow: 0, maxRow: 1, minCol: 0, maxCol: 1 },
+    }],
+    structures: [
+      { key: "floor", ownerId: "owner", landId: "land-1", type: "woodFloor", row: 0, col: 0 },
+      { key: "bad", ownerId: "owner", landId: "land-1", type: "unknown", row: 0, col: 1 },
+    ],
+  });
+
+  assert.deepEqual(restorePlan.structures.map((structure) => structure.key), ["floor"]);
 });
 
 test("creates build records with stable land ownership and wall rotation", () => {
@@ -154,10 +175,14 @@ test("creates build records with stable land ownership and wall rotation", () =>
     ownerId: "owner",
     type: "woodWall",
     slot: "wall",
+    structureKind: "wall",
     row: 2,
     col: 3,
     y: 0.5,
     rotationQuarter: 3,
+    edge: "west",
+    placementKey: "wall:v:2:3",
+    cellSize: 0,
   });
   assert.equal(runtime.createStructureRecord({
     key: "floor-1",
