@@ -8,8 +8,15 @@ export function createInventoryIntegrationController(ctx) {
       ctx.disposeObject(child);
       group.remove(child);
     }
-    if (itemId === "shovel") group.add(ctx.buildShovelModel());
-    else if (itemId === "pickaxe") group.add(ctx.buildPickaxeModel(level));
+    const model = itemId === "shovel"
+      ? ctx.buildShovelModel()
+      : itemId === "pickaxe"
+        ? ctx.buildPickaxeModel(level)
+        : null;
+    if (model) {
+      ctx.alignEquippedToolModel?.(model, itemId);
+      group.add(model);
+    }
     group.userData.toolItemId = itemId ?? null;
     group.userData.pickaxeLevel = level;
   }

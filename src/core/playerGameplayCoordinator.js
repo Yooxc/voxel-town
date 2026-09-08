@@ -9,6 +9,7 @@ import {
   updateRockHitReactions,
 } from "../world/resourceVisuals.js";
 import { updatePlayerMovementRuntime } from "./playerMovementRuntime.js";
+import { EXCIT_MINING_IMPACT_PROGRESS } from "./playerAnimationRuntime.js";
 import { createResourceWorldRuntime } from "../systems/resourceWorldRuntime.js";
 
 export function createPlayerGameplayCoordinator({
@@ -46,11 +47,10 @@ export function createPlayerGameplayCoordinator({
   const framePlayerDelta = new THREE.Vector3();
   let cameraRuntime = null;
   let miningSwingTime = 0;
+  let miningSwingId = 0;
   let pickupReachTime = 0;
-  let currentMiningSwingDuration = 0.28;
-  let shiftRotatePointerActive = false;
-  let shiftRotateLastX = 0;
-  let shiftRotateLastY = 0;
+  let currentMiningSwingDuration = 1.1;
+  let pendingMiningImpact = null;
   let buildCameraSnapshot = null;
 
   function initializeCamera({ camera, controls, colliders, scene, config }) {
@@ -135,46 +135,45 @@ export function createPlayerGameplayCoordinator({
     controls.update();
   }
 
-  function beginShiftCameraRotation({ clientX, clientY }) {
-    shiftRotatePointerActive = true;
-    shiftRotateLastX = clientX;
-    shiftRotateLastY = clientY;
-    if (cameraRuntime) cameraRuntime.controls.enabled = false;
-  }
-
-  function endShiftCameraRotation({ controlsEnabled } = {}) {
-    shiftRotatePointerActive = false;
-    if (cameraRuntime && typeof controlsEnabled === "boolean") {
-      cameraRuntime.controls.enabled = controlsEnabled;
-    }
-  }
-
-  function rotateShiftCamera({ clientX, clientY, sensitivity }) {
-    if (!cameraRuntime || !shiftRotatePointerActive) return false;
-    const { camera, controls } = cameraRuntime;
-    const deltaX = clientX - shiftRotateLastX;
-    const deltaY = clientY - shiftRotateLastY;
-    shiftRotateLastX = clientX;
-    shiftRotateLastY = clientY;
-
-    const offset = new THREE.Vector3().copy(camera.position).sub(controls.target);
-    const spherical = new THREE.Spherical().setFromVector3(offset);
-    spherical.theta -= deltaX * sensitivity;
-    spherical.phi = THREE.MathUtils.clamp(
-      spherical.phi + deltaY * sensitivity,
-      controls.minPolarAngle + 0.02,
-      controls.maxPolarAngle - 0.02
-    );
-    offset.setFromSpherical(spherical);
-    camera.position.copy(controls.target).add(offset);
-    controls.update();
+  function setCameraControlsEnabled(enabled) {
+    if (!cameraRuntime || buildCameraSnapshot) return false;
+    cameraRuntime.controls.enabled = Boolean(enabled);
     return true;
   }
 
-  function triggerMiningSwing(target, getSwingDuration) {
+  function triggerMiningSwing(target, getSwingDuration, options = {}) {
+    if (miningSwingTime > 0) return false;
     currentMiningSwingDuration = getSwingDuration();
+    if (!(currentMiningSwingDuration > 0)) return false;
     miningSwingTime = currentMiningSwingDuration;
+    miningSwingId += 1;
+    const impactProgress = THREE.MathUtils.clamp(
+      Number.isFinite(options.impactProgress) ? options.impactProgress : EXCIT_MINING_IMPACT_PROGRESS,
+      0,
+      1,
+    );
+    pendingMiningImpact = typeof options.onImpact === "function"
+      ? {
+        swingId: miningSwingId,
+        target,
+        impactTime: currentMiningSwingDuration * (1 - impactProgress),
+        isTargetValid: options.isTargetValid,
+        onImpact: options.onImpact,
+      }
+      : null;
     faceTarget(target);
+    return true;
+  }
+
+  function isMiningLocked() {
+    return miningSwingTime > 0;
+  }
+
+  function cancelMiningSwing() {
+    const wasMining = miningSwingTime > 0;
+    miningSwingTime = 0;
+    pendingMiningImpact = null;
+    return wasMining;
   }
 
   function triggerPickupReach(target, duration) {
@@ -196,8 +195,10 @@ export function createPlayerGameplayCoordinator({
       dt,
       state: {
         miningSwingTime,
+        miningSwingId,
         pickupReachTime,
         currentMiningSwingDuration,
+        miningImpactTime: pendingMiningImpact?.impactTime,
         pickupReachDuration,
       },
       player,
@@ -205,6 +206,18 @@ export function createPlayerGameplayCoordinator({
     });
     miningSwingTime = state.miningSwingTime;
     pickupReachTime = state.pickupReachTime;
+    if (state.miningInterrupted) {
+      pendingMiningImpact = null;
+      return;
+    }
+    if (state.miningImpactCrossed && pendingMiningImpact?.swingId === miningSwingId) {
+      const impact = pendingMiningImpact;
+      pendingMiningImpact = null;
+      if (!impact.isTargetValid || impact.isTargetValid(impact.target)) {
+        impact.onImpact(impact.target);
+      }
+    }
+    if (miningSwingTime <= 0) pendingMiningImpact = null;
   }
 
   function updateFeedback(dt) {
@@ -266,10 +279,10 @@ export function createPlayerGameplayCoordinator({
     isBuildCameraActive,
     updateCameraOcclusion,
     updateCameraFollow,
-    beginShiftCameraRotation,
-    endShiftCameraRotation,
-    rotateShiftCamera,
+    setCameraControlsEnabled,
     triggerMiningSwing,
+    isMiningLocked,
+    cancelMiningSwing,
     triggerPickupReach,
     updateMovement,
     updateFeedback,

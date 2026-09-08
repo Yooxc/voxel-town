@@ -20,20 +20,20 @@ function createEventTarget() {
   };
 }
 
-function createRuntime({ movementOverrides = {} } = {}) {
+function createRuntime({ movementOverrides = {}, inputOverrides = {}, interactionOverrides = {} } = {}) {
   const eventTarget = createEventTarget();
   const inputElement = createEventTarget();
   const calls = [];
+  const cameraControlCalls = [];
   const gameplayCoordinator = {
-    beginShiftCameraRotation: () => calls.push("rotate-start"),
-    endShiftCameraRotation: () => calls.push("rotate-end"),
-    rotateShiftCamera: () => calls.push("rotate"),
+    setCameraControlsEnabled: (enabled) => { cameraControlCalls.push(enabled); return true; },
     updateMovement: (options) => { calls.push("movement"); return options; },
     updateFeedback: () => ({ hitStopped: false }),
     updateResourceVisuals: () => calls.push("resources"),
     updateCameraFollow: () => calls.push("camera"),
     applyCameraShake: () => calls.push("shake"),
     triggerMiningSwing: () => {},
+    cancelMiningSwing: () => calls.push("cancel-mining"),
     triggerPickupReach: () => {},
   };
   const noop = () => {};
@@ -49,6 +49,7 @@ function createRuntime({ movementOverrides = {} } = {}) {
     getInteractionState: () => ({}),
     setInteractionState: noop,
     now: () => 0,
+    ...interactionOverrides,
   }, { get: (target, key) => key in target ? target[key] : noop });
   const frame = new Proxy({
     updateForgeUpgradeState: () => calls.push("forge"),
@@ -79,9 +80,11 @@ function createRuntime({ movementOverrides = {} } = {}) {
       isQuickUseAssigning: () => false,
       isSleeping: () => false,
       isClaimDialogOpen: () => false,
+      isInventoryOpen: () => false,
       isPersonalStorageOpen: () => false,
       getLogicalInputKey: (event) => event.key?.toLowerCase() ?? "",
       shiftCameraSensitivity: 0.01,
+      ...inputOverrides,
     },
     movement: {
       startRing: { startWallOn: false, startX: 0, startZ: 0, startRadius: 10, startRingThickness: 1, openCenter: 0, openRatio: 0.2 },
@@ -97,23 +100,55 @@ function createRuntime({ movementOverrides = {} } = {}) {
     },
     frame,
   });
-  return { runtime, eventTarget, inputElement, calls };
+  return { runtime, eventTarget, inputElement, calls, cameraControlCalls };
 }
 
-test("binds and releases player input as one runtime", () => {
-  const { runtime, eventTarget, inputElement, calls } = createRuntime();
+test("leaves pointer drag to OrbitControls while Shift remains a movement key", () => {
+  const { runtime, eventTarget, inputElement, calls, cameraControlCalls } = createRuntime();
   runtime.start();
   eventTarget.dispatch("keydown", { key: "w", code: "KeyW" });
   assert.equal(runtime.getKeys().w, true);
   eventTarget.dispatch("keyup", { key: "w" });
   assert.equal(runtime.getKeys().w, false);
 
-  runtime.getKeys().shift = true;
-  inputElement.dispatch("pointerdown", { button: 0 });
-  assert.ok(calls.includes("rotate-start"));
+  eventTarget.dispatch("keydown", { key: "shift" });
+  eventTarget.dispatch("keyup", { key: "shift" });
+  inputElement.dispatch("pointerdown", { button: 0, pointerId: 9, clientX: 100, clientY: 200 });
+  eventTarget.dispatch("pointermove", { pointerId: 9, clientX: 120, clientY: 180 });
+  assert.deepEqual(cameraControlCalls, [true]);
+
+  eventTarget.dispatch("blur");
+  assert.equal(runtime.getKeys().shift, false);
+  assert.deepEqual(cameraControlCalls, [true]);
   runtime.stop();
+  assert.deepEqual(cameraControlCalls, [true, false]);
+  assert.equal(calls.includes("cancel-mining"), true);
   assert.equal(eventTarget.count("keydown"), 0);
   assert.deepEqual(runtime.getKeys(), { w: false, a: false, s: false, d: false, shift: false });
+});
+
+test("keeps Space from scrolling while allowing world interactions when inventory is open", () => {
+  const { runtime, eventTarget, calls } = createRuntime({
+    inputOverrides: { isInventoryOpen: () => true },
+    interactionOverrides: {
+      getInteractionState: () => ({ activeMineRock: { userData: {} } }),
+      tryDigTerrain: () => null,
+      createRockMiningPlan: () => ({ status: "damaged", remainingHp: 1 }),
+      triggerMiningSwing: () => calls.push("mining-swing"),
+    },
+  });
+  let prevented = false;
+
+  runtime.start();
+  eventTarget.dispatch("keydown", {
+    key: " ",
+    code: "Space",
+    preventDefault: () => { prevented = true; },
+  });
+
+  assert.equal(prevented, true);
+  assert.equal(calls.includes("mining-swing"), true);
+  runtime.stop();
 });
 
 test("runs movement before interaction-facing frame work and rendering", () => {

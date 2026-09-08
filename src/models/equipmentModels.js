@@ -1,5 +1,19 @@
 import * as THREE from "three";
 
+const EQUIPPED_TOOL_PROFILES = Object.freeze({
+  pickaxe: Object.freeze({ gripOffsetY: -0.22, scale: 0.72 }),
+  shovel: Object.freeze({ gripOffsetY: -0.18, scale: 0.72 }),
+});
+
+export function alignEquippedToolModel(model, itemId) {
+  const profile = EQUIPPED_TOOL_PROFILES[itemId];
+  if (!model || !profile) return model;
+  model.position.set(0, profile.gripOffsetY, 0);
+  model.rotation.set(0, 0, 0);
+  model.scale.setScalar(profile.scale);
+  return model;
+}
+
 export function buildPickaxeModel(level = 0) {
   const g = new THREE.Group();
   const pickaxeLevel = Math.max(0, Math.min(5, level));

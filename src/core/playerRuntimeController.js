@@ -30,31 +30,16 @@ export function createPlayerRuntimeController({
     for (const key of Object.keys(keys)) keys[key] = false;
   };
 
-  const resetShiftRotation = (controlsEnabled = input.canPlayGame() && !input.isWorkUiMovementLocked()) => {
-    keys.shift = false;
-    gameplayCoordinator.endShiftCameraRotation({ controlsEnabled });
-  };
+  const canUseCameraInput = () => input.canPlayGame() && !input.isWorkUiMovementLocked();
+  const setCameraControlsEnabled = (enabled = canUseCameraInput()) => gameplayCoordinator.setCameraControlsEnabled(enabled);
 
   const interactionController = createInteractionController(Object.assign(Object.create(interactionContext), {
     getKeys: () => keys,
-    resetShiftRotation,
+    setCameraControlsEnabled,
   }));
 
-  function handlePointerDown(event) {
-    if (event.button !== 0 || !keys.shift) return;
-    if (!input.canPlayGame() || input.isWorkUiMovementLocked()) return;
-    gameplayCoordinator.beginShiftCameraRotation(event);
-  }
-
-  function handlePointerEnd() {
-    gameplayCoordinator.endShiftCameraRotation({
-      controlsEnabled: input.canPlayGame() && !input.isWorkUiMovementLocked(),
-    });
-  }
-
-  function handlePointerMove(event) {
-    if (!keys.shift || !input.canPlayGame() || input.isWorkUiMovementLocked()) return;
-    gameplayCoordinator.rotateShiftCamera({ ...event, sensitivity: input.shiftCameraSensitivity });
+  function handleWindowBlur() {
+    clearKeys();
   }
 
   function handleKeyDown(event) {
@@ -64,24 +49,22 @@ export function createPlayerRuntimeController({
   function handleKeyUp(event) {
     const key = input.getLogicalInputKey(event);
     if (key in keys) keys[key] = false;
-    if (key !== "shift") return;
-
-    keys.shift = false;
-    const controlsEnabled = input.canPlayGame()
-      && !input.isNftExhibitOpen()
-      && !input.isQuickUseAssigning()
-      && !input.isWorkUiMovementLocked();
-    gameplayCoordinator.endShiftCameraRotation({ controlsEnabled });
   }
 
   function handleWorldSpaceKeyDown(event) {
     if (!input.canPlayGame() || input.isNftExhibitOpen() || input.isQuickUseAssigning()) return;
     if (input.isSleeping() || input.isClaimDialogOpen()) return;
-    if (input.isPersonalStorageOpen() || event.code !== "Space") return;
+    if (event.code !== "Space") return;
+    if (input.isPersonalStorageOpen()) {
+      event.preventDefault();
+      return;
+    }
+    if (input.isInventoryOpen()) event.preventDefault();
     interactionController.handleWorldSpaceInteraction(event);
   }
 
   function updateMovement(dt) {
+    setCameraControlsEnabled();
     const surfaces = movement.getWalkableSurfaces();
     const mapBounds = getCurrentMapBoundsFromSurfaces(surfaces, movement.defaultMapBounds);
     stabilizePlayerCollision();
@@ -103,7 +86,7 @@ export function createPlayerRuntimeController({
         startZ: movement.startRing.startZ,
         startRadius: movement.startRing.startRadius,
       }),
-      onWorkUiLocked: () => gameplayCoordinator.endShiftCameraRotation(),
+      onWorkUiLocked: () => setCameraControlsEnabled(false),
     });
     stabilizePlayerCollision();
   }
@@ -213,20 +196,14 @@ export function createPlayerRuntimeController({
   }
 
   function bind() {
-    inputElement.addEventListener("pointerdown", handlePointerDown);
-    eventTarget.addEventListener("pointerup", handlePointerEnd);
-    eventTarget.addEventListener("pointercancel", handlePointerEnd);
-    eventTarget.addEventListener("pointermove", handlePointerMove);
+    eventTarget.addEventListener("blur", handleWindowBlur);
     eventTarget.addEventListener("keydown", handleKeyDown);
     eventTarget.addEventListener("keyup", handleKeyUp);
     eventTarget.addEventListener("keydown", handleWorldSpaceKeyDown);
   }
 
   function unbind() {
-    inputElement.removeEventListener("pointerdown", handlePointerDown);
-    eventTarget.removeEventListener("pointerup", handlePointerEnd);
-    eventTarget.removeEventListener("pointercancel", handlePointerEnd);
-    eventTarget.removeEventListener("pointermove", handlePointerMove);
+    eventTarget.removeEventListener("blur", handleWindowBlur);
     eventTarget.removeEventListener("keydown", handleKeyDown);
     eventTarget.removeEventListener("keyup", handleKeyUp);
     eventTarget.removeEventListener("keydown", handleWorldSpaceKeyDown);
@@ -245,7 +222,9 @@ export function createPlayerRuntimeController({
     unbind();
     if (frameRequestId !== null) frame.cancelFrame?.(frameRequestId);
     frameRequestId = null;
+    gameplayCoordinator.cancelMiningSwing();
     clearKeys();
+    setCameraControlsEnabled(false);
   }
 
   return {
@@ -253,13 +232,15 @@ export function createPlayerRuntimeController({
     stop,
     runFrame,
     clearKeys,
+    cancelMiningSwing: () => gameplayCoordinator.cancelMiningSwing(),
     requestCollisionRecovery: (options) => recoverPlayerCollision(options),
     clearSafePositionHistory: (mapId = null) => {
       if (mapId) safePositionsByMap.delete(mapId);
       else safePositionsByMap.clear();
     },
     getKeys: () => keys,
-    triggerMiningSwing: (target = null) => gameplayCoordinator.triggerMiningSwing(target, movement.getSwingDuration),
+    triggerMiningSwing: (target = null, options = {}) => gameplayCoordinator.triggerMiningSwing(target, movement.getSwingDuration, options),
+    isMiningLocked: () => gameplayCoordinator.isMiningLocked(),
     triggerPickupReach: (target = null) => gameplayCoordinator.triggerPickupReach(target, movement.pickupReachDuration),
     interactionContext,
   };

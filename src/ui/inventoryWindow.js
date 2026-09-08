@@ -319,13 +319,15 @@ export function createInventoryWindowUi({
     overflowY: "auto",
     overflowX: "hidden",
     paddingRight: "6px",
+    boxSizing: "border-box",
+    scrollbarGutter: "stable",
   });
   invBody.appendChild(gridWrap);
 
   const invgrid = document.createElement("div");
   Object.assign(invgrid.style, {
     display: "grid",
-    gridTemplateColumns: "repeat(5, 1fr)",
+    gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
     gap: "10px",
   });
   gridWrap.appendChild(invgrid);
@@ -844,8 +846,11 @@ export function createInventoryWindowUi({
 export function makeInventorySlotElement() {
   const slot = document.createElement("div");
   Object.assign(slot.style, {
-    width: "52px",
-    height: "52px",
+    width: "100%",
+    minWidth: "0",
+    height: "auto",
+    aspectRatio: "1 / 1",
+    boxSizing: "border-box",
     background: "rgba(255,255,255,0.95)",
     border: "1px solid rgba(0,0,0,0.2)",
     borderRadius: "8px",

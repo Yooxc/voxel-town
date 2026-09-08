@@ -8,6 +8,7 @@ import {
   buildSingleBasicShoeModel,
   buildFreshAirCanisterModel,
   buildPurifyPowderModel,
+  alignEquippedToolModel,
   alignWearableOnHead,
 } from "./models/equipmentModels.js";
 import {
@@ -246,11 +247,13 @@ import {
 } from "./core/collisions.js";
 import {
   createPlayerRig,
+  clonePlayerRig,
   getPlayerRigParts,
   createPlayerEquipmentVisuals,
   updatePlayerEquipmentVisualsVisibility,
   syncPreviewPlayerPose,
 } from "./core/player.js";
+import { createPlayerAnimationRuntime } from "./core/playerAnimationRuntime.js";
 import { findNearestByPosition } from "./core/proximity.js";
 import { createPlayerGameplayCoordinator } from "./core/playerGameplayCoordinator.js";
 import { createPlayerRuntimeIntegration } from "./core/playerRuntimeIntegration.js";
@@ -1586,6 +1589,7 @@ scene.add(gridHelper);
 
 // Player
 const player = createPlayerRig();
+const playerAnimationRuntime = createPlayerAnimationRuntime(player);
 const {
   torso,
   head,
@@ -1615,8 +1619,7 @@ startCircle.position.y = 0.02; // 바닥 위로 살짝
 scene.add(startCircle);
 
 // ===== Auto foot offset (based on player mesh bounds) =====
-const playerBounds = new THREE.Box3().setFromObject(player);
-const PLAYER_FOOT_OFFSET = -playerBounds.min.y; // 플레이어 원점에서 "바닥"까지 거리
+const PLAYER_FOOT_OFFSET = 0; // Blender 캐릭터는 발바닥이 로컬 Y=0에 맞춰져 있다.
 
 // Colliders
 const colliderRegistry = createColliderRegistry();
@@ -1764,10 +1767,11 @@ const inventoryFeatureCoordinator = createInventoryFeatureCoordinator({
   setLastMessageUntil: (value) => { lastMessageUntil = value; },
   integration: {
     createEquipmentVisuals: createPlayerEquipmentVisuals,
-    rigParts: { head, leftArm, leftLegPivot, rightLegPivot },
+    rigParts: { head, leftArm, rightArm, leftLegPivot, rightLegPivot },
     equipmentBuilders: { buildSafetyHelmetModel, buildSingleBasicShoeModel, alignWearableOnHead },
     buildShovelModel,
     buildPickaxeModel,
+    alignEquippedToolModel,
     updateEquipmentVisibility: updatePlayerEquipmentVisualsVisibility,
     createEquipmentPreview: createInventoryEquipmentPreview,
     nftHelmetContract: "0xMockHelmetCollection",
@@ -1799,6 +1803,7 @@ const inventoryFeatureCoordinator = createInventoryFeatureCoordinator({
     previewCanvasWrap,
     equipmentSlotEls,
     player,
+    clonePlayerRig,
     getPlayerRigParts,
     syncPreviewPlayerPose,
     getSourceParts: () => ({ torso, leftArmPivot, rightArmPivot, leftLegPivot, rightLegPivot }),
@@ -2855,6 +2860,7 @@ controls.maxDistance = 20;
 controls.maxPolarAngle = Math.PI * 0.49;
 controls.minPolarAngle = Math.PI * 0.1;
 controls.enablePan = false;
+controls.enableRotate = true;
 
 if (shouldResetAuthSessionOnLocalReload()) {
   localStorage.removeItem(WALLET_SESSION_KEY);
@@ -3316,8 +3322,8 @@ function ensurePlayerNotInsideGeneratedColliders(colliderObjects = [], fallback 
 const clock = new THREE.Clock();
 const PICKUP_REACH_DURATION = 0.22;
 
-function triggerMiningSwing(target = null) {
-  playerRuntimeController.triggerMiningSwing(target);
+function triggerMiningSwing(target = null, options = {}) {
+  return playerRuntimeController.triggerMiningSwing(target, options);
 }
 
 function triggerPickupReach(target = null) {
@@ -3355,7 +3361,9 @@ const playerInteractionContext = {
   renderQuestWindowIfOpen: () => { if (questOpen) renderQuestWindow(); },
   getTerrainDigHint: () => terrainDiggingController?.getHint() ?? "",
   tryDigTerrain: () => terrainDiggingController?.dig() ?? null,
-  triggerMiningSwing, createTreeHarvestPlan, setHarvestTreeActive, placeWastelandFencePost: wasteland.placeFencePost,
+  triggerMiningSwing,
+  isMiningLocked: () => playerRuntimeController.isMiningLocked(),
+  createTreeHarvestPlan, setHarvestTreeActive, placeWastelandFencePost: wasteland.placeFencePost,
   hasWastelandFencePost: (cell) => frontierWastelandPlot?.fencePosts?.has(`${cell.row}:${cell.col}`),
   placeWastelandStructure: wasteland.placeStructure,
   toggleWastelandDoor: wasteland.toggleDoor,
@@ -3441,6 +3449,14 @@ playerRuntimeController = createPlayerRuntimeIntegration({
     getEquippedMiningPower,
     hasOwnedPickaxe: () => findFirstSlotWithItem("pickaxe") !== -1,
     getEquippedPickaxeLevel,
+    isTargetValid: (rock) => Boolean(
+      rock?.parent
+      && rock.userData?.mapId === currentMapId
+      && rock.userData.hp > 0
+      && hasEquippedTool("pickaxe")
+      && getEquippedPickaxeLevel() >= (rock.userData.requiredPickaxeLevel ?? 0)
+      && player.position.distanceToSquared(rock.position) <= 2.2 ** 2
+    ),
     spawnBreakBurst: spawnRockBreakBurst,
     incrementTutorialRockCount: () => { tutorialQuest.minedRockCount += 1; },
     addItem,
@@ -3469,6 +3485,7 @@ playerRuntimeController = createPlayerRuntimeIntegration({
     isQuickUseAssigning: () => Boolean(quickUseAssignState),
     isSleeping: () => workstationUiController.isSleepOpen(),
     isClaimDialogOpen: () => wastelandController.isClaimCancelOpen() || wastelandController.isClaimConfirmOpen(),
+    isInventoryOpen: () => inventoryUiController.isInventoryOpen(),
     isPersonalStorageOpen: () => inventoryUiController.isPersonalStorageOpen(),
     getLogicalInputKey,
     shiftCameraSensitivity: SHIFT_CAMERA_ROTATE_SENSITIVITY,
@@ -3478,6 +3495,7 @@ playerRuntimeController = createPlayerRuntimeIntegration({
     camera,
     controls,
     rig: { torso, head, leftArmPivot, rightArmPivot, leftLegPivot, rightLegPivot },
+    animationRuntime: playerAnimationRuntime,
     latestMoveDirection: latestMoveDir,
     startRing: {
       startWallOn: START_WALL_ON,

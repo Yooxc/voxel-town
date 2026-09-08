@@ -23,6 +23,7 @@ test("synchronizes equipped tool model and refreshes visible inventory windows",
     rigParts: {}, equipmentBuilders: {},
     buildShovelModel: () => ({ type: "shovel" }),
     buildPickaxeModel: (level) => ({ type: "pickaxe", level }),
+    alignEquippedToolModel: (model, itemId) => calls.push(`align:${itemId}:${model.level}`),
     disposeObject: () => calls.push("dispose"),
     updateEquipmentVisibility: (_equipment, state) => calls.push(`visibility:${state.hasToolEquipped}`),
     createEquipmentPreview: () => ({ renderWindow: () => calls.push("equipment"), resize() {}, renderPreview() {} }),
@@ -43,6 +44,7 @@ test("synchronizes equipped tool model and refreshes visible inventory windows",
 
   assert.equal(equipment.equippedPickaxe.children[0].type, "pickaxe");
   assert.equal(equipment.equippedPickaxe.children[0].level, 3);
+  assert.ok(calls.includes("align:pickaxe:3"));
   assert.ok(calls.includes("forge"));
   assert.ok(calls.includes("storage"));
   assert.ok(calls.includes("inventory"));

@@ -1,12 +1,12 @@
 export const TREE_HARVEST_RESPAWN_MS = 10000;
 
 export const PICKAXE_UPGRADE_LEVELS = [
-  { level: 0, miningPowerMin: 0.9, miningPowerMax: 1.1, bonusDropChance: 0.0, swingDuration: 0.28, cost: 0, successChance: 1.0 },
-  { level: 1, miningPowerMin: 1.0, miningPowerMax: 1.15, bonusDropChance: 0.0, swingDuration: 0.265, cost: 3, successChance: 1.0 },
-  { level: 2, miningPowerMin: 1.05, miningPowerMax: 1.2, bonusDropChance: 0.05, swingDuration: 0.25, cost: 6, successChance: 0.9 },
-  { level: 3, miningPowerMin: 1.15, miningPowerMax: 1.25, bonusDropChance: 0.1, swingDuration: 0.235, cost: 10, successChance: 0.75 },
-  { level: 4, miningPowerMin: 1.2, miningPowerMax: 1.35, bonusDropChance: 0.15, swingDuration: 0.22, cost: 15, successChance: 0.55 },
-  { level: 5, miningPowerMin: 1.3, miningPowerMax: 1.45, bonusDropChance: 0.2, swingDuration: 0.205, cost: 22, successChance: 0.35 },
+  { level: 0, miningPowerMin: 0.9, miningPowerMax: 1.1, bonusDropChance: 0.0, swingDuration: 1.1, cost: 0, successChance: 1.0 },
+  { level: 1, miningPowerMin: 1.0, miningPowerMax: 1.15, bonusDropChance: 0.0, swingDuration: 1.0, cost: 3, successChance: 1.0 },
+  { level: 2, miningPowerMin: 1.05, miningPowerMax: 1.2, bonusDropChance: 0.05, swingDuration: 0.9, cost: 6, successChance: 0.9 },
+  { level: 3, miningPowerMin: 1.15, miningPowerMax: 1.25, bonusDropChance: 0.1, swingDuration: 0.82, cost: 10, successChance: 0.75 },
+  { level: 4, miningPowerMin: 1.2, miningPowerMax: 1.35, bonusDropChance: 0.15, swingDuration: 0.75, cost: 15, successChance: 0.55 },
+  { level: 5, miningPowerMin: 1.3, miningPowerMax: 1.45, bonusDropChance: 0.2, swingDuration: 0.68, cost: 22, successChance: 0.35 },
 ];
 
 export const ROCK_SIZE_DEFS = [

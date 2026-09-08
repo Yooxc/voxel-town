@@ -3,6 +3,7 @@ export function createInventoryEquipmentPreview({
   previewCanvasWrap,
   equipmentSlotEls,
   player,
+  clonePlayerRig,
   getPlayerRigParts,
   syncPreviewPlayerPose,
   getSourceParts,
@@ -38,11 +39,25 @@ export function createInventoryEquipmentPreview({
   fillLight.position.set(-3, 2, -2);
   scene.add(fillLight);
 
-  const previewPlayer = player.clone(true);
-  previewPlayer.position.set(0, -0.12, 0);
-  previewPlayer.rotation.y = Math.PI * 0.08;
-  scene.add(previewPlayer);
-  const previewParts = getPlayerRigParts(previewPlayer);
+  const rendererSize = new THREE.Vector2();
+
+  let previewPlayer = clonePlayerRig(player);
+  let previewParts = getPlayerRigParts(previewPlayer);
+
+  function placePreviewPlayer() {
+    previewPlayer.position.set(0, -0.12, 0);
+    previewPlayer.rotation.y = Math.PI * 0.08;
+    scene.add(previewPlayer);
+  }
+
+  placePreviewPlayer();
+  player.userData.assetReady?.then(() => {
+    scene.remove(previewPlayer);
+    previewPlayer = clonePlayerRig(player);
+    previewParts = getPlayerRigParts(previewPlayer);
+    placePreviewPlayer();
+    renderPreview();
+  });
 
   function resize() {
     const width = Math.max(1, previewCanvasWrap.clientWidth);
@@ -53,6 +68,11 @@ export function createInventoryEquipmentPreview({
   }
 
   function renderPreview() {
+    const width = Math.max(1, previewCanvasWrap.clientWidth);
+    const height = Math.max(1, previewCanvasWrap.clientHeight);
+    renderer.getSize(rendererSize);
+    if (rendererSize.x !== width || rendererSize.y !== height) resize();
+
     syncPreviewPlayerPose({
       previewPlayer,
       previewParts,

@@ -23,6 +23,7 @@ test("creates mine rocks with spawn, resource, and fade state", () => {
   });
   assert.equal(rock.position.y, 1.8);
   assert.equal(rock.userData.hp, 8);
+  assert.equal(rock.userData.mapId, "폐광");
   assert.equal(rock.userData.spawn.mapId, "폐광");
   assert.equal(rock.userData.resourceCount, 3);
   assert.equal(rock.userData.fadeInDuration, 1);

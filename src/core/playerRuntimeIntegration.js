@@ -5,7 +5,6 @@ import {
   getMovementDelta,
   getMovementSpeed,
   getMovementYaw,
-  getWalkAnimationSpeed,
   isMoveVectorActive,
   normalizeMoveVector,
   updateLatestMoveDirection,
@@ -14,12 +13,6 @@ import {
   applyMovementCollisionStep,
   applyMovementPostCollisionCorrections,
 } from "./collisions.js";
-import {
-  applyMiningSwingPose,
-  applyPickupReachPose,
-  applySleepPose,
-  applyWalkIdlePose,
-} from "./player.js";
 
 export function createPlayerMovementRuntime(movement) {
   const {
@@ -56,11 +49,7 @@ export function createPlayerMovementRuntime(movement) {
       applyMovementCollisionStep,
       applyMovementPostCollisionCorrections,
       getMovementYaw,
-      getWalkAnimationSpeed,
-      applyWalkIdlePose,
-      applyMiningSwingPose,
-      applyPickupReachPose,
-      applySleepPose,
+      animationRuntime: runtime.animationRuntime,
       updatePlayerGroundY: runtime.updatePlayerGroundY,
       now: runtime.now(),
     }),
@@ -118,6 +107,7 @@ export function createPlayerRuntimeIntegration({
       equippedPickaxeLevel: mining.getEquippedPickaxeLevel(),
       requiredPickaxeLevel: rock.userData.requiredPickaxeLevel ?? 0,
     }),
+    isMineRockTargetValid: (rock) => mining.isTargetValid?.(rock) ?? true,
     finishRockMining: (rock, spawn) => {
       mining.spawnBreakBurst(rock);
       if (rock.userData.resourceItemId === "stoneDust") mining.incrementTutorialRockCount();

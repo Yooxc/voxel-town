@@ -44,6 +44,9 @@ function createRuntime(overrides = {}) {
     getPostCollisionOptions: () => ({ resolveStartRingPenetration: () => {}, startWallOn: false }),
     getMovementYaw: () => 1.2,
     getWalkAnimationSpeed: () => 1,
+    animationRuntime: {
+      update: (_dt, state) => calls.push(`animation:${state.isMining ? `mining:${state.miningSwingId ?? "none"}` : state.isSprinting ? "run" : state.isMoving ? "walk" : "idle"}`),
+    },
     applyWalkIdlePose: () => ({}),
     applyMiningSwingPose: () => calls.push("mining"),
     applyPickupReachPose: () => calls.push("pickup"),
@@ -60,7 +63,7 @@ test("clears movement input while work UI locks movement", () => {
   const { runtime, calls } = createRuntime({ isWorkUiMovementLocked: () => true });
   updatePlayerMovementRuntime(runtime);
   assert.equal(runtime.keys.w, false);
-  assert.deepEqual(calls, ["locked", "ground"]);
+  assert.deepEqual(calls, ["locked", "animation:idle", "ground"]);
 });
 
 test("runs axis collision steps and movement correction", () => {
@@ -78,8 +81,27 @@ test("updates mining before pickup pose timing", () => {
   const result = updatePlayerMovementRuntime(runtime);
   assert.equal(result.miningSwingTime, 0);
   assert.equal(result.pickupReachTime, 0);
-  assert.equal(calls.includes("mining"), true);
-  assert.equal(calls.includes("pickup"), true);
+  assert.equal(calls.includes("animation:mining:none"), true);
+});
+
+test("locks movement while mining and reports the animation impact crossing", () => {
+  const { runtime, calls, player } = createRuntime({
+    dt: 0.03,
+    state: {
+      miningSwingTime: 0.11,
+      miningImpactTime: 0.1,
+      pickupReachTime: 0,
+      currentMiningSwingDuration: 0.25,
+      pickupReachDuration: 0.2,
+    },
+  });
+
+  const result = updatePlayerMovementRuntime(runtime);
+
+  assert.equal(result.miningImpactCrossed, true);
+  assert.equal(calls.includes("normalize"), false);
+  assert.equal(calls.includes("direction"), false);
+  assert.equal(player.rotation.y, 0);
 });
 
 test("uses the true rotated pillar outline instead of its oversized broad-phase box", () => {

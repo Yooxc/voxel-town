@@ -1,77 +1,107 @@
 import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { clone as cloneSkeleton } from "three/addons/utils/SkeletonUtils.js";
 
-export function createPlayerRig() {
+const PLAYER_MODEL_URL = "/models/excit-character.glb";
+const playerAssets = new WeakMap();
+const PLAYER_SOCKET_NAMES = Object.freeze({
+  head: "EXCIT_SOCKET_HEAD",
+  leftHand: "EXCIT_SOCKET_HAND_L",
+  rightHand: "EXCIT_SOCKET_HAND_R",
+  leftFoot: "EXCIT_SOCKET_FOOT_L",
+  rightFoot: "EXCIT_SOCKET_FOOT_R",
+});
+
+const PLAYER_AUTHORED_SOCKET_NAMES = Object.freeze({
+  rightHand: "EXCIT_SOCKET_TOOL_R",
+});
+
+const PLAYER_BONE_NAMES = Object.freeze({
+  head: "EXCIT_HEAD",
+  leftHand: "EXCIT_HAND.L",
+  rightHand: "EXCIT_HAND.R",
+  leftFoot: "EXCIT_FOOT.L",
+  rightFoot: "EXCIT_FOOT.R",
+});
+
+function createPlayerSocket(name) {
+  const socket = new THREE.Group();
+  socket.name = name;
+  return socket;
+}
+
+function bindPlayerSockets(player, model) {
+  const bindings = {};
+  for (const key of Object.keys(PLAYER_SOCKET_NAMES)) {
+    const socket = player.getObjectByName(PLAYER_SOCKET_NAMES[key]);
+    const authoredSocketName = PLAYER_AUTHORED_SOCKET_NAMES[key];
+    const authoredSocket = authoredSocketName ? model.getObjectByName(authoredSocketName) : null;
+    const bone = model.getObjectByName(PLAYER_BONE_NAMES[key]);
+    const target = authoredSocket ?? bone;
+    if (!socket || !target) {
+      bindings[key] = { source: "missing", targetName: null };
+      continue;
+    }
+    target.add(socket);
+    socket.position.set(0, 0, 0);
+    socket.rotation.set(0, 0, 0);
+    socket.scale.set(1, 1, 1);
+    socket.userData.bindingSource = authoredSocket ? "authored-socket" : "bone-fallback";
+    socket.userData.bindingTarget = target.name;
+    bindings[key] = { source: socket.userData.bindingSource, targetName: target.name };
+  }
+  return bindings;
+}
+
+export function createPlayerRig({ modelUrl = PLAYER_MODEL_URL, loader = new GLTFLoader() } = {}) {
   const player = new THREE.Group();
   player.name = "playerRoot";
-
-  const bodyMat = new THREE.MeshStandardMaterial({ color: 0xcfcfcf, roughness: 0.9 });
-  const limbMat = new THREE.MeshStandardMaterial({ color: 0xb5b5b5, roughness: 0.95 });
-
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.95, 0.36), bodyMat);
-  torso.name = "torso";
-  torso.position.y = 1.35;
-
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 24, 18), bodyMat);
-  head.name = "head";
-  head.scale.set(0.85, 1.2, 0.82);
-  head.position.y = 2.1;
-
-  const leftArmPivot = new THREE.Group();
-  leftArmPivot.name = "leftArmPivot";
-  leftArmPivot.position.set(-0.47, 1.8, 0);
-
-  const rightArmPivot = new THREE.Group();
-  rightArmPivot.name = "rightArmPivot";
-  rightArmPivot.position.set(0.47, 1.8, 0);
-
-  const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.85, 0.22), limbMat);
-  leftArm.name = "leftArm";
-  leftArm.position.set(0, -0.42, 0);
-
-  const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.85, 0.22), limbMat);
-  rightArm.name = "rightArm";
-  rightArm.position.set(0, -0.42, 0);
-
-  leftArmPivot.add(leftArm);
-  rightArmPivot.add(rightArm);
-
-  const leftLegPivot = new THREE.Group();
-  leftLegPivot.name = "leftLegPivot";
-  leftLegPivot.position.set(-0.18, 0.9, 0);
-
-  const rightLegPivot = new THREE.Group();
-  rightLegPivot.name = "rightLegPivot";
-  rightLegPivot.position.set(0.18, 0.9, 0);
-
-  const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.9, 0.26), limbMat);
-  leftLeg.name = "leftLeg";
-  leftLeg.position.set(0, -0.45, 0);
-
-  const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.9, 0.26), limbMat);
-  rightLeg.name = "rightLeg";
-  rightLeg.position.set(0, -0.45, 0);
-
-  leftLegPivot.add(leftLeg);
-  rightLegPivot.add(rightLeg);
-
-  player.add(torso, head, leftArmPivot, rightArmPivot, leftLegPivot, rightLegPivot);
+  player.add(...Object.values(PLAYER_SOCKET_NAMES).map(createPlayerSocket));
   player.position.set(0, 0, 0);
+
+  player.userData.assetReady = loader.loadAsync(modelUrl).then((gltf) => {
+    const model = gltf.scene;
+    model.name = "EXCIT_CHARACTER_MODEL";
+    model.traverse((object) => {
+      if (!object.isMesh) return;
+      object.castShadow = true;
+      object.receiveShadow = true;
+    });
+    player.add(model);
+    const socketBindings = bindPlayerSockets(player, model);
+    const asset = { model, animations: gltf.animations, socketBindings };
+    playerAssets.set(player, asset);
+    player.dispatchEvent({ type: "player-model-ready", asset });
+    return asset;
+  });
 
   return player;
 }
 
+export function clonePlayerRig(player) {
+  const clone = cloneSkeleton(player);
+  const sourceAsset = playerAssets.get(player);
+  const animations = sourceAsset?.animations ?? [];
+  clone.userData.assetReady = Promise.resolve({
+    model: clone.getObjectByName("EXCIT_CHARACTER_MODEL") ?? clone,
+    animations,
+  });
+  playerAssets.set(clone, { model: clone.getObjectByName("EXCIT_CHARACTER_MODEL") ?? clone, animations });
+  return clone;
+}
+
 export function getPlayerRigParts(root) {
   return {
-    torso: root?.getObjectByName("torso") ?? null,
-    head: root?.getObjectByName("head") ?? null,
-    leftArmPivot: root?.getObjectByName("leftArmPivot") ?? null,
-    rightArmPivot: root?.getObjectByName("rightArmPivot") ?? null,
-    leftArm: root?.getObjectByName("leftArm") ?? null,
-    rightArm: root?.getObjectByName("rightArm") ?? null,
-    leftLegPivot: root?.getObjectByName("leftLegPivot") ?? null,
-    rightLegPivot: root?.getObjectByName("rightLegPivot") ?? null,
-    leftLeg: root?.getObjectByName("leftLeg") ?? null,
-    rightLeg: root?.getObjectByName("rightLeg") ?? null,
+    torso: root?.getObjectByName("EXCIT_BLOCKOUT_TORSO") ?? null,
+    head: root?.getObjectByName(PLAYER_SOCKET_NAMES.head) ?? null,
+    leftArmPivot: root?.getObjectByName("EXCIT_UPPER_ARM.L") ?? null,
+    rightArmPivot: root?.getObjectByName("EXCIT_UPPER_ARM.R") ?? null,
+    leftArm: root?.getObjectByName(PLAYER_SOCKET_NAMES.leftHand) ?? null,
+    rightArm: root?.getObjectByName(PLAYER_SOCKET_NAMES.rightHand) ?? null,
+    leftLegPivot: root?.getObjectByName("EXCIT_THIGH.L") ?? null,
+    rightLegPivot: root?.getObjectByName("EXCIT_THIGH.R") ?? null,
+    leftLeg: root?.getObjectByName(PLAYER_SOCKET_NAMES.leftFoot) ?? null,
+    rightLeg: root?.getObjectByName(PLAYER_SOCKET_NAMES.rightFoot) ?? null,
     equippedPickaxe: root?.getObjectByName("equippedPickaxe") ?? null,
     equippedSafetyHelmet: root?.getObjectByName("equippedSafetyHelmet") ?? null,
     equippedNftHelmet: root?.getObjectByName("equippedNftHelmet") ?? null,
@@ -84,41 +114,30 @@ export function createPlayerEquipmentVisuals(
 ) {
   const equippedPickaxe = new THREE.Group();
   equippedPickaxe.name = "equippedPickaxe";
-  equippedPickaxe.scale.setScalar(0.8);
-  equippedPickaxe.position.set(0.01, -0.44, 0.07);
-  equippedPickaxe.rotation.set(Math.PI * 0.5, Math.PI * 0.03, -Math.PI * 0.08);
   equippedPickaxe.visible = false;
-  parts.leftArm?.add(equippedPickaxe);
+  parts.rightArm?.add(equippedPickaxe);
 
   const equippedSafetyHelmet = buildSafetyHelmetModel();
   equippedSafetyHelmet.name = "equippedSafetyHelmet";
   equippedSafetyHelmet.scale.setScalar(0.72);
   equippedSafetyHelmet.visible = false;
   parts.head?.add(equippedSafetyHelmet);
-  alignWearableOnHead(parts.head, equippedSafetyHelmet, {
-    verticalInset: 0.36,
-    forwardBias: 0.06,
-  });
+  equippedSafetyHelmet.position.set(0, 0.32, 0.015);
 
   const equippedNftHelmet = buildSafetyHelmetModel("gold");
   equippedNftHelmet.name = "equippedNftHelmet";
   equippedNftHelmet.scale.setScalar(0.72);
   equippedNftHelmet.visible = false;
   parts.head?.add(equippedNftHelmet);
-  alignWearableOnHead(parts.head, equippedNftHelmet, {
-    verticalInset: 0.36,
-    forwardBias: 0.06,
-  });
+  equippedNftHelmet.position.copy(equippedSafetyHelmet.position);
 
   const leftFootAnchor = new THREE.Group();
   leftFootAnchor.name = "leftFootAnchor";
-  leftFootAnchor.position.set(0, -0.9, 0.05);
-  parts.leftLegPivot?.add(leftFootAnchor);
+  parts.leftLeg?.add(leftFootAnchor);
 
   const rightFootAnchor = new THREE.Group();
   rightFootAnchor.name = "rightFootAnchor";
-  rightFootAnchor.position.set(0, -0.9, 0.05);
-  parts.rightLegPivot?.add(rightFootAnchor);
+  parts.rightLeg?.add(rightFootAnchor);
 
   const equippedLeftShoe = buildSingleBasicShoeModel();
   equippedLeftShoe.name = "equippedBasicShoeLeft";
@@ -294,11 +313,14 @@ export function applyPickupReachPose(parts, reach) {
 
 export function syncPreviewPlayerPose({ previewPlayer, previewParts, player, sourceParts, equipmentVisibility }) {
   previewPlayer.rotation.y = player.rotation.y;
-  previewParts.torso.rotation.x = sourceParts.torso.rotation.x;
-  previewParts.leftArmPivot.rotation.x = sourceParts.leftArmPivot.rotation.x;
-  previewParts.rightArmPivot.rotation.x = sourceParts.rightArmPivot.rotation.x;
-  previewParts.leftLegPivot.rotation.x = sourceParts.leftLegPivot.rotation.x;
-  previewParts.rightLegPivot.rotation.x = sourceParts.rightLegPivot.rotation.x;
+  player.traverse((source) => {
+    if (!source.isBone) return;
+    const target = previewPlayer.getObjectByName(source.name);
+    if (!target?.isBone) return;
+    target.position.copy(source.position);
+    target.quaternion.copy(source.quaternion);
+    target.scale.copy(source.scale);
+  });
   if (previewParts.equippedPickaxe) {
     previewParts.equippedPickaxe.visible = equipmentVisibility.equippedPickaxeVisible;
   }

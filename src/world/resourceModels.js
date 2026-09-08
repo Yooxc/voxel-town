@@ -67,6 +67,7 @@ export function createMineRockModel(x, z, rockSizeDef, fadeIn, options, { defaul
   const resourceItemId = options.resourceItemId ?? "stoneDust";
   const resourceCount = options.resourceCount ?? defaultResourceCount;
   const maxHp = options.maxHp ?? rockSizeDef.maxHp;
+  const mapId = options.mapId ?? "광산";
   const rock = new THREE.Mesh(
     new THREE.DodecahedronGeometry(0.9 * scale, options.detail ?? 0),
     new THREE.MeshStandardMaterial({ color, roughness: 1.0, transparent: fadeIn, opacity: fadeIn ? 0 : 1 })
@@ -80,8 +81,9 @@ export function createMineRockModel(x, z, rockSizeDef, fadeIn, options, { defaul
     spawnScale: scale,
     hp: maxHp,
     maxHp,
+    mapId,
     spawn: {
-      x, z, rockSize: rockSizeDef.id, mapId: options.mapId ?? "광산", resourceItemId, resourceCount,
+      x, z, rockSize: rockSizeDef.id, mapId, resourceItemId, resourceCount,
       requiredPickaxeLevel: options.requiredPickaxeLevel ?? 0, color, detail: options.detail ?? 0, maxHp,
     },
     resourceItemId,

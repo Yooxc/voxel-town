@@ -4,6 +4,31 @@ export function createInteractionController(ctx) {
     ctx.setLastMessageUntil(ctx.now() + duration);
   }
 
+  function applyRockMiningImpact(minedRock, plan) {
+    if (ctx.isMineRockTargetValid && !ctx.isMineRockTargetValid(minedRock)) return;
+    if (plan.status === "blocked") return;
+    minedRock.userData.hp = plan.remainingHp;
+    ctx.triggerHitStop();
+    ctx.triggerRockHitReaction(minedRock);
+    ctx.triggerCameraShake(plan.remainingHp > 0 ? 0.035 : 0.06);
+    ctx.spawnDustBurst(minedRock.position, plan.remainingHp > 0 ? 8 : 10);
+    if (plan.remainingHp > 0) {
+      ctx.updateRockHpBar(minedRock);
+      showTimedMessage("채굴 중...", 700);
+      return;
+    }
+    const spawn = minedRock.userData.spawn ? { ...minedRock.userData.spawn } : {
+      x: minedRock.position.x, z: minedRock.position.z, rockSize: "small",
+    };
+    ctx.finishRockMining(minedRock, spawn);
+    const state = ctx.getInteractionState();
+    if (state.activeMineRock !== minedRock) return;
+    state.activeMineRock = null;
+    ctx.hideRockHpBar();
+    ctx.hidePickupHint();
+    ctx.setInteractionState(state);
+  }
+
   function handleKeyDown(event) {
     if (!ctx.canPlayGame()) return;
     if (ctx.getLogicalInputKey(event) !== "escape" && ctx.isTextInputActive()) return;
@@ -28,14 +53,14 @@ export function createInteractionController(ctx) {
       }
       const keys = ctx.getKeys();
       if (key in keys) keys[key] = false;
-      if (key === "shift") ctx.resetShiftRotation(false);
+      if (key === "shift") ctx.setCameraControlsEnabled(false);
       return;
     }
 
     const keys = ctx.getKeys();
     if (ctx.isWorkUiMovementLocked() && (key in keys || key === "shift")) {
       if (key in keys) keys[key] = false;
-      if (key === "shift") ctx.resetShiftRotation();
+      if (key === "shift") ctx.setCameraControlsEnabled(false);
       return;
     }
 
@@ -160,7 +185,7 @@ export function createInteractionController(ctx) {
       return;
     }
     if (state.activeHarvestTree) {
-      ctx.triggerMiningSwing(state.activeHarvestTree);
+      if (event.repeat || !ctx.triggerMiningSwing(state.activeHarvestTree)) return;
       const plan = ctx.createTreeHarvestPlan({
         itemId: state.activeHarvestTree.userData.harvestItemId,
         count: state.activeHarvestTree.userData.harvestCount ?? 1,
@@ -188,11 +213,11 @@ export function createInteractionController(ctx) {
         ctx.placeWastelandStructure(state.activeWastelandCell, structureItemId);
         return;
       }
-      ctx.triggerMiningSwing(state.activeWastelandCell.mesh);
       if (!ctx.hasEquippedTool("shovel")) {
         showTimedMessage(ctx.hasOwnedTool("shovel") ? ctx.hudMessages.EQUIP_SHOVEL : ctx.hudMessages.NEED_SHOVEL);
         return;
       }
+      if (!ctx.triggerMiningSwing(state.activeWastelandCell.mesh)) return;
       const result = ctx.tryDigWastelandTerrain?.();
       if (!result?.ok) {
         showTimedMessage(result?.reason ?? "이 구역은 파낼 수 없습니다.", 1000);
@@ -201,9 +226,10 @@ export function createInteractionController(ctx) {
       showTimedMessage(`황무지 개간 ${Math.round(result.progress?.percent ?? 0)}%`, 800);
       return;
     }
+    if (event.repeat || ctx.isMiningLocked?.()) return;
     const terrainDigResult = ctx.tryDigTerrain?.();
     if (terrainDigResult?.ok) {
-      ctx.triggerMiningSwing(terrainDigResult.target.mesh);
+      if (!ctx.triggerMiningSwing(terrainDigResult.target.mesh)) return;
       showTimedMessage("땅을 팠습니다.", 600);
       return;
     }
@@ -220,7 +246,7 @@ export function createInteractionController(ctx) {
       return;
     }
     if (!state.activeMineRock) return;
-    ctx.triggerMiningSwing(state.activeMineRock);
+    if (event.repeat) return;
     const minedRock = state.activeMineRock;
     const plan = ctx.createRockMiningPlan(minedRock);
     if (plan.status === "blocked") {
@@ -229,24 +255,10 @@ export function createInteractionController(ctx) {
       else if (plan.reason === "pickaxe-level-required") showTimedMessage(`곡괭이 Lv.${minedRock.userData.requiredPickaxeLevel ?? 0} 이상 필요`, 1000);
       return;
     }
-    minedRock.userData.hp = plan.remainingHp;
-    ctx.triggerHitStop();
-    ctx.triggerRockHitReaction(minedRock);
-    ctx.triggerCameraShake(plan.remainingHp > 0 ? 0.035 : 0.06);
-    ctx.spawnDustBurst(minedRock.position, plan.remainingHp > 0 ? 8 : 10);
-    if (plan.remainingHp > 0) {
-      ctx.updateRockHpBar(minedRock);
-      showTimedMessage("채굴 중...", 700);
-      return;
-    }
-    const spawn = minedRock.userData.spawn ? { ...minedRock.userData.spawn } : {
-      x: minedRock.position.x, z: minedRock.position.z, rockSize: "small",
-    };
-    ctx.finishRockMining(minedRock, spawn);
-    state.activeMineRock = null;
-    ctx.hideRockHpBar();
-    ctx.hidePickupHint();
-    ctx.setInteractionState(state);
+    if (!ctx.triggerMiningSwing(minedRock, {
+      onImpact: () => applyRockMiningImpact(minedRock, plan),
+      isTargetValid: ctx.isMineRockTargetValid,
+    })) return;
   }
 
   function updateFrame() {
