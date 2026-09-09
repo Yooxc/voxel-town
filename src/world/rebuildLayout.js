@@ -41,7 +41,7 @@ const BASE_LAYOUT = Object.freeze({
     { id: "guide-3", name: "유진", coatColor: 0x6d7f5a, position: { x: 10.8, y: 0, z: -27.5 } },
     { id: "guide-4", name: "하린", coatColor: 0x78628e, position: { x: 15.4, y: 0, z: -30.0 } },
   ],
-  explorationPath: { x: 0.4, y: 0, z: -31.0 },
+  explorationPath: { x: 0.4, y: 0, z: -39.0 },
   miningArea: { x: 19.0, y: 0, z: -23.0 },
   miningDemo: {
     rockBounds: { minX: 16.5, maxX: 24.5, minZ: -28.5, maxZ: -19.5 },
@@ -71,8 +71,8 @@ const BASE_LAYOUT = Object.freeze({
       {
         id: "materials", x: -8.0, y: 0, z: -24.0, accentColor: 0xc49a61,
         displayItems: [
-          { id: "stone-sample", kind: "stone", color: 0x777b7c },
-          { id: "wood-sample", kind: "wood", color: 0x8c603b },
+          { id: "stone-sample", kind: "stone", name: "돌 견본", color: 0x777b7c, description: "표면과 모서리를 조금씩 다듬은 돌 견본이에요. 단단한 생활 도구나 작은 장식의 재료로 쓸 수 있어요." },
+          { id: "wood-sample", kind: "wood", name: "나무 견본", color: 0x8c603b, description: "결과 색이 서로 다른 나무 견본이에요. 가구나 생활용품을 만들 때 재료의 느낌을 비교할 수 있어요." },
         ],
       },
       {
@@ -93,8 +93,8 @@ const BASE_LAYOUT = Object.freeze({
       {
         id: "living", x: 8.2, y: 0, z: -24.0, accentColor: 0x9d7664,
         displayItems: [
-          { id: "small-pot", kind: "pot", color: 0x96705d },
-          { id: "table-lamp", kind: "lamp", color: 0xe2c978 },
+          { id: "small-pot", kind: "pot", name: "작은 화분", color: 0x96705d, description: "작은 식물을 곁에 둘 수 있는 화분이에요. 머무는 자리에 생기를 더해 줍니다." },
+          { id: "table-lamp", kind: "lamp", name: "탁상 조명", color: 0xe2c978, description: "자리를 은은하게 밝혀 주는 작은 조명이에요. 쉬거나 무언가 만들 때 편안한 빛을 냅니다." },
         ],
       },
     ],

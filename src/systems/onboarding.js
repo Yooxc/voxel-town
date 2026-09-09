@@ -1,4 +1,4 @@
-export const ONBOARDING_VERSION = 6;
+export const ONBOARDING_VERSION = 7;
 
 export const TOUR_STATUS = Object.freeze({
   NOT_STARTED: "not_started",
@@ -78,6 +78,7 @@ export function createDefaultOnboardingState() {
     firstCraft: {
       started: false,
       completed: false,
+      mineVisited: false,
     },
     firstActivities: createDefaultFirstActivityState(),
   };
@@ -107,6 +108,7 @@ export function normalizeOnboardingState(rawState, { pauseInterruptedTour = true
     firstCraft: {
       started: Boolean(source.firstCraft?.started) || Boolean(source.firstCraft?.completed),
       completed: Boolean(source.firstCraft?.completed),
+      mineVisited: Boolean(source.firstCraft?.mineVisited),
     },
     firstActivities: normalizeFirstActivityState(source.firstActivities),
   };
@@ -240,12 +242,18 @@ export function setOnboardingMarketItemInterest(state, itemId, interested) {
 
 export function startOnboardingFirstCraft(state) {
   if (state.firstCraft?.started || state.firstCraft?.completed) return false;
-  state.firstCraft = { started: true, completed: false };
+  state.firstCraft = { started: true, completed: false, mineVisited: false };
   return true;
 }
 
 export function completeOnboardingFirstCraft(state) {
   if (state.firstCraft?.completed) return false;
-  state.firstCraft = { started: true, completed: true };
+  state.firstCraft = { ...state.firstCraft, started: true, completed: true };
+  return true;
+}
+
+export function recordOnboardingFirstCraftMineVisit(state) {
+  if (!state.firstCraft?.started || state.firstCraft.completed || state.firstCraft.mineVisited) return false;
+  state.firstCraft.mineVisited = true;
   return true;
 }

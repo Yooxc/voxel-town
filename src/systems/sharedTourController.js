@@ -18,8 +18,6 @@ export function createSharedTourController({
   pauseTour,
   completeTour,
   requestAdvance,
-  getTourStatus = () => "not_started",
-  openActivityHelp = () => false,
   showDialog,
   hideDialog,
   notify,
@@ -29,11 +27,13 @@ export function createSharedTourController({
   let dialogKey = "";
   let dismissedDialogKey = "";
   let terminalStateKey = "";
+  let ownGuideStatus = "";
+  let followDialogOpen = false;
 
   function setGuideHint(guide, snapshot, selfId) {
     if (!guide?.entry) return;
     if (snapshot.status === "idle") {
-      guide.entry.hint = getTourStatus() === "completed" ? "Space : 할 일 물어보기" : "안내소에서 대기 중";
+      guide.entry.hint = "안내소에서 대기 중";
     }
     else if (snapshot.ownerId === selfId && snapshot.status === "waiting") guide.entry.hint = "Space : 안내 계속 듣기";
     else if (snapshot.ownerId === selfId) guide.entry.hint = "안내 중";
@@ -49,12 +49,29 @@ export function createSharedTourController({
       setGuideHint(guide, snapshot, selfId);
     }
     const ownGuide = nextGuides.find((guide) => guide.ownerId === selfId) ?? null;
-    if (!ownGuide) return;
+    if (!ownGuide) {
+      if (followDialogOpen || ownGuideStatus === "arriving") hideDialog();
+      followDialogOpen = false;
+      ownGuideStatus = "";
+      return;
+    }
+    const previousStatus = ownGuideStatus;
+    ownGuideStatus = ownGuide.status;
+    if (ownGuide.status === "waiting_for_player") {
+      if (!followDialogOpen) showDialog("저를 따라와주세요.", guideById.get(ownGuide.id)?.entry);
+      followDialogOpen = true;
+      return;
+    }
+    if (followDialogOpen) {
+      hideDialog();
+      followDialogOpen = false;
+    }
     const stateKey = `${ownGuide.id}:${ownGuide.status}:${ownGuide.checkpointId}:${ownGuide.returnReason}`;
     if (ownGuide.status === "arriving" || ownGuide.status === "moving" || ownGuide.status === "waiting") {
       startTour(ownGuide.checkpointId);
     }
     if (ownGuide.status === "returning" && terminalStateKey !== stateKey) {
+      if (previousStatus === "arriving") hideDialog();
       terminalStateKey = stateKey;
       if (ownGuide.returnReason === "completed") completeTour(ownGuide.checkpointId);
       if (ownGuide.returnReason === "paused") pauseTour(ownGuide.checkpointId);
@@ -91,9 +108,9 @@ export function createSharedTourController({
     if (entry?.role !== "tour-guide") return { handled: false };
     const snapshot = snapshots.get(entry.guideId);
     const selfId = getSelfId();
-    if (snapshot?.status === "idle" && getTourStatus() === "completed") {
-      const opened = openActivityHelp(entry);
-      return { handled: true, action: opened ? "activity-help" : "idle" };
+    if (snapshot?.status === "idle") {
+      notify("할 일을 찾고 있다면 마루에게 물어봐 주세요.", 1100);
+      return { handled: true, action: "idle" };
     }
     if (!snapshot || snapshot.ownerId !== selfId) {
       notify("다른 방문자를 안내 중이에요.", 1100);
@@ -128,6 +145,8 @@ export function createSharedTourController({
     dialogKey = "";
     dismissedDialogKey = "";
     terminalStateKey = "";
+    ownGuideStatus = "";
+    followDialogOpen = false;
     hideDialog();
     for (const guide of guides) {
       guide.root.position.copy(guide.origin);

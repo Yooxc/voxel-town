@@ -782,7 +782,7 @@ export function updateFirstActivityHudUi(firstActivityHud, view) {
   objectives.replaceChildren();
   for (const objective of view.objectives) {
     const row = document.createElement("div");
-    row.textContent = `${objective.label}  ${objective.current} / ${objective.target}`;
+    row.textContent = objective.display ?? `${objective.label}  ${objective.current} / ${objective.target}`;
     row.style.color = objective.current >= objective.target ? "#c9f5bd" : "rgba(255,255,255,0.82)";
     objectives.appendChild(row);
   }

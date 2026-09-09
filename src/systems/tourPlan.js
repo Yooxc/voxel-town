@@ -2,12 +2,11 @@ import { getRebuildLayout, getRebuildTerrainHeight } from "../world/rebuildLayou
 
 const BASE_REST_POSITION = { x: -5, y: 2.4, z: 10.4 };
 const ARRIVAL_ROUTE = [
-  { x: 8, z: -18.5 },
-  { x: 4.5, z: -14 },
-  { x: 1, z: -7 },
-  { x: 0.3, z: 0.5 },
-  { x: -0.8, z: 7 },
-  { x: -3.4, z: 10.2 },
+  { x: 11.5, z: -17 },
+  { x: 10.8, z: -9 },
+  { x: 10, z: -1 },
+  { x: 9, z: 6 },
+  { x: 7.5, z: 9.2 },
 ];
 const CHECKPOINT_ROUTES = Object.freeze({
   "guide-intro:rest-area": [
@@ -22,8 +21,9 @@ const CHECKPOINT_ROUTES = Object.freeze({
     { x: -2.2, z: -20 },
   ],
   "work-area:exploration-path": [
-    { x: -4.2, z: -26.5 },
-    { x: -3.3, z: -30 },
+    { x: -3.2, z: -27.5 },
+    { x: -2.2, z: -32.5 },
+    { x: -1.2, z: -36.5 },
   ],
 });
 
@@ -92,7 +92,7 @@ export function getGuideReturnPath(guide, checkpoints, checkpointId) {
   if (checkpointId === "guide-intro" || checkpointId === "rest-area") {
     route = [...ARRIVAL_ROUTE].reverse();
   } else if (checkpointId === "exploration-path") {
-    route = [{ x: -3.3, z: -30 }, { x: -4.2, z: -26.5 }, { x: -2.2, z: -21 }, ...officeApproach];
+    route = [{ x: -1.2, z: -36.5 }, { x: -2.2, z: -32.5 }, { x: -3.2, z: -27.5 }, { x: -2.2, z: -21 }, ...officeApproach];
   } else {
     route = [{ x: -2.2, z: -21 }, ...officeApproach];
   }

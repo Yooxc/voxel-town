@@ -25,10 +25,19 @@ test("tour helpers use the same offset layout as world placement", () => {
 });
 
 test("defines inspectable craft display items for the market conversation", () => {
-  const craftStall = getRebuildLayout().market.stalls.find((stall) => stall.id === "craft");
+  const stalls = getRebuildLayout().market.stalls;
+  const craftStall = stalls.find((stall) => stall.id === "craft");
 
   assert.deepEqual(craftStall.displayItems.map((item) => item.name), ["작은 상자", "작업 도구"]);
   assert.ok(craftStall.displayItems.every((item) => item.description && item.interestResponse));
+  assert.ok(stalls.every((stall) => stall.displayItems.every((item) => item.name && item.description)));
+});
+
+test("places the final tour explanation near the exploration fence", () => {
+  const layout = getRebuildLayout();
+  const finalPoint = layout.tour.checkpoints.at(-1).position;
+
+  assert.ok(finalPoint.z <= -36);
 });
 
 test("places a walkable general mine route beside the rebuild market", () => {

@@ -126,5 +126,8 @@ export function createGameSessionCoordinator(ctx) {
     completeOnboardingFirstCraft: () => commitOnboardingTransition(
       ctx.onboarding?.completeFirstCraft
     ),
+    recordOnboardingFirstCraftMineVisit: () => commitOnboardingTransition(
+      ctx.onboarding?.recordFirstCraftMineVisit
+    ),
   };
 }

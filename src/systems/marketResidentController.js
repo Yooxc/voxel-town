@@ -46,7 +46,6 @@ export function createMarketResidentController({
     showChoiceDialog("천천히 둘러보세요. 무엇이 궁금한가요?", activeEntry, [
       ...followups,
       { label: "무엇을 하고 있나요?", onSelect: showAbout },
-      { label: "진열된 물건 보기", onSelect: showDisplay },
       { label: "다음에 올게요", onSelect: close },
     ]);
     return true;
@@ -61,7 +60,7 @@ export function createMarketResidentController({
         `처음이라면 작은 돌 컵부터 만들어볼까요? 돌가루 ${status.inputCount}개가 필요해요. ${materialText}\n마을에서 이어지는 길을 따라 일반 광산으로 가면 구할 수 있어요.`,
         activeEntry,
         [
-          { label: "재료를 구해올게요", onSelect: close },
+          { label: "재료를 구해올게요", onSelect: beginFirstCraftPreparation },
           { label: "돌아가기", onSelect: showMenu },
         ],
       );
@@ -76,6 +75,12 @@ export function createMarketResidentController({
       ],
     );
     return true;
+  }
+
+  function beginFirstCraftPreparation() {
+    if (!firstCraftController) return false;
+    firstCraftController.begin();
+    return close();
   }
 
   function craftFirstCup() {
@@ -190,11 +195,14 @@ export function createMarketResidentController({
     if (!activeEntry || !item?.id) return false;
     activeEntry.market.setHighlightedDisplayItem?.(item.id);
     const interested = (getOnboardingState()?.marketInterestItemIds ?? []).includes(item.id);
-    showChoiceDialog(item.description, activeEntry, [
-      {
+    const interestChoice = item.interestResponse
+      ? [{
         label: interested ? "관심 표시 취소" : "마음에 들어요",
         onSelect: () => updateInterest(item, !interested),
-      },
+      }]
+      : [];
+    showChoiceDialog(item.description, activeEntry, [
+      ...interestChoice,
       { label: "다른 물건도 볼게요", onSelect: showDisplay },
       { label: "대화 마치기", onSelect: close },
     ]);

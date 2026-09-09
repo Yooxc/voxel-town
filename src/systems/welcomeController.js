@@ -65,8 +65,10 @@ export function createWelcomeController({
       {
         label: "동네 안내받기",
         onSelect: () => {
-          requestTour();
-          close();
+          const requested = requestTour();
+          resetConversation();
+          if (requested) showDialog("잠깐 기다려줘. 길잡이가 오고 있어.", entry);
+          else hideDialog();
         },
       },
       {

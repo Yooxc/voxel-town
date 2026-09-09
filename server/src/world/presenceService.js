@@ -10,8 +10,8 @@ import { getRebuildLayout, getRebuildTerrainHeight } from "../../../src/world/re
 
 const PLAYER_TTL_MS = 12_000;
 const GUIDE_SPEED = 2.15;
-const GUIDE_PAUSE_DISTANCE = 9.3;
-const GUIDE_RESUME_DISTANCE = 5.3;
+const GUIDE_PAUSE_DISTANCE = 6.2;
+const GUIDE_RESUME_DISTANCE = 3.5;
 const MAX_STEP_SECONDS = 0.25;
 
 function clampNumber(value, min, max, fallback = 0) {

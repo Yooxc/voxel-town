@@ -16,9 +16,10 @@ test("keeps the guide route on the rebuild terrain and follows the downhill path
   const arrival = getGuideArrivalPath(guide, checkpoints);
   const downhill = getTourLegPath(checkpoints, "rest-area", "work-area");
 
-  assert.ok(arrival.length >= 8);
+  assert.ok(arrival.length >= 7);
   assert.ok(downhill.length >= 6);
   assert.deepEqual(arrival.at(-1), checkpoints[0].position);
+  assert.ok(arrival.every((point) => point.x > 5));
   assert.deepEqual(downhill.at(-1), checkpoints.find((checkpoint) => checkpoint.id === "work-area").position);
   for (const point of [...arrival, ...downhill]) {
     assert.ok(Math.abs(point.y - getRebuildTerrainHeight(point.x, point.z, origin)) < 0.0001);

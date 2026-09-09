@@ -27,7 +27,10 @@ test("opens distinct market resident information and display views", () => {
   const result = harness.controller.interact(harness.entry);
 
   assert.deepEqual(result, { handled: true, action: "open", stallId: "materials" });
-  assert.equal(harness.views[0].choices.length, 3);
+  assert.deepEqual(harness.views[0].choices.map((choice) => choice.label), [
+    "무엇을 하고 있나요?",
+    "다음에 올게요",
+  ]);
   harness.views[0].choices.find((choice) => choice.label === "무엇을 하고 있나요?").onSelect();
   assert.match(harness.views.at(-1).text, /재료/);
   harness.views.at(-1).choices.find((choice) => choice.label === "진열된 물건 보기").onSelect();
@@ -127,6 +130,7 @@ test("shows individual craft displays and records interest only from the explici
   };
 
   controller.interact(entry);
+  views.at(-1).choices.find((choice) => choice.label === "무엇을 하고 있나요?").onSelect();
   views.at(-1).choices.find((choice) => choice.label === "진열된 물건 보기").onSelect();
   views.at(-1).choices.find((choice) => choice.label === "작은 상자").onSelect();
   assert.equal(views.at(-1).text, "작은 상자 설명");
@@ -156,6 +160,7 @@ test("offers removal when a displayed item is already marked as interesting", ()
       displayItems: [{ id: "small-tool", name: "작업 도구", description: "도구 설명", interestResponse: "좋아요." }],
     },
   });
+  views.at(-1).choices.find((choice) => choice.label === "무엇을 하고 있나요?").onSelect();
   views.at(-1).choices.find((choice) => choice.label === "진열된 물건 보기").onSelect();
   views.at(-1).choices.find((choice) => choice.label === "작업 도구 (관심 있음)").onSelect();
   views.at(-1).choices.find((choice) => choice.label === "관심 표시 취소").onSelect();

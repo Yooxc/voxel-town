@@ -67,6 +67,7 @@ import {
   recordOnboardingExploreVisit,
   recordOnboardingActivityHelpRequest,
   recordOnboardingResidentIntroduction,
+  recordOnboardingFirstCraftMineVisit,
   completeOnboardingResidentIntroduction,
   completeOnboardingFirstCraft,
   setOnboardingMarketItemInterest,
@@ -965,6 +966,7 @@ const gameSessionCoordinator = createGameSessionCoordinator({
     setMarketItemInterest: (itemId, interested) => setOnboardingMarketItemInterest(onboardingState, itemId, interested),
     startFirstCraft: () => startOnboardingFirstCraft(onboardingState),
     completeFirstCraft: () => completeOnboardingFirstCraft(onboardingState),
+    recordFirstCraftMineVisit: () => recordOnboardingFirstCraftMineVisit(onboardingState),
   },
   playerSave: {
     runtime: playerSaveRuntime, storage: localStorage, authApiBaseUrl: AUTH_API_BASE_URL,
@@ -1095,6 +1097,7 @@ const {
   setOnboardingMarketItemInterest: commitOnboardingMarketItemInterest,
   startOnboardingFirstCraft: commitOnboardingFirstCraftStart,
   completeOnboardingFirstCraft: commitOnboardingFirstCraftComplete,
+  recordOnboardingFirstCraftMineVisit: commitOnboardingFirstCraftMineVisit,
   recordOnboardingActivityHelpRequest: commitOnboardingActivityHelpRequest,
 } = gameSessionCoordinator;
 
@@ -2327,6 +2330,16 @@ const firstCraftController = createFirstCraftController({
   consumeItem,
   addItem,
   updateInventoryUi: updateInventoryUI,
+  hasOwnedPickaxe: () => findFirstSlotWithItem("pickaxe") !== -1,
+  hasEquippedPickaxe: () => hasEquippedTool("pickaxe"),
+  isInMineArea: (position, mapId) => {
+    const bounds = rebuildEntryLayout.generalMine.rockBounds;
+    return runtimeEnvironment.isRebuild
+      && mapId === rebuildEntryLayout.mapId
+      && position.x >= bounds.minX && position.x <= bounds.maxX
+      && position.z >= bounds.minZ && position.z <= bounds.maxZ;
+  },
+  recordMineVisit: commitOnboardingFirstCraftMineVisit,
 });
 const marketResidentController = createMarketResidentController({
   getOnboardingState,
@@ -3150,8 +3163,6 @@ tourController = createSharedTourController({
   pauseTour: commitOnboardingTourPause,
   completeTour: commitOnboardingTourComplete,
   requestAdvance: () => presenceController?.advanceTour(),
-  getTourStatus: () => getOnboardingState()?.tourStatus ?? "not_started",
-  openActivityHelp: (entry) => activityHelpController.openFor(entry),
   showDialog: (text, entry) => showNpcDialog(text, null, entry?.obj),
   hideDialog: hideNpcDialog,
   notify: (message, duration) => {
@@ -3783,12 +3794,14 @@ playerRuntimeController = createPlayerRuntimeIntegration({
       presenceController?.update();
       tourController?.update(dt);
       activityHelpController.updatePlayerPosition(player.position, currentMapId);
+      firstCraftController.updatePlayerPosition(player.position, currentMapId);
+      const activityProgressView = activityHelpController.getProgressView();
       updateFirstActivityHudUi({
         wrap: firstActivityHudWrap,
         title: firstActivityHudTitle,
         objectives: firstActivityHudObjectives,
         status: firstActivityHudStatus,
-      }, activityHelpController.getProgressView());
+      }, firstCraftController.getProgressView(activityProgressView));
       remotePlayerRuntime.update(dt);
     },
     updateSceneFogForCurrentMap,

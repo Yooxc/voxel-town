@@ -107,6 +107,29 @@ test("a visitor can ask Maru about activities instead of starting the tour", () 
   assert.equal(controller.isChoiceOpen(), false);
 });
 
+test("Maru asks the visitor to wait while the requested guide is arriving", () => {
+  const state = { welcomeCompleted: true, tourStatus: "not_started" };
+  const resident = { role: "welcome", obj: {} };
+  const calls = [];
+  let choices = [];
+  const controller = createWelcomeController({
+    getOnboardingState: () => state,
+    completeWelcome: () => {},
+    getTourStatus: () => state.tourStatus,
+    requestTour: () => { state.tourStatus = "in_progress"; return true; },
+    showTourChoices: (_text, _entry, nextChoices) => { choices = nextChoices; },
+    showDialog: (text, entry) => calls.push([text, entry]),
+    hideDialog: () => calls.push("hide"),
+  });
+
+  controller.interact(resident);
+  choices.find((choice) => choice.label === "동네 안내받기").onSelect();
+
+  assert.match(calls.at(-1)[0], /잠깐 기다려줘/);
+  assert.equal(calls.at(-1)[1], resident);
+  assert.equal(controller.isOpen(), false);
+});
+
 test("Maru checks the selected first activity before reopening activity choices", () => {
   const resident = { role: "welcome", obj: {} };
   let reactions = 0;

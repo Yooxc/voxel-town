@@ -40,6 +40,7 @@ test("exposes player-save transport methods from the session coordinator", () =>
       setMarketItemInterest: (itemId, interested) => itemId === "crafted-box" && interested,
       startFirstCraft: () => true,
       completeFirstCraft: () => true,
+      recordFirstCraftMineVisit: () => true,
     },
     playerSave: {
       getTransport: () => ({ apiFetchJson: "fetch", getAuthHeaders: "headers" }),
@@ -81,10 +82,12 @@ test("exposes player-save transport methods from the session coordinator", () =>
   assert.equal(coordinator.setOnboardingMarketItemInterest("crafted-box", true), true);
   assert.equal(coordinator.startOnboardingFirstCraft(), true);
   assert.equal(coordinator.completeOnboardingFirstCraft(), true);
+  assert.equal(coordinator.recordOnboardingFirstCraftMineVisit(), true);
 
   assert.deepEqual(calls, [
     ["hydrate", { apiFetchJson: "fetch", getAuthHeaders: "headers" }],
     ["push", { apiFetchJson: "fetch", getAuthHeaders: "headers" }],
+    ["schedule", true, { apiFetchJson: "fetch", getAuthHeaders: "headers" }],
     ["schedule", true, { apiFetchJson: "fetch", getAuthHeaders: "headers" }],
     ["schedule", true, { apiFetchJson: "fetch", getAuthHeaders: "headers" }],
     ["schedule", true, { apiFetchJson: "fetch", getAuthHeaders: "headers" }],
