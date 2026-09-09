@@ -30,12 +30,17 @@ export function createSessionWorkflowController({
   setLoginBusy,
   setNicknameBusy,
   notify,
+  onboardingEnabled = false,
+  onPlayableWorldEntered = () => ({ changed: false, firstVisit: false }),
   now = () => new Date().toISOString(),
 }) {
   function saveWalletSession() {
     const serialized = serializeSession(auth);
     if (!serialized) storage.removeItem(walletSessionKey);
-    else storage.setItem(walletSessionKey, JSON.stringify(serialized));
+    else {
+      if (onboardingEnabled && isGuestSession()) serialized.nickname = profile.nickname;
+      storage.setItem(walletSessionKey, JSON.stringify(serialized));
+    }
   }
 
   function hasNickname() { return profile.nickname.trim().length > 0; }
@@ -44,6 +49,20 @@ export function createSessionWorkflowController({
   function isServerBackedWalletSession() { return isServerBackedWalletSessionState(auth); }
   function isWalletAuthenticated() { return isWalletAuthenticatedState(auth); }
   function canPlayGame() { return isWalletAuthenticated() && hasNickname(); }
+
+  function enterPlayableWorldIfReady() {
+    if (!onboardingEnabled || !canPlayGame()) return { changed: false, firstVisit: false };
+    const result = onPlayableWorldEntered();
+    if (!result?.changed) return result;
+    if (isGuestSession()) saveCoordinator.saveActiveLocalProfileState();
+    else if (isServerBackedWalletSession()) {
+      saveCoordinator.scheduleSync(true, {
+        apiFetchJson: getApiFetchJson(),
+        getAuthHeaders,
+      });
+    }
+    return result;
+  }
 
   function updateWalletUi() {
     renderUi({
@@ -93,6 +112,14 @@ export function createSessionWorkflowController({
         applyFreshPlayerStartState();
       } else if (saved.sessionType === "guest" || saved.address === "guest-local") {
         applyFreshPlayerStartState();
+        const loadState = onboardingEnabled
+          ? saveCoordinator.loadActiveLocalProfileState()
+          : "missing";
+        if (loadState === "apply_error" || loadState === "parse_error") {
+          setLoginStatus("게스트 저장 기록을 불러오지 못했습니다. 기존 기록은 덮어쓰지 않습니다.");
+          return;
+        }
+        enterPlayableWorldIfReady();
       }
     } catch {
       storage.removeItem(walletSessionKey);
@@ -114,6 +141,7 @@ export function createSessionWorkflowController({
     applyFreshPlayerStartState();
     await saveCoordinator.hydrateFromServer({ apiFetchJson: getApiFetchJson(), getAuthHeaders });
     saveCoordinator.setSyncPaused(!saveCoordinator.hasConfirmedBaseline());
+    enterPlayableWorldIfReady();
   }
 
   function bindWalletProviderEvents(provider) {
@@ -135,6 +163,7 @@ export function createSessionWorkflowController({
       applyFreshPlayerStartState();
       await saveCoordinator.hydrateFromServer({ apiFetchJson: getApiFetchJson(), getAuthHeaders });
       saveCoordinator.setSyncPaused(!saveCoordinator.hasConfirmedBaseline());
+      enterPlayableWorldIfReady();
       setLoginStatus(`${getAddressLabel(result.address)} 주소로 서명이 완료되었습니다.`);
     } else {
       if (!result.missingProvider) {
@@ -165,6 +194,7 @@ export function createSessionWorkflowController({
     setNicknameStatus("");
     saveWalletSession();
     updateWalletUi();
+    enterPlayableWorldIfReady();
     if (!local) scheduleSave(true);
     notify(`닉네임 설정 완료: ${profile.nickname}`, 1000);
   }

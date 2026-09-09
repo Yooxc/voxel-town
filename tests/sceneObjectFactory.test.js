@@ -36,3 +36,22 @@ test("creates a respawn rock through the map-specific placement callback", () =>
   assert.equal(rock.userData.spawn.mapId, "폐광");
   assert.equal(rock.userData.resourceItemId, "masonryStone");
 });
+
+test("keeps a rebuild mine rock inside its original respawn region", () => {
+  const placementCalls = [];
+  const { factory } = createFactory({
+    findMineRockSpawnPosition: (...args) => {
+      placementCalls.push(args);
+      return { x: -25, z: -34 };
+    },
+  });
+  const rock = factory.createRespawnRockFromSpawn({
+    mapId: "광산",
+    rockSize: "small",
+    resourceItemId: "stoneDust",
+    respawnRegion: "general-mine",
+  });
+
+  assert.deepEqual(placementCalls, [[1, 120, "general-mine"]]);
+  assert.equal(rock.userData.spawn.respawnRegion, "general-mine");
+});

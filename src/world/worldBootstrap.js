@@ -1,3 +1,9 @@
+import { createWelcomeArea } from "./welcomeArea.js";
+import { createTourGuides } from "./tourGuide.js";
+import { getRebuildLayout } from "./rebuildLayout.js";
+import { createRebuildBlockout } from "./rebuildBlockout.js";
+import { createRebuildMine } from "./rebuildMine.js";
+
 export function bootstrapWorld({
   scene,
   groundSurfaces,
@@ -8,6 +14,7 @@ export function bootstrapWorld({
   registerCaveDarkMaterial,
   registerResidenceMapZone,
   registerMapGate,
+  registerTutorialNpc,
   makeTree,
   makeRock,
   makePickaxe,
@@ -57,7 +64,10 @@ export function bootstrapWorld({
   frontierParcelBorderColor,
   residenceNoticeBoardVisuals,
   inventory,
+  welcomeAreaEnabled = false,
+  rebuildBlockoutEnabled = false,
 }) {
+  const rebuildLayout = getRebuildLayout(startX, startZ, startFlatY);
   const spawnTreesAndRocks = () => {
     const half = groundSize / 2;
     const margin = 6;
@@ -84,24 +94,60 @@ export function bootstrapWorld({
     }
   };
 
-  spawnTreesAndRocks();
-  buildMinePerimeterCliffs({ scene, addCollider, startX, startZ });
-  buildStartZoneWall();
-  const startStall = buildStartStall();
+  const rebuildBlockout = rebuildBlockoutEnabled
+    ? createRebuildBlockout({
+      scene, groundSurfaces, registerWalkableSurface, addCollider,
+      registerNpc: registerTutorialNpc,
+      layout: rebuildLayout,
+    })
+    : null;
+  const rebuildMine = rebuildBlockoutEnabled
+    ? createRebuildMine({ scene, groundSurfaces, registerWalkableSurface, addCollider, layout: rebuildLayout })
+    : null;
+  if (!rebuildBlockoutEnabled) spawnTreesAndRocks();
+  if (!rebuildBlockoutEnabled) buildMinePerimeterCliffs({ scene, addCollider, startX, startZ });
+  if (!rebuildBlockoutEnabled) buildStartZoneWall();
+  const startStall = rebuildBlockoutEnabled
+    ? { group: rebuildBlockout.marketStalls[0].root, top: rebuildBlockout.marketStalls[0].counter }
+    : buildStartStall(welcomeAreaEnabled ? rebuildLayout.workArea.stall : null);
   registerSupportSurface(startStall.top);
 
-  const pickaxe = makePickaxe(startX + 0.8, startZ - 2.8, startFlatY, { x: Math.PI / 2, y: Math.PI * 0.04, z: 0 }, 1);
+  const welcomeArea = welcomeAreaEnabled
+    ? createWelcomeArea({
+      scene,
+      addCollider,
+      registerNpc: registerTutorialNpc,
+      x: rebuildLayout.welcomeArea.anchor.x,
+      y: rebuildLayout.welcomeArea.anchor.y,
+      z: rebuildLayout.welcomeArea.anchor.z,
+      layout: rebuildLayout.welcomeArea,
+    })
+    : null;
+  const tourGuides = welcomeAreaEnabled
+    ? createTourGuides({
+      scene,
+      registerNpc: registerTutorialNpc,
+      addCollider,
+      startX,
+      startZ,
+      startFlatY,
+      layout: rebuildLayout,
+    })
+    : [];
+
+  const pickupOrigin = rebuildBlockoutEnabled ? rebuildLayout.workArea.stall : { x: startX, y: startFlatY, z: startZ };
+  const pickaxe = makePickaxe(pickupOrigin.x + 0.8, pickupOrigin.z - 0.2, pickupOrigin.y, { x: Math.PI / 2, y: Math.PI * 0.04, z: 0 }, 1);
   restPropOnSupport(pickaxe, startStall.top);
   enableDynamicProp(pickaxe, { sleeping: true });
   registerPickupItem(pickaxe, "pickaxe", "E : 곡괭이 줍기");
 
-  const safetyHelmet = makeSafetyHelmet(startX - 1.15, startZ - 2.62, startFlatY, { x: 0, y: Math.PI * -0.12, z: Math.PI * 0.02 });
+  const safetyHelmet = makeSafetyHelmet(pickupOrigin.x - 1.15, pickupOrigin.z - 0.15, pickupOrigin.y, { x: 0, y: Math.PI * -0.12, z: Math.PI * 0.02 });
   restPropOnSupport(safetyHelmet, startStall.top);
   enableDynamicProp(safetyHelmet, { sleeping: true });
   registerPickupItem(safetyHelmet, "safetyHelmet", "E : 안전모 줍기");
 
   const airCanLeft = buildFreshAirCanisterModel();
-  airCanLeft.position.set(startX - 0.18, startFlatY, startZ - 2.88);
+  airCanLeft.position.set(pickupOrigin.x - 0.18, pickupOrigin.y, pickupOrigin.z - 0.28);
   airCanLeft.rotation.set(0, Math.PI * 0.12, 0.08);
   scene.add(airCanLeft);
   restPropOnSupport(airCanLeft, startStall.top);
@@ -109,36 +155,41 @@ export function bootstrapWorld({
   registerPickupItem(airCanLeft, "freshAirCanister", "E : 신선한 공기 캔 줍기");
 
   const airCanRight = buildFreshAirCanisterModel();
-  airCanRight.position.set(startX - 0.52, startFlatY, startZ - 2.42);
+  airCanRight.position.set(pickupOrigin.x - 0.52, pickupOrigin.y, pickupOrigin.z + 0.18);
   airCanRight.rotation.set(0, Math.PI * -0.08, -0.05);
   scene.add(airCanRight);
   restPropOnSupport(airCanRight, startStall.top);
   enableDynamicProp(airCanRight, { sleeping: true });
   registerPickupItem(airCanRight, "freshAirCanister", "E : 신선한 공기 캔 줍기");
 
-  const basicShoes = makeBasicShoes(startX + 0.18, startZ - 2.5, startFlatY, { x: 0, y: Math.PI * 0.08, z: 0 });
+  const basicShoes = makeBasicShoes(pickupOrigin.x + 0.18, pickupOrigin.z + 0.18, pickupOrigin.y, { x: 0, y: Math.PI * 0.08, z: 0 });
   restPropOnSupport(basicShoes, startStall.top);
   enableDynamicProp(basicShoes, { sleeping: true });
   registerPickupItem(basicShoes, "basicShoes", "E : 기본신발 줍기");
 
-  const shovel = makeShovel(startX + 1.3, startZ - 2.44, startFlatY, { x: Math.PI / 2, y: Math.PI * -0.08, z: 0 });
+  const shovel = makeShovel(pickupOrigin.x + 1.3, pickupOrigin.z + 0.22, pickupOrigin.y, { x: Math.PI / 2, y: Math.PI * -0.08, z: 0 });
   restPropOnSupport(shovel, startStall.top);
   enableDynamicProp(shovel, { sleeping: true });
   registerPickupItem(shovel, "shovel", "E : 삽 줍기");
 
-  makeTutorialNpc(startX, startZ - 5.15, 0);
-  const forgeStation = buildForgeAnvil(startX - 3.0, startZ + 1.55);
-  const refineryStation = buildRefineryStation(forgeStation.position.x + 0.35, forgeStation.position.z + 3.65, startFlatY, Math.PI);
-  buildNftExhibitBoard(forgeStation.position.x - 2.85, forgeStation.position.z - 2.45, Math.PI * 0.5);
+  if (!rebuildBlockoutEnabled) makeTutorialNpc(startX, startZ - 5.15, 0);
+  const facilityOrigin = rebuildBlockoutEnabled
+    ? { x: startX - 14.2, y: startFlatY, z: startZ - 24.0 }
+    : { x: startX - 3.0, y: startFlatY, z: startZ + 1.55 };
+  const forgeStation = buildForgeAnvil(facilityOrigin.x, facilityOrigin.z);
+  const refineryStation = buildRefineryStation(forgeStation.position.x + 3.25, forgeStation.position.z, facilityOrigin.y, Math.PI);
+  buildNftExhibitBoard(forgeStation.position.x - 2.35, forgeStation.position.z - 2.55, Math.PI * 0.5);
 
-  const signStartX = startX + 3.9;
-  const signStartZ = startZ + 0.8;
+  const signStartX = rebuildBlockoutEnabled ? -13.1 : startX + 3.9;
+  const signStartZ = rebuildBlockoutEnabled ? -8.2 : startZ + 0.8;
   const signTexts = [
     "곡괭이 안전모 착용 필수!!!",
     "E키를 눌러 안전모와 곡괭이를 획득하세요",
     "I키를 눌러 인벤토리를 열고 클릭으로 아이템을 착용하세요",
   ];
-  for (let i = 0; i < signTexts.length; i += 1) makeSign(signStartX, signStartZ + 2.25 * i, signTexts[i], -Math.PI / 2);
+  if (!rebuildBlockoutEnabled) {
+    for (let i = 0; i < signTexts.length; i += 1) makeSign(signStartX, signStartZ + 2.25 * i, signTexts[i], -Math.PI / 2);
+  }
 
   const mineGate = buildTravelGate({ scene, x: startX, z: startZ - 51.2, rotationY: Math.PI, startFlatY });
   mineGate.userData.mapId = "광산";
@@ -148,6 +199,19 @@ export function bootstrapWorld({
     buildAirPurifierStation, buildFreshAirCanisterModel, registerPickupItem, startFlatY, campMapX, campMapZ,
   });
   buildCavePollutionField();
+  if (rebuildBlockoutEnabled) {
+    makeRock(rebuildLayout.miningArea.x, rebuildLayout.miningArea.z, rockSizeDefs[1], false, {
+      respawnRegion: "village-demo",
+    });
+    makeRock(rebuildLayout.miningArea.x + 3.1, rebuildLayout.miningArea.z - 2.3, rockSizeDefs[0], false, {
+      respawnRegion: "village-demo",
+    });
+    for (const spawn of rebuildLayout.generalMine.initialRocks) {
+      makeRock(spawn.x, spawn.z, rockSizeDefs[spawn.sizeIndex] ?? rockSizeDefs[0], false, {
+        respawnRegion: "general-mine",
+      });
+    }
+  }
   spawnCaveMasonryRocks();
   const campGate = buildTravelGate({ scene, x: campMapX, z: campMapZ + groundSize * 0.5 + 1.25, rotationY: 0, startFlatY });
   campGate.userData.mapId = "폐광";
@@ -192,6 +256,13 @@ export function bootstrapWorld({
     frontierCampGate,
     frontierGate,
     abandonedMineGate,
+    welcomeArea,
+    rebuildBlockout,
+    rebuildMine,
+    marketResidents: rebuildBlockout?.marketResidents ?? [],
+    activityLocations: welcomeAreaEnabled ? rebuildLayout.activityLocations : [],
+    tourGuide: tourGuides[0] ?? null,
+    tourGuides,
     ...frontierArea,
   };
 }

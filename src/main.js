@@ -26,6 +26,7 @@ import {
 } from "./world/wastelandModels.js";
 import { createFrontierWastelandCoordinator } from "./world/frontierWastelandCoordinator.js";
 import { createWastelandWorldClient } from "./network/wastelandWorldClient.js";
+import { createRuntimeEnvironment } from "./core/runtimeEnvironment.js";
 import { createFrontierParcelCoordinator } from "./world/frontierParcelCoordinator.js";
 import { createFrontierFeatureCoordinator } from "./world/frontierFeatureCoordinator.js";
 import { createFrontierSceneController } from "./world/frontierSceneController.js";
@@ -34,6 +35,7 @@ import { createResidenceSceneController } from "./world/residenceSceneController
 import { createMapEnvironmentController } from "./world/mapEnvironmentController.js";
 import { createWorldFeatureCoordinator } from "./world/worldFeatureCoordinator.js";
 import { createWorldRuntimeIntegration } from "./world/worldRuntimeIntegration.js";
+import { getRebuildLayout } from "./world/rebuildLayout.js";
 import { createDeformableTerrainMap, TERRAIN_LAB_MAP_ID } from "./world/deformableTerrainMap.js";
 import { renderResidenceNoticeBoardTexture } from "./world/residenceNoticeBoard.js";
 import { createDynamicPropsRuntime } from "./world/dynamicProps.js";
@@ -46,6 +48,32 @@ import {
 } from "./world/rockPlacement.js";
 import { createWorldPickupRuntime } from "./systems/worldPickups.js";
 import { createTutorialNpcRuntime } from "./systems/tutorialNpcs.js";
+import { createWelcomeController } from "./systems/welcomeController.js";
+import { createSharedTourController } from "./systems/sharedTourController.js";
+import { createActivityHelpController } from "./systems/activityHelpController.js";
+import { createMarketResidentController } from "./systems/marketResidentController.js";
+import { createFirstCraftController } from "./systems/firstCraftController.js";
+import { createMultiplayerPresenceController } from "./systems/multiplayerPresenceController.js";
+import { createPresenceClient } from "./network/presenceClient.js";
+import { createRemotePlayerRuntime } from "./world/remotePlayers.js";
+import {
+  completeOnboardingTour,
+  completeOnboardingWelcome,
+  createDefaultOnboardingState,
+  acknowledgeOnboardingActivityReaction,
+  completeOnboardingGatheringActivity,
+  markOnboardingWorldEntered,
+  pauseOnboardingTour,
+  recordOnboardingExploreVisit,
+  recordOnboardingActivityHelpRequest,
+  recordOnboardingResidentIntroduction,
+  completeOnboardingResidentIntroduction,
+  completeOnboardingFirstCraft,
+  setOnboardingMarketItemInterest,
+  startOnboardingFirstCraft,
+  selectOnboardingFirstActivity,
+  startOnboardingTour,
+} from "./systems/onboarding.js";
 import { createColliderRegistry } from "./world/colliderRegistry.js";
 import { createQuestWindowUi, renderQuestWindowUi } from "./ui/questWindow.js";
 import { createMansionSleepDialogUi, createMapEffectOverlays } from "./ui/gameOverlayUi.js";
@@ -225,6 +253,7 @@ import {
   updateAirHudUi,
   updateWastelandHudUi,
   updateWastelandFenceHudUi,
+  updateFirstActivityHudUi,
   createWastelandHudActionButtons,
   createWastelandBuildModeUi,
   createWastelandClaimConfirmDialogUi,
@@ -459,7 +488,8 @@ const CAVE_POLLUTION_PARTICLE_COUNT = 360;
 const CAVE_POLLUTION_PARTICLE_SWAY = 0.12;
 const CAVE_POLLUTION_OVERLAY_MAX_OPACITY = 0.96;
 const LOW_AIR_EDGE_BLUR_MAX_PX = 26;
-const AIR_HUD_POSITION_KEY = "excit_air_hud_position_v1";
+const runtimeEnvironment = createRuntimeEnvironment(import.meta.env.MODE);
+const AIR_HUD_POSITION_KEY = runtimeEnvironment.airHudPositionKey;
 const SHIFT_CAMERA_ROTATE_SENSITIVITY = 0.0062;
 const FRONTIER_PARCEL_BORDER_COLOR = 0xf3b24e;
 const RESIDENCE_NOTICE_BOARD_KEYS = ["boardA", "boardB", "boardC"];
@@ -555,6 +585,10 @@ const {
   compassFace,
   compassNeedle,
   compassText,
+  firstActivityHudWrap,
+  firstActivityHudTitle,
+  firstActivityHudObjectives,
+  firstActivityHudStatus,
   wastelandHudWrap,
   wastelandHudTitle,
   wastelandHudValue,
@@ -583,14 +617,14 @@ const wastelandBuildModeUi = createWastelandBuildModeUi({
   parts: getWastelandBuildPalettePartDefs(),
 });
 
-const WALLET_SESSION_KEY = "voxel-town.wallet-auth.v1";
-const DEV_ACTIVE_PROFILE_KEY = "voxel-town.dev-active-profile.v1";
-const DEV_PROFILE_SAVE_PREFIX = "voxel-town.dev-profile-save.v1.";
-const DEV_CREDITS_MIGRATION_PREFIX = "voxel-town.dev-credits-migrated.v1.";
-const DEV_INVENTORY_SEED_PREFIX = "voxel-town.dev-inventory-seed.v3.";
-const DEV_PROFILE_FAILED_LOAD_PREFIX = "voxel-town.dev-profile-load-error.v1.";
-const DEV_SHARED_WORLD_KEY = "voxel-town.dev-shared-world.v1";
-const AUTH_API_BASE_URL = "http://localhost:8787";
+const WALLET_SESSION_KEY = runtimeEnvironment.walletSessionKey;
+const DEV_ACTIVE_PROFILE_KEY = runtimeEnvironment.devActiveProfileKey;
+const DEV_PROFILE_SAVE_PREFIX = runtimeEnvironment.devProfileSavePrefix;
+const DEV_CREDITS_MIGRATION_PREFIX = runtimeEnvironment.devCreditsMigrationPrefix;
+const DEV_INVENTORY_SEED_PREFIX = runtimeEnvironment.devInventorySeedPrefix;
+const DEV_PROFILE_FAILED_LOAD_PREFIX = runtimeEnvironment.devProfileFailedLoadPrefix;
+const DEV_SHARED_WORLD_KEY = runtimeEnvironment.devSharedWorldKey;
+const AUTH_API_BASE_URL = runtimeEnvironment.authApiBaseUrl;
 const walletAuth = createInitialWalletAuthState();
 const walletProfile = createInitialWalletProfile();
 const wastelandWorldClient = createWastelandWorldClient({
@@ -598,18 +632,22 @@ const wastelandWorldClient = createWastelandWorldClient({
   getToken: () => walletAuth.token,
 });
 const PLAYER_CURRENCY_NAME = "개척 코인";
-const PLAYER_SAVE_VERSION = 1;
+const PLAYER_SAVE_VERSION = runtimeEnvironment.isRebuild ? 2 : 1;
 const PLAYER_SAVE_INTERVAL_MS = 4000;
 const DEV_PROFILE_IDS = ["dev_user_1", "dev_user_2"];
 const DEV_PROFILE_START_OFFSETS = Object.freeze({
   dev_user_1: { x: -1.2, z: 0 },
   dev_user_2: { x: 1.2, z: 0 },
 });
+const rebuildEntryLayout = getRebuildLayout(START_X, START_Z, 0);
+const playerStartPosition = runtimeEnvironment.isRebuild
+  ? rebuildEntryLayout.arrival.spawn
+  : { x: START_X, y: 0, z: START_Z, rotationY: 0 };
 const sessionRuntime = createSessionRuntime({
   devProfileIds: DEV_PROFILE_IDS,
   fallbackProfileId: DEV_PROFILE_IDS[0],
   devProfileSavePrefix: DEV_PROFILE_SAVE_PREFIX,
-  guestSaveKey: "voxel-town.guest-profile-save.v1",
+  guestSaveKey: runtimeEnvironment.guestSaveKey,
 });
 const sessionController = createSessionController({
   authApiBaseUrl: AUTH_API_BASE_URL,
@@ -617,10 +655,12 @@ const sessionController = createSessionController({
   devProfileIds: DEV_PROFILE_IDS,
   devProfileStartOffsets: DEV_PROFILE_START_OFFSETS,
   fallbackProfileId: DEV_PROFILE_IDS[0],
-  startX: START_X,
+  startX: playerStartPosition.x,
+  startZ: playerStartPosition.z,
 });
 const playerSaveRuntime = createPlayerSaveRuntime();
 let activeDevProfileId = DEV_PROFILE_IDS[0];
+const onboardingState = createDefaultOnboardingState();
 let terrainLabMap = null;
 let terrainDiggingController = null;
 const nftExhibitRuntime = createNftExhibitRuntime({
@@ -903,16 +943,35 @@ const gameSessionCoordinator = createGameSessionCoordinator({
   getActiveProfileId: () => activeDevProfileId,
   sessionController,
   setPlayerStartPosition: (start) => {
-    player.position.set(start.x, player.position.y, start.z);
+    player.position.set(start.x, playerStartPosition.y, start.z);
     player.rotation.y = 0;
     latestMoveDir.copy(getFacingDirectionFromYaw(player.rotation.y));
     snapCameraToPlayer();
+  },
+  onboarding: {
+    enabled: runtimeEnvironment.isRebuild,
+    getState: () => onboardingState,
+    completeWelcome: () => completeOnboardingWelcome(onboardingState),
+    startTour: (checkpointId) => startOnboardingTour(onboardingState, checkpointId),
+    pauseTour: (checkpointId) => pauseOnboardingTour(onboardingState, checkpointId),
+    completeTour: (checkpointId) => completeOnboardingTour(onboardingState, checkpointId),
+    recordActivityHelpRequest: () => recordOnboardingActivityHelpRequest(onboardingState),
+    selectFirstActivity: (activityId) => selectOnboardingFirstActivity(onboardingState, activityId),
+    recordExploreVisit: (locationId) => recordOnboardingExploreVisit(onboardingState, locationId),
+    completeGatheringActivity: () => completeOnboardingGatheringActivity(onboardingState),
+    acknowledgeActivityReaction: (activityId) => acknowledgeOnboardingActivityReaction(onboardingState, activityId),
+    recordResidentIntroduction: (activityId, residentId) => recordOnboardingResidentIntroduction(onboardingState, activityId, residentId),
+    completeResidentIntroduction: (activityId, residentId) => completeOnboardingResidentIntroduction(onboardingState, activityId, residentId),
+    setMarketItemInterest: (itemId, interested) => setOnboardingMarketItemInterest(onboardingState, itemId, interested),
+    startFirstCraft: () => startOnboardingFirstCraft(onboardingState),
+    completeFirstCraft: () => completeOnboardingFirstCraft(onboardingState),
   },
   playerSave: {
     runtime: playerSaveRuntime, storage: localStorage, authApiBaseUrl: AUTH_API_BASE_URL,
     intervalMs: PLAYER_SAVE_INTERVAL_MS, getSaveKey: getActivePlayerSaveKey,
     getFailedLoadKey: (profileId) => `${DEV_PROFILE_FAILED_LOAD_PREFIX}${sanitizeDevProfileId(profileId)}`,
     getAuthToken: () => walletAuth.token, isDevSession: () => isDevSession(),
+    isLocalSession: () => isDevSession() || (runtimeEnvironment.isRebuild && isGuestSession()),
     isServerBackedSession: () => isServerBackedWalletSession(), serializeSave: serializePlayerSave,
     applySave: applySerializedPlayerSave, getActiveProfileId: () => activeDevProfileId,
     getTransport: () => ({ apiFetchJson, getAuthHeaders }),
@@ -975,6 +1034,8 @@ const gameSessionCoordinator = createGameSessionCoordinator({
     showUI(message, duration);
     lastMessageUntil = performance.now() + duration;
   },
+  onboardingEnabled: runtimeEnvironment.isRebuild,
+  onPlayableWorldEntered: () => markOnboardingWorldEntered(onboardingState),
   },
   devProfile: {
   profileIds: DEV_PROFILE_IDS,
@@ -1004,6 +1065,7 @@ const gameSessionCoordinator = createGameSessionCoordinator({
     clearGameplayKeys();
     return devTestEnvironmentCoordinator.resetProfiles(currentProfileId);
   },
+  onPlayableWorldEntered: () => markOnboardingWorldEntered(onboardingState),
   notify: (message, duration) => {
     showUI(message, duration);
     lastMessageUntil = performance.now() + duration;
@@ -1019,6 +1081,21 @@ const {
   hydrateWalletSessionFromServer, getDevCreditsMigrationKey, applyDevProfileStartPosition,
   initializeDevProfileState, switchDevProfile, resetDevTestingEnvironment,
   hydratePlayerSaveFromServer, pushPlayerSaveToServer, schedulePlayerSaveSync,
+  getOnboardingState,
+  completeOnboardingWelcome: commitOnboardingWelcome,
+  startOnboardingTour: commitOnboardingTourStart,
+  pauseOnboardingTour: commitOnboardingTourPause,
+  completeOnboardingTour: commitOnboardingTourComplete,
+  selectOnboardingFirstActivity: commitOnboardingFirstActivity,
+  recordOnboardingExploreVisit: commitOnboardingExploreVisit,
+  completeOnboardingGatheringActivity: commitOnboardingGatheringActivity,
+  acknowledgeOnboardingActivityReaction: commitOnboardingActivityReaction,
+  recordOnboardingResidentIntroduction: commitOnboardingResidentIntroduction,
+  completeOnboardingResidentIntroduction: commitOnboardingResidentIntroductionComplete,
+  setOnboardingMarketItemInterest: commitOnboardingMarketItemInterest,
+  startOnboardingFirstCraft: commitOnboardingFirstCraftStart,
+  completeOnboardingFirstCraft: commitOnboardingFirstCraftComplete,
+  recordOnboardingActivityHelpRequest: commitOnboardingActivityHelpRequest,
 } = gameSessionCoordinator;
 
 const {
@@ -1324,12 +1401,13 @@ const HUD_MSG = {
   AIR_CAN_GET: "🫧 신선한 공기 캔 획득!",
 };
 
-const { npcDialog, npcDialogText, tutorialNpcNameTag, playerNameTag } = createGameHudOverlays({ uiLayer });
+const { npcDialog, npcDialogText, npcDialogChoices, tutorialNpcNameTag, playerNameTag } = createGameHudOverlays({ uiLayer });
 const gameHudController = createGameHudController({
   Vector3: THREE.Vector3,
   MathUtils: THREE.MathUtils,
   dialog: npcDialog,
   dialogText: npcDialogText,
+  dialogChoices: npcDialogChoices,
   tooltip: { element: itemTooltip, title: itemTooltipTitle, body: itemTooltipBody },
   npcNameTag: tutorialNpcNameTag,
   playerNameTag,
@@ -1347,8 +1425,12 @@ const gameHudController = createGameHudController({
   airHud: { wrap: airHudWrap, title: airHudTitle, storage: localStorage, storageKey: AIR_HUD_POSITION_KEY, viewport: window },
 });
 
-function showNpcDialog(text, ms = 3000) {
-  gameHudController.showNpcDialog(text, ms);
+function showNpcDialog(text, ms = 3000, target = null, options = {}) {
+  gameHudController.showNpcDialog(text, ms, target, options);
+}
+
+function hideNpcDialog() {
+  gameHudController.hideNpcDialog();
 }
 
 function updateNpcDialogPosition() {
@@ -1479,7 +1561,7 @@ const START_RING_HEIGHT = 1.1; // 허리춤 정도
 const DEV_PRESET_ENABLED = true;
 patchInfoWrap.style.display = DEV_PRESET_ENABLED ? "block" : "none";
 const DEV_PRESET = {
-  startMapId: "폐광",
+  startMapId: runtimeEnvironment.isRebuild ? "광산" : "폐광",
   completeTutorial: true,
   unlockAbandonedMine: true,
   giveStarterGear: true,
@@ -1535,8 +1617,8 @@ const groundMat = new THREE.MeshStandardMaterial({
 const ground = new THREE.Mesh(groundGeo, groundMat);
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = false; // STEP 1에서 그림자 약하게 했으니 유지
-scene.add(ground);
-const groundSurfaces = [ground];
+if (!runtimeEnvironment.isRebuild) scene.add(ground);
+const groundSurfaces = runtimeEnvironment.isRebuild ? [] : [ground];
 const ceilingSurfaces = [];
 const walkableMapSurfaces = new Map();
 const residenceMapZones = [];
@@ -1580,8 +1662,10 @@ const startFloorMat = new THREE.MeshStandardMaterial({
 const startFloor = new THREE.Mesh(startFloorGeo, startFloorMat);
 startFloor.rotation.x = -Math.PI / 2;
 startFloor.position.set(START_X, START_FLAT_Y + 0.03, START_Z); // 살짝 위로
-scene.add(startFloor);
-registerWalkableSurface("광산", ground, 1.4);
+if (!runtimeEnvironment.isRebuild) {
+  scene.add(startFloor);
+  registerWalkableSurface("광산", ground, 1.4);
+}
 
 
 const gridHelper = createMainGridHelper();
@@ -1589,6 +1673,10 @@ scene.add(gridHelper);
 
 // Player
 const player = createPlayerRig();
+if (runtimeEnvironment.isRebuild) {
+  player.position.set(playerStartPosition.x, playerStartPosition.y, playerStartPosition.z);
+  player.rotation.y = playerStartPosition.rotationY;
+}
 const playerAnimationRuntime = createPlayerAnimationRuntime(player);
 const {
   torso,
@@ -1616,7 +1704,7 @@ const startCircle = new THREE.Mesh(
 );
 startCircle.rotation.x = -Math.PI / 2;
 startCircle.position.y = 0.02; // 바닥 위로 살짝
-scene.add(startCircle);
+if (!runtimeEnvironment.isRebuild) scene.add(startCircle);
 
 // ===== Auto foot offset (based on player mesh bounds) =====
 const PLAYER_FOOT_OFFSET = 0; // Blender 캐릭터는 발바닥이 로컬 Y=0에 맞춰져 있다.
@@ -1666,17 +1754,22 @@ const playerGameplayCoordinator = createPlayerGameplayCoordinator({
 });
 const { mineRocks, harvestTrees } = playerGameplayCoordinator;
 
-function getRockSpawnBounds() {
+function getRockSpawnBounds(regionId = "") {
+  if (runtimeEnvironment.isRebuild) {
+    return regionId === "village-demo"
+      ? rebuildEntryLayout.miningDemo.rockBounds
+      : rebuildEntryLayout.generalMine.rockBounds;
+  }
   return getRockSpawnBoundsFromModule(GROUND_SIZE, ROCK_SPAWN_MARGIN);
 }
 
-function findRockSpawnPosition(s, tries = 80) {
+function findRockSpawnPosition(s, tries = 80, regionId = "") {
   return findMineRockSpawnPosition({
     scale: s,
     tries,
-    bounds: getRockSpawnBounds(),
+    bounds: getRockSpawnBounds(regionId),
     rocks: mineRocks,
-    safeRadius: ROCK_SAFE_RADIUS,
+    safeRadius: runtimeEnvironment.isRebuild ? 0 : ROCK_SAFE_RADIUS,
     minGap: ROCK_MIN_GAP,
     randomRange: randRange,
   });
@@ -2212,6 +2305,48 @@ let activePickupItem = null;
 const tutorialNpcRuntime = createTutorialNpcRuntime();
 const tutorialNpcs = tutorialNpcRuntime.entries;
 let activeTutorialNpc = null;
+let tourController = null;
+let presenceController = null;
+const activityHelpController = createActivityHelpController({
+  recordActivityHelpRequest: commitOnboardingActivityHelpRequest,
+  selectActivity: commitOnboardingFirstActivity,
+  recordExploreVisit: commitOnboardingExploreVisit,
+  acknowledgeActivityReaction: commitOnboardingActivityReaction,
+  recordResidentIntroduction: commitOnboardingResidentIntroduction,
+  getOnboardingState,
+  notify: (message, duration) => { showUI(message, duration); lastMessageUntil = performance.now() + duration; },
+  showChoiceDialog: (text, entry, choices) => showNpcDialog(text, null, entry?.obj, { choices }),
+  showDialog: (text, entry) => showNpcDialog(text, null, entry?.obj),
+  hideDialog: hideNpcDialog,
+});
+const firstCraftController = createFirstCraftController({
+  getOnboardingState,
+  startFirstCraft: commitOnboardingFirstCraftStart,
+  completeFirstCraft: commitOnboardingFirstCraftComplete,
+  getItemCount,
+  consumeItem,
+  addItem,
+  updateInventoryUi: updateInventoryUI,
+});
+const marketResidentController = createMarketResidentController({
+  getOnboardingState,
+  completeResidentIntroduction: commitOnboardingResidentIntroductionComplete,
+  setMarketItemInterest: commitOnboardingMarketItemInterest,
+  firstCraftController,
+  showChoiceDialog: (text, entry, choices) => showNpcDialog(text, null, entry?.obj, { choices }),
+  hideDialog: hideNpcDialog,
+});
+const welcomeController = createWelcomeController({
+  getOnboardingState,
+  completeWelcome: commitOnboardingWelcome,
+  getTourStatus: () => getOnboardingState()?.tourStatus ?? "not_started",
+  requestTour: () => presenceController?.requestTour(getOnboardingState()?.tourCheckpointId) ?? false,
+  openActivityHelp: (entry) => activityHelpController.openFor(entry),
+  showActivityStatus: (entry) => activityHelpController.showActivityStatus(entry),
+  showTourChoices: (text, entry, choices) => showNpcDialog(text, null, entry?.obj, { choices }),
+  showDialog: (text, entry) => showNpcDialog(text, null, entry?.obj),
+  hideDialog: hideNpcDialog,
+});
 let forgeStation = null;
 let refineryStation = null;
 let airPurifierStation = null;
@@ -2650,8 +2785,8 @@ function findNearestPickupItem(radius = 2.0) {
   return worldPickups.findNearest(player.position, radius);
 }
 
-function registerTutorialNpc(obj, name, hint = "Space : 대화") {
-  return tutorialNpcRuntime.register(obj, name, hint);
+function registerTutorialNpc(obj, name, hint = "Space : 대화", metadata = {}) {
+  return tutorialNpcRuntime.register(obj, name, hint, metadata);
 }
 
 function findNearestTutorialNpc(radius = 2.2) {
@@ -2948,7 +3083,7 @@ const worldRuntimeIntegration = createWorldRuntimeIntegration({
     } = sceneObjectFactory;
     return {
       scene, groundSurfaces, interactables, addCollider, registerWalkableSurface, registerSupportSurface,
-      registerCaveDarkMaterial, registerResidenceMapZone, registerMapGate, makeTree, makeRock, makePickaxe,
+      registerCaveDarkMaterial, registerResidenceMapZone, registerMapGate, registerTutorialNpc, makeTree, makeRock, makePickaxe,
       makeSafetyHelmet, makeBasicShoes, makeShovel, makeTutorialNpc, makeSign, buildStartZoneWall, buildStartStall,
       buildMinePerimeterCliffs, buildForgeAnvil, buildRefineryStation, buildNftExhibitBoard, buildFreshAirCanisterModel,
       buildAirPurifierStation, buildTravelGate, buildCampTestArea, buildCavePollutionField, buildMapConnectorTunnel,
@@ -2960,6 +3095,8 @@ const worldRuntimeIntegration = createWorldRuntimeIntegration({
       startX: START_X, startZ: START_Z, startFlatY: START_FLAT_Y, campMapX: CAMP_MAP_X, campMapZ: CAMP_MAP_Z,
       frontierMapX: FRONTIER_MAP_X, frontierMapZ: FRONTIER_MAP_Z,
       frontierParcelBorderColor: FRONTIER_PARCEL_BORDER_COLOR, residenceNoticeBoardVisuals, inventory,
+      welcomeAreaEnabled: runtimeEnvironment.isRebuild,
+      rebuildBlockoutEnabled: runtimeEnvironment.isRebuild,
     };
   },
 });
@@ -2995,6 +3132,67 @@ const {
   mansionOneRoom102Root,
 } = bootstrappedWorldState);
 const { abandonedMineGate } = bootstrappedWorldState;
+activityHelpController.setExplorationLocations(
+  bootstrappedWorldState.activityLocations ?? []
+);
+let presenceSelfId = "";
+const remotePlayerRuntime = createRemotePlayerRuntime({
+  scene,
+  uiLayer,
+  camera,
+  createPlayerRig,
+});
+tourController = createSharedTourController({
+  guides: bootstrappedWorldState.tourGuides,
+  getSelfId: () => presenceSelfId,
+  getOnboardingState,
+  startTour: commitOnboardingTourStart,
+  pauseTour: commitOnboardingTourPause,
+  completeTour: commitOnboardingTourComplete,
+  requestAdvance: () => presenceController?.advanceTour(),
+  getTourStatus: () => getOnboardingState()?.tourStatus ?? "not_started",
+  openActivityHelp: (entry) => activityHelpController.openFor(entry),
+  showDialog: (text, entry) => showNpcDialog(text, null, entry?.obj),
+  hideDialog: hideNpcDialog,
+  notify: (message, duration) => {
+    showUI(message, duration);
+    lastMessageUntil = performance.now() + duration;
+  },
+});
+const presenceClient = createPresenceClient({
+  apiBaseUrl: AUTH_API_BASE_URL,
+  getToken: () => walletAuth.token,
+});
+presenceController = createMultiplayerPresenceController({
+  client: presenceClient,
+  getEnabled: () => runtimeEnvironment.isRebuild && canPlayGame() && hasNickname(),
+  getIdentity: () => (
+    isDevSession()
+      ? `dev:${activeDevProfileId}`
+      : isGuestSession()
+        ? `guest:${getActivePlayerSaveKey()}`
+        : "wallet-session"
+  ),
+  getDisplayName: () => walletProfile.nickname || getDevProfileDisplayName(activeDevProfileId),
+  getPlayerState: () => ({
+    x: player.position.x,
+    y: player.position.y,
+    z: player.position.z,
+    rotationY: player.rotation.y,
+    mapId: currentMapId,
+    sprinting: Boolean(playerRuntimeController?.getKeys().shift),
+  }),
+  onSnapshot: (snapshot) => {
+    presenceSelfId = snapshot.selfId;
+    remotePlayerRuntime.applySnapshot(snapshot.players, presenceSelfId);
+    tourController.applySnapshot(snapshot);
+  },
+  onInactive: () => {
+    presenceSelfId = "";
+    remotePlayerRuntime.clear();
+    tourController.clear();
+  },
+});
 mansionOneRoomInstances["101"] = bootstrappedWorldState.mansionOneRoomInstances["101"];
 mansionOneRoomInstances["102"] = bootstrappedWorldState.mansionOneRoomInstances["102"];
 
@@ -3077,7 +3275,7 @@ sharedWorldStateCoordinator = createSharedWorldStateCoordinator({
 
 playerProfileStateCoordinator = createPlayerProfileStateCoordinator({
   playerSaveVersion: PLAYER_SAVE_VERSION,
-  startPosition: { x: START_X, z: START_Z },
+  startPosition: playerStartPosition,
   airGaugeMax: AIR_GAUGE_MAX,
   inventoryStackLimit: INVENTORY_STACK_LIMIT,
   quickUseAllowedKeys: QUICK_USE_ALLOWED_KEYS,
@@ -3091,6 +3289,8 @@ playerProfileStateCoordinator = createPlayerProfileStateCoordinator({
   inventory,
   personalStorage,
   tutorialQuest,
+  onboardingEnabled: runtimeEnvironment.isRebuild,
+  onboardingState,
   getPlayer: () => player,
   getActiveProfileId: () => activeDevProfileId,
   getInventorySlotCount: (profileId) => (
@@ -3158,6 +3358,7 @@ devTestEnvironmentCoordinator = createDevTestEnvironmentCoordinator({
   profileIds: DEV_PROFILE_IDS,
   storage: localStorage,
   sanitizeProfileId: sanitizeDevProfileId,
+  onboardingEnabled: runtimeEnvironment.isRebuild,
   getInventorySlotCount: (profileId) => (
     DEV_PROFILE_IDS.includes(profileId)
       ? DEVELOPER_INVENTORY_SLOT_COUNT_FROM_MODULE
@@ -3175,7 +3376,7 @@ devTestEnvironmentCoordinator = createDevTestEnvironmentCoordinator({
     `${DEV_INVENTORY_SEED_PREFIX}${sanitizeDevProfileId(profileId)}`
   ),
   getProfileStartPosition: (profileId) => sessionController.getDevProfileStartPosition(profileId),
-  startY: START_FLAT_Y,
+  startY: playerStartPosition.y,
   airGaugeMax: AIR_GAUGE_MAX,
   landDeedItemId: WASTELAND_LAND_DEED_ITEM_ID,
   inventoryStackLimit: INVENTORY_STACK_LIMIT,
@@ -3279,7 +3480,7 @@ function getCurrentMapSafeFallback(mapId = currentMapId) {
   if (mapId === TERRAIN_LAB_MAP_ID && terrainLabMap?.spawn) return terrainLabMap.spawn;
   if (mapId === "폐광") return { x: CAMP_MAP_X, y: START_FLAT_Y, z: CAMP_MAP_Z, rotationY: Math.PI };
   if (mapId === "개척지") return { x: FRONTIER_MAP_X, y: START_FLAT_Y, z: FRONTIER_MAP_Z, rotationY: Math.PI };
-  if (mapId === "광산") return { x: START_X, y: START_FLAT_Y, z: START_Z, rotationY: 0 };
+  if (mapId === "광산") return { ...playerStartPosition };
   return null;
 }
 
@@ -3358,6 +3559,32 @@ const playerInteractionContext = {
   isMineKeyIssued: () => inventory.mineKeyIssued,
   setMineKeyIssued: () => { inventory.mineKeyIssued = true; },
   showNpcDialog, getTutorialNpcLine,
+  interactWithWelcomeNpc: (entry, event) => {
+    if (entry?.role !== "welcome") return false;
+    if (!event.repeat) welcomeController.interact(entry);
+    return true;
+  },
+  closeWelcomeConversation: () => welcomeController.close(),
+  isNpcChoiceOpen: () => welcomeController.isChoiceOpen() || marketResidentController.isChoiceOpen(),
+  closeActivityHelp: () => activityHelpController.close(),
+  isActivityHelpOpen: () => activityHelpController.isOpen(),
+  interactWithTourGuide: (entry, event) => {
+    if (entry?.role !== "tour-guide") return false;
+    if (!event.repeat) tourController?.interact(entry);
+    return true;
+  },
+  closeTourConversation: () => tourController?.closeDialog() ?? false,
+  interactWithMarketResident: (entry, event) => {
+    if (entry?.role !== "market-resident") return false;
+    if (!event.repeat) marketResidentController.interact(entry);
+    return true;
+  },
+  closeMarketResidentConversation: () => marketResidentController.close(),
+  updateWelcomeNpcProximity: (entry) => {
+    activityHelpController.updateNearby(entry);
+    marketResidentController.updateNearby(entry);
+    return welcomeController.updateNearby(entry);
+  },
   renderQuestWindowIfOpen: () => { if (questOpen) renderQuestWindow(); },
   getTerrainDigHint: () => terrainDiggingController?.getHint() ?? "",
   tryDigTerrain: () => terrainDiggingController?.dig() ?? null,
@@ -3466,6 +3693,7 @@ playerRuntimeController = createPlayerRuntimeIntegration({
     getItemName: (itemId) => ITEM_DEFS[itemId]?.name,
     updateInventoryUi: updateInventoryUI,
     refreshQuestProgress,
+    completeFirstGatheringActivity: commitOnboardingGatheringActivity,
     removeCollider: removeColliderAt,
     unregisterRock: unregisterMineRock,
     scheduleRespawn: scheduleRockRespawn,
@@ -3551,6 +3779,18 @@ playerRuntimeController = createPlayerRuntimeIntegration({
   frame: {
     updateForgeUpgradeState: () => survivalWorkstationCoordinator.updateForgeUpgradeState(),
     updateCurrentMapFromPlayerPosition,
+    updateOnboardingTour: (dt) => {
+      presenceController?.update();
+      tourController?.update(dt);
+      activityHelpController.updatePlayerPosition(player.position, currentMapId);
+      updateFirstActivityHudUi({
+        wrap: firstActivityHudWrap,
+        title: firstActivityHudTitle,
+        objectives: firstActivityHudObjectives,
+        status: firstActivityHudStatus,
+      }, activityHelpController.getProgressView());
+      remotePlayerRuntime.update(dt);
+    },
     updateSceneFogForCurrentMap,
     schedulePlayerSaveSync: () => {
       if (currentMapId !== TERRAIN_LAB_MAP_ID) schedulePlayerSaveSync();

@@ -76,7 +76,8 @@ test("builds mining plans and completes mined rock rewards through injected serv
       getEquippedMiningPower: () => 3, hasOwnedPickaxe: () => true,
       getEquippedPickaxeLevel: () => 2, spawnBreakBurst: () => calls.push("burst"),
       incrementTutorialRockCount: () => calls.push("quest"), addItem: (...args) => calls.push(args),
-      random: () => 1, getBonusDropChance: () => 0, notify: () => {},
+      completeFirstGatheringActivity: () => true,
+      random: () => 1, getBonusDropChance: () => 0, notify: (message) => calls.push(message),
       getItemName: () => "돌가루", updateInventoryUi: () => {}, refreshQuestProgress: () => {},
       removeCollider: (index) => calls.push(index), unregisterRock: () => {},
       scheduleRespawn: () => calls.push("respawn"),
@@ -86,4 +87,5 @@ test("builds mining plans and completes mined rock rewards through injected serv
   assert.equal(plan.miningPower, 3);
   runtime.interactionContext.finishRockMining(rock, {});
   assert.deepEqual(calls.slice(0, 3), ["burst", "quest", ["stoneDust", 2]]);
+  assert.equal(calls.some((entry) => typeof entry === "string" && entry.includes("첫 재료")), true);
 });

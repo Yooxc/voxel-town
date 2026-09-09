@@ -1,8 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
+import { config } from "../config.js";
 
-const dataDir = path.resolve(process.cwd(), "data");
-const dataFile = path.join(dataDir, "app.json");
+const dataFile = config.dataFile;
+const dataDir = path.dirname(dataFile);
 
 const defaultState = {
   users: [],

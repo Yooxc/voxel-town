@@ -12,6 +12,18 @@ export function createGameSessionCoordinator(ctx) {
   const hydratePlayerSaveFromServer = () => playerSaveCoordinator.hydrateFromServer(getPlayerSaveTransport());
   const pushPlayerSaveToServer = () => playerSaveCoordinator.pushToServer(getPlayerSaveTransport());
   const schedulePlayerSaveSync = (force = false) => playerSaveCoordinator.scheduleSync(force, getPlayerSaveTransport());
+  const commitOnboardingTransition = (transition) => {
+    if (!ctx.onboarding?.enabled || typeof transition !== "function") return false;
+    const changed = transition();
+    if (changed) schedulePlayerSaveSync(true);
+    return changed;
+  };
+  const commitOnboardingResult = (transition, getChanged = (result) => Boolean(result)) => {
+    if (!ctx.onboarding?.enabled || typeof transition !== "function") return null;
+    const result = transition();
+    if (getChanged(result)) schedulePlayerSaveSync(true);
+    return result;
+  };
   const workflow = createSessionWorkflowController({
     ...ctx.workflow,
     saveCoordinator: playerSaveCoordinator,
@@ -72,5 +84,47 @@ export function createGameSessionCoordinator(ctx) {
     hydratePlayerSaveFromServer,
     pushPlayerSaveToServer,
     schedulePlayerSaveSync,
+    getOnboardingState: () => ctx.onboarding?.getState?.() ?? null,
+    completeOnboardingWelcome: () => commitOnboardingTransition(ctx.onboarding?.completeWelcome),
+    startOnboardingTour: (checkpointId) => commitOnboardingTransition(
+      () => ctx.onboarding.startTour(checkpointId)
+    ),
+    pauseOnboardingTour: (checkpointId) => commitOnboardingTransition(
+      () => ctx.onboarding.pauseTour(checkpointId)
+    ),
+    completeOnboardingTour: (checkpointId) => commitOnboardingTransition(
+      () => ctx.onboarding.completeTour(checkpointId)
+    ),
+    recordOnboardingActivityHelpRequest: () => commitOnboardingTransition(
+      ctx.onboarding?.recordActivityHelpRequest
+    ),
+    selectOnboardingFirstActivity: (activityId) => commitOnboardingTransition(
+      () => ctx.onboarding.selectFirstActivity(activityId)
+    ),
+    recordOnboardingExploreVisit: (locationId) => commitOnboardingResult(
+      () => ctx.onboarding.recordExploreVisit(locationId),
+      (result) => Boolean(result?.changed)
+    ),
+    completeOnboardingGatheringActivity: () => commitOnboardingTransition(
+      ctx.onboarding?.completeGatheringActivity
+    ),
+    acknowledgeOnboardingActivityReaction: (activityId) => commitOnboardingTransition(
+      () => ctx.onboarding.acknowledgeActivityReaction(activityId)
+    ),
+    recordOnboardingResidentIntroduction: (activityId, residentId) => commitOnboardingTransition(
+      () => ctx.onboarding.recordResidentIntroduction(activityId, residentId)
+    ),
+    completeOnboardingResidentIntroduction: (activityId, residentId) => commitOnboardingTransition(
+      () => ctx.onboarding.completeResidentIntroduction(activityId, residentId)
+    ),
+    setOnboardingMarketItemInterest: (itemId, interested) => commitOnboardingTransition(
+      () => ctx.onboarding.setMarketItemInterest(itemId, interested)
+    ),
+    startOnboardingFirstCraft: () => commitOnboardingTransition(
+      ctx.onboarding?.startFirstCraft
+    ),
+    completeOnboardingFirstCraft: () => commitOnboardingTransition(
+      ctx.onboarding?.completeFirstCraft
+    ),
   };
 }

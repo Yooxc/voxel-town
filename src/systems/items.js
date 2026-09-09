@@ -234,6 +234,13 @@ export function createItemDefs({
       isMaterial: true,
       purposeText: "정제와 제작 재료로 사용된다",
     },
+    stoneCup: {
+      category: "misc",
+      name: "돌 컵",
+      icon: "☕",
+      stackMax: 1,
+      purposeText: "직접 만든 작은 돌 컵. 나중에 사용할 수 있도록 보관해 두자.",
+    },
     masonryStone: {
       category: "misc",
       name: "석재",

@@ -193,6 +193,7 @@ function createProfileSwitchHarness({ failingProfileId = "", throwOnDraftReset =
   let activeProfileId = "dev_user_1";
   let runtimeState = structuredClone(saves.get(activeProfileId));
   const notifications = [];
+  const worldEntries = [];
   const orchestrator = createDevProfileOrchestrator({
     profileIds: ["dev_user_1", "dev_user_2"],
     activeProfileKey: "active-profile",
@@ -236,12 +237,14 @@ function createProfileSwitchHarness({ failingProfileId = "", throwOnDraftReset =
     resetFrontierWastelandRuntimeState: () => {},
     resetTerrainLabState: () => {},
     resetDevTestProfiles: () => {},
+    onPlayableWorldEntered: () => worldEntries.push(activeProfileId),
     notify: (message) => notifications.push(message),
   });
   return {
     orchestrator,
     saves,
     notifications,
+    worldEntries,
     stored,
     getActiveProfileId: () => activeProfileId,
     getRuntimeState: () => structuredClone(runtimeState),
@@ -257,6 +260,7 @@ test("developer profile switching preserves each profile inventory", () => {
   assert.deepEqual(harness.getRuntimeState(), {
     position: { x: 22 }, items: ["developer-2-item"],
   });
+  assert.deepEqual(harness.worldEntries, ["dev_user_2"]);
 
   harness.setRuntimeState({ position: { x: 29 }, items: ["developer-2-changed"] });
 

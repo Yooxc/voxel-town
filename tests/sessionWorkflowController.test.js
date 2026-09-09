@@ -61,3 +61,92 @@ test("guest workflow persists a guest session and waits for a nickname before pl
   assert.equal(workflow.canPlayGame(), false);
   assert.equal(JSON.parse(storage.getItem("wallet-session")).address, "guest-local");
 });
+
+test("restored rebuild guest enters only after local save hydration", () => {
+  const auth = {};
+  const profile = { nickname: "" };
+  const storage = createStorage();
+  storage.setItem("wallet-session", JSON.stringify({
+    authenticated: true,
+    address: "guest-local",
+    sessionType: "guest",
+    nickname: "Visitor",
+  }));
+  const calls = [];
+  let entered = false;
+  const sessionRuntime = createSessionRuntime({
+    devProfileIds: ["dev_user_1"], fallbackProfileId: "dev_user_1",
+    devProfileSavePrefix: "dev-save.", guestSaveKey: "guest-save",
+  });
+  const workflow = createSessionWorkflowController({
+    auth, profile, storage, walletSessionKey: "wallet-session", sessionRuntime,
+    sessionController: {},
+    serializeSession: (state) => state,
+    parseStoredSession: JSON.parse,
+    isGuestSessionState: (state) => state.sessionType === "guest",
+    isDevSessionState: () => false,
+    isWalletAuthenticatedState: (state) => Boolean(state.authenticated),
+    isServerBackedWalletSessionState: () => false,
+    getActiveDevProfileId: () => "dev_user_1", setActiveDevProfileId: () => {},
+    getDevProfileDisplayName: () => "DEV-1", getAddressLabel: (value) => value,
+    getChainLabel: () => "guest", getUiState: () => ({}), renderUi: () => {},
+    onSessionCleared: () => {},
+    applyFreshPlayerStartState: () => calls.push("fresh"),
+    saveCoordinator: {
+      loadActiveLocalProfileState: () => { calls.push("load"); return "loaded"; },
+      saveActiveLocalProfileState: () => calls.push("save"),
+    },
+    getApiFetchJson: () => null, getAuthHeaders: () => ({}), getLoginMessage: () => "",
+    getNicknameInput: () => "", setNicknameStatus: () => {}, setLoginStatus: () => {},
+    setLoginBusy: () => {}, setNicknameBusy: () => {}, notify: () => {},
+    onboardingEnabled: true,
+    onPlayableWorldEntered: () => {
+      calls.push("enter");
+      const changed = !entered;
+      entered = true;
+      return { changed, firstVisit: changed };
+    },
+  });
+
+  workflow.restoreWalletSession();
+
+  assert.equal(profile.nickname, "Visitor");
+  assert.deepEqual(calls, ["fresh", "load", "enter", "save"]);
+});
+
+test("failed rebuild guest hydration does not overwrite onboarding as a first visit", () => {
+  const auth = {};
+  const profile = { nickname: "" };
+  const storage = createStorage();
+  storage.setItem("wallet-session", JSON.stringify({
+    authenticated: true, address: "guest-local", sessionType: "guest", nickname: "Visitor",
+  }));
+  let entered = false;
+  let status = "";
+  const sessionRuntime = createSessionRuntime({
+    devProfileIds: ["dev_user_1"], fallbackProfileId: "dev_user_1",
+    devProfileSavePrefix: "dev-save.", guestSaveKey: "guest-save",
+  });
+  const workflow = createSessionWorkflowController({
+    auth, profile, storage, walletSessionKey: "wallet-session", sessionRuntime,
+    sessionController: {}, serializeSession: (state) => state, parseStoredSession: JSON.parse,
+    isGuestSessionState: (state) => state.sessionType === "guest", isDevSessionState: () => false,
+    isWalletAuthenticatedState: (state) => Boolean(state.authenticated),
+    isServerBackedWalletSessionState: () => false,
+    getActiveDevProfileId: () => "dev_user_1", setActiveDevProfileId: () => {},
+    getDevProfileDisplayName: () => "DEV-1", getAddressLabel: (value) => value,
+    getChainLabel: () => "guest", getUiState: () => ({}), renderUi: () => {},
+    onSessionCleared: () => {}, applyFreshPlayerStartState: () => {},
+    saveCoordinator: { loadActiveLocalProfileState: () => "apply_error" },
+    getApiFetchJson: () => null, getAuthHeaders: () => ({}), getLoginMessage: () => "",
+    getNicknameInput: () => "", setNicknameStatus: () => {},
+    setLoginStatus: (value) => { status = value; }, setLoginBusy: () => {},
+    setNicknameBusy: () => {}, notify: () => {}, onboardingEnabled: true,
+    onPlayableWorldEntered: () => { entered = true; return { changed: true, firstVisit: true }; },
+  });
+
+  workflow.restoreWalletSession();
+
+  assert.equal(entered, false);
+  assert.match(status, /덮어쓰지 않습니다/);
+});

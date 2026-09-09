@@ -27,6 +27,20 @@ test("exposes player-save transport methods from the session coordinator", () =>
       createDevProfileOrchestrator: undefined,
     },
     setPlayerStartPosition() {},
+    onboarding: {
+      enabled: true,
+      getState: () => ({ hasEnteredWorld: true }),
+      completeWelcome: () => true,
+      startTour: () => false,
+      pauseTour: () => false,
+      completeTour: () => false,
+      recordActivityHelpRequest: () => false,
+      recordResidentIntroduction: (activityId, residentId) => activityId === "gather" && residentId === "craft-resident",
+      completeResidentIntroduction: (activityId, residentId) => activityId === "gather" && residentId === "craft-resident",
+      setMarketItemInterest: (itemId, interested) => itemId === "crafted-box" && interested,
+      startFirstCraft: () => true,
+      completeFirstCraft: () => true,
+    },
     playerSave: {
       getTransport: () => ({ apiFetchJson: "fetch", getAuthHeaders: "headers" }),
       runtime: {}, storage: {}, authApiBaseUrl: "", intervalMs: 1, getSaveKey: () => "save",
@@ -61,10 +75,23 @@ test("exposes player-save transport methods from the session coordinator", () =>
   coordinator.hydratePlayerSaveFromServer();
   coordinator.pushPlayerSaveToServer();
   coordinator.schedulePlayerSaveSync(true);
+  assert.equal(coordinator.completeOnboardingWelcome(), true);
+  assert.equal(coordinator.recordOnboardingResidentIntroduction("gather", "craft-resident"), true);
+  assert.equal(coordinator.completeOnboardingResidentIntroduction("gather", "craft-resident"), true);
+  assert.equal(coordinator.setOnboardingMarketItemInterest("crafted-box", true), true);
+  assert.equal(coordinator.startOnboardingFirstCraft(), true);
+  assert.equal(coordinator.completeOnboardingFirstCraft(), true);
 
   assert.deepEqual(calls, [
     ["hydrate", { apiFetchJson: "fetch", getAuthHeaders: "headers" }],
     ["push", { apiFetchJson: "fetch", getAuthHeaders: "headers" }],
     ["schedule", true, { apiFetchJson: "fetch", getAuthHeaders: "headers" }],
+    ["schedule", true, { apiFetchJson: "fetch", getAuthHeaders: "headers" }],
+    ["schedule", true, { apiFetchJson: "fetch", getAuthHeaders: "headers" }],
+    ["schedule", true, { apiFetchJson: "fetch", getAuthHeaders: "headers" }],
+    ["schedule", true, { apiFetchJson: "fetch", getAuthHeaders: "headers" }],
+    ["schedule", true, { apiFetchJson: "fetch", getAuthHeaders: "headers" }],
+    ["schedule", true, { apiFetchJson: "fetch", getAuthHeaders: "headers" }],
   ]);
+  assert.deepEqual(coordinator.getOnboardingState(), { hasEnteredWorld: true });
 });

@@ -85,6 +85,7 @@ export function createMineRockModel(x, z, rockSizeDef, fadeIn, options, { defaul
     spawn: {
       x, z, rockSize: rockSizeDef.id, mapId, resourceItemId, resourceCount,
       requiredPickaxeLevel: options.requiredPickaxeLevel ?? 0, color, detail: options.detail ?? 0, maxHp,
+      respawnRegion: options.respawnRegion ?? "",
     },
     resourceItemId,
     resourceCount,

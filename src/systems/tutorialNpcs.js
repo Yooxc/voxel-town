@@ -3,8 +3,8 @@ import { findNearestByPosition } from "../core/proximity.js";
 export function createTutorialNpcRuntime() {
   const entries = [];
 
-  function register(obj, name, hint = "Space : 대화") {
-    const entry = { obj, name, hint };
+  function register(obj, name, hint = "Space : 대화", metadata = {}) {
+    const entry = { obj, name, hint, ...metadata, role: metadata.role ?? "tutorial" };
     entries.push(entry);
     return entry;
   }

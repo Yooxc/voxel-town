@@ -172,6 +172,7 @@ export function createPlayerRuntimeController({
 
     updateMovement(dt);
     frame.updateCurrentMapFromPlayerPosition();
+    frame.updateOnboardingTour?.(rawDt);
     frame.updateSceneFogForCurrentMap();
     frame.schedulePlayerSaveSync();
     frame.announceMapChange();

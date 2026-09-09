@@ -96,3 +96,15 @@ test("creates exit and scheduled-sync plans from current save state", () => {
     inFlight: false, intervalMs: 4000,
   }), { type: "sync", attemptedAt: 5000 });
 });
+
+test("routes rebuild guest saves through local persistence", () => {
+  assert.deepEqual(createPlayerSaveExitPlan({
+    isDevSession: false, isLocalSession: true, isServerBackedSession: false,
+    syncPaused: false, hasConfirmedBaseline: false, snapshot: "next", previousSnapshot: "",
+  }), { type: "local" });
+  assert.deepEqual(createPlayerSaveSchedulePlan({
+    isDevSession: false, isLocalSession: true, isServerBackedSession: false,
+    syncPaused: false, hasConfirmedBaseline: false, force: true, now: 100,
+    lastAttemptAt: 0, inFlight: false, intervalMs: 4000,
+  }), { type: "local" });
+});

@@ -63,3 +63,81 @@ test("ignores repeated Space keydown before it creates a mining plan", () => {
   assert.equal(calls.plan, 0);
   assert.equal(calls.swing, 0);
 });
+
+test("routes welcome resident dialogue before legacy tutorial interaction", () => {
+  const resident = { role: "welcome" };
+  let welcomeInteractions = 0;
+  let legacyInteractions = 0;
+  const controller = createInteractionController({
+    isWastelandBuildModeActive: () => false,
+    getInteractionState: () => ({ activeTutorialNpc: resident }),
+    interactWithWelcomeNpc: (entry) => {
+      welcomeInteractions += 1;
+      return entry === resident;
+    },
+    getCurrentQuestStep: () => { legacyInteractions += 1; return null; },
+  });
+  let prevented = false;
+
+  controller.handleWorldSpaceInteraction({ repeat: false, preventDefault: () => { prevented = true; } });
+
+  assert.equal(welcomeInteractions, 1);
+  assert.equal(legacyInteractions, 0);
+  assert.equal(prevented, true);
+});
+
+test("routes tour guide dialogue before legacy tutorial interaction", () => {
+  const guide = { role: "tour-guide" };
+  let guideInteractions = 0;
+  let legacyInteractions = 0;
+  const controller = createInteractionController({
+    isWastelandBuildModeActive: () => false,
+    getInteractionState: () => ({ activeTutorialNpc: guide }),
+    interactWithWelcomeNpc: () => false,
+    interactWithTourGuide: (entry) => {
+      guideInteractions += 1;
+      return entry === guide;
+    },
+    getCurrentQuestStep: () => { legacyInteractions += 1; return null; },
+  });
+
+  controller.handleWorldSpaceInteraction({ repeat: false, preventDefault() {} });
+
+  assert.equal(guideInteractions, 1);
+  assert.equal(legacyInteractions, 0);
+});
+
+test("routes market resident dialogue before legacy tutorial interaction", () => {
+  const resident = { role: "market-resident" };
+  let marketInteractions = 0;
+  let legacyInteractions = 0;
+  const controller = createInteractionController({
+    isWastelandBuildModeActive: () => false,
+    getInteractionState: () => ({ activeTutorialNpc: resident }),
+    interactWithWelcomeNpc: () => false,
+    interactWithTourGuide: () => false,
+    interactWithMarketResident: (entry) => {
+      marketInteractions += 1;
+      return entry === resident;
+    },
+    getCurrentQuestStep: () => { legacyInteractions += 1; return null; },
+  });
+
+  controller.handleWorldSpaceInteraction({ repeat: false, preventDefault() {} });
+
+  assert.equal(marketInteractions, 1);
+  assert.equal(legacyInteractions, 0);
+});
+
+test("does not pass Space to world interaction while an activity choice is open", () => {
+  const controller = createInteractionController({
+    isWastelandBuildModeActive: () => false,
+    isActivityHelpOpen: () => true,
+    getInteractionState: () => { throw new Error("world interaction should not run"); },
+  });
+  let prevented = false;
+
+  controller.handleWorldSpaceInteraction({ preventDefault: () => { prevented = true; } });
+
+  assert.equal(prevented, true);
+});

@@ -93,13 +93,14 @@ export async function pushPlayerSaveRuntime({
 
 export function createPlayerSaveExitPlan({
   isDevSession,
+  isLocalSession = isDevSession,
   isServerBackedSession,
   syncPaused,
   hasConfirmedBaseline,
   snapshot,
   previousSnapshot,
 }) {
-  if (isDevSession) return { type: "local" };
+  if (isLocalSession) return { type: "local" };
   if (!isServerBackedSession || syncPaused || !hasConfirmedBaseline || snapshot === previousSnapshot) {
     return { type: "skip" };
   }
@@ -108,6 +109,7 @@ export function createPlayerSaveExitPlan({
 
 export function createPlayerSaveSchedulePlan({
   isDevSession,
+  isLocalSession = isDevSession,
   isServerBackedSession,
   syncPaused,
   hasConfirmedBaseline,
@@ -117,7 +119,7 @@ export function createPlayerSaveSchedulePlan({
   inFlight,
   intervalMs,
 }) {
-  if (isDevSession) return { type: "local" };
+  if (isLocalSession) return { type: "local" };
   if (!isServerBackedSession || syncPaused || !hasConfirmedBaseline || inFlight) {
     return { type: "skip" };
   }

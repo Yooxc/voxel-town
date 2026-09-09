@@ -5,6 +5,7 @@ export function createSessionController({
   devProfileStartOffsets,
   fallbackProfileId,
   startX,
+  startZ = 0,
 }) {
   const sanitizeDevProfileId = (profileId) => (
     devProfileIds.includes(profileId) ? profileId : fallbackProfileId
@@ -16,7 +17,7 @@ export function createSessionController({
       ?? devProfileStartOffsets[fallbackProfileId];
     return {
       x: startX + (offset?.x ?? 0),
-      z: offset?.z ?? 0,
+      z: startZ + (offset?.z ?? 0),
     };
   }
 
@@ -240,6 +241,7 @@ export function createDevProfileOrchestrator({
   resetFrontierWastelandRuntimeState,
   resetTerrainLabState,
   resetDevTestProfiles,
+  onPlayableWorldEntered = () => {},
   notify,
   now = () => new Date().toISOString(),
 }) {
@@ -306,6 +308,7 @@ export function createDevProfileOrchestrator({
     if (!usingRecoveryPreset) {
       runNonBlockingStep("land deed recovery", restoreMissingLandDeeds);
     }
+    runNonBlockingStep("world entry", () => onPlayableWorldEntered?.());
     runNonBlockingStep("wasteland UI reset", resetWastelandDraftUiState);
     runNonBlockingStep("wasteland UI refresh", refreshWastelandDraftUiState);
     if (!usingRecoveryPreset) saveActiveLocalProfileState();

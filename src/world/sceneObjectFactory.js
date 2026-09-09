@@ -60,7 +60,7 @@ export function createSceneObjectFactory({
     return wall;
   };
 
-  const buildStartStall = () => {
+  const buildStartStall = (position = null) => {
     const group = new THREE.Group();
     const woodMaterial = new THREE.MeshStandardMaterial({ color: 0x8b6b4a, roughness: 0.95 });
     const top = new THREE.Mesh(new THREE.BoxGeometry(6.8, 0.25, 1.8), woodMaterial);
@@ -72,7 +72,7 @@ export function createSceneObjectFactory({
       leg.position.set(x, y, z);
       group.add(leg);
     }
-    group.position.set(startZone.x, startFlatY, startZone.z - 2.3);
+    group.position.set(position?.x ?? startZone.x, position?.y ?? startFlatY, position?.z ?? startZone.z - 2.3);
     scene.add(group);
     addCollider(group, 1);
     return { group, top };
@@ -106,7 +106,7 @@ export function createSceneObjectFactory({
       ?? rockSizeDefs[Math.floor(Math.random() * rockSizeDefs.length)];
     const position = spawn?.mapId === "폐광"
       ? findCaveRockSpawnPosition(rockSizeDef.scale, 120)
-      : findMineRockSpawnPosition(rockSizeDef.scale, 120);
+      : findMineRockSpawnPosition(rockSizeDef.scale, 120, spawn?.respawnRegion);
     if (!position) return null;
     return makeRock(position.x, position.z, rockSizeDef, true, {
       mapId: spawn?.mapId,
@@ -115,6 +115,7 @@ export function createSceneObjectFactory({
       color: spawn?.color,
       detail: spawn?.detail,
       maxHp: spawn?.maxHp,
+      respawnRegion: spawn?.respawnRegion,
       bonusDropEnabled: spawn?.resourceItemId === "stoneDust",
       hpLabelPrefix: spawn?.resourceItemId === "masonryStone" ? "석재 돌 체력" : "돌 체력",
     });

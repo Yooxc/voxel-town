@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createDevTestEnvironmentCoordinator } from "../src/save/devTestEnvironmentCoordinator.js";
+import { createDefaultOnboardingState } from "../src/systems/onboarding.js";
 
 function createDefaultPlayerSave() {
   return {
@@ -18,6 +19,7 @@ function createDefaultPlayerSave() {
     personalStorage: { slots: Array(4).fill(null) },
     economy: { credits: 0 },
     airSystem: { current: 100, max: 100 },
+    onboarding: createDefaultOnboardingState(),
   };
 }
 
@@ -39,6 +41,7 @@ function createHarness() {
       slots: [{ itemId: "storedOre", count: 9 }, null, null, null],
     },
     economy: { credits: 37 },
+    onboarding: { ...createDefaultOnboardingState(), hasEnteredWorld: true, welcomeCompleted: true },
   };
   const inactiveSave = {
     ...createDefaultPlayerSave(),
@@ -52,6 +55,7 @@ function createHarness() {
       slots: [{ itemId: "storedWood", count: 3 }, null, null, null],
     },
     economy: { credits: 12 },
+    onboarding: { ...createDefaultOnboardingState(), hasEnteredWorld: true, tourStatus: "completed" },
   };
   storageData.set("profile:dev_user_2", JSON.stringify(inactiveSave));
   let saveActiveCalls = 0;
@@ -66,6 +70,7 @@ function createHarness() {
     sanitizeProfileId: (profileId) => (
       profileId === "dev_user_2" ? "dev_user_2" : "dev_user_1"
     ),
+    onboardingEnabled: true,
     createDefaultPlayerSave,
     serializeActiveProfileState: () => structuredClone(activeRuntime),
     applyActiveProfileState: (save, options) => {
@@ -117,6 +122,7 @@ test("developer test reset replaces both profiles with one canonical baseline", 
   assert.deepEqual(active.position, { x: -2, y: 0, z: 0 });
   assert.equal(active.economy.credits, 500);
   assert.deepEqual(active.personalStorage.slots, [null, null, null, null]);
+  assert.deepEqual(active.onboarding, createDefaultOnboardingState());
   assert.equal(active.inventory.slots.some((entry) => entry?.itemId === "earnedOre"), false);
   assert.equal(active.inventory.slots.find((entry) => entry?.itemId === "stoneDust")?.count, 200);
   assert.equal(active.inventory.slots.find((entry) => entry?.itemId === "abandonedMineKey")?.count, 1);
@@ -124,6 +130,7 @@ test("developer test reset replaces both profiles with one canonical baseline", 
   assert.deepEqual(inactive.position, { x: 2, y: 0, z: 0 });
   assert.equal(inactive.economy.credits, 500);
   assert.deepEqual(inactive.personalStorage.slots, [null, null, null, null]);
+  assert.deepEqual(inactive.onboarding, createDefaultOnboardingState());
   assert.equal(inactive.inventory.slots.some((entry) => entry?.itemId === "earnedWood"), false);
   assert.equal(inactive.inventory.slots.find((entry) => entry?.itemId === "abandonedMineKey")?.count, 1);
   assert.deepEqual(harness.getApplyOptions(), { preserveSharedWorld: true });

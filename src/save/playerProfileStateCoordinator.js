@@ -3,6 +3,10 @@ import {
   serializePlayerSaveData,
   buildNormalizedPlayerSaveSource,
 } from "./playerSave.js";
+import {
+  applyOnboardingState,
+  createDefaultOnboardingState,
+} from "../systems/onboarding.js";
 
 function clearSlots(slots) {
   for (let index = 0; index < slots.length; index += 1) slots[index] = null;
@@ -79,6 +83,7 @@ export function resetSerializedDevProfileTestState(rawSave, {
   baselineInventory,
   baselinePersonalStorage,
   credits = 500,
+  resetOnboarding = false,
 }) {
   const save = resetSerializedDevProfileWorldState(rawSave, {
     startPosition,
@@ -91,6 +96,7 @@ export function resetSerializedDevProfileTestState(rawSave, {
     ...(save.economy ?? {}),
     credits: Math.max(0, Math.floor(Number(credits) || 0)),
   };
+  if (resetOnboarding) save.onboarding = createDefaultOnboardingState();
   return save;
 }
 
@@ -190,6 +196,7 @@ export function createPlayerProfileStateCoordinator(ctx) {
       inventorySlotCount: ctx.inventory.slots.length,
       personalStorageSlotCount: ctx.personalStorage.slots.length,
       createDefaultFrontierBuildState: ctx.createDefaultFrontierBuildState,
+      onboardingEnabled: ctx.onboardingEnabled,
     });
   }
 
@@ -213,6 +220,8 @@ export function createPlayerProfileStateCoordinator(ctx) {
       frontierBuildState: ctx.getFrontierBuildStateData(),
       nftExhibitSelectedItem: ctx.getSelectedNftBoardItem(),
       quickUseAllowedKeys: ctx.quickUseAllowedKeys,
+      onboardingState: ctx.onboardingState,
+      onboardingEnabled: ctx.onboardingEnabled,
     });
   }
 
@@ -262,6 +271,9 @@ export function createPlayerProfileStateCoordinator(ctx) {
     ctx.inventory.mineKeyIssued = false;
     ctx.inventory.abandonedMineUnlocked = false;
     resetTutorialQuest(ctx.tutorialQuest);
+    if (ctx.onboardingEnabled) {
+      applyOnboardingState(ctx.onboardingState, createDefaultOnboardingState());
+    }
     resetAirAndPurification();
     applyMineGateState(false);
     ctx.setCurrentMapId("광산");
@@ -278,6 +290,7 @@ export function createPlayerProfileStateCoordinator(ctx) {
       createDefaultPlayerSave,
       normalizeFrontierBuildState: ctx.normalizeFrontierBuildState,
       normalizeNftBoardSelection: ctx.normalizeNftBoardSelection,
+      onboardingEnabled: ctx.onboardingEnabled,
     });
     if (preserveSharedWorld) source.frontierBuild = ctx.normalizeFrontierBuildState(ctx.getFrontierBuildStateData());
 
@@ -304,6 +317,7 @@ export function createPlayerProfileStateCoordinator(ctx) {
     ctx.tutorialQuest.upgradeCount = Math.max(0, source.tutorial.upgradeCount ?? 0);
     ctx.tutorialQuest.completed = Boolean(source.tutorial.completed);
     ctx.tutorialQuest.archivedSteps = Array.isArray(source.tutorial.archivedSteps) ? [...source.tutorial.archivedSteps] : [];
+    if (ctx.onboardingEnabled) applyOnboardingState(ctx.onboardingState, source.onboarding);
     ctx.setAirState({
       max: Math.max(1, Number(source.airSystem.max) || ctx.airGaugeMax),
       current: Number(source.airSystem.current) || ctx.airGaugeMax,

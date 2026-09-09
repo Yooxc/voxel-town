@@ -11,6 +11,13 @@ test("registers tutorial NPCs with the default dialogue hint", () => {
   const entry = runtime.register(npc(1, 1), "감독관");
   assert.deepEqual(entry.name, "감독관");
   assert.equal(entry.hint, "Space : 대화");
+  assert.equal(entry.role, "tutorial");
+});
+
+test("registers a welcome resident role without changing the default NPC role", () => {
+  const runtime = createTutorialNpcRuntime();
+  const entry = runtime.register(npc(1, 1), "마루", "Space : 인사하기", { role: "welcome" });
+  assert.equal(entry.role, "welcome");
 });
 
 test("finds the nearest attached tutorial NPC", () => {

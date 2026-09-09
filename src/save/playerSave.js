@@ -1,3 +1,8 @@
+import {
+  createDefaultOnboardingState,
+  normalizeOnboardingState,
+} from "../systems/onboarding.js";
+
 function cloneOrNull(value) {
   return value == null ? null : structuredClone(value);
 }
@@ -89,8 +94,9 @@ export function createDefaultPlayerSave({
   inventorySlotCount,
   personalStorageSlotCount,
   createDefaultFrontierBuildState,
+  onboardingEnabled = false,
 }) {
-  return {
+  const save = {
     version: playerSaveVersion,
     mapId: "광산맵",
     position: {
@@ -145,6 +151,8 @@ export function createDefaultPlayerSave({
     frontierBuild: createDefaultFrontierBuildState(),
     displayBoard: null,
   };
+  if (onboardingEnabled) save.onboarding = createDefaultOnboardingState();
+  return save;
 }
 
 export function serializePlayerSaveData({
@@ -164,8 +172,10 @@ export function serializePlayerSaveData({
   frontierBuildState,
   nftExhibitSelectedItem,
   quickUseAllowedKeys,
+  onboardingState,
+  onboardingEnabled = false,
 }) {
-  return {
+  const save = {
     version: playerSaveVersion,
     mapId: currentMapId,
     position: {
@@ -216,16 +226,23 @@ export function serializePlayerSaveData({
     frontierBuild: structuredClone(frontierBuildState),
     displayBoard: cloneOrNull(nftExhibitSelectedItem),
   };
+  if (onboardingEnabled) {
+    save.onboarding = normalizeOnboardingState(onboardingState, {
+      pauseInterruptedTour: false,
+    });
+  }
+  return save;
 }
 
 export function buildNormalizedPlayerSaveSource(rawSave, {
   createDefaultPlayerSave,
   normalizeFrontierBuildState,
   normalizeNftBoardSelection,
+  onboardingEnabled = false,
 }) {
   const save = rawSave && typeof rawSave === "object" ? rawSave : createDefaultPlayerSave();
   const defaultSave = createDefaultPlayerSave();
-  return {
+  const source = {
     ...defaultSave,
     ...save,
     inventory: {
@@ -267,4 +284,7 @@ export function buildNormalizedPlayerSaveSource(rawSave, {
     frontierBuild: normalizeFrontierBuildState(save.frontierBuild),
     displayBoard: normalizeNftBoardSelection(save.displayBoard ?? null),
   };
+  if (onboardingEnabled) source.onboarding = normalizeOnboardingState(save.onboarding);
+  else delete source.onboarding;
+  return source;
 }

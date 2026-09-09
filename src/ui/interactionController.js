@@ -35,6 +35,22 @@ export function createInteractionController(ctx) {
     if (ctx.isNftExhibitSelectionOpen() || ctx.isQuickUseAssigning()) return;
 
     const key = ctx.getLogicalInputKey(event);
+    if (key === "escape" && ctx.closeActivityHelp?.()) {
+      event.preventDefault();
+      return;
+    }
+    if (key === "escape" && ctx.closeWelcomeConversation?.()) {
+      event.preventDefault();
+      return;
+    }
+    if (key === "escape" && ctx.closeTourConversation?.()) {
+      event.preventDefault();
+      return;
+    }
+    if (key === "escape" && ctx.closeMarketResidentConversation?.()) {
+      event.preventDefault();
+      return;
+    }
     if (ctx.now() < ctx.getQuickUseAssignmentConsumedUntil() && ctx.quickUseAllowedKeys.includes(key)) {
       event.preventDefault();
       return;
@@ -156,7 +172,27 @@ export function createInteractionController(ctx) {
 
   function handleWorldSpaceInteraction(event) {
     if (ctx.isWastelandBuildModeActive()) return;
+    if (ctx.isActivityHelpOpen?.()) {
+      event.preventDefault();
+      return;
+    }
+    if (ctx.isNpcChoiceOpen?.()) {
+      event.preventDefault();
+      return;
+    }
     const state = ctx.getInteractionState();
+    if (state.activeTutorialNpc && ctx.interactWithWelcomeNpc?.(state.activeTutorialNpc, event)) {
+      event.preventDefault();
+      return;
+    }
+    if (state.activeTutorialNpc && ctx.interactWithTourGuide?.(state.activeTutorialNpc, event)) {
+      event.preventDefault();
+      return;
+    }
+    if (state.activeTutorialNpc && ctx.interactWithMarketResident?.(state.activeTutorialNpc, event)) {
+      event.preventDefault();
+      return;
+    }
     if (state.activeInteractable?.type === "mansionStorage") {
       event.preventDefault();
       ctx.openPersonalStorage();
@@ -268,6 +304,7 @@ export function createInteractionController(ctx) {
     state.activeHarvestTree = null;
     state.activeWastelandCell = null;
     state.activeTutorialNpc = ctx.findNearestTutorialNpc(2.2);
+    ctx.updateWelcomeNpcProximity?.(state.activeTutorialNpc);
     state.activeMapGate = ctx.findTriggeredMapGate();
     if (ctx.isWastelandBuildModeActive()) {
       ctx.hideHint();

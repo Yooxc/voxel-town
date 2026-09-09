@@ -5,6 +5,7 @@ import {
   resetSerializedDevProfileTestState,
   resetSerializedDevProfileWorldState,
 } from "../src/save/playerProfileStateCoordinator.js";
+import { createDefaultOnboardingState } from "../src/systems/onboarding.js";
 
 function createContext() {
   const inventory = {
@@ -29,6 +30,11 @@ function createContext() {
   let activeRoomKey = "102";
   const gate = { lockBlocker: { removeFromParent() {} }, lockColliderIndex: 2 };
   const calls = [];
+  const onboardingState = {
+    ...createDefaultOnboardingState(),
+    hasEnteredWorld: true,
+    welcomeCompleted: true,
+  };
 
   return {
     inventory,
@@ -36,6 +42,7 @@ function createContext() {
     tutorialQuest,
     player,
     calls,
+    onboardingState,
     ctx: {
       playerSaveVersion: 1,
       startPosition: { x: 0, z: 0 },
@@ -52,6 +59,8 @@ function createContext() {
       inventory,
       personalStorage,
       tutorialQuest,
+      onboardingEnabled: true,
+      onboardingState,
       getPlayer: () => player,
       getActiveProfileId: () => "dev_user_1",
       getDevProfileBaselineState: () => ({
@@ -132,6 +141,7 @@ test("fresh player state clears inventory, progress, and restores the mine gate"
   assert.equal(fixture.inventory.pickaxeLevel, 1);
   assert.equal(fixture.inventory.abandonedMineUnlocked, false);
   assert.equal(fixture.tutorialQuest.completed, false);
+  assert.deepEqual(fixture.onboardingState, createDefaultOnboardingState());
   assert.equal(fixture.player.position.x, 0);
   assert.equal(fixture.player.position.z, 0);
   assert.ok(fixture.calls.includes("restore-gate"));
@@ -150,6 +160,8 @@ test("player save serialization preserves runtime player and profile state", () 
   assert.equal(save.inventory.slots[0].itemId, "pickaxe");
   assert.equal(save.residence.activeRoomKey, "102");
   assert.deepEqual(save.displayBoard, { tokenId: "3" });
+  assert.equal(save.onboarding.hasEnteredWorld, true);
+  assert.equal(save.onboarding.welcomeCompleted, true);
 });
 
 test("developer inventory recovery does not mutate shared mine gate state", () => {

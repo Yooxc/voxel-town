@@ -25,6 +25,7 @@ export function createPlayerSaveCoordinator({
   getFailedLoadKey,
   getAuthToken,
   isDevSession,
+  isLocalSession = isDevSession,
   isServerBackedSession,
   serializeSave,
   applySave,
@@ -106,7 +107,7 @@ export function createPlayerSaveCoordinator({
     try {
       const snapshot = serializeSave();
       delete snapshot.frontierBuild;
-      if (isDevSession()) {
+      if (isLocalSession()) {
         delete snapshot.displayBoard;
         if (snapshot.airSystem) delete snapshot.airSystem.mapPurification;
         if (snapshot.inventory) delete snapshot.inventory.abandonedMineUnlocked;
@@ -129,7 +130,7 @@ export function createPlayerSaveCoordinator({
     try {
       const parsed = JSON.parse(raw);
       try {
-        applySave(parsed, { preserveSharedWorld: isDevSession() });
+        applySave(parsed, { preserveSharedWorld: isLocalSession() });
       } catch (error) {
         storage.setItem(failedLoadKey, JSON.stringify({
           failedAt: nowIso(), saveKey, raw, reason: String(error?.message ?? error ?? "unknown"),
@@ -185,6 +186,7 @@ export function createPlayerSaveCoordinator({
   function flushOnExit() {
     const plan = createPlayerSaveExitPlan({
       isDevSession: isDevSession(),
+      isLocalSession: isLocalSession(),
       isServerBackedSession: isServerBackedSession(),
       syncPaused,
       hasConfirmedBaseline: hasConfirmedBaseline(),
@@ -193,7 +195,7 @@ export function createPlayerSaveCoordinator({
     });
     if (plan.type === "local") {
       saveActiveLocalProfileState();
-      saveSharedWorldState();
+      if (isDevSession()) saveSharedWorldState();
       return;
     }
     if (plan.type !== "remote") return;
@@ -210,13 +212,14 @@ export function createPlayerSaveCoordinator({
 
   function scheduleSync(force, { apiFetchJson, getAuthHeaders }) {
     const plan = createPlayerSaveSchedulePlan({
-      isDevSession: isDevSession(), isServerBackedSession: isServerBackedSession(), syncPaused,
+      isDevSession: isDevSession(), isLocalSession: isLocalSession(),
+      isServerBackedSession: isServerBackedSession(), syncPaused,
       hasConfirmedBaseline: hasConfirmedBaseline(), force, now: now(), lastAttemptAt,
       inFlight: Boolean(syncInFlight), intervalMs,
     });
     if (plan.type === "local") {
       saveActiveLocalProfileState();
-      saveSharedWorldState();
+      if (isDevSession()) saveSharedWorldState();
       return;
     }
     if (plan.type !== "sync") return;

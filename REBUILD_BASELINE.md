@@ -73,3 +73,20 @@ git switch --detach excit-pre-rebuild-20260908
 Commit or otherwise preserve any later worktree changes before switching. This
 baseline is local until a user performs an explicit remote upload outside this
 workflow.
+
+## Rebuild Environment
+
+The rebuild branch uses isolated client and server persistence:
+
+```powershell
+npm run server:rebuild
+npm run dev:rebuild
+```
+
+Open `http://localhost:5174`. The rebuild client stores browser data under the
+`excit.rebuild.v1.` namespace and connects to `http://localhost:8788`. The
+rebuild server writes to `server/data/rebuild/app.json`, which is ignored by
+Git. Stop each long-running process with `Ctrl+C`.
+
+The original commands continue to use the original browser keys, port 8787,
+and `server/data/app.json`.

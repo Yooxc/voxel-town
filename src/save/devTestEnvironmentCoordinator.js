@@ -76,6 +76,7 @@ export function createDevTestEnvironmentCoordinator(ctx) {
       baselineInventory: baseline.inventory,
       baselinePersonalStorage: baseline.personalStorage,
       credits: baseline.credits,
+      resetOnboarding: ctx.onboardingEnabled,
     });
   }
 

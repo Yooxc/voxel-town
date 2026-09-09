@@ -102,25 +102,66 @@ export function createGameHudController(ctx) {
   }
 
   function projectToScreen(position, offsetY) {
+    const viewport = ctx.airHud.viewport;
     position.y += offsetY;
     position.project(ctx.getCamera());
     if (position.z < -1 || position.z > 1) return null;
     return {
-      x: (position.x * 0.5 + 0.5) * window.innerWidth,
-      y: (-position.y * 0.5 + 0.5) * window.innerHeight,
+      x: (position.x * 0.5 + 0.5) * viewport.innerWidth,
+      y: (-position.y * 0.5 + 0.5) * viewport.innerHeight,
     };
   }
 
-  function showNpcDialog(text, duration = 3000) {
+  function clearNpcDialogChoices() {
+    if (!ctx.dialogChoices) return;
+    ctx.dialogChoices.replaceChildren();
+    ctx.dialogChoices.style.display = "none";
+  }
+
+  function showNpcDialogChoices(choices = []) {
+    clearNpcDialogChoices();
+    if (!ctx.dialogChoices || choices.length === 0) return;
+    ctx.dialogChoices.style.display = "grid";
+    for (const choice of choices) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = choice.label;
+      Object.assign(button.style, {
+        width: "100%", padding: "8px 10px", borderRadius: "8px",
+        border: "1px solid rgba(89,119,83,0.3)", background: "rgba(247,251,244,0.96)",
+        color: "#304233", fontFamily: "inherit", fontSize: "13px", fontWeight: "700",
+        textAlign: "left", cursor: "pointer",
+      });
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        choice.onSelect?.();
+      });
+      ctx.dialogChoices.appendChild(button);
+    }
+  }
+
+  function showNpcDialog(text, duration = 3000, target = null, { choices = [] } = {}) {
     ctx.dialogText.textContent = text;
-    dialogTarget = ctx.getActiveNpc()?.obj ?? ctx.getTutorialNpcs()[0]?.obj ?? null;
+    dialogTarget = target ?? ctx.getActiveNpc()?.obj ?? ctx.getTutorialNpcs()[0]?.obj ?? null;
+    showNpcDialogChoices(choices);
     ctx.dialog.style.display = "block";
+    ctx.dialog.style.pointerEvents = choices.length > 0 ? "auto" : "none";
     updateNpcDialogPosition();
     if (dialogTimer) clearTimeout(dialogTimer);
-    dialogTimer = setTimeout(() => {
-      ctx.dialog.style.display = "none";
-      dialogTarget = null;
-    }, duration);
+    dialogTimer = null;
+    if (Number.isFinite(duration) && duration > 0) {
+      dialogTimer = setTimeout(hideNpcDialog, duration);
+    }
+  }
+
+  function hideNpcDialog() {
+    if (dialogTimer) clearTimeout(dialogTimer);
+    dialogTimer = null;
+    ctx.dialog.style.display = "none";
+    ctx.dialog.style.pointerEvents = "none";
+    clearNpcDialogChoices();
+    dialogTarget = null;
   }
 
   function updateNpcDialogPosition() {
@@ -133,7 +174,7 @@ export function createGameHudController(ctx) {
   }
 
   function updateTutorialNpcNameTag() {
-    const entry = ctx.getTutorialNpcs()[0];
+    const entry = ctx.getActiveNpc() ?? ctx.getTutorialNpcs()[0];
     const npc = entry?.obj;
     if (!npc?.parent || ctx.dialog.style.display !== "none") { ctx.npcNameTag.style.display = "none"; return; }
     npcNamePosition.copy(npc.position);
@@ -161,5 +202,5 @@ export function createGameHudController(ctx) {
   }
 
   bindAirHudDrag();
-  return { showMessage, hideMessage, showTooltip, hideTooltip, showMapArrival, showNpcDialog, updateNpcDialogPosition, updateTutorialNpcNameTag, updatePlayerNameTag };
+  return { showMessage, hideMessage, showTooltip, hideTooltip, showMapArrival, showNpcDialog, hideNpcDialog, updateNpcDialogPosition, updateTutorialNpcNameTag, updatePlayerNameTag };
 }

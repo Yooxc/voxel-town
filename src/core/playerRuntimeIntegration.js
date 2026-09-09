@@ -112,6 +112,8 @@ export function createPlayerRuntimeIntegration({
       mining.spawnBreakBurst(rock);
       if (rock.userData.resourceItemId === "stoneDust") mining.incrementTutorialRockCount();
       mining.addItem(rock.userData.resourceItemId ?? "stoneDust", rock.userData.resourceCount ?? 1);
+      const completedFirstGathering = rock.userData.resourceItemId === "stoneDust"
+        && mining.completeFirstGatheringActivity?.();
       if (rock.userData.bonusDropEnabled) {
         if (mining.random() < mining.getBonusDropChance()) {
           mining.addItem("stoneDust", 1);
@@ -120,6 +122,7 @@ export function createPlayerRuntimeIntegration({
       } else {
         mining.notify(`${mining.getItemName(rock.userData.resourceItemId) ?? "자원"} 획득!`, 800);
       }
+      if (completedFirstGathering) mining.notify("첫 재료를 직접 구했어요. 마루에게 이야기해 보세요.", 1200);
       mining.updateInventoryUi();
       mining.refreshQuestProgress();
       if (typeof rock.userData.colliderIndex === "number") mining.removeCollider(rock.userData.colliderIndex);
