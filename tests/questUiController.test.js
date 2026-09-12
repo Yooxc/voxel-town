@@ -40,3 +40,25 @@ test("quest controller updates progress, saves, and renders when open", () => {
   assert.deepEqual(quest.archivedSteps, [0]);
   assert.equal(saves, 2);
 });
+
+test("rerenders an open rebuild journal only when its entries change", () => {
+  let quest = { kind: "rebuild-journal", entries: [] };
+  let renders = 0;
+  const controller = createQuestUiController({
+    getQuest: () => quest,
+    isOpen: () => true,
+    getCurrentStep: () => null,
+    renderWindow: () => { renders += 1; },
+    elements: {
+      window: createElement(), header: createElement(), archiveToggleButton: createElement(),
+      title: {}, description: {}, stepList: {}, footer: {},
+    },
+  });
+
+  controller.render();
+  assert.equal(controller.refreshDisplay(), false);
+  quest = { kind: "rebuild-journal", entries: [{ id: "flower-crown", completed: false }] };
+  assert.equal(controller.refreshDisplay(), true);
+  assert.equal(controller.refreshDisplay(), false);
+  assert.equal(renders, 2);
+});

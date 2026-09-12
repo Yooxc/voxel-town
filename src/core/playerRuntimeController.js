@@ -65,6 +65,7 @@ export function createPlayerRuntimeController({
 
   function updateMovement(dt) {
     setCameraControlsEnabled();
+    movement.prepareMovement?.();
     const surfaces = movement.getWalkableSurfaces();
     const mapBounds = getCurrentMapBoundsFromSurfaces(surfaces, movement.defaultMapBounds);
     stabilizePlayerCollision();
@@ -73,7 +74,8 @@ export function createPlayerRuntimeController({
       dt,
       keys,
       pickupReachDuration: movement.pickupReachDuration,
-      isInsideBounds: (x, z) => isInsideMapBoundsFromSurfaces(x, z, surfaces, mapBounds),
+      isInsideBounds: (x, z) => isInsideMapBoundsFromSurfaces(x, z, surfaces, mapBounds)
+        && (movement.isInsidePlayableArea?.(x, z) ?? true),
       intersectsAnyCollider: () => intersectsAnyColliderBox(movement.getPlayerBox(), movement.colliderBoxes),
       getColliderPenetration: movement.getColliderPenetration,
       isStartRingTransitionBlocked: startRingRules.isStartRingTransitionBlocked,
@@ -183,7 +185,7 @@ export function createPlayerRuntimeController({
     frame.renderEquipmentPreviewIfOpen();
     frame.updateCompass();
     interactionController.updateFrame();
-    gameplayCoordinator.updateCameraFollow();
+    gameplayCoordinator.updateCameraFollow(rawDt);
     frame.updateWorldLabels();
     gameplayCoordinator.applyCameraShake();
     frame.closeDistantWorkstations();

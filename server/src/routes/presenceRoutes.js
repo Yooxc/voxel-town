@@ -47,3 +47,17 @@ presenceRouter.post("/leave", (req, res) => {
   }
   res.json(presenceService.leave(identity.id));
 });
+
+presenceRouter.post("/gather", (req, res) => {
+  const identity = resolveIdentity(req);
+  if (!identity) {
+    res.status(401).json({ ok: false, error: "리빌딩 접속 정보가 필요합니다." });
+    return;
+  }
+  const result = presenceService.gather({
+    identity: identity.id,
+    resourceId: req.body?.resourceId,
+    requestId: req.body?.requestId,
+  });
+  res.status(result.ok ? 200 : 409).json(result);
+});

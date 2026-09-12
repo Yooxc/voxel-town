@@ -105,12 +105,13 @@ export function getPlayerRigParts(root) {
     equippedPickaxe: root?.getObjectByName("equippedPickaxe") ?? null,
     equippedSafetyHelmet: root?.getObjectByName("equippedSafetyHelmet") ?? null,
     equippedNftHelmet: root?.getObjectByName("equippedNftHelmet") ?? null,
+    equippedFlowerCrown: root?.getObjectByName("equippedFlowerCrown") ?? null,
   };
 }
 
 export function createPlayerEquipmentVisuals(
   parts,
-  { buildSafetyHelmetModel, buildSingleBasicShoeModel, alignWearableOnHead }
+  { buildSafetyHelmetModel, buildFlowerCrownModel, buildSingleBasicShoeModel, alignWearableOnHead }
 ) {
   const equippedPickaxe = new THREE.Group();
   equippedPickaxe.name = "equippedPickaxe";
@@ -130,6 +131,12 @@ export function createPlayerEquipmentVisuals(
   equippedNftHelmet.visible = false;
   parts.head?.add(equippedNftHelmet);
   equippedNftHelmet.position.copy(equippedSafetyHelmet.position);
+
+  const equippedFlowerCrown = buildFlowerCrownModel();
+  equippedFlowerCrown.name = "equippedFlowerCrown";
+  equippedFlowerCrown.visible = false;
+  parts.head?.add(equippedFlowerCrown);
+  equippedFlowerCrown.position.set(0, 0.31, 0.015);
 
   const leftFootAnchor = new THREE.Group();
   leftFootAnchor.name = "leftFootAnchor";
@@ -157,6 +164,7 @@ export function createPlayerEquipmentVisuals(
     equippedPickaxe,
     equippedSafetyHelmet,
     equippedNftHelmet,
+    equippedFlowerCrown,
     equippedLeftShoe,
     equippedRightShoe,
     leftFootAnchor,
@@ -168,6 +176,7 @@ export function updatePlayerEquipmentVisualsVisibility(visuals, state) {
   visuals.equippedPickaxe.visible = state.hasToolEquipped ?? state.hasPickaxeEquipped;
   visuals.equippedSafetyHelmet.visible = state.isSafetyHelmetEquipped;
   visuals.equippedNftHelmet.visible = state.isNftHelmetEquipped;
+  visuals.equippedFlowerCrown.visible = state.isFlowerCrownEquipped;
   visuals.equippedLeftShoe.visible = state.shoesVisible;
   visuals.equippedRightShoe.visible = state.shoesVisible;
 }
@@ -329,5 +338,8 @@ export function syncPreviewPlayerPose({ previewPlayer, previewParts, player, sou
   }
   if (previewParts.equippedNftHelmet) {
     previewParts.equippedNftHelmet.visible = equipmentVisibility.equippedNftHelmetVisible;
+  }
+  if (previewParts.equippedFlowerCrown) {
+    previewParts.equippedFlowerCrown.visible = equipmentVisibility.equippedFlowerCrownVisible;
   }
 }

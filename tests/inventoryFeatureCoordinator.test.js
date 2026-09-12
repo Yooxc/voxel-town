@@ -37,6 +37,7 @@ test("composes inventory state, credits, equipment, and gameplay APIs", () => {
     equippedPickaxe: createGroup(),
     equippedSafetyHelmet: createGroup(),
     equippedNftHelmet: createGroup(),
+    equippedFlowerCrown: createGroup(),
     equippedLeftShoe: createGroup(),
     equippedRightShoe: createGroup(),
   };

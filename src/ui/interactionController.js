@@ -35,6 +35,10 @@ export function createInteractionController(ctx) {
     if (ctx.isNftExhibitSelectionOpen() || ctx.isQuickUseAssigning()) return;
 
     const key = ctx.getLogicalInputKey(event);
+    if (key === "escape" && ctx.cancelGathering?.("채집을 취소했습니다.")) {
+      event.preventDefault();
+      return;
+    }
     if (key === "escape" && ctx.closeActivityHelp?.()) {
       event.preventDefault();
       return;
@@ -80,10 +84,46 @@ export function createInteractionController(ctx) {
       return;
     }
 
+    const quickUseKeys = ctx.quickUseAllowedKeys ?? [];
+    if (ctx.isDialogueCameraActive?.()
+      && (key === "e" || key === "b" || key === "t" || quickUseKeys.includes(key))) {
+      event.preventDefault();
+      return;
+    }
+
     const state = ctx.getInteractionState();
     if (key === "e") {
       const pickup = ctx.findNearestPickupItem(2.0);
       if (pickup) {
+        if (pickup.kind === "starter-pickaxe") {
+          event.preventDefault();
+          if (event.repeat) return;
+          if (ctx.isStarterPickaxeClaimed?.()) {
+            showTimedMessage("기본 곡괭이는 캐릭터마다 한 번만 받을 수 있어요.", 1200);
+            return;
+          }
+          if (ctx.hasItem?.("pickaxe")) {
+            ctx.claimStarterPickaxe?.();
+            ctx.refreshQuestProgress();
+            showTimedMessage("이미 곡괭이를 가지고 있어요.", 1000);
+            return;
+          }
+          ctx.triggerPickupReach(pickup.obj);
+          const added = ctx.addInventoryEntry(ctx.createInventorySlotEntry("pickaxe", 1, {
+            pickaxeLevel: Number.isFinite(pickup.obj?.userData?.pickaxeLevel)
+              ? pickup.obj.userData.pickaxeLevel
+              : 1,
+          }));
+          if (!added) {
+            showTimedMessage("가방에 빈자리가 없어요. 자리를 비운 뒤 다시 받아주세요.", 1400);
+            return;
+          }
+          ctx.claimStarterPickaxe?.();
+          ctx.updateInventoryUI();
+          ctx.refreshQuestProgress();
+          showTimedMessage("기본 곡괭이를 받았어요. 인벤토리에서 장착해 보세요.", 1500);
+          return;
+        }
         ctx.triggerPickupReach(pickup.obj);
         const added = pickup.itemId === "pickaxe" && Number.isFinite(pickup.obj?.userData?.pickaxeLevel)
           ? ctx.addInventoryEntry(ctx.createInventorySlotEntry("pickaxe", 1, { pickaxeLevel: pickup.obj.userData.pickaxeLevel }))
@@ -102,6 +142,11 @@ export function createInteractionController(ctx) {
           ctx.unregisterPickupItem(pickup.obj);
           pickup.obj.removeFromParent();
         }
+        return;
+      }
+
+      if (ctx.tryStartGathering?.()) {
+        event.preventDefault();
         return;
       }
 
@@ -172,6 +217,16 @@ export function createInteractionController(ctx) {
 
   function handleWorldSpaceInteraction(event) {
     if (ctx.isWastelandBuildModeActive()) return;
+    const dialogueActive = ctx.isDialogueCameraActive?.() ?? false;
+    if (dialogueActive && !ctx.isDialogueCameraFocused?.()) {
+      event.preventDefault();
+      return;
+    }
+    if (ctx.isGatheringActive?.()) {
+      event.preventDefault();
+      ctx.cancelGathering?.("다른 행동을 시작해 채집이 취소되었습니다.");
+      return;
+    }
     if (ctx.isActivityHelpOpen?.()) {
       event.preventDefault();
       return;
@@ -181,6 +236,11 @@ export function createInteractionController(ctx) {
       return;
     }
     const state = ctx.getInteractionState();
+    if (dialogueActive && (!state.activeTutorialNpc
+      || !ctx.isDialogueCameraTarget?.(state.activeTutorialNpc.obj))) {
+      event.preventDefault();
+      return;
+    }
     if (state.activeTutorialNpc && ctx.interactWithWelcomeNpc?.(state.activeTutorialNpc, event)) {
       event.preventDefault();
       return;
@@ -204,6 +264,7 @@ export function createInteractionController(ctx) {
       return;
     }
     if (state.activeTutorialNpc) {
+      ctx.beginNpcDialogue?.(state.activeTutorialNpc.obj);
       const currentStep = ctx.getCurrentQuestStep();
       if (currentStep?.title === "폐광 열쇠 수령" && !ctx.isMineKeyIssued()) {
         ctx.setMineKeyIssued();
@@ -322,6 +383,7 @@ export function createInteractionController(ctx) {
     state.activePickupItem = ctx.findNearestPickupItem(2.0);
     if (state.activePickupItem) hintText = state.activePickupItem.text;
     if (!hintText && state.activeTutorialNpc) hintText = state.activeTutorialNpc.hint;
+    if (!hintText) hintText = ctx.getGatheringHint?.() ?? "";
     if (!hintText && state.activeForgeStation) hintText = ctx.isForgeOpen() ? "대장간 이용 중" : "E : 장비 강화";
     if (!hintText) {
       state.activeHarvestTree = ctx.findNearestHarvestTree(2.2);
@@ -370,7 +432,8 @@ export function createInteractionController(ctx) {
       hintText = ctx.getMapGateHintText(state.activeMapGate);
     }
     if (!hintText && ctx.canShowAirCanisterHint()) hintText = ctx.getAirCanisterHintText();
-    if (hintText) ctx.showHint(hintText);
+    if (ctx.isDialogueCameraActive?.()) ctx.hideHint();
+    else if (hintText) ctx.showHint(hintText);
     else ctx.hideHint();
 
     ctx.clearWastelandHighlights();

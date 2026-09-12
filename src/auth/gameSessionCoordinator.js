@@ -123,11 +123,20 @@ export function createGameSessionCoordinator(ctx) {
     startOnboardingFirstCraft: () => commitOnboardingTransition(
       ctx.onboarding?.startFirstCraft
     ),
+    claimOnboardingStarterPickaxe: () => commitOnboardingTransition(
+      ctx.onboarding?.claimStarterPickaxe
+    ),
     completeOnboardingFirstCraft: () => commitOnboardingTransition(
       ctx.onboarding?.completeFirstCraft
     ),
     recordOnboardingFirstCraftMineVisit: () => commitOnboardingTransition(
       ctx.onboarding?.recordFirstCraftMineVisit
+    ),
+    startOnboardingFlowerCrownQuest: () => commitOnboardingTransition(
+      ctx.onboarding?.startFlowerCrownQuest
+    ),
+    completeOnboardingFlowerCrownQuest: () => commitOnboardingTransition(
+      ctx.onboarding?.completeFlowerCrownQuest
     ),
   };
 }

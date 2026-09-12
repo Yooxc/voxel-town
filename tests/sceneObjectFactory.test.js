@@ -42,7 +42,7 @@ test("keeps a rebuild mine rock inside its original respawn region", () => {
   const { factory } = createFactory({
     findMineRockSpawnPosition: (...args) => {
       placementCalls.push(args);
-      return { x: -25, z: -34 };
+      return { x: -95, y: 3, z: -40 };
     },
   });
   const rock = factory.createRespawnRockFromSpawn({
@@ -54,4 +54,5 @@ test("keeps a rebuild mine rock inside its original respawn region", () => {
 
   assert.deepEqual(placementCalls, [[1, 120, "general-mine"]]);
   assert.equal(rock.userData.spawn.respawnRegion, "general-mine");
+  assert.equal(rock.position.y, 3.9);
 });

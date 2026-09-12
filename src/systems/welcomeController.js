@@ -67,7 +67,7 @@ export function createWelcomeController({
         onSelect: () => {
           const requested = requestTour();
           resetConversation();
-          if (requested) showDialog("잠깐 기다려줘. 길잡이가 오고 있어.", entry);
+          if (requested) showDialog("잠깐 기다려줘. 길잡이가 오고 있어.", entry, { variant: "compact" });
           else hideDialog();
         },
       },
@@ -78,7 +78,7 @@ export function createWelcomeController({
           openActivityHelp(entry);
         },
       },
-      { label: "나중에 둘러보기", onSelect: close },
+      { label: "나중에 둘러보기", kind: "exit", onSelect: close },
     ]);
   }
 

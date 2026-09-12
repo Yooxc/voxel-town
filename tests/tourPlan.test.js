@@ -16,7 +16,7 @@ test("keeps the guide route on the rebuild terrain and follows the downhill path
   const arrival = getGuideArrivalPath(guide, checkpoints);
   const downhill = getTourLegPath(checkpoints, "rest-area", "work-area");
 
-  assert.ok(arrival.length >= 7);
+  assert.ok(arrival.length >= 6);
   assert.ok(downhill.length >= 6);
   assert.deepEqual(arrival.at(-1), checkpoints[0].position);
   assert.ok(arrival.every((point) => point.x > 5));
@@ -31,8 +31,8 @@ test("returns from exploration through the market route instead of a direct line
   const guide = getTourGuideDefinitions()[0];
   const path = getGuideReturnPath(guide, checkpoints, "exploration-path");
 
-  assert.ok(path.length >= 7);
+  assert.ok(path.length >= 6);
   assert.deepEqual(path.at(-1), guide.origin);
-  assert.ok(path.some((point) => point.x < -3 && point.z < -25));
-  assert.ok(path.some((point) => point.x > 7 && point.z > -21));
+  assert.ok(path.some((point) => point.x < -15 && point.z < -11));
+  assert.ok(path.some((point) => point.x >= 7 && point.z >= -5));
 });

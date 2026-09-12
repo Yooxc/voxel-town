@@ -9,7 +9,7 @@ function createHarness({
   pickaxeEquipped = false,
   inMineArea = false,
 } = {}) {
-  const state = { firstCraft: { started: false, completed: false, mineVisited: false } };
+  const state = { firstCraft: { started: false, completed: false, mineVisited: false, starterPickaxeClaimed: false } };
   const inventory = { stoneDust, stoneCup: 0 };
   let renders = 0;
   const controller = createFirstCraftController({
@@ -99,11 +99,10 @@ test("shows the first craft preparation steps and records the mine visit", () =>
   const view = harness.controller.getProgressView();
 
   assert.equal(harness.state.firstCraft.mineVisited, true);
-  assert.match(view.objectives[0].display, /곡괭이 1\/1/);
+  assert.match(view.objectives[0].display, /기본 곡괭이 받기 O/);
   assert.match(view.objectives[1].display, /O/);
   assert.match(view.objectives[2].display, /O/);
-  assert.match(view.objectives[3].display, /O/);
-  assert.match(view.objectives[4].display, /0\/3/);
+  assert.match(view.objectives[3].display, /0\/3/);
   assert.match(view.status, /Space/);
 });
 

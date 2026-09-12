@@ -14,6 +14,19 @@ test("registers pickup metadata with a default hint", () => {
   assert.equal(obj.userData.pickupItemId, "wood");
 });
 
+test("keeps starter pickup behavior metadata on its runtime entry", () => {
+  const runtime = createWorldPickupRuntime();
+  const obj = object(1, 1);
+  const entry = runtime.register(obj, "pickaxe", "E : 기본 곡괭이 받기", {
+    kind: "starter-pickaxe",
+    persistent: true,
+  });
+
+  assert.equal(entry.kind, "starter-pickaxe");
+  assert.equal(entry.persistent, true);
+  assert.equal(entry.text, "E : 기본 곡괭이 받기");
+});
+
 test("finds only the nearest attached pickup and unregisters it", () => {
   const runtime = createWorldPickupRuntime();
   const nearest = object(1, 0);

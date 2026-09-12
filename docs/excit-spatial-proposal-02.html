@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EXCIT 공간 설계 · SPATIAL STUDY 02</title>
+<style>
+:root{--ink:#25393d;--muted:#5f7275;--line:#d4dedf;--green:#347559;--accent:#c55340}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:#f6f8f8;color:var(--ink);font:16px/1.7 system-ui,-apple-system,sans-serif;letter-spacing:0}header,main,footer{max-width:1200px;margin:auto;padding:28px}header{padding-top:40px;padding-bottom:20px;border-bottom:1px solid var(--line)}h1{font-size:30px;margin:4px 0 10px}h2{font-size:24px;margin:0 0 10px}h3{font-size:19px;margin:0 0 8px}p{margin:8px 0 16px}.kicker{font-size:12px;font-weight:750;color:var(--green)}.muted,small{color:var(--muted)}nav{display:flex;gap:20px;flex-wrap:wrap;margin-top:22px}a{color:#28647b;text-underline-offset:4px}section{padding:32px 0;border-bottom:1px solid var(--line)}.section-title{display:flex;gap:16px;align-items:baseline}.num{font-size:14px;color:var(--accent);font-weight:750}.toolbar{display:flex;flex-wrap:wrap;gap:18px;align-items:center;margin:14px 0;font-size:14px}label{display:flex;gap:6px;align-items:center}input{accent-color:var(--green)}.sheet{background:white;border:1px solid var(--line);overflow:auto}.sheet svg{display:block;width:100%;height:auto}#plan{min-width:850px}.section-svg{min-width:760px}text{font-family:system-ui,sans-serif;fill:var(--ink)}.map-label{font-size:13px;font-weight:600;paint-order:stroke;stroke:#fafcf9;stroke-width:4px;stroke-linejoin:round}.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:13px;margin:12px 0}.swatch{display:inline-block;width:12px;height:12px;margin-right:6px;border:1px solid #92a7a7}.two{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:20px}.note{border-left:3px solid #b2c7c8;padding:4px 16px;margin:20px 0;color:#465e62}table{border-collapse:collapse;width:100%;font-size:14px}td,th{padding:9px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}thead{background:#eaf0f1}.table-wrap{overflow:auto}ul,ol{padding-left:23px}.scene{margin-top:26px}.scene svg{min-width:560px}.scene-caption{display:grid;grid-template-columns:1fr 1fr;gap:24px}.tag{color:var(--accent);font-size:13px;font-weight:700}footer{font-size:13px;color:var(--muted)}button{font:inherit;border:1px solid #c7d2d2;background:white;cursor:pointer;padding:4px 10px} @media(max-width:700px){header,main,footer{padding:18px}h1{font-size:26px}.two,.scene-caption{grid-template-columns:1fr;gap:8px}nav{gap:12px}section{padding:25px 0}}@media print{nav,.toolbar{display:none}.sheet svg{min-width:0!important}section{break-inside:avoid}body{background:white}header,main{padding:10px}}
+</style></head>
+<body>
+<header><div class="kicker">EXCIT / SPATIAL STUDY 02 / 2026-09-11</div>
+<h1>도착 언덕에서 야외 채석장까지</h1>
+<p>협의 초안 02 · 높이 6의 언덕, 20초의 산자락 길, 밝은 야외 채석장.</p>
+<p class="muted">합의한 방향을 구체화한 설계안입니다. 게임에는 적용하지 않았습니다. 언덕 높이 6과 야외 채석장은 합의 사항이며, 세부 좌표·면적·차폐 높이는 블록아웃 검증 후 조정합니다. 시야 그림은 실제 렌더가 아닌 구도 설명도입니다.</p>
+<nav><a href="#layout">새 평면도</a><a href="#height">높이 단면도</a><a href="#views">세 장면의 시야</a><a href="#quarry">채석장 상세</a><a href="#expansion">확장 계획</a><a href="#review">검토할 사항</a><a href="excit-spatial-proposal-01.html">초안 01 ↗</a><a href="excit-current-maps.html">현재 배치 지도 ↗</a></nav></header>
+<main>
+<section id="layout"><div class="section-title"><span class="num">01</span><h2>새 마을 평면도</h2></div>
+<p>마을과 채석장 사이의 능선은 유지하고, 외곽 산·숲은 별도 배경 구역으로 구성합니다. 10번 산자락 진입점부터 11번 작업장까지 일반 걷기 약 20초입니다. 일반 광산의 실내 공간과 갱구는 이번 범위에서 제외합니다.</p>
+<div class="toolbar"><label><input type="checkbox" data-layer="backdrop" checked>교체 가능한 원경·중경</label><label><input type="checkbox" data-layer="zones" checked>활동 구역</label><label><input type="checkbox" data-layer="expansion" checked>미래 연결 자리</label><label><input type="checkbox" data-layer="sight" checked>시야 방향</label><label>확대 <input id="zoom" type="range" min="100" max="200" step="25" value="100"></label><button id="reset" title="기본 배율로 복원">↺</button></div>
+<div class="sheet"><svg id="plan" viewBox="0 0 1100 770" role="img" aria-label="도착 언덕, 낮은 마을, 서쪽 산자락 길과 분리된 광산을 보여주는 제안 평면도"></svg></div>
+<div class="legend"><span><i class="swatch" style="background:#e6f0d6"></i>도착 언덕</span><span><i class="swatch" style="background:#eacda0"></i>보행로</span><span><i class="swatch" style="background:#98a6a5"></i>유지할 구분 능선</span><span><i class="swatch" style="background:#b7d9b9"></i>채집·휴식</span><span><i class="swatch" style="background:#f4cfbb"></i>야외 채석장</span></div>
+<div class="two"><div><h3>이번 안의 공간 관계</h3><ul><li>문과 나무·벤치·마루는 도착 언덕에 함께 둡니다.</li><li>내려오는 길은 장터를 향하되, 지형을 따라 한 번 휘어집니다.</li><li>장터 서쪽에 작업 시설을 묶고 광산행 길을 연결합니다.</li><li>채석장 접근 시 마을은 능선 뒤로 가려집니다. 12번은 배경 돌무더기이며 실내 입구가 아닙니다.</li></ul></div><div><h3>기존 기능의 자리</h3><ul><li>다온은 장터 가까이 대기하고 언덕으로 마중 나옵니다.</li><li>체험용 돌은 마을 가장자리의 작은 교육 공간으로 유지합니다.</li><li>NFT 전시는 생활·전시 공간에 두어 광산 진입로에서 분리합니다.</li><li>폐광·개척지 연결은 장래 탐험 방향으로 유지합니다. 새 통로의 정확한 위치는 다음 단계에서 확정합니다.</li></ul></div></div>
+<div class="table-wrap"><table><thead><tr><th>번호</th><th>장소</th><th>초안 위치 X / Z / 높이</th><th>의도</th></tr></thead><tbody id="places"></tbody></table></div>
+<p class="note">좌표는 제안용 로컬 좌표입니다. 현재 마을 지형 범위보다 서쪽으로 확장합니다. 지도 속 전망용 풍경은 플레이 가능 영역이나 충돌 경계 확정선이 아닙니다. 막다른 장식 길로 이동 가능성을 오해하게 만들지 않습니다.</p></section>
+<section id="height"><div class="section-title"><span class="num">02</span><h2>높이 단면도</h2></div><p>굽은 길을 펼쳐서 본 높이입니다. 가로축은 길을 따라 누적한 거리, 세로축은 장터 기준 높이입니다. 경사를 읽기 쉽게 세로를 가로보다 3배 확대했습니다.</p>
+<div class="sheet"><svg id="sectionA" class="section-svg" viewBox="0 0 1100 340" role="img" aria-label="도착 높이 6에서 장터 높이 0까지 내려가는 길"></svg></div>
+<div class="sheet" style="margin-top:16px"><svg id="sectionB" class="section-svg" viewBox="0 0 1100 340" role="img" aria-label="10번 산자락 진입부터 11번 야외 채석장까지 80단위를 걷는 길"></svg></div>
+<div class="two"><div><h3>언덕을 높이는 이유</h3><p>기존 높이 차이 2.4에서 합의한 6으로 늘립니다. 도착점에는 평탄한 대화·휴식 공간을 남기고, 길 중간에는 잠깐 멈춰 마을을 보는 완만한 구간을 둡니다.</p></div><div><h3>광산행 길은 이동 경험</h3><p>10번 진입점에서부터 20초를 셉니다. 일반 걷기 4단위/초, 속도 보정 1 기준 80단위입니다. 코드의 개발자 이동 모드는 20단위/초이므로 같은 길을 약 4초에 통과합니다. 멈춤·채집 없이 이동하는 기준이며, 실제 지형에서 검증 후 곡선 길이를 보정합니다.</p><p id="metrics" class="muted"></p></div></div>
+<p class="note">그려진 선은 높이 제어점의 연결입니다. 실제 지형에서는 꺾이는 부분을 부드럽게 연결하고, 발 접지·미끄러짐·다온의 이동·멀티플레이 높이 동기화를 검증합니다. 능선 높이는 보행로와 별도이며, 최대 줌아웃 카메라에서 시야 차폐를 확인한 뒤 결정합니다.</p></section>
+<section id="views"><div class="section-title"><span class="num">03</span><h2>도착 / 내리막 / 채석장 진입의 시야</h2></div><p>색면은 지형과 시선의 관계를 설명합니다. 최종 아트 스타일, 모델 크기, 카메라 화각을 확정하는 그림은 아닙니다.</p>
+<div class="scene"><h3>A · 도착 — 가까운 환영 공간, 그 아래 마을</h3><div class="sheet"><svg id="viewA" viewBox="0 0 1000 410" role="img" aria-label="왼쪽 나무와 벤치, 오른쪽 마루, 아래쪽 장터와 먼 능선이 보이는 도착 시야"></svg></div><div class="scene-caption"><p><span class="tag">먼저 보임</span><br>왼쪽 나무·벤치와 오른쪽 마루. 중앙 길 아래로 장터 지붕 일부가 보입니다. 문은 플레이어 뒤에 있습니다.</p><p><span class="tag">가려짐 / 이어짐</span><br>광산 내부와 지형 끝은 보이지 않습니다. 마을 뒤쪽에는 가까운 숲과 더 먼 능선이 겹쳐 보입니다.</p></div></div>
+<div class="scene"><h3>B · 내리막 — 내려갈수록 장터가 드러남</h3><div class="sheet"><svg id="viewB" viewBox="0 0 1000 410" role="img" aria-label="완만한 내리막을 걸으며 장터가 드러나고 서쪽 산자락 길이 갈라지는 시야"></svg></div><div class="scene-caption"><p><span class="tag">먼저 보임</span><br>길의 경사와 장터 앞 공간. 내려오며 가판 지붕 아래 NPC와 작업 시설이 차례로 드러납니다.</p><p><span class="tag">가려짐 / 이어짐</span><br>서쪽에는 산자락 길의 시작만 보입니다. 뒤돌아보면 문과 나무가 높은 곳에 있어 내려온 거리를 인식합니다.</p></div></div>
+<div class="scene"><h3>C · 야외 채석장 — 굽이 뒤로 밝은 작업장이 열림</h3><div class="sheet"><svg id="viewC" viewBox="0 0 1000 410" role="img" aria-label="암벽 사이로 밝은 야외 채석장과 계단식 절개면, 바닥 위 채굴용 돌이 드러나는 시야"></svg></div><div class="scene-caption"><p><span class="tag">먼저 보임</span><br>계단식 절개 암벽과 비정형 작업 바닥. 가장자리의 돌무더기는 배경이며, 평지에 따로 놓인 크기 1~3의 돌만 채굴합니다.</p><p><span class="tag">가려짐 / 이어짐</span><br>마을은 뒤쪽 굽이와 능선에 가려집니다. 하늘이 열린 밝은 공간을 유지하며, 갱구·실내·새로운 폐광 연결은 만들지 않습니다.</p></div></div>
+<div class="table-wrap"><table><thead><tr><th>걷는 순서</th><th>바닥·식생</th><th>공간·소리 제안</th></tr></thead><tbody><tr><td>마을 끝</td><td>흙길과 풀, 소수의 꽃</td><td>넓은 시야와 마을 생활 소리</td></tr><tr><td>산자락</td><td>풀이 줄고 자갈·암반이 늘어남</td><td>길이 좁아지고 마을 소리가 점차 작아짐</td></tr><tr><td>광산 앞</td><td>노출 암반과 작업 흔적</td><td>작업장이 다시 넓어지고 돌 다루는 소리</td></tr></tbody></table></div></section>
+
+<section id="quarry"><div class="section-title"><span class="num">04</span><h2>야외 채석장 · 채굴 대상과 배경의 구분</h2></div>
+<p>레퍼런스의 핵심은 계단식 절개면, 넓은 평지, 가장자리의 비채굴 돌무더기입니다. 원형 바닥의 테두리를 돌로 두르는 형태는 사용하지 않습니다.</p>
+<div class="sheet"><svg id="quarryPlan" viewBox="0 0 1000 470" role="img" aria-label="절개 암벽과 돌무더기는 채굴 불가, 평지의 독립된 돌만 채굴 가능하도록 구분한 채석장"></svg></div>
+<div class="two"><div><h3>채굴 가능한 것</h3><p>기존 크기 1~3의 독립된 돌. 초록 점선 범위의 유효한 평지에만 생성합니다. 그림 속 위치와 개수는 배치 예시이며 최종 수량·크기별 비율은 미확정입니다.</p></div><div><h3>채굴 불가능한 것</h3><p>계단식 암벽과 회색 돌무더기. 지형·충돌 대상으로만 취급하며 채굴 강조, 체력 표시, 보상을 제공하지 않습니다. 서로 붙은 형태로 만들어 독립 자원과 구분합니다.</p></div></div>
+<p class="note">재생성 계획: 채굴 → 대기 → 유효한 다른 위치 선택 → 다시 등장. 출입로·시설·암벽·플레이어·다른 돌과 겹치는 위치는 제외합니다. 자리가 없으면 기존 위치에 억지로 생성하지 않고 재시도합니다. 대기 시간과 최대 개수는 구현 템플릿에서 확정합니다. 모든 플레이어가 같은 돌과 채굴·재생성 결과를 보도록 서버 권한 흐름을 확인해야 합니다.</p></section>
+<section id="expansion"><div class="section-title"><span class="num">05</span><h2>확장해도 유지할 것, 바꿀 수 있게 둘 것</h2></div>
+<div class="table-wrap"><table><thead><tr><th>구성</th><th>이번 역할</th><th>확장할 때</th></tr></thead><tbody>
+<tr><td>마을–채석장 구분 능선</td><td>지역 간 시야 분리와 산자락 길의 이유</td><td>큰 위치·역할은 유지. 필요한 부분의 높이와 형상만 조정</td></tr>
+<tr><td>외곽 산·숲</td><td>경계 너머에도 땅이 이어지는 풍경</td><td>독립 그룹으로 이동·교체. 신규 지역과 같은 시야에 겹치지 않게 배경과 충돌을 함께 정리</td></tr>
+<tr><td>F1 · 동쪽 전망 방향</td><td>현재는 자연 지형으로 마감</td><td>평지·완만한 지형을 연결할 후보. 신규 활동 종류는 아직 지정하지 않음</td></tr>
+<tr><td>F2 · 채석장 바깥쪽</td><td>현재는 비채굴 암반으로 마감</td><td>산지 방향으로 확장할 후보. 폐광 입구라는 의미가 아님</td></tr>
+<tr><td>기존 폐광·개척지 연결</td><td>현재 기능의 접근성을 유지할 별도 통로</td><td>정확한 이전 위치는 별도 검토. F1/F2로 자동 대체하지 않음</td></tr>
+</tbody></table></div>
+<p class="note">F1/F2는 설계상 확보하는 자리이며 지금 이동 가능한 길이나 포털이 아닙니다. 바닥 길, 안내 표지, 문 형태로 진입을 유도하지 않습니다. 실제 통행 경계와 배경 풍경은 분리하되, 갈 수 있을 듯한 평지를 투명벽으로 막지 않습니다.</p>
+<h3>퀘스트·NPC가 참조할 장소 기준점</h3>
+<div class="table-wrap"><table><thead><tr><th>기준점 제안</th><th>연결할 기능</th><th>좌표 변경 시 처리</th></tr></thead><tbody>
+<tr><td>arrival / welcome / rest</td><td>첫 등장·마루·벤치 방문</td><td>각 목적지와 접근 방향을 한 곳에서 정의</td></tr>
+<tr><td>market / work / living</td><td>다온 안내·세아 제작·도윤·라온·도구 지원</td><td>NPC 위치, 시설, 접근점은 구분하고 같은 구역 정의에서 파생</td></tr>
+<tr><td>quarry-approach / quarry-work</td><td>산자락 진입·채석장 도착·재료 수급</td><td>10→11번 경로와 방문 영역을 함께 이동</td></tr>
+<tr><td>quarry-resource-area</td><td>채굴 자원 생성·재생성</td><td>하나의 점이 아닌 생성 가능 다각형·제외 영역으로 정의</td></tr>
+</tbody></table></div><p class="muted">위 이름은 설계 제안입니다. 기존 장소 ID와 저장 진행도를 유지·매핑하며, 서로 다른 행동을 한 점으로 합치지 않습니다. 실제 모듈·서버·mapId 변경 범위는 코드 확인 후 실행 템플릿으로 정합니다.</p></section>
+<section id="review"><div class="section-title"><span class="num">06</span><h2>이번 검토에서 볼 부분</h2></div>
+<p><b>합의 반영:</b> 높이 6 · 밝은 야외 채석장 · 갱구 제외 · 굽이부터 일반 걷기 약 20초 · 비채굴 돌무더기와 자원 분리 · 미래 확장 자리.</p>
+<ol><li><b>채석장 크기와 형상:</b> 넓은 작업 바닥과 암벽 배치가 원하는 야외 채석장 느낌인지.</li><li><b>10→11번 경로:</b> 마을 접근 구간과 20초 구간이 구분되어 있는지. 길을 불필요하게 우회시키는 느낌은 없는지.</li><li><b>F1/F2:</b> 동쪽과 채석장 바깥쪽을 미래 연결 자리로 남기는 위치가 적절한지.</li><li><b>C 장면:</b> 갱도 없이도 채석장으로 인식되는지. 더 높은 절개면 또는 더 넓은 바닥을 원하는지.</li></ol>
+<p class="note">단면은 제어점을 연결한 설계도이며, 실제 충돌·카메라 시야·경사 통행·NPC 경로·자원 동기화는 구현 검증 전입니다. 합의 후 지형과 동선 블록아웃부터 패치 템플릿으로 나눠 진행합니다.</p></section>
+</main><footer>참고한 현재 구조: src/world/rebuildLayout.js · rebuildBlockout.js · rebuildMine.js · worldBootstrap.js · src/core/movement.js. 기존 게임 파일과 저장 데이터는 수정하지 않았습니다.</footer>
+<script>
+const NS='http://www.w3.org/2000/svg';
+function e(root,tag,a={},text){const n=document.createElementNS(NS,tag);Object.entries(a).forEach(([k,v])=>n.setAttribute(k,v));if(text!==undefined)n.textContent=text;root.append(n);return n}
+const plan=document.querySelector('#plan'),X=x=>650+x*5,Y=z=>410+z*5;
+function label(root,x,y,t,a={}){return e(root,'text',{x,y,...a},t)}
+function poly(root,points,a){return e(root,'polygon',{points:points.map(p=>p.join(',')).join(' '),...a})}
+function line(root,points,a){return e(root,'polyline',{points:points.map(p=>p.join(',')).join(' '),fill:'none',...a})}
+function area(root,pts,a){return poly(root,pts.map(([x,z])=>[X(x),Y(z)]),a)}
+e(plan,'rect',{width:1100,height:770,fill:'#f1f5ef'});
+const back=e(plan,'g',{id:'backdrop'});
+area(back,[[-117,-64],[-88,-72],[-67,-60],[-40,-73],[-18,-64],[8,-70],[35,-55],[65,-64],[77,-43],[75,26],[54,33],[37,50],[-2,56],[-47,48],[-81,39],[-120,14]],{fill:'#d9e4e1'});
+area(back,[[-100,-46],[-83,-54],[-60,-47],[-39,-52],[-9,-43],[19,-51],[42,-40],[54,-25],[36,-10],[44,15],[30,34],[4,40],[-18,36],[-34,26],[-45,9],[-64,6],[-77,-12],[-102,-22]],{fill:'#bfd1c2'});
+area(plan,[[-119,-49],[-104,-59],[-82,-53],[-60,-26],[-48,-11],[-29,2],[-17,23],[0,38],[22,30],[22,4],[29,-17],[19,-29],[-5,-35],[-28,-28],[-61,-23],[-81,-21]],{fill:'#e9efdf'});
+const zones=e(plan,'g',{id:'zones'});
+area(zones,[[-17,16],[-11,36],[7,37],[20,28],[14,14],[1,12]],{fill:'#e6f0d6',stroke:'#93b47a','stroke-dasharray':'5 4'});
+area(zones,[[-17,-24],[15,-27],[23,-13],[16,-1],[-9,1],[-22,-10]],{fill:'#e6dcc7'});
+area(zones,[[15,1],[26,2],[32,-10],[27,-25],[20,-24]],{fill:'#b7d9b9'});
+area(zones,[[-23,17],[-18,8],[-26,-4],[-31,4]],{fill:'#b7d9b9'});
+area(zones,[[-113,-48],[-104,-56],[-92,-54],[-82,-48],[-81,-39],[-86,-28],[-105,-27],[-116,-35]],{fill:'#f4cfbb'});
+// This ridge separates the mine and village at eye level; camera clearance is a later blockout check.
+area(plan,[[-60,-29],[-62,-21],[-56,-11],[-44,-6],[-33,-9],[-31,-19],[-41,-28],[-49,-31]],{fill:'#98a6a5',stroke:'#748887'});
+label(plan,X(-49),Y(-18),'차폐 능선',{class:'map-label','text-anchor':'middle'});
+label(plan,X(42),Y(1),'열린 전망',{class:'map-label'});
+label(plan,X(37),Y(7),'숲 → 먼 능선',{'font-size':12});
+const descent=[[0,27,6],[2,17,6],[-7,8,3.8],[-9,-1,1.6],[0,-12,0]];
+const approachToGate=[[-17,-12,0],[-28,-12,.3]];
+const quarryRoute=[[-28,-12,.3],[-31,-24,1],[-41,-35,1.8],[-57,-40,2.4],[-74,-34,3]];
+const partialLength=quarryRoute.reduce((sum,p,i)=>i?sum+Math.hypot(p[0]-quarryRoute[i-1][0],p[1]-quarryRoute[i-1][1]):0,0);
+const quarryX=-74-Math.sqrt((80-partialLength)**2-25);
+quarryRoute.push([quarryX,-39,3]);
+const approach=[...approachToGate,...quarryRoute.slice(1)];
+line(plan,descent.map(p=>[X(p[0]),Y(p[1])]),{stroke:'#eacda0','stroke-width':24,'stroke-linejoin':'round'});
+line(plan,[[0,-12],[-17,-12]].map(p=>[X(p[0]),Y(p[1])]),{stroke:'#eacda0','stroke-width':24});
+line(plan,approach.map(p=>[X(p[0]),Y(p[1])]),{stroke:'#c4b6a6','stroke-width':20,'stroke-linejoin':'round'});
+line(plan,[[0,-18],[3,-30],[15,-40],[17,-49]].map(p=>[X(p[0]),Y(p[1])]),{stroke:'#667c86','stroke-width':3,'stroke-dasharray':'7 6'});
+label(plan,X(18),Y(-52),'폐광·개척지 방향',{class:'map-label','text-anchor':'middle'});
+label(plan,X(18),Y(-48),'연결 위치 미확정',{'font-size':11,'text-anchor':'middle'});
+// Scene sight directions are conceptual, not calculated occlusion results.
+const sight=e(plan,'g',{id:'sight'});
+for(const [a,b,c]of [[[0,27],[-15,-5],[16,-5]],[[-7,8],[-22,-27],[19,-27]],[[-78,-37],[-107,-49],[-107,-29]]]){
+area(sight,[a,b,c],{fill:'#62b6cb',opacity:.16,stroke:'#398fa6','stroke-dasharray':'5 5'});
+}
+const places=[
+['도착 문',0,31,6,'등 뒤에 문, 앞에는 낮은 마을'],['나무·벤치',-7,26,6,'언덕 위 휴식과 첫 인사'],['마루',7,23,6,'문 앞 오른쪽 대각선'],
+['전망 굽이',-7,8,3.8,'마을이 드러나는 중간 지점'],['장터 중심',0,-12,0,'세 가판의 공통 앞마당'],
+['작업 공간',-15,-15,0,'모루·정제·도구 지원'],['생활·전시',15,-13,0,'라온과 NFT 전시'],['다온 대기',9,-3,0,'도착 언덕에 접근하기 쉬운 위치'],
+['체험 채광',24,-22,0,'마을 내부의 작은 첫 체험'],['산자락 굽이 진입',-28,-12,.3,'20초 측정 시작 · quarry-approach'],
+['채석장 작업장',quarryX,-39,3,'20초 측정 끝 · quarry-work'],['배경 돌무더기',-108,-43,3,'채굴 불가 · 실내 입구 없음']];
+for(let i=0;i<places.length;i++){const [name,x,z,h,intent]=places[i];e(plan,'circle',{cx:X(x),cy:Y(z),r:11,fill:'#294e60',stroke:'white','stroke-width':2});label(plan,X(x),Y(z)+4,i+1,{'text-anchor':'middle','font-size':11,style:'fill:white;font-weight:700'});const tr=document.createElement('tr');[i+1,name,Number(x.toFixed(1))+' / '+z+' / +'+h,intent].forEach(t=>{const td=document.createElement('td');td.textContent=t;tr.append(td)});document.querySelector('#places').append(tr)}
+for(const [x,z]of [[-7,-19],[0,-23],[9,-18]])e(plan,'rect',{x:X(x)-10,y:Y(z)-5,width:20,height:10,fill:'#b97b4f'});
+for(const [x,z,t]of [[4,28,'A'],[-3,8,'B'],[-78,-31,'C']])label(plan,X(x),Y(z),t,{'font-size':19,style:'fill:#b84c3c;font-weight:800'});
+label(plan,30,35,'검토용 배치 · 위쪽 −Z / 왼쪽 −X',{'font-size':15});
+label(plan,30,59,'좌표 간격 동일 축척 · 번호와 시설 기호는 확대 표시',{'font-size':12});
+label(plan,X(-97),Y(-61),'야외 채석장',{class:'map-label','text-anchor':'middle'});
+label(plan,X(5),Y(43),'도착 언덕 +6',{class:'map-label','text-anchor':'middle'});
+label(plan,X(0),Y(1),'낮은 마을 ±0',{class:'map-label','text-anchor':'middle'});
+line(plan,[[35,710],[135,710]],{stroke:'#294e60','stroke-width':3});label(plan,35,736,'20 게임 좌표 단위',{'font-size':12});
+function distances(pts){let n=0;return pts.map((p,i)=>{if(i)n+=Math.hypot(p[0]-pts[i-1][0],p[1]-pts[i-1][1]);return [n,p[2]]})}
+function section(id,pts,title,start,end){
+const root=document.querySelector(id),ds=distances(pts),len=ds.at(-1)[0],sx=8,sy=24,base=250;
+label(root,35,34,title,{'font-size':17,'font-weight':700});
+for(let h=0;h<=8;h+=2){line(root,[[70,base-h*sy],[1040,base-h*sy]],{stroke:'#e0e7e8','stroke-width':1});label(root,28,base-h*sy+5,'+'+h,{'font-size':12})}
+const p=ds.map(([s,h])=>[80+s*sx,base-h*sy]);poly(root,[[80,base],...p,[80+len*sx,base]],{fill:'#d4e2ca'});line(root,p,{stroke:'#4a785b','stroke-width':4,'stroke-linejoin':'round'});
+ds.forEach(([s,h],i)=>{e(root,'circle',{cx:80+s*sx,cy:base-h*sy,r:4,fill:'#c55340'});if(i===0||i===ds.length-1){label(root,80+s*sx,base-h*sy-15,(i===0?start:end)+' +'+h,{'font-size':13,'text-anchor':i===0?'start':'middle'})}});
+for(let s=0;s<=len;s+=10)label(root,80+s*sx,278,s,{'text-anchor':'middle','font-size':12});
+label(root,80,311,'길을 따라 이동한 거리 · 약 '+len.toFixed(1)+' 단위',{'font-size':13});
+return len;
+}
+const lenA=section('#sectionA',descent,'A → B → 장터 / 언덕에서 내려오기','도착','장터');
+const lenB=section('#sectionB',quarryRoute,'10 산자락 진입 → C → 11 작업장 / 일반 걷기 약 20초','산자락 진입','작업장');
+const totalFromMarket=17+11+lenB;
+document.querySelector('#metrics').textContent='10→11번 '+lenB.toFixed(1)+'단위 ÷ 일반 걷기 4 = '+(lenB/4).toFixed(1)+'초. 장터 중심부터는 접근 구간 28단위를 포함하여 편도 약 '+(totalFromMarket/4).toFixed(1)+'초, 순수 왕복 약 '+(totalFromMarket/2).toFixed(1)+'초입니다. 채굴·대화 시간은 제외합니다. 도착→장터는 약 '+lenA.toFixed(1)+'단위입니다. 길 폭은 4~4.8단위로 양방향 통행을 검증합니다.';
+function sceneBase(id){
+const r=document.querySelector(id);e(r,'rect',{width:1000,height:410,fill:'#d8edf4'});
+poly(r,[[0,162],[95,116],[170,144],[272,90],[365,139],[472,107],[575,146],[704,86],[821,139],[927,104],[1000,141],[1000,300],[0,300]],{fill:'#b4c7cc'});
+poly(r,[[0,189],[144,150],[264,195],[404,157],[560,182],[723,151],[866,187],[1000,158],[1000,330],[0,330]],{fill:'#90ac98'});
+return r;
+}
+function stall(r,x,y,s=1){e(r,'rect',{x:x-26*s,y,width:52*s,height:37*s,fill:'#826f54'});poly(r,[[x-38*s,y],[x-26*s,y-15*s],[x+30*s,y-15*s],[x+40*s,y]],{fill:'#bf9267'});}
+function tree(r,x,y,s=1){e(r,'rect',{x:x-6*s,y:y-65*s,width:12*s,height:65*s,fill:'#786849'});poly(r,[[x-46*s,y-60*s],[x-53*s,y-100*s],[x-20*s,y-140*s],[x+22*s,y-135*s],[x+50*s,y-95*s],[x+36*s,y-58*s]],{fill:'#547d5f'});}
+function person(r,x,y,color){e(r,'circle',{cx:x,cy:y-35,r:9,fill:'#dbbda3'});e(r,'rect',{x:x-8,y:y-24,width:16,height:29,rx:4,fill:color});}
+const a=sceneBase('#viewA');
+poly(a,[[0,251],[255,222],[475,227],[740,229],[1000,238],[1000,410],[0,410]],{fill:'#b2c895'});
+stall(a,492,222,.55);stall(a,552,229,.65);stall(a,614,220,.5);
+poly(a,[[0,279],[209,263],[395,309],[576,315],[772,267],[1000,278],[1000,410],[0,410]],{fill:'#8fab72'});
+poly(a,[[386,410],[430,350],[470,310],[510,275],[537,251],[552,247],[530,285],[502,330],[485,365],[487,410]],{fill:'#dcc59c'});
+tree(a,177,315,1.45);e(a,'rect',{x:214,y:325,width:77,height:12,fill:'#8b7258'});person(a,748,330,'#d2a452');person(a,520,394,'#536e80');
+label(a,42,40,'A / 첫 등장 직후',{'font-size':20,'font-weight':700});
+label(a,660,91,'먼 능선',{'font-size':14});label(a,500,192,'지붕 일부만 보이는 장터',{'font-size':14,'text-anchor':'middle'});label(a,750,282,'마루',{'font-size':14,'text-anchor':'middle'});
+const b=sceneBase('#viewB');
+poly(b,[[0,234],[168,254],[361,271],[635,263],[841,233],[1000,218],[1000,410],[0,410]],{fill:'#a4bb8b'});
+poly(b,[[360,410],[428,352],[470,281],[593,271],[528,344],[527,410]],{fill:'#dcc59c'});
+poly(b,[[470,290],[343,299],[207,259],[187,270],[336,320],[472,319]],{fill:'#c4b49a'});
+stall(b,425,257,.95);stall(b,548,250,1.1);stall(b,685,251,.9);
+person(b,578,284,'#866b8c');person(b,699,281,'#d2a452');person(b,454,287,'#638375');
+tree(b,863,268,1);poly(b,[[0,204],[90,159],[157,166],[246,223],[213,280],[98,252],[0,269]],{fill:'#83968c'});
+label(b,42,40,'B / 내리막 중간',{'font-size':20,'font-weight':700});label(b,74,313,'산자락 길의 시작',{'font-size':14});label(b,521,208,'내려갈수록 장터 전면이 드러남',{'font-size':14,'text-anchor':'middle'});
+
+const c=sceneBase('#viewC');
+poly(c,[[0,140],[180,90],[410,115],[580,70],[830,95],[1000,125],[1000,300],[0,300]],{fill:'#a4aca5'});
+poly(c,[[0,180],[160,160],[390,168],[620,140],[820,157],[1000,173],[1000,283],[0,290]],{fill:'#8e9995'});
+poly(c,[[0,208],[240,194],[455,206],[660,185],[840,203],[1000,215],[1000,283],[0,300]],{fill:'#b6bbb0'});
+line(c,[[0,180],[160,160],[390,168],[620,140],[820,157],[1000,173]],{stroke:'#dce0d3','stroke-width':6});
+line(c,[[0,208],[240,194],[455,206],[660,185],[840,203],[1000,215]],{stroke:'#e0e1d5','stroke-width':5});
+poly(c,[[0,309],[166,272],[456,253],[777,263],[1000,290],[1000,410],[0,410]],{fill:'#e0d6c0'});
+for(const [x,y,s]of [[110,280,1.3],[142,269,1],[182,280,1.2],[122,252,1],[165,254,.9],[812,273,1.4],[849,270,1.6],[886,277,1.2],[831,249,1.2],[875,249,1],[850,231,1]])poly(c,[[x-25*s,y],[x-20*s,y-18*s],[x+4*s,y-31*s],[x+22*s,y-9*s],[x+17*s,y+5*s]],{fill:'#8b9490',stroke:'#b5bdb8'});
+for(const [x,y,s,n]of [[383,306,.7,'1'],[553,339,1,'2'],[705,371,1.4,'3']]){
+poly(c,[[x-15*s,y],[x-9*s,y-19*s],[x+11*s,y-23*s],[x+24*s,y-4*s],[x+12*s,y+7*s]],{fill:'#697a84',stroke:'#344f60','stroke-width':2});
+label(c,x,y+27,n,{'font-size':13,'text-anchor':'middle'});
+}
+person(c,440,372,'#536e80');
+label(c,42,40,'C / 굽이 뒤에 나타나는 야외 채석장',{'font-size':20,'font-weight':700});
+label(c,608,109,'계단식 절개 암벽 · 채굴 불가',{'font-size':14});
+label(c,38,340,'배경 돌무더기',{'font-size':14});
+label(c,711,405,'바닥의 독립된 돌만 채굴',{'font-size':14});
+const exp=e(plan,'g',{id:'expansion'});
+for(const [x,z,id]of [[35,-6,'F1'],[-108,-60,'F2']]){
+e(exp,'circle',{cx:X(x),cy:Y(z),r:19,fill:'none',stroke:'#a3577e','stroke-width':2,'stroke-dasharray':'5 4'});
+label(exp,X(x),Y(z)+5,id,{'text-anchor':'middle','font-size':13,style:'fill:#864468;font-weight:700'});
+}
+label(exp,820,698,'F1 / F2 = 미래 연결 후보',{'font-size':12,style:'fill:#864468'});
+label(exp,820,720,'현재는 자연 지형으로 마감',{'font-size':12});
+const q=document.querySelector('#quarryPlan');
+e(q,'rect',{width:1000,height:470,fill:'#f5f6ee'});
+poly(q,[[70,320],[55,151],[142,62],[317,41],[516,61],[643,51],[769,119],[849,203],[798,303],[738,375],[590,407],[336,419],[128,385]],{fill:'#9ea9a3'});
+poly(q,[[104,315],[100,164],[167,109],[313,87],[506,104],[630,95],[734,152],[790,217],[748,279],[697,337],[586,363],[333,378],[155,349]],{fill:'#ccd0c3',stroke:'#e9eddf','stroke-width':8});
+poly(q,[[145,301],[151,192],[235,156],[374,138],[570,162],[682,163],[742,228],[690,318],[580,335],[339,346],[185,325]],{fill:'#e5dcc7'});
+poly(q,[[242,233],[330,189],[499,191],[631,212],[631,277],[562,302],[347,298]],{fill:'#e2efce',stroke:'#5d875a','stroke-width':2,'stroke-dasharray':'7 5'});
+for(const [x,y]of [[185,213],[203,229],[220,207],[217,188],[659,195],[686,210],[695,193],[677,175]]){
+poly(q,[[x-16,y],[x-10,y-17],[x+13,y-18],[x+21,y],[x+8,y+12]],{fill:'#87948d',stroke:'#b9c2bb'});
+}
+line(q,[[945,353],[791,328],[718,304]],{stroke:'#d3c3a8','stroke-width':42,'stroke-linejoin':'round'});
+for(const [x,y,r,t]of [[307,236,7,'1'],[413,211,11,'2'],[542,257,16,'3'],[469,277,7,'1']]){
+e(q,'circle',{cx:x,cy:y,r,fill:'#496c83',stroke:'#274d62','stroke-width':2});label(q,x,y+31,t,{'text-anchor':'middle','font-size':12});
+}
+label(q,40,30,'野外 채석장 · 평면 개념도'.replace('野外','야외'),{'font-size':17,'font-weight':700});
+label(q,815,394,'진입로 · 생성 제외',{'font-size':14});
+label(q,334,175,'자원 생성 가능 평지',{'font-size':14});
+label(q,48,445,'회색: 채굴 불가 지형 / 초록 점선: 자원 생성 후보 범위 / 청색: 크기 1~3 예시',{'font-size':13});
+document.querySelectorAll('[data-layer]').forEach(n=>n.addEventListener('change',()=>document.getElementById(n.dataset.layer).style.display=n.checked?'':'none'));
+const zoom=document.querySelector('#zoom');zoom.addEventListener('input',()=>plan.style.width=zoom.value+'%');document.querySelector('#reset').onclick=()=>{zoom.value=100;plan.style.width='100%'};
+</script></body></html>
+
+

@@ -1,67 +1,33 @@
 import * as THREE from "three";
 import { getRebuildTerrainHeight } from "./rebuildLayout.js";
+import { createGroundedPath, createPolygonBand, expandPolygon, registerCliffColliders } from "./rebuildTerrainGeometry.js";
 
-const TERRAIN_WIDTH = 96;
-const TERRAIN_DEPTH = 110;
-const TERRAIN_CENTER_Z = -5;
+const TERRAIN_WIDTH = 520;
+const TERRAIN_DEPTH = 400;
+const TERRAIN_CENTER_X = -55;
+const TERRAIN_CENTER_Z = -10;
 
 export { getRebuildTerrainHeight as getRebuildBlockoutHeight } from "./rebuildLayout.js";
 
 function createTerrain(layout) {
   const terrain = new THREE.Mesh(
-    new THREE.PlaneGeometry(TERRAIN_WIDTH, TERRAIN_DEPTH, 48, 55),
+    new THREE.PlaneGeometry(TERRAIN_WIDTH, TERRAIN_DEPTH, 260, 200),
     new THREE.MeshStandardMaterial({ color: 0x728d5e, roughness: 0.98 }),
   );
   terrain.name = "EXCIT_REBUILD_HILL_TERRAIN";
   const positions = terrain.geometry.attributes.position;
   for (let index = 0; index < positions.count; index += 1) {
-    const x = positions.getX(index) + layout.origin.x;
+    const x = positions.getX(index) + layout.origin.x + TERRAIN_CENTER_X;
     const z = layout.origin.z + TERRAIN_CENTER_Z - positions.getY(index);
     positions.setZ(index, getRebuildTerrainHeight(x, z, layout.origin) - layout.origin.y);
   }
   positions.needsUpdate = true;
   terrain.geometry.computeVertexNormals();
   terrain.rotation.x = -Math.PI / 2;
-  terrain.position.set(layout.origin.x, layout.origin.y + 0.015, layout.origin.z + TERRAIN_CENTER_Z);
+  terrain.position.set(layout.origin.x + TERRAIN_CENTER_X, layout.origin.y + 0.015, layout.origin.z + TERRAIN_CENTER_Z);
   return terrain;
 }
 
-function createPathRibbon(layout) {
-  const points = [
-    { x: -0.2, z: 16.0, width: 4.8 }, { x: -0.7, z: 10.0, width: 5.1 },
-    { x: 0.4, z: 2.5, width: 5.4 }, { x: 0.9, z: -6.0, width: 5.8 },
-    { x: 0.1, z: -14.5, width: 6.2 }, { x: 0.2, z: -23.0, width: 7.0 },
-    { x: 0.2, z: -29.5, width: 8.2 },
-  ];
-  const vertices = [];
-  const indices = [];
-  for (let index = 0; index < points.length; index += 1) {
-    const point = points[index];
-    const prev = points[Math.max(0, index - 1)];
-    const next = points[Math.min(points.length - 1, index + 1)];
-    const dx = next.x - prev.x;
-    const dz = next.z - prev.z;
-    const length = Math.hypot(dx, dz) || 1;
-    const nx = -dz / length;
-    const nz = dx / length;
-    const y = getRebuildTerrainHeight(point.x + layout.origin.x, point.z + layout.origin.z, layout.origin) + 0.028;
-    vertices.push(
-      point.x + layout.origin.x + nx * point.width * 0.5, y, point.z + layout.origin.z + nz * point.width * 0.5,
-      point.x + layout.origin.x - nx * point.width * 0.5, y, point.z + layout.origin.z - nz * point.width * 0.5,
-    );
-    if (index > 0) {
-      const base = index * 2;
-      indices.push(base - 2, base, base - 1, base - 1, base, base + 1);
-    }
-  }
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
-  geometry.setIndex(indices);
-  geometry.computeVertexNormals();
-  const path = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: 0x9c8059, roughness: 1 }));
-  path.name = "EXCIT_REBUILD_DESCENT_PATH";
-  return path;
-}
 
 function createDoor(position) {
   const root = new THREE.Group();
@@ -203,7 +169,9 @@ export function createRebuildBlockout({ scene, groundSurfaces, registerWalkableS
   const root = new THREE.Group();
   root.name = "EXCIT_REBUILD_BLOCKOUT";
   const terrain = createTerrain(layout);
-  const path = createPathRibbon(layout);
+  const path = createGroundedPath(layout.descentPath.points, 5.5, layout.origin,
+    new THREE.MeshStandardMaterial({ color: 0xa49477, roughness: 1, side: THREE.DoubleSide }));
+  path.name = "EXCIT_REBUILD_DESCENT_PATH";
   const arrivalDoor = createDoor(layout.arrival.door);
   root.add(terrain, path, arrivalDoor.root);
   for (const collider of arrivalDoor.colliders) addCollider(collider, 0.92);
@@ -238,8 +206,13 @@ export function createRebuildBlockout({ scene, groundSurfaces, registerWalkableS
     marketResidents.push({ model, entry, definition: resident });
   }
 
-  const boundaryTreePositions = [[-18, 11], [-13, 16], [17, 12], [23, 5], [-25, -3], [26, -13], [16, -25]];
-  const boundaryRockPositions = [[-30, 17, 1.8], [30, 16, 1.7], [-32, -9, 2.1], [31, -19, 2], [13, -31, 1.7]];
+  const boundaryTreePositions = [
+    [-20, 24], [-15, 34], [17, 31], [25, 18], [-24, 5], [29, -15], [18, -28],
+    [39, 5], [42, -19], [-18, -33],
+  ];
+  const boundaryRockPositions = [
+    [-26, 34, 1.8], [28, 34, 1.7], [-29, 10, 1.9], [34, -25, 2], [20, -34, 1.7],
+  ];
   for (const [x, z] of boundaryTreePositions) {
     const y = getRebuildTerrainHeight(x + layout.origin.x, z + layout.origin.z, layout.origin);
     const tree = createBoundaryTree({ x: x + layout.origin.x, y, z: z + layout.origin.z });
@@ -252,27 +225,59 @@ export function createRebuildBlockout({ scene, groundSurfaces, registerWalkableS
     root.add(rock);
     addCollider(rock, 0.9);
   }
+  const nearRidge = new THREE.Group();
+  nearRidge.name = "EXCIT_REBUILD_NEAR_RIDGE";
+  const ridgeMaterial = new THREE.MeshStandardMaterial({ color: 0x65775b, roughness: 1, side: THREE.DoubleSide });
+  const ridgeCrest = expandPolygon(layout.ridge.outline, -5.5);
+  const ridgeBase = (p) => getRebuildTerrainHeight(p.x, p.z, layout.origin) - 0.1;
+  const ridgeFoot = (p) => ridgeBase(p) + 1.8;
+  nearRidge.add(createPolygonBand(layout.ridge.outline, layout.ridge.outline, ridgeBase, ridgeFoot, ridgeMaterial));
+  nearRidge.add(createPolygonBand(layout.ridge.outline, ridgeCrest, ridgeFoot, layout.origin.y + 13, ridgeMaterial));
+  const crestShape = new THREE.Shape(ridgeCrest.map((p) => new THREE.Vector2(p.x, -p.z)));
+  const crest = new THREE.Mesh(new THREE.ShapeGeometry(crestShape), ridgeMaterial);
+  crest.rotation.x = -Math.PI / 2;
+  crest.position.y = layout.origin.y + 13;
+  nearRidge.add(crest);
+  root.add(nearRidge);
+  registerCliffColliders({ parent: root, polygon: layout.ridge.outline, bottom: ridgeBase, top: ridgeFoot, addCollider, prefix: "ridge" });
+
+  const replaceableBackdrop = new THREE.Group();
+  replaceableBackdrop.name = "EXCIT_REBUILD_REPLACEABLE_BACKDROP";
   const backdropHills = [
-    [-43, 15, 10, 5.5, 8], [-43, -9, 12, 6.5, 10], [-41, -34, 11, 5.5, 9],
-    [43, 16, 10, 5.2, 8], [43, -10, 13, 6.8, 10], [41, -35, 11, 5.8, 9],
-    [-31, -50, 13, 6.2, 9], [31, -50, 13, 6.2, 9], [-25, 43, 12, 5.8, 9], [25, 43, 12, 5.8, 9],
+    [-58, 59, 27, 11, 16], [-100, 35, 32, 13, 18], [-145, 8, 27, 10, 13],
+    [-182, -40, 18, 14, 38], [-139, -101, 38, 12, 13], [-88, -88, 28, 10, 13],
+    [-40, -64, 20, 12, 12], [42, -65, 26, 12, 12],
+    [84, 29, 30, 10, 30], [105, -20, 28, 13, 33],
+    [-35, 66, 38, 14, 22], [25, 69, 36, 12, 24],
+    [-190, 60, 56, 18, 40], [-170, -125, 70, 23, 30], [-63, -104, 35, 19, 25],
+    [139, 50, 46, 22, 51], [95, -108, 55, 24, 33],
   ];
   for (const [x, z, width, height, depth] of backdropHills) {
     const worldX = x + layout.origin.x;
     const worldZ = z + layout.origin.z;
-    root.add(createBackdropHill({
+    replaceableBackdrop.add(createBackdropHill({
       x: worldX,
       y: getRebuildTerrainHeight(worldX, worldZ, layout.origin),
       z: worldZ,
       width,
       height,
       depth,
-      rotationY: x * 0.025,
+      rotationY: 0,
     }));
   }
+  root.add(replaceableBackdrop);
   scene.add(root);
   groundSurfaces.push(terrain, path);
-  registerWalkableSurface(layout.mapId, terrain, 0.8);
+  registerWalkableSurface(layout.mapId, terrain, 0);
   registerWalkableSurface(layout.mapId, path, 0.25);
-  return { root, terrain, path, arrivalDoor: arrivalDoor.root, marketStalls, marketResidents };
+  return {
+    root,
+    terrain,
+    path,
+    arrivalDoor: arrivalDoor.root,
+    marketStalls,
+    marketResidents,
+    nearRidge,
+    replaceableBackdrop,
+  };
 }

@@ -36,19 +36,22 @@ export function createSharedTourController({
       guide.entry.hint = "안내소에서 대기 중";
     }
     else if (snapshot.ownerId === selfId && snapshot.status === "waiting") guide.entry.hint = "Space : 안내 계속 듣기";
-    else if (snapshot.ownerId === selfId) guide.entry.hint = "안내 중";
-    else guide.entry.hint = "다른 방문자를 안내 중";
+    else guide.entry.hint = "안내 중";
   }
 
   function applySnapshot({ guides: nextGuides = [], selfId }) {
     snapshots.clear();
-    for (const snapshot of nextGuides) {
-      const guide = guideById.get(snapshot.id);
-      if (!guide) continue;
-      snapshots.set(snapshot.id, snapshot);
-      setGuideHint(guide, snapshot, selfId);
+    const personalSnapshot = nextGuides.find((snapshot) => snapshot.ownerId === selfId)
+      ?? nextGuides.find((snapshot) => snapshot.status === "idle" && !snapshot.ownerId && guideById.has(snapshot.id))
+      ?? null;
+    for (const guide of guides) {
+      const visible = Boolean(personalSnapshot && guide.id === personalSnapshot.id);
+      guide.root.visible = visible;
+      if (!visible) continue;
+      snapshots.set(personalSnapshot.id, personalSnapshot);
+      setGuideHint(guide, personalSnapshot, selfId);
     }
-    const ownGuide = nextGuides.find((guide) => guide.ownerId === selfId) ?? null;
+    const ownGuide = personalSnapshot?.ownerId === selfId ? personalSnapshot : null;
     if (!ownGuide) {
       if (followDialogOpen || ownGuideStatus === "arriving") hideDialog();
       followDialogOpen = false;
@@ -58,7 +61,7 @@ export function createSharedTourController({
     const previousStatus = ownGuideStatus;
     ownGuideStatus = ownGuide.status;
     if (ownGuide.status === "waiting_for_player") {
-      if (!followDialogOpen) showDialog("저를 따라와주세요.", guideById.get(ownGuide.id)?.entry);
+      if (!followDialogOpen) showDialog("저를 따라와주세요.", guideById.get(ownGuide.id)?.entry, { variant: "compact" });
       followDialogOpen = true;
       return;
     }
@@ -113,8 +116,7 @@ export function createSharedTourController({
       return { handled: true, action: "idle" };
     }
     if (!snapshot || snapshot.ownerId !== selfId) {
-      notify("다른 방문자를 안내 중이에요.", 1100);
-      return { handled: true, action: "busy" };
+      return { handled: false };
     }
     if (snapshot.status !== "waiting") return { handled: true, action: "moving" };
     const currentKey = `${snapshot.id}:${snapshot.checkpointId}:${snapshot.dialogVersion}`;
@@ -150,6 +152,7 @@ export function createSharedTourController({
     hideDialog();
     for (const guide of guides) {
       guide.root.position.copy(guide.origin);
+      guide.root.visible = true;
       guide.entry.hint = "안내소에서 대기 중";
     }
   }

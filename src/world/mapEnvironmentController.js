@@ -1,9 +1,9 @@
 export function createMapEnvironmentController(ctx) {
   function update() {
-    const { player, mineGate, campGate, ambientLight, sunLight, torchLight, torchEquipped } = ctx.getState();
+    const { player, mineGate, campGate, ambientLight, sunLight, torchLight, torchEquipped, isOutdoor = false } = ctx.getState();
     const mineThreshold = mineGate.position.z - 0.35;
     const campThreshold = campGate.position.z + 0.35;
-    const caveBlend = player.position.z <= campThreshold ? 1 : player.position.z >= mineThreshold ? 0
+    const caveBlend = isOutdoor ? 0 : player.position.z <= campThreshold ? 1 : player.position.z >= mineThreshold ? 0
       : ctx.MathUtils.smoothstep(1 - ((player.position.z - campThreshold) / (mineThreshold - campThreshold)), 0, 1);
     ambientLight.intensity = 0.8;
     sunLight.intensity = 0.4;

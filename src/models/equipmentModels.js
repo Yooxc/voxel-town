@@ -268,6 +268,52 @@ export function buildSafetyHelmetModel(theme = "default") {
   return g;
 }
 
+export function buildFlowerCrownModel() {
+  const crown = new THREE.Group();
+  crown.name = "flowerCrownModel";
+  const vineMaterial = new THREE.MeshStandardMaterial({ color: 0x3f7d46, roughness: 0.9 });
+  const leafMaterial = new THREE.MeshStandardMaterial({ color: 0x69a85f, roughness: 0.92 });
+  const petalMaterial = new THREE.MeshStandardMaterial({ color: 0xf8f6ed, roughness: 0.82 });
+  const centerMaterial = new THREE.MeshStandardMaterial({ color: 0xe2bd4d, roughness: 0.78 });
+
+  const vine = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.025, 6, 28), vineMaterial);
+  vine.rotation.x = Math.PI / 2;
+  vine.scale.z = 1.08;
+  crown.add(vine);
+
+  const flowerAngles = [-1.08, -0.55, 0, 0.55, 1.08];
+  for (const angle of flowerAngles) {
+    const flower = new THREE.Group();
+    const x = Math.sin(angle) * 0.34;
+    const z = Math.cos(angle) * 0.37;
+    flower.position.set(x, 0.035, z);
+    flower.rotation.y = angle;
+    for (let index = 0; index < 5; index += 1) {
+      const petal = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), petalMaterial);
+      const petalAngle = (index / 5) * Math.PI * 2;
+      petal.position.set(Math.cos(petalAngle) * 0.055, Math.sin(petalAngle) * 0.055, 0);
+      petal.scale.set(1, 0.72, 0.35);
+      flower.add(petal);
+    }
+    const center = new THREE.Mesh(new THREE.SphereGeometry(0.034, 8, 6), centerMaterial);
+    center.position.z = 0.018;
+    flower.add(center);
+    crown.add(flower);
+  }
+
+  for (const angle of [-2.55, -1.75, 1.75, 2.55]) {
+    const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), leafMaterial);
+    leaf.scale.set(1.45, 0.38, 0.55);
+    leaf.position.set(Math.sin(angle) * 0.35, 0.015, Math.cos(angle) * 0.37);
+    leaf.rotation.y = -angle;
+    crown.add(leaf);
+  }
+
+  crown.userData.headSeatOffsetY = 0;
+  crown.userData.headSeatForwardZ = 0;
+  return crown;
+}
+
 export function buildBasicShoesModel() {
   const g = new THREE.Group();
   const shoeMat = new THREE.MeshStandardMaterial({

@@ -11,6 +11,7 @@ import {
 import { updatePlayerMovementRuntime } from "./playerMovementRuntime.js";
 import { EXCIT_MINING_IMPACT_PROGRESS } from "./playerAnimationRuntime.js";
 import { createResourceWorldRuntime } from "../systems/resourceWorldRuntime.js";
+import { createDialogueCameraController } from "./dialogueCameraController.js";
 
 export function createPlayerGameplayCoordinator({
   player,
@@ -52,8 +53,9 @@ export function createPlayerGameplayCoordinator({
   let currentMiningSwingDuration = 1.1;
   let pendingMiningImpact = null;
   let buildCameraSnapshot = null;
+  let dialogueCameraController = null;
 
-  function initializeCamera({ camera, controls, colliders, scene, config }) {
+  function initializeCamera({ camera, controls, colliders, scene, config, dialogue = {} }) {
     cameraRuntime = {
       camera,
       controls,
@@ -62,10 +64,18 @@ export function createPlayerGameplayCoordinator({
       config,
       state: createCameraOcclusionState(camera.position.distanceTo(controls.target)),
     };
+    dialogueCameraController = createDialogueCameraController({
+      camera,
+      controls,
+      player,
+      colliders,
+      getViewportState: dialogue.getViewportState,
+    });
   }
 
   function snapCameraToPlayer() {
     if (!cameraRuntime) return;
+    dialogueCameraController?.cancel();
     const { camera, controls } = cameraRuntime;
     const currentOffset = new THREE.Vector3().copy(camera.position).sub(controls.target);
     controls.target.copy(player.position).add(followTargetOffset);
@@ -76,6 +86,7 @@ export function createPlayerGameplayCoordinator({
 
   function enterBuildCamera({ center, extent = 10 } = {}) {
     if (!cameraRuntime || !center) return false;
+    dialogueCameraController?.cancel();
     const { camera, controls } = cameraRuntime;
     if (!buildCameraSnapshot) {
       buildCameraSnapshot = {
@@ -114,16 +125,21 @@ export function createPlayerGameplayCoordinator({
   }
 
   function updateCameraOcclusion(dt) {
-    if (!cameraRuntime || buildCameraSnapshot) return;
+    if (!cameraRuntime || buildCameraSnapshot || dialogueCameraController?.isActive()) return;
     const { camera, controls, colliders, scene, state, config } = cameraRuntime;
     updateThirdPersonCameraOcclusion({ camera, controls, colliders, scene, state, dt, config });
   }
 
-  function updateCameraFollow() {
+  function updateCameraFollow(dt = 1 / 60) {
     if (!cameraRuntime) return;
     const { camera, controls } = cameraRuntime;
     if (buildCameraSnapshot) {
       controls.update();
+      return;
+    }
+    if (dialogueCameraController?.isActive()) {
+      const result = dialogueCameraController.update(dt);
+      if (result.ended) lastFollowPlayerPosition.copy(player.position);
       return;
     }
     framePlayerDelta.copy(player.position).sub(lastFollowPlayerPosition);
@@ -136,9 +152,22 @@ export function createPlayerGameplayCoordinator({
   }
 
   function setCameraControlsEnabled(enabled) {
-    if (!cameraRuntime || buildCameraSnapshot) return false;
+    if (!cameraRuntime || buildCameraSnapshot || dialogueCameraController?.isActive()) return false;
     cameraRuntime.controls.enabled = Boolean(enabled);
     return true;
+  }
+
+  function enterDialogueCamera(target) {
+    if (!cameraRuntime || buildCameraSnapshot) return false;
+    return dialogueCameraController?.enter(target) ?? false;
+  }
+
+  function exitDialogueCamera() {
+    return dialogueCameraController?.exit() ?? false;
+  }
+
+  function refreshDialogueCamera() {
+    return dialogueCameraController?.refresh() ?? false;
   }
 
   function triggerMiningSwing(target, getSwingDuration, options = {}) {
@@ -277,6 +306,12 @@ export function createPlayerGameplayCoordinator({
     enterBuildCamera,
     exitBuildCamera,
     isBuildCameraActive,
+    enterDialogueCamera,
+    exitDialogueCamera,
+    refreshDialogueCamera,
+    isDialogueCameraActive: () => dialogueCameraController?.isActive() ?? false,
+    isDialogueCameraFocused: () => dialogueCameraController?.isFocused() ?? false,
+    isDialogueCameraTarget: (target) => dialogueCameraController?.isTarget(target) ?? false,
     updateCameraOcclusion,
     updateCameraFollow,
     setCameraControlsEnabled,

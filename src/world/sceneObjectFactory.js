@@ -96,6 +96,7 @@ export function createSceneObjectFactory({
   const makeRock = (x, z, rockSizeDef = rockSizeDefs[1], fadeIn = false, options = {}) => {
     const defaultResourceCount = getRockDefaultResourceCount(rockSizeDef, options);
     const rock = createMineRockModel(x, z, rockSizeDef, fadeIn, options, { defaultResourceCount, randomRange });
+    rock.position.y += options.groundY ?? 0;
     scene.add(rock);
     rock.userData.colliderIndex = addCollider(rock, 0.85);
     return registerMineRock(rock);
@@ -108,7 +109,7 @@ export function createSceneObjectFactory({
       ? findCaveRockSpawnPosition(rockSizeDef.scale, 120)
       : findMineRockSpawnPosition(rockSizeDef.scale, 120, spawn?.respawnRegion);
     if (!position) return null;
-    return makeRock(position.x, position.z, rockSizeDef, true, {
+    const rock = makeRock(position.x, position.z, rockSizeDef, true, {
       mapId: spawn?.mapId,
       resourceItemId: spawn?.resourceItemId,
       requiredPickaxeLevel: spawn?.requiredPickaxeLevel,
@@ -116,9 +117,11 @@ export function createSceneObjectFactory({
       detail: spawn?.detail,
       maxHp: spawn?.maxHp,
       respawnRegion: spawn?.respawnRegion,
+      groundY: position.y ?? 0,
       bonusDropEnabled: spawn?.resourceItemId === "stoneDust",
       hpLabelPrefix: spawn?.resourceItemId === "masonryStone" ? "석재 돌 체력" : "돌 체력",
     });
+    return rock;
   };
 
   const makePickaxe = (x, z, y = 0, rotation = null, level = 1) => addToScene(createPickupPickaxe({ buildPickaxeModel, x, z, y, rotation, level }));

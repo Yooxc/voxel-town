@@ -1,4 +1,4 @@
-export const ONBOARDING_VERSION = 7;
+export const ONBOARDING_VERSION = 9;
 
 export const TOUR_STATUS = Object.freeze({
   NOT_STARTED: "not_started",
@@ -79,6 +79,11 @@ export function createDefaultOnboardingState() {
       started: false,
       completed: false,
       mineVisited: false,
+      starterPickaxeClaimed: false,
+    },
+    flowerCrownQuest: {
+      started: false,
+      completed: false,
     },
     firstActivities: createDefaultFirstActivityState(),
   };
@@ -109,6 +114,11 @@ export function normalizeOnboardingState(rawState, { pauseInterruptedTour = true
       started: Boolean(source.firstCraft?.started) || Boolean(source.firstCraft?.completed),
       completed: Boolean(source.firstCraft?.completed),
       mineVisited: Boolean(source.firstCraft?.mineVisited),
+      starterPickaxeClaimed: Boolean(source.firstCraft?.starterPickaxeClaimed),
+    },
+    flowerCrownQuest: {
+      started: Boolean(source.flowerCrownQuest?.started) || Boolean(source.flowerCrownQuest?.completed),
+      completed: Boolean(source.flowerCrownQuest?.completed),
     },
     firstActivities: normalizeFirstActivityState(source.firstActivities),
   };
@@ -242,7 +252,25 @@ export function setOnboardingMarketItemInterest(state, itemId, interested) {
 
 export function startOnboardingFirstCraft(state) {
   if (state.firstCraft?.started || state.firstCraft?.completed) return false;
-  state.firstCraft = { started: true, completed: false, mineVisited: false };
+  state.firstCraft = {
+    ...state.firstCraft,
+    started: true,
+    completed: false,
+    mineVisited: Boolean(state.firstCraft?.mineVisited),
+    starterPickaxeClaimed: Boolean(state.firstCraft?.starterPickaxeClaimed),
+  };
+  return true;
+}
+
+export function claimOnboardingStarterPickaxe(state) {
+  if (state.firstCraft?.starterPickaxeClaimed) return false;
+  state.firstCraft = {
+    ...state.firstCraft,
+    started: Boolean(state.firstCraft?.started),
+    completed: Boolean(state.firstCraft?.completed),
+    mineVisited: Boolean(state.firstCraft?.mineVisited),
+    starterPickaxeClaimed: true,
+  };
   return true;
 }
 
@@ -255,5 +283,17 @@ export function completeOnboardingFirstCraft(state) {
 export function recordOnboardingFirstCraftMineVisit(state) {
   if (!state.firstCraft?.started || state.firstCraft.completed || state.firstCraft.mineVisited) return false;
   state.firstCraft.mineVisited = true;
+  return true;
+}
+
+export function startOnboardingFlowerCrownQuest(state) {
+  if (state.flowerCrownQuest?.started || state.flowerCrownQuest?.completed) return false;
+  state.flowerCrownQuest = { started: true, completed: false };
+  return true;
+}
+
+export function completeOnboardingFlowerCrownQuest(state) {
+  if (!state.flowerCrownQuest?.started || state.flowerCrownQuest.completed) return false;
+  state.flowerCrownQuest = { started: true, completed: true };
   return true;
 }

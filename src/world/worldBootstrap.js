@@ -139,7 +139,12 @@ export function bootstrapWorld({
   const pickaxe = makePickaxe(pickupOrigin.x + 0.8, pickupOrigin.z - 0.2, pickupOrigin.y, { x: Math.PI / 2, y: Math.PI * 0.04, z: 0 }, 1);
   restPropOnSupport(pickaxe, startStall.top);
   enableDynamicProp(pickaxe, { sleeping: true });
-  registerPickupItem(pickaxe, "pickaxe", "E : 곡괭이 줍기");
+  registerPickupItem(
+    pickaxe,
+    "pickaxe",
+    rebuildBlockoutEnabled ? "E : 기본 곡괭이 받기" : "E : 곡괭이 줍기",
+    rebuildBlockoutEnabled ? { kind: "starter-pickaxe", persistent: true } : {},
+  );
 
   const safetyHelmet = makeSafetyHelmet(pickupOrigin.x - 1.15, pickupOrigin.z - 0.15, pickupOrigin.y, { x: 0, y: Math.PI * -0.12, z: Math.PI * 0.02 });
   restPropOnSupport(safetyHelmet, startStall.top);
@@ -174,11 +179,17 @@ export function bootstrapWorld({
 
   if (!rebuildBlockoutEnabled) makeTutorialNpc(startX, startZ - 5.15, 0);
   const facilityOrigin = rebuildBlockoutEnabled
-    ? { x: startX - 14.2, y: startFlatY, z: startZ - 24.0 }
+    ? rebuildLayout.facilityAnchors.forge
     : { x: startX - 3.0, y: startFlatY, z: startZ + 1.55 };
   const forgeStation = buildForgeAnvil(facilityOrigin.x, facilityOrigin.z);
-  const refineryStation = buildRefineryStation(forgeStation.position.x + 3.25, forgeStation.position.z, facilityOrigin.y, Math.PI);
-  buildNftExhibitBoard(forgeStation.position.x - 2.35, forgeStation.position.z - 2.55, Math.PI * 0.5);
+  const refineryPosition = rebuildBlockoutEnabled ? rebuildLayout.facilityAnchors.refinery : {
+    x: forgeStation.position.x + 3.25, y: facilityOrigin.y, z: forgeStation.position.z,
+  };
+  const nftBoardPosition = rebuildBlockoutEnabled ? rebuildLayout.facilityAnchors.nftBoard : {
+    x: forgeStation.position.x - 2.35, y: facilityOrigin.y, z: forgeStation.position.z - 2.55,
+  };
+  const refineryStation = buildRefineryStation(refineryPosition.x, refineryPosition.z, refineryPosition.y, Math.PI);
+  buildNftExhibitBoard(nftBoardPosition.x, nftBoardPosition.z, Math.PI * 0.5);
 
   const signStartX = rebuildBlockoutEnabled ? -13.1 : startX + 3.9;
   const signStartZ = rebuildBlockoutEnabled ? -8.2 : startZ + 0.8;
@@ -189,6 +200,8 @@ export function bootstrapWorld({
   ];
   if (!rebuildBlockoutEnabled) {
     for (let i = 0; i < signTexts.length; i += 1) makeSign(signStartX, signStartZ + 2.25 * i, signTexts[i], -Math.PI / 2);
+  } else {
+    makeSign(pickupOrigin.x - 2.4, pickupOrigin.z + 0.6, "첫 작업 도구 지원", Math.PI * 0.5);
   }
 
   const mineGate = buildTravelGate({ scene, x: startX, z: startZ - 51.2, rotationY: Math.PI, startFlatY });
@@ -202,13 +215,19 @@ export function bootstrapWorld({
   if (rebuildBlockoutEnabled) {
     makeRock(rebuildLayout.miningArea.x, rebuildLayout.miningArea.z, rockSizeDefs[1], false, {
       respawnRegion: "village-demo",
+      groundY: rebuildLayout.miningArea.y,
     });
     makeRock(rebuildLayout.miningArea.x + 3.1, rebuildLayout.miningArea.z - 2.3, rockSizeDefs[0], false, {
       respawnRegion: "village-demo",
+      groundY: rebuildLayout.miningArea.y,
     });
     for (const spawn of rebuildLayout.generalMine.initialRocks) {
-      makeRock(spawn.x, spawn.z, rockSizeDefs[spawn.sizeIndex] ?? rockSizeDefs[0], false, {
+      const rockSizeDef = rockSizeDefs[spawn.sizeIndex] ?? rockSizeDefs[0];
+      const position = findRockSpawnPosition(rockSizeDef.scale, 120, "general-mine");
+      if (!position) continue;
+      makeRock(position.x, position.z, rockSizeDef, false, {
         respawnRegion: "general-mine",
+        groundY: position.y ?? 0,
       });
     }
   }

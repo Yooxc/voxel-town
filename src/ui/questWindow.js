@@ -50,6 +50,25 @@ export function createQuestWindowUi({ uiLayer, documentRef = document }) {
 }
 
 export function getQuestWindowView({ quest, viewMode, currentStep }) {
+  if (quest?.kind === "rebuild-journal") {
+    const visibleEntries = (quest.entries ?? []).filter((entry) => (
+      viewMode === "completed" ? entry.completed : !entry.completed
+    ));
+    return {
+      title: quest.title,
+      description: viewMode === "completed"
+        ? "완료한 퀘스트를 다시 확인할 수 있습니다."
+        : quest.description,
+      toggleText: viewMode === "active" ? "완료 보기" : "진행 보기",
+      footer: viewMode === "completed"
+        ? "완료한 퀘스트는 계정별 기록을 기준으로 표시됩니다."
+        : "퀘스트 진행 상황은 행동과 장비 상태에 맞춰 갱신됩니다.",
+      emptyText: viewMode === "completed" ? "완료한 퀘스트가 없습니다." : "진행 중인 퀘스트가 없습니다.",
+      visibleEntries,
+      journalMode: true,
+    };
+  }
+
   const visibleSteps = quest.steps
     .map((step, index) => {
       const isDone = index < quest.currentStep || quest.completed;
@@ -80,7 +99,58 @@ export function getQuestWindowView({ quest, viewMode, currentStep }) {
     footer: viewMode === "completed" ? COMPLETED_FOOTER : ACTIVE_FOOTER,
     emptyText: viewMode === "completed" ? "아직 보관한 완료 퀘스트가 없습니다." : "진행 중인 퀘스트가 없습니다.",
     visibleSteps,
+    journalMode: false,
   };
+}
+
+function renderJournalEntries(view, stepList) {
+  if (view.visibleEntries.length === 0) {
+    const row = document.createElement("div");
+    Object.assign(row.style, {
+      padding: "10px 12px", borderRadius: "8px", background: "rgba(255,255,255,0.9)",
+      border: "1px solid rgba(0,0,0,0.1)", fontFamily: "system-ui, -apple-system, sans-serif",
+    });
+    row.textContent = view.emptyText;
+    stepList.appendChild(row);
+    return;
+  }
+
+  for (const entry of view.visibleEntries) {
+    const row = document.createElement("div");
+    Object.assign(row.style, {
+      padding: "11px 12px", borderRadius: "8px", background: "rgba(255,255,255,0.94)",
+      border: "1px solid rgba(0,0,0,0.12)", fontFamily: "system-ui, -apple-system, sans-serif",
+    });
+    const heading = document.createElement("div");
+    Object.assign(heading.style, { display: "flex", justifyContent: "space-between", gap: "10px", alignItems: "flex-start" });
+    const headingText = document.createElement("div");
+    headingText.textContent = entry.title;
+    Object.assign(headingText.style, { fontSize: "14px", fontWeight: "800", color: "#222" });
+    const issuer = document.createElement("div");
+    issuer.textContent = entry.issuer ? `의뢰: ${entry.issuer}` : "";
+    Object.assign(issuer.style, { flexShrink: "0", fontSize: "11px", color: "#777" });
+    heading.append(headingText, issuer);
+    row.appendChild(heading);
+
+    for (const objective of entry.objectives ?? []) {
+      const objectiveRow = document.createElement("div");
+      const done = objective.current >= objective.target;
+      objectiveRow.textContent = `${done ? "완료" : "진행"}  ${objective.display ?? `${objective.label} ${objective.current}/${objective.target}`}`;
+      Object.assign(objectiveRow.style, {
+        marginTop: "7px", fontSize: "12px", lineHeight: "1.45", color: done ? "#35713b" : "#555",
+      });
+      row.appendChild(objectiveRow);
+    }
+
+    const status = document.createElement("div");
+    status.textContent = entry.status;
+    Object.assign(status.style, {
+      marginTop: "8px", paddingTop: "7px", borderTop: "1px solid rgba(0,0,0,0.08)",
+      fontSize: "12px", fontWeight: "700", color: entry.completed ? "#35713b" : "#89551b",
+    });
+    row.appendChild(status);
+    stepList.appendChild(row);
+  }
 }
 
 export function renderQuestWindowUi({ quest, viewMode, currentStep, onArchive }, elements) {
@@ -90,6 +160,12 @@ export function renderQuestWindowUi({ quest, viewMode, currentStep, onArchive },
   title.textContent = view.title;
   description.textContent = view.description;
   stepList.innerHTML = "";
+
+  if (view.journalMode) {
+    renderJournalEntries(view, stepList);
+    footer.textContent = view.footer;
+    return;
+  }
 
   if (view.visibleSteps.length === 0) {
     const row = document.createElement("div");

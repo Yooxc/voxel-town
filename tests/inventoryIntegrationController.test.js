@@ -15,7 +15,7 @@ function createGroup() {
 test("synchronizes equipped tool model and refreshes visible inventory windows", () => {
   const calls = [];
   const equipment = {
-    equippedPickaxe: createGroup(), equippedSafetyHelmet: createGroup(), equippedNftHelmet: createGroup(),
+    equippedPickaxe: createGroup(), equippedSafetyHelmet: createGroup(), equippedNftHelmet: createGroup(), equippedFlowerCrown: createGroup(),
     equippedLeftShoe: createGroup(), equippedRightShoe: createGroup(),
   };
   const controller = createInventoryIntegrationController({
@@ -57,7 +57,7 @@ test("binds inventory window actions through the integration controller", () => 
   const calls = [];
   createInventoryIntegrationController({
     createEquipmentVisuals: () => ({
-      equippedPickaxe: createGroup(), equippedSafetyHelmet: createGroup(), equippedNftHelmet: createGroup(),
+      equippedPickaxe: createGroup(), equippedSafetyHelmet: createGroup(), equippedNftHelmet: createGroup(), equippedFlowerCrown: createGroup(),
       equippedLeftShoe: createGroup(), equippedRightShoe: createGroup(),
     }),
     rigParts: {}, equipmentBuilders: {},

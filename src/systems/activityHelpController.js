@@ -162,19 +162,21 @@ export function createActivityHelpController({
     recordResidentIntroduction?.(activityId, residentId);
     acknowledgeActivityReaction?.(activityId);
     showChoiceDialog(RESIDENT_LOCATIONS[residentId], activeEntry, [
-      { label: "알겠어요", onSelect: close },
+      { label: "알겠어요", kind: "exit", onSelect: close },
     ]);
   }
 
   function showCompletedActivity(activity) {
-    if (getOnboardingState?.()?.firstCraft?.completed) return showFirstCraftFollowUp(activity);
+    if (activity.acknowledged && getOnboardingState?.()?.firstCraft?.completed) {
+      return showFirstCraftFollowUp(activity);
+    }
     if (activity.id === "gather") {
       showChoiceDialog(
         "직접 재료를 구해봤군요. 그 돌가루가 어디에 쓰이는지 궁금하다면, 제작 가판의 세아에게 물어봐도 좋아요.",
         activeEntry,
         [
           { label: "세아는 어디에 있나요?", onSelect: () => introduceResident("gather", "craft-resident") },
-          { label: "나중에 가볼게요", onSelect: () => acknowledgeReaction("gather", close) },
+          { label: "나중에 가볼게요", kind: "exit", onSelect: () => acknowledgeReaction("gather", close) },
         ]
       );
       return true;
@@ -182,7 +184,7 @@ export function createActivityHelpController({
     showChoiceDialog("둘러보니 어느 쪽이 더 궁금했어요?", activeEntry, [
       { label: "물건 만드는 모습이요", onSelect: () => introduceResident("explore", "craft-resident") },
       { label: "장터에 놓인 물건들이요", onSelect: () => introduceResident("explore", "living-resident") },
-      { label: "그냥 더 둘러보고 싶어요", onSelect: () => acknowledgeReaction("explore", close) },
+      { label: "그냥 더 둘러보고 싶어요", kind: "exit", onSelect: () => acknowledgeReaction("explore", close) },
     ]);
     return true;
   }
@@ -192,16 +194,16 @@ export function createActivityHelpController({
       {
         label: "재료를 더 찾아보고 싶어요",
         onSelect: () => showChoiceDialog("일반 광산은 마을에서 이어지는 길을 따라가면 나와요. 필요할 때 천천히 가보세요.", activeEntry, [
-          { label: "알겠어요", onSelect: close },
+          { label: "알겠어요", kind: "exit", onSelect: close },
         ]),
       },
       {
         label: "다른 물건도 구경하고 싶어요",
         onSelect: () => showChoiceDialog("라온은 장터 오른쪽의 붉은 지붕 생활 가판에 있어요. 마음에 드는 물건을 찾아봐도 좋아요.", activeEntry, [
-          { label: "알겠어요", onSelect: close },
+          { label: "알겠어요", kind: "exit", onSelect: close },
         ]),
       },
-      { label: "일단 자유롭게 둘러볼게요", onSelect: close },
+      { label: "일단 자유롭게 둘러볼게요", kind: "exit", onSelect: close },
     ]);
     return true;
   }
@@ -223,7 +225,7 @@ export function createActivityHelpController({
         .map((objective) => objective.label)
         .join("과 ");
       showChoiceDialog(`${activity.pendingText}\n남은 일: ${remaining}`, entry, [
-        { label: "계속 해보기", onSelect: close },
+        { label: "계속 해보기", kind: "exit", onSelect: close },
         { label: "다른 활동 알아보기", onSelect: showChoices },
       ]);
       return true;

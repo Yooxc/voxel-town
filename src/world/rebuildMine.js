@@ -1,28 +1,85 @@
 import * as THREE from "three";
+import { createGroundedPath, createPolygonBand, expandPolygon, registerCliffColliders } from "./rebuildTerrainGeometry.js";
 
-function createPathSegment(start, end, material) {
-  const dx = end.x - start.x;
-  const dz = end.z - start.z;
-  const length = Math.hypot(dx, dz);
-  const segment = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.06, length + 0.4), material);
-  segment.name = "EXCIT_REBUILD_MINE_PATH";
-  segment.position.set((start.x + end.x) * 0.5, start.y + 0.035, (start.z + end.z) * 0.5);
-  segment.rotation.y = Math.atan2(dx, dz);
-  return segment;
+
+function createPolygonFloor(polygon, height, material) {
+  const shape = new THREE.Shape();
+  polygon.forEach((point, index) => {
+    if (index === 0) shape.moveTo(point.x, point.z);
+    else shape.lineTo(point.x, point.z);
+  });
+  shape.closePath();
+  const floor = new THREE.Mesh(new THREE.ShapeGeometry(shape), material);
+  floor.name = "EXCIT_REBUILD_OUTDOOR_QUARRY_FLOOR";
+  floor.rotation.x = Math.PI / 2;
+  floor.position.y = height + 0.045;
+  return floor;
 }
 
-function createBoundaryRock(x, y, z, scale, material) {
+function createRubbleRock(x, y, z, scale, material, seed) {
   const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(1, 0), material);
-  rock.name = "EXCIT_REBUILD_MINE_BOUNDARY";
-  rock.position.set(x, y + scale * 0.65, z);
-  rock.scale.set(scale, scale * 0.8, scale * 0.9);
-  rock.rotation.set(0.12, x * 0.17 + z * 0.09, -0.08);
+  rock.name = "EXCIT_REBUILD_NON_MINEABLE_RUBBLE";
+  rock.position.set(x, y + scale * 0.58, z);
+  rock.scale.set(scale, scale * (0.62 + (seed % 3) * 0.08), scale * (0.78 + (seed % 2) * 0.12));
+  rock.rotation.set(0.08 * (seed % 4), seed * 0.73, -0.05 * (seed % 3));
+  rock.userData.isQuarryRubble = true;
   return rock;
+}
+
+function createRubbleCluster(definition, floorHeight, material) {
+  const group = new THREE.Group();
+  group.name = `EXCIT_REBUILD_RUBBLE_${definition.id}`;
+  const rocks = [];
+  for (let index = 0; index < definition.count; index += 1) {
+    const angle = index * 2.399963 + definition.x * 0.03;
+    const radius = definition.radius * Math.sqrt((index + 0.45) / definition.count);
+    const scale = definition.scale * (0.72 + (index % 4) * 0.12);
+    const rock = createRubbleRock(
+      definition.x + Math.cos(angle) * radius,
+      floorHeight,
+      definition.z + Math.sin(angle) * radius,
+      scale,
+      material,
+      index,
+    );
+    rocks.push(rock);
+    group.add(rock);
+  }
+  return { group, rocks };
+}
+
+function createTerrace(definition, mine, material, index, colliderParent, addCollider) {
+  const terrace = new THREE.Group();
+  terrace.name = `EXCIT_REBUILD_QUARRY_TERRACE_${index + 1}`;
+  const inner = expandPolygon(mine.floorPolygon, definition.inset);
+  const outer = expandPolygon(mine.floorPolygon, definition.outset);
+  const previousHeight = index ? mine.terraces[index - 1].height : 0;
+  const entryX = mine.floorPolygon[mine.terraceOpeningEdge].x;
+  const taper = (height) => (p) => height * Math.max(0.12, Math.min(1, (entryX - p.x) / 13));
+  terrace.add(createPolygonBand(inner, inner, taper(previousHeight), taper(definition.height), material, mine.terraceOpeningEdge));
+  terrace.add(createPolygonBand(inner, outer, taper(definition.height), taper(definition.height), material, mine.terraceOpeningEdge));
+  terrace.add(createPolygonBand(outer, outer, taper(definition.height), -1, material, mine.terraceOpeningEdge));
+  terrace.position.y = mine.floorHeight;
+  const registerWall = (polygon, bottom, top, skipEdge, name) => registerCliffColliders({
+    parent: colliderParent, polygon, bottom, top, skipEdge, addCollider,
+    prefix: `${terrace.name}_${name}`,
+  });
+  registerWall(inner, (p) => mine.floorHeight + taper(previousHeight)(p),
+    (p) => mine.floorHeight + taper(definition.height)(p), mine.terraceOpeningEdge, "INNER");
+  registerWall(outer, mine.floorHeight - 1,
+    (p) => mine.floorHeight + taper(definition.height)(p), mine.terraceOpeningEdge, "OUTER");
+  for (const end of [mine.terraceOpeningEdge, (mine.terraceOpeningEdge + 1) % inner.length]) {
+    const edge = [inner[end], outer[end]];
+    terrace.add(createPolygonBand(edge, edge, -1, taper(definition.height), material, 1));
+    registerWall(edge, mine.floorHeight - 1,
+      (p) => mine.floorHeight + taper(definition.height)(p), 1, `END_${end}`);
+  }
+  return terrace;
 }
 
 function createDirectionSign(position, pointsLeft) {
   const root = new THREE.Group();
-  root.name = "EXCIT_REBUILD_MINE_SIGN";
+  root.name = "EXCIT_REBUILD_QUARRY_SIGN";
   const wood = new THREE.MeshStandardMaterial({ color: 0x755238, roughness: 1 });
   const marker = new THREE.MeshStandardMaterial({ color: 0xd8c37a, roughness: 0.92 });
   const post = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.4, 0.14), wood);
@@ -39,61 +96,105 @@ function createDirectionSign(position, pointsLeft) {
   return { root, collider: board };
 }
 
+function createQuarryFacility(position) {
+  const root = new THREE.Group();
+  root.name = "EXCIT_REBUILD_QUARRY_FACILITY";
+  const wood = new THREE.MeshStandardMaterial({ color: 0x806346, roughness: 1 });
+  const canvas = new THREE.MeshStandardMaterial({ color: 0xc7b986, roughness: 0.95 });
+  const platform = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.18, 2.7), wood);
+  platform.position.y = 0.09;
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(5.4, 0.16, 2.9), canvas);
+  roof.position.y = 2.25;
+  for (const x of [-2.25, 2.25]) for (const z of [-1.05, 1.05]) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.13, 2.2, 0.13), wood);
+    post.position.set(x, 1.1, z);
+    root.add(post);
+  }
+  root.add(platform, roof);
+  root.position.set(position.x, position.y, position.z);
+  return { root, collider: platform };
+}
+
 export function createRebuildMine({ scene, groundSurfaces, registerWalkableSurface, addCollider, layout }) {
   const root = new THREE.Group();
-  root.name = "EXCIT_REBUILD_GENERAL_MINE";
-  const pathMaterial = new THREE.MeshStandardMaterial({ color: 0x8b765d, roughness: 1 });
-  const rockMaterial = new THREE.MeshStandardMaterial({ color: 0x626661, roughness: 1 });
-  const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x777168, roughness: 1 });
+  root.name = "EXCIT_REBUILD_OUTDOOR_QUARRY";
+  const pathMaterial = new THREE.MeshStandardMaterial({ color: 0x91806a, roughness: 1, side: THREE.DoubleSide });
+  const shoulderMaterial = new THREE.MeshStandardMaterial({ color: 0x6f745f, roughness: 1, side: THREE.DoubleSide });
+  const floorMaterial = new THREE.MeshStandardMaterial({ color: 0xb3b2a8, roughness: 1, side: THREE.DoubleSide });
+  const rubbleMaterial = new THREE.MeshStandardMaterial({ color: 0x696d68, roughness: 1 });
+  const cliffMaterial = new THREE.MeshStandardMaterial({ color: 0x929991, roughness: 1, side: THREE.DoubleSide });
+
   const pathSegments = [];
-  for (let index = 1; index < layout.generalMine.pathPoints.length; index += 1) {
-    const segment = createPathSegment(
-      layout.generalMine.pathPoints[index - 1],
-      layout.generalMine.pathPoints[index],
-      pathMaterial,
-    );
+  const routeShoulders = [];
+  {
+    const points = layout.generalMine.pathPoints;
+    const shoulder = createGroundedPath(points, 7.4, layout.origin, shoulderMaterial, 0.04);
+    const segment = createGroundedPath([...points, ...layout.generalMine.workPath.slice(1)], 4.4, layout.origin, pathMaterial, 0.08);
+    shoulder.name = "EXCIT_REBUILD_QUARRY_ROUTE_SHOULDER";
+    segment.name = "EXCIT_REBUILD_QUARRY_ROUTE";
+    routeShoulders.push(shoulder);
     pathSegments.push(segment);
-    root.add(segment);
-    groundSurfaces.push(segment);
+    root.add(shoulder, segment);
+    groundSurfaces.push(shoulder, segment);
+    registerWalkableSurface(layout.mapId, shoulder, 0.24);
     registerWalkableSurface(layout.mapId, segment, 0.2);
   }
 
-  const floor = new THREE.Mesh(new THREE.CircleGeometry(9.4, 20), floorMaterial);
-  floor.name = "EXCIT_REBUILD_GENERAL_MINE_FLOOR";
-  floor.rotation.x = -Math.PI / 2;
-  floor.position.set(layout.generalMine.center.x, layout.generalMine.center.y + 0.045, layout.generalMine.center.z);
+  const floor = createPolygonFloor(
+    layout.generalMine.floorPolygon,
+    layout.generalMine.floorHeight,
+    floorMaterial,
+  );
   root.add(floor);
   groundSurfaces.push(floor);
   registerWalkableSurface(layout.mapId, floor, 0.35);
 
-  const boundaryRocks = [];
-  const center = layout.generalMine.center;
-  const boundaryOffsets = [
-    [-8.2, -4.8, 1.7], [-5.2, -8.0, 1.5], [-1.5, -9.0, 1.6], [2.5, -8.5, 1.45],
-    [6.0, -6.5, 1.7], [8.2, -3.0, 1.55], [8.8, 1.2, 1.5], [6.8, 5.5, 1.65],
-    [-7.8, 4.2, 1.55], [-9.0, 0.0, 1.7],
-  ];
-  for (const [x, z, scale] of boundaryOffsets) {
-    const rock = createBoundaryRock(center.x + x, center.y, center.z + z, scale, rockMaterial);
-    boundaryRocks.push(rock);
-    root.add(rock);
-    addCollider(rock, 0.84);
+  const terraces = layout.generalMine.terraces.map((definition, index) => (
+    createTerrace(definition, layout.generalMine, cliffMaterial, index, root, addCollider)
+  ));
+  for (const terrace of terraces) {
+    root.add(terrace);
   }
 
+  const rubbleClusters = [];
+  const boundaryRocks = [];
+  for (const definition of layout.generalMine.rubbleClusters) {
+    const cluster = createRubbleCluster(definition, layout.generalMine.floorHeight, rubbleMaterial);
+    rubbleClusters.push(cluster.group);
+    boundaryRocks.push(...cluster.rocks);
+    root.add(cluster.group);
+    for (const rock of cluster.rocks) addCollider(rock, 0.86);
+  }
+
+  const facility = createQuarryFacility(layout.generalMine.facility);
+  root.add(facility.root);
+  addCollider(facility.collider, 0.95);
+
   const entranceSign = createDirectionSign({
-    x: layout.generalMine.entrance.x + 0.8,
+    x: layout.generalMine.entrance.x + 1.1,
     y: layout.generalMine.entrance.y,
-    z: layout.generalMine.entrance.z + 1.2,
+    z: layout.generalMine.entrance.z + 3.3,
   }, true);
   const returnSign = createDirectionSign({
-    x: center.x + 4.7,
-    y: center.y,
-    z: center.z + 4.3,
+    x: layout.generalMine.pathPoints.at(-1).x - 1.73565500529092,
+    y: layout.generalMine.floorHeight,
+    z: layout.generalMine.pathPoints.at(-1).z + 6,
   }, false);
   root.add(entranceSign.root, returnSign.root);
   addCollider(entranceSign.collider, 0.9);
   addCollider(returnSign.collider, 0.9);
   scene.add(root);
 
-  return { root, floor, pathSegments, boundaryRocks, entranceSign: entranceSign.root, returnSign: returnSign.root };
+  return {
+    root,
+    floor,
+    pathSegments,
+    routeShoulders,
+    terraces,
+    rubbleClusters,
+    boundaryRocks,
+    facility: facility.root,
+    entranceSign: entranceSign.root,
+    returnSign: returnSign.root,
+  };
 }

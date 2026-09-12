@@ -33,7 +33,7 @@ test("creates a visible guide at the office with an arrival path and tour checkp
   ]);
 });
 
-test("creates separate guide stations for simultaneous visitors", () => {
+test("creates one local Daon guide and station", () => {
   const guides = createTourGuides({
     scene: { add() {} },
     registerNpc: (object, name, hint, metadata) => ({ obj: object, name, hint, ...metadata }),
@@ -43,7 +43,7 @@ test("creates separate guide stations for simultaneous visitors", () => {
     startFlatY: 0,
   });
 
-  assert.equal(guides.length, 4);
-  assert.equal(new Set(guides.map((guide) => guide.id)).size, 4);
-  assert.equal(new Set(guides.map((guide) => guide.entry.guideId)).size, 4);
+  assert.equal(guides.length, 1);
+  assert.equal(guides[0].id, "guide-1");
+  assert.equal(guides[0].entry.name, "다온");
 });

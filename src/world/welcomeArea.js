@@ -1,4 +1,32 @@
 import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
+const BENCH_MODEL_URL = "/models/excit-bench-test.glb";
+
+function loadBenchModel(bench, fallbackMeshes, loader, onError) {
+  bench.userData.assetStatus = "loading";
+  return Promise.resolve().then(() => loader.loadAsync(BENCH_MODEL_URL)).then((gltf) => {
+    const model = gltf?.scene;
+    let meshCount = 0;
+    if (model?.isObject3D) model.traverse((object) => {
+      if (!object.isMesh) return;
+      meshCount += 1;
+      object.castShadow = true;
+      object.receiveShadow = true;
+    });
+    if (!meshCount) throw new Error("Bench asset contains no meshes");
+    model.name = "EXCIT_WELCOME_BENCH_MODEL";
+    bench.add(model);
+    // Keep the original seat/back objects registered as the matching collision proxies.
+    for (const object of fallbackMeshes) object.visible = false;
+    bench.userData.assetStatus = "ready";
+    return model;
+  }).catch((error) => {
+    bench.userData.assetStatus = "fallback";
+    onError(error);
+    return null;
+  });
+}
 
 function createWelcomeResidentModel() {
   const group = new THREE.Group();
@@ -42,6 +70,8 @@ export function createWelcomeArea({
   y = 0,
   z,
   layout = null,
+  benchLoader = new GLTFLoader(),
+  onBenchLoadError = (error) => console.warn("[EXCIT] Bench model unavailable; keeping the original bench.", error),
 }) {
   const root = new THREE.Group();
   root.name = "EXCIT_WELCOME_AREA";
@@ -92,6 +122,8 @@ export function createWelcomeArea({
   addCollider(back, 1);
   resident.userData.colliderIndex = addCollider(residentCollider, 1);
   const residentEntry = registerNpc(resident, "마루", "Space : 인사하기", { role: "welcome" });
+
+  bench.userData.assetReady = loadBenchModel(bench, [seat, back, leftLeg, rightLeg], benchLoader, onBenchLoadError);
 
   return { root, resident, residentEntry, bench, tree: trunk };
 }

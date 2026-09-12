@@ -26,3 +26,27 @@ test("queues a tour request and includes it in the next presence sync", async ()
   await Promise.resolve();
   assert.equal(calls[0].command.checkpointId, "work-area");
 });
+
+test("uses the active local identity for gathering requests", async () => {
+  let gatherPayload = null;
+  const controller = createMultiplayerPresenceController({
+    client: {
+      sync: async () => ({ ok: true, players: [], guides: [] }),
+      gather: async (payload) => { gatherPayload = payload; return { ok: true }; },
+      leave: async () => ({ ok: true }),
+    },
+    getEnabled: () => true,
+    getIdentity: () => "dev:one",
+    getDisplayName: () => "개발자1",
+    getPlayerState: () => ({ x: 0, y: 0, z: 0, mapId: "광산" }),
+  });
+
+  await controller.gather("grass-1", "request-1");
+
+  assert.deepEqual(gatherPayload, {
+    clientId: "dev:one",
+    displayName: "개발자1",
+    resourceId: "grass-1",
+    requestId: "request-1",
+  });
+});

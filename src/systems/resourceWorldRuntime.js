@@ -6,6 +6,7 @@ export function createResourceWorldRuntime({
   updateRockFadeIns,
   schedule = setTimeout,
   rockRespawnMs,
+  rockRespawnRetryMs = 2_000,
   createRespawnRock,
 }) {
   const mineRocks = [];
@@ -57,7 +58,11 @@ export function createResourceWorldRuntime({
   }
 
   function scheduleRockRespawn(spawn) {
-    schedule(() => createRespawnRock(spawn), rockRespawnMs);
+    const tryRespawn = () => {
+      const result = createRespawnRock(spawn);
+      if (result === null) schedule(tryRespawn, rockRespawnRetryMs);
+    };
+    schedule(tryRespawn, rockRespawnMs);
   }
 
   return {

@@ -47,3 +47,32 @@ test("keeps tree, fade, and respawn updates under the runtime", () => {
   scheduled.callback();
   assert.deepEqual(calls.respawns, [{ mapId: "mine" }]);
 });
+
+test("retries a blocked rock respawn without losing the spawn request", () => {
+  const scheduled = [];
+  let attempts = 0;
+  const runtime = createResourceWorldRuntime({
+    getPlayerPosition: () => ({ x: 0, y: 0, z: 0 }),
+    findNearestByPosition: () => null,
+    setHarvestTreeActive: () => {},
+    updateHarvestTrees: () => {},
+    updateRockFadeIns: () => {},
+    schedule: (callback, delay) => scheduled.push({ callback, delay }),
+    rockRespawnMs: 100,
+    rockRespawnRetryMs: 25,
+    createRespawnRock: () => {
+      attempts += 1;
+      return attempts === 1 ? null : {};
+    },
+  });
+
+  runtime.scheduleRockRespawn({ mapId: "mine" });
+  const firstAttempt = scheduled.shift();
+  assert.equal(firstAttempt.delay, 100);
+  firstAttempt.callback();
+  const retry = scheduled.shift();
+  assert.equal(retry.delay, 25);
+  retry.callback();
+  assert.equal(attempts, 2);
+  assert.equal(scheduled.length, 0);
+});

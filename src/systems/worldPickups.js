@@ -3,11 +3,13 @@ import { findNearestByPosition } from "../core/proximity.js";
 export function createWorldPickupRuntime({ getItemName } = {}) {
   const entries = [];
 
-  function register(obj, itemId, text = null) {
+  function register(obj, itemId, text = null, metadata = {}) {
     const entry = {
       obj,
       itemId,
       text: text ?? `E : ${getItemName?.(itemId) ?? itemId} 줍기`,
+      kind: metadata.kind ?? "world-pickup",
+      persistent: Boolean(metadata.persistent),
     };
     entries.push(entry);
     obj.userData.pickupItemId = itemId;

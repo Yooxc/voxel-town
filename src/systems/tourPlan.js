@@ -1,50 +1,20 @@
-import { getRebuildLayout, getRebuildTerrainHeight } from "../world/rebuildLayout.js";
-
-const BASE_REST_POSITION = { x: -5, y: 2.4, z: 10.4 };
-const ARRIVAL_ROUTE = [
-  { x: 11.5, z: -17 },
-  { x: 10.8, z: -9 },
-  { x: 10, z: -1 },
-  { x: 9, z: 6 },
-  { x: 7.5, z: 9.2 },
-];
-const CHECKPOINT_ROUTES = Object.freeze({
-  "guide-intro:rest-area": [
-    { x: 2.4, z: 8.8 },
-    { x: -1.2, z: 9.2 },
-  ],
-  "rest-area:work-area": [
-    { x: -3.2, z: 7 },
-    { x: -0.8, z: 1 },
-    { x: 0.6, z: -6 },
-    { x: 0.1, z: -14 },
-    { x: -2.2, z: -20 },
-  ],
-  "work-area:exploration-path": [
-    { x: -3.2, z: -27.5 },
-    { x: -2.2, z: -32.5 },
-    { x: -1.2, z: -36.5 },
-  ],
-});
-
-function getTerrainOrigin(checkpoints) {
-  const rest = checkpoints.find((checkpoint) => checkpoint.id === "rest-area")?.position;
-  if (!rest) return { x: 0, y: 0, z: 0 };
-  return {
-    x: rest.x - BASE_REST_POSITION.x,
-    y: rest.y - BASE_REST_POSITION.y,
-    z: rest.z - BASE_REST_POSITION.z,
-  };
-}
-
-function groundedRoutePoint(point, origin) {
-  const x = point.x + origin.x;
-  const z = point.z + origin.z;
-  return { x, y: getRebuildTerrainHeight(x, z, origin), z };
-}
+import { getRebuildLayout } from "../world/rebuildLayout.js";
 
 function getCheckpoint(checkpoints, id) {
   return checkpoints.find((checkpoint) => checkpoint.id === id) ?? null;
+}
+
+function getTerrainOrigin(checkpoints) {
+  const baseLayout = getRebuildLayout();
+  const baseRest = baseLayout.activityLocations.find((location) => location.id === "rest-area")?.position;
+  const rest = checkpoints.find((checkpoint) => checkpoint.id === "rest-area")?.position;
+  if (!baseRest || !rest) return { x: 0, y: 0, z: 0 };
+  return { x: rest.x - baseRest.x, y: rest.y - baseRest.y, z: rest.z - baseRest.z };
+}
+
+function getLayoutFromCheckpoints(checkpoints) {
+  const origin = getTerrainOrigin(checkpoints);
+  return getRebuildLayout(origin.x, origin.z, origin.y);
 }
 
 export const TOUR_CHECKPOINTS = Object.freeze(getRebuildLayout().tour.checkpoints);
@@ -65,36 +35,20 @@ export function getTourNavigationObstacles(startX = 0, startZ = 0, startFlatY = 
 export function getGuideArrivalPath(guide, checkpoints) {
   const firstCheckpoint = checkpoints[0]?.position;
   if (!firstCheckpoint) return [];
-  const origin = getTerrainOrigin(checkpoints);
-  return [
-    groundedRoutePoint({ x: guide.origin.x - origin.x - 1.2, z: guide.origin.z - origin.z + 0.3 }, origin),
-    ...ARRIVAL_ROUTE.map((point) => groundedRoutePoint(point, origin)),
-    { ...firstCheckpoint },
-  ];
+  const routes = getLayoutFromCheckpoints(checkpoints).tour.routes;
+  return [{ ...guide.origin }, ...routes.arrival.map((point) => ({ ...point })), { ...firstCheckpoint }];
 }
 
 export function getTourLegPath(checkpoints, fromCheckpointId, toCheckpointId) {
   const destination = getCheckpoint(checkpoints, toCheckpointId)?.position;
   if (!destination) return [];
-  const origin = getTerrainOrigin(checkpoints);
-  const route = CHECKPOINT_ROUTES[`${fromCheckpointId}:${toCheckpointId}`] ?? [];
-  return [...route.map((point) => groundedRoutePoint(point, origin)), { ...destination }];
+  const routes = getLayoutFromCheckpoints(checkpoints).tour.routes;
+  const route = routes.legs[`${fromCheckpointId}:${toCheckpointId}`] ?? [];
+  return [...route.map((point) => ({ ...point })), { ...destination }];
 }
 
 export function getGuideReturnPath(guide, checkpoints, checkpointId) {
-  const origin = getTerrainOrigin(checkpoints);
-  const officeApproach = [
-    { x: 4.5, z: -19 },
-    { x: 8, z: -19.5 },
-    { x: guide.origin.x - origin.x - 1.2, z: guide.origin.z - origin.z + 0.3 },
-  ];
-  let route;
-  if (checkpointId === "guide-intro" || checkpointId === "rest-area") {
-    route = [...ARRIVAL_ROUTE].reverse();
-  } else if (checkpointId === "exploration-path") {
-    route = [{ x: -1.2, z: -36.5 }, { x: -2.2, z: -32.5 }, { x: -3.2, z: -27.5 }, { x: -2.2, z: -21 }, ...officeApproach];
-  } else {
-    route = [{ x: -2.2, z: -21 }, ...officeApproach];
-  }
-  return [...route.map((point) => groundedRoutePoint(point, origin)), { ...guide.origin }];
+  const routes = getLayoutFromCheckpoints(checkpoints).tour.routes;
+  const route = routes.returns[checkpointId] ?? [];
+  return [...route.map((point) => ({ ...point })), { ...guide.origin }];
 }

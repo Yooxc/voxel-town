@@ -34,6 +34,7 @@ export function createInventoryIntegrationController(ctx) {
       hasToolEquipped: Boolean(ctx.getEquippedToolId()),
       isSafetyHelmetEquipped: !isNftHelmetEquipped && ctx.getEquippedItem("head") === "safetyHelmet",
       isNftHelmetEquipped,
+      isFlowerCrownEquipped: !isNftHelmetEquipped && ctx.getEquippedItem("head") === "flowerCrown",
       shoesVisible: ctx.getEquippedItem("shoes") === "basicShoes",
     });
   }
@@ -45,6 +46,7 @@ export function createInventoryIntegrationController(ctx) {
         equippedPickaxeVisible: equipment.equippedPickaxe.visible,
         equippedSafetyHelmetVisible: equipment.equippedSafetyHelmet.visible,
         equippedNftHelmetVisible: equipment.equippedNftHelmet.visible,
+        equippedFlowerCrownVisible: equipment.equippedFlowerCrown.visible,
       }),
       syncEquippedToolGroupModel: syncToolGroupModel,
     });

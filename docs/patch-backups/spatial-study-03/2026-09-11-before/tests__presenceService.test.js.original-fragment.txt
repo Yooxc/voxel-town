@@ -1,0 +1,7 @@
+Before SPATIAL STUDY 03, the guide meeting test used these fixed positions:
+
+first-time visitor: { x: 7.1, y: 2.4, z: 10.2 }
+guide proximity target: { x: 7.1, z: 10.2 }
+rest-area visitor: { x: -5, z: 10.4 }
+
+The patch replaces these literals with positions read from getRebuildLayout().tour.checkpoints.

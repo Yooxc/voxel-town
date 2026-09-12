@@ -195,6 +195,29 @@ test("guides Se-a through materials and the first stone cup result", () => {
   assert.match(views.at(-1).text, /기타 칸/);
 });
 
+test("starts the first craft only after accepting Se-a's gathering offer", () => {
+  const views = [];
+  let beginCalls = 0;
+  const controller = createMarketResidentController({
+    firstCraftController: {
+      getStatus: () => ({ inputCount: 3, owned: 0, missing: 3, completed: false, pickaxeOwned: false }),
+      begin: () => { beginCalls += 1; return {}; },
+    },
+    showChoiceDialog: (text, _target, choices) => views.push({ text, choices }),
+    hideDialog: () => {},
+  });
+  controller.interact({
+    obj: {}, role: "market-resident",
+    market: { id: "craft-resident", stallId: "craft", aboutText: "", displayText: "" },
+  });
+
+  views.at(-1).choices.find((choice) => choice.label === "돌 컵을 만들어보고 싶어요").onSelect();
+  assert.equal(beginCalls, 0);
+  assert.match(views.at(-1).text, /첫 작업 도구 지원/);
+  views.at(-1).choices.find((choice) => choice.label === "직접 구해볼게요").onSelect();
+  assert.equal(beginCalls, 1);
+});
+
 test("offers free next steps after the first stone cup is complete", () => {
   const views = [];
   const controller = createMarketResidentController({
@@ -218,4 +241,43 @@ test("offers free next steps after the first stone cup is complete", () => {
   ]);
   views.at(-1).choices[0].onSelect();
   assert.match(views.at(-1).text, /일반 광산/);
+});
+
+test("guides Raon flower crown quest from acceptance through reward", () => {
+  const views = [];
+  let started = false;
+  let completed = false;
+  let ready = false;
+  const flowerCrownQuestController = {
+    getStatus: () => ({
+      started, completed, ready,
+      materials: [
+        { itemId: "wildGrass", name: "풀", count: 3, owned: ready ? 3 : 0 },
+        { itemId: "wildFlower", name: "꽃", count: 2, owned: ready ? 2 : 0 },
+      ],
+    }),
+    begin: () => { started = true; },
+    craft: () => { completed = true; return { ok: true }; },
+  };
+  const controller = createMarketResidentController({
+    flowerCrownQuestController,
+    showChoiceDialog: (text, _target, choices) => views.push({ text, choices }),
+    hideDialog: () => {},
+  });
+  const entry = {
+    obj: {}, role: "market-resident",
+    market: { id: "living-resident", stallId: "living", aboutText: "", displayText: "" },
+  };
+
+  controller.interact(entry);
+  views.at(-1).choices.find((choice) => choice.label === "화관을 만들어보고 싶어요").onSelect();
+  views.at(-1).choices.find((choice) => choice.label === "재료를 모아볼게요").onSelect();
+  assert.equal(started, true);
+
+  ready = true;
+  controller.interact(entry);
+  views.at(-1).choices.find((choice) => choice.label === "화관 재료를 가져왔어요").onSelect();
+  views.at(-1).choices.find((choice) => choice.label === "화관 만들기").onSelect();
+  assert.equal(completed, true);
+  assert.match(views.at(-1).text, /장비 칸/);
 });

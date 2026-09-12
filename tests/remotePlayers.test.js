@@ -47,3 +47,36 @@ test("shows only other connected players and removes them when their presence en
     globalThis.document = originalDocument;
   }
 });
+
+test("shows a remote flower crown from the shared equipment state", () => {
+  const originalDocument = globalThis.document;
+  globalThis.document = { createElement: () => createElement() };
+  const headSocket = { add(child) { this.child = child; } };
+  const crown = { name: "", visible: false, position: { set() {} } };
+  try {
+    const runtime = createRemotePlayerRuntime({
+      scene: { add() {} },
+      uiLayer: { appendChild() {} },
+      camera: {},
+      buildFlowerCrownModel: () => crown,
+      createPlayerRig: () => ({
+        name: "", userData: {}, position: { set() {} }, rotation: { y: 0 },
+        getObjectByName: (name) => name === "EXCIT_SOCKET_HEAD" ? headSocket : null,
+        removeFromParent() {},
+      }),
+    });
+
+    runtime.applySnapshot([
+      { id: "other", name: "다른 사람", x: 1, y: 0, z: 1, rotationY: 0, mapId: "광산", headItemId: "flowerCrown" },
+    ], "self");
+    assert.equal(headSocket.child, crown);
+    assert.equal(crown.visible, true);
+
+    runtime.applySnapshot([
+      { id: "other", name: "다른 사람", x: 1, y: 0, z: 1, rotationY: 0, mapId: "광산", headItemId: "" },
+    ], "self");
+    assert.equal(crown.visible, false);
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});

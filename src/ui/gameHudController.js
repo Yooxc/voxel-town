@@ -3,6 +3,8 @@ export function createGameHudController(ctx) {
   let arrivalTimer = null;
   let dialogTimer = null;
   let dialogTarget = null;
+  let dialogVariant = "dialog";
+  let observedDialogHeight = 0;
   const npcNamePosition = new ctx.Vector3();
   const dialogPosition = new ctx.Vector3();
   const playerNamePosition = new ctx.Vector3();
@@ -65,8 +67,31 @@ export function createGameHudController(ctx) {
     });
     viewport.addEventListener("resize", () => {
       applyAirHudPosition(parseFloat(wrap.style.left) || 16, parseFloat(wrap.style.top) || 214);
+      applyNpcDialogVariant(dialogVariant);
+      updateNpcDialogPosition();
     });
     restoreAirHudPosition();
+  }
+
+  function notifyNpcDialogLayoutChanged() {
+    if (ctx.dialog.style.display === "none" || dialogVariant !== "dialog") return;
+    const nextHeight = ctx.dialog.offsetHeight || 0;
+    if (nextHeight > 0) observedDialogHeight = nextHeight;
+    ctx.onNpcDialogLayoutChange?.();
+  }
+
+  function bindNpcDialogResize() {
+    const ResizeObserverClass = ctx.ResizeObserver ?? globalThis.ResizeObserver;
+    if (!ResizeObserverClass || !ctx.dialogPanel) return;
+    const observer = new ResizeObserverClass(() => {
+      if (ctx.dialog.style.display === "none" || dialogVariant !== "dialog") return;
+      const nextHeight = ctx.dialog.offsetHeight || 0;
+      if (nextHeight <= 0 || Math.abs(nextHeight - observedDialogHeight) < 1) return;
+      observedDialogHeight = nextHeight;
+      updateNpcDialogPosition();
+      ctx.onNpcDialogLayoutChange?.();
+    });
+    observer.observe(ctx.dialogPanel);
   }
 
   function showMessage(text, duration = 900) {
@@ -118,6 +143,12 @@ export function createGameHudController(ctx) {
     ctx.dialogChoices.style.display = "none";
   }
 
+  function setChoiceHighlight(button, marker, highlighted) {
+    button.style.background = highlighted ? "rgba(221,232,218,0.72)" : "transparent";
+    button.style.color = highlighted ? "#203c27" : "#344438";
+    marker.textContent = highlighted ? "›" : "";
+  }
+
   function showNpcDialogChoices(choices = []) {
     clearNpcDialogChoices();
     if (!ctx.dialogChoices || choices.length === 0) return;
@@ -125,13 +156,29 @@ export function createGameHudController(ctx) {
     for (const choice of choices) {
       const button = document.createElement("button");
       button.type = "button";
-      button.textContent = choice.label;
       Object.assign(button.style, {
-        width: "100%", padding: "8px 10px", borderRadius: "8px",
-        border: "1px solid rgba(89,119,83,0.3)", background: "rgba(247,251,244,0.96)",
-        color: "#304233", fontFamily: "inherit", fontSize: "13px", fontWeight: "700",
-        textAlign: "left", cursor: "pointer",
+        width: "100%", minHeight: "44px", padding: "10px 12px 10px 34px", borderRadius: "6px",
+        border: "0", background: "transparent", color: "#344438", position: "relative",
+        fontFamily: "inherit", fontSize: "14px", fontWeight: "500", lineHeight: "1.45",
+        overflowWrap: "anywhere", textAlign: "left", cursor: "pointer",
       });
+      if (choice.kind === "exit") {
+        button.style.marginTop = "8px";
+        button.style.boxShadow = "inset 0 1px 0 rgba(63,83,65,0.14)";
+        button.style.paddingTop = "14px";
+      }
+      const marker = document.createElement("span");
+      Object.assign(marker.style, {
+        position: "absolute", left: "13px", top: "50%", width: "12px",
+        transform: "translateY(-50%)", color: "#58715b", fontSize: "18px", fontWeight: "800",
+      });
+      const label = document.createElement("span");
+      label.textContent = choice.label;
+      button.append(marker, label);
+      button.addEventListener("pointerenter", () => setChoiceHighlight(button, marker, true));
+      button.addEventListener("pointerleave", () => setChoiceHighlight(button, marker, false));
+      button.addEventListener("focus", () => setChoiceHighlight(button, marker, true));
+      button.addEventListener("blur", () => setChoiceHighlight(button, marker, false));
       button.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -141,13 +188,60 @@ export function createGameHudController(ctx) {
     }
   }
 
-  function showNpcDialog(text, duration = 3000, target = null, { choices = [] } = {}) {
+  function resolveDialogSpeakerName(target, explicitName = "") {
+    if (explicitName) return explicitName;
+    const activeEntry = ctx.getActiveNpc?.();
+    if (activeEntry?.obj === target) return activeEntry.name ?? "";
+    return ctx.getTutorialNpcs?.().find((entry) => entry?.obj === target)?.name ?? "";
+  }
+
+  function applyNpcDialogVariant(variant) {
+    const compact = variant === "compact";
+    const viewportHeight = Math.max(1, Number(ctx.airHud.viewport.innerHeight) || 1);
+    const focusedMaxHeight = Math.max(140, Math.min(360, Math.floor(viewportHeight * 0.44)));
+    ctx.dialog.style.width = compact
+      ? "min(300px, calc(100vw - 32px))"
+      : "min(620px, calc(100vw - 32px))";
+    if (ctx.dialogPanel) {
+      ctx.dialogPanel.style.padding = compact ? "10px 13px" : "16px 18px 14px";
+      ctx.dialogPanel.style.maxHeight = compact
+        ? "calc(100vh - 56px)"
+        : `${focusedMaxHeight}px`;
+      ctx.dialogPanel.style.overflowY = "auto";
+      ctx.dialogPanel.style.overflowX = "hidden";
+    }
+    if (ctx.dialogText?.style) {
+      ctx.dialogText.style.fontSize = compact ? "14px" : "17px";
+      ctx.dialogText.style.fontWeight = compact ? "600" : "600";
+    }
+    if (ctx.dialogName) {
+      ctx.dialogName.style.marginBottom = compact ? "3px" : "7px";
+    }
+    if (ctx.dialogChoices) {
+      ctx.dialogChoices.style.maxHeight = "none";
+      ctx.dialogChoices.style.overflowY = "visible";
+    }
+  }
+
+  function showNpcDialog(text, duration = 3000, target = null, {
+    choices = [], speakerName = "", variant = "dialog",
+  } = {}) {
     ctx.dialogText.textContent = text;
     dialogTarget = target ?? ctx.getActiveNpc()?.obj ?? ctx.getTutorialNpcs()[0]?.obj ?? null;
+    dialogVariant = variant;
+    if (variant === "compact") ctx.onNpcDialogCompact?.();
+    applyNpcDialogVariant(variant);
+    if (ctx.dialogName) {
+      const resolvedName = resolveDialogSpeakerName(dialogTarget, speakerName);
+      ctx.dialogName.textContent = resolvedName;
+      ctx.dialogName.style.display = resolvedName ? "block" : "none";
+    }
     showNpcDialogChoices(choices);
     ctx.dialog.style.display = "block";
     ctx.dialog.style.pointerEvents = choices.length > 0 ? "auto" : "none";
+    if (ctx.dialogPanel) ctx.dialogPanel.scrollTop = 0;
     updateNpcDialogPosition();
+    notifyNpcDialogLayoutChanged();
     if (dialogTimer) clearTimeout(dialogTimer);
     dialogTimer = null;
     if (Number.isFinite(duration) && duration > 0) {
@@ -162,15 +256,42 @@ export function createGameHudController(ctx) {
     ctx.dialog.style.pointerEvents = "none";
     clearNpcDialogChoices();
     dialogTarget = null;
+    ctx.onNpcDialogHidden?.();
   }
 
   function updateNpcDialogPosition() {
-    if (ctx.dialog.style.display === "none" || !dialogTarget?.parent) return;
+    if (ctx.dialog.style.display === "none") return;
+    if (!dialogTarget?.parent) {
+      hideNpcDialog();
+      return;
+    }
+    const viewport = ctx.airHud.viewport;
+    const focused = dialogVariant === "dialog" && ctx.isDialogueCameraFocused?.();
+    if (focused) {
+      ctx.dialog.style.bottom = viewport.innerWidth <= 720 ? "16px" : "24px";
+      ctx.dialog.style.left = "50%";
+      ctx.dialog.style.top = "auto";
+      ctx.dialog.style.transform = "translateX(-50%)";
+      if (ctx.dialogTail) ctx.dialogTail.style.display = "none";
+      return;
+    }
     dialogPosition.copy(dialogTarget.position);
     const point = projectToScreen(dialogPosition, 3.45);
     if (!point) { ctx.dialog.style.display = "none"; return; }
-    ctx.dialog.style.left = `${point.x}px`;
-    ctx.dialog.style.top = `${Math.max(28, point.y)}px`;
+    ctx.dialog.style.bottom = "auto";
+    ctx.dialog.style.transform = "translate(-50%, -100%)";
+    if (ctx.dialogTail) ctx.dialogTail.style.display = "block";
+    const width = ctx.dialog.offsetWidth || 390;
+    const height = ctx.dialog.offsetHeight || 160;
+    const halfWidth = width / 2;
+    const left = Math.max(16 + halfWidth, Math.min(viewport.innerWidth - 16 - halfWidth, point.x));
+    const top = Math.max(16 + height, Math.min(viewport.innerHeight - 16, point.y));
+    ctx.dialog.style.left = `${left}px`;
+    ctx.dialog.style.top = `${top}px`;
+    if (ctx.dialogTail) {
+      const tailLeft = Math.max(24, Math.min(width - 24, point.x - (left - halfWidth)));
+      ctx.dialogTail.style.left = `${tailLeft}px`;
+    }
   }
 
   function updateTutorialNpcNameTag() {
@@ -201,6 +322,20 @@ export function createGameHudController(ctx) {
     ctx.playerNameTag.style.display = "block";
   }
 
+  function getDialogueViewportState() {
+    const viewport = ctx.airHud.viewport;
+    return {
+      width: viewport.innerWidth,
+      height: viewport.innerHeight,
+      dialogHeight: ctx.dialog.offsetHeight || 240,
+    };
+  }
+
   bindAirHudDrag();
-  return { showMessage, hideMessage, showTooltip, hideTooltip, showMapArrival, showNpcDialog, hideNpcDialog, updateNpcDialogPosition, updateTutorialNpcNameTag, updatePlayerNameTag };
+  bindNpcDialogResize();
+  return {
+    showMessage, hideMessage, showTooltip, hideTooltip, showMapArrival,
+    showNpcDialog, hideNpcDialog, updateNpcDialogPosition,
+    updateTutorialNpcNameTag, updatePlayerNameTag, getDialogueViewportState,
+  };
 }

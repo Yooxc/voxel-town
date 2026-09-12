@@ -82,6 +82,46 @@ test("keeps completed activity reporting pending until the player chooses a resp
   assert.equal(state.firstActivities.exploreReactionAcknowledged, true);
 });
 
+test("prioritizes an unacknowledged exploration result over the first craft follow-up", () => {
+  const entry = { obj: {} };
+  const state = {
+    firstCraft: { completed: true },
+    firstActivities: {
+      selectedId: "explore",
+      exploreRestVisited: true,
+      exploreWorkVisited: true,
+      exploreCompleted: true,
+      gatherCompleted: false,
+      exploreReactionAcknowledged: false,
+      gatherReactionAcknowledged: false,
+      introductions: { explore: { residentId: "", conversationCompleted: false } },
+    },
+  };
+  let text = "";
+  let choices = [];
+  const controller = createActivityHelpController({
+    getOnboardingState: () => state,
+    acknowledgeActivityReaction: (activityId) => {
+      if (activityId !== "explore") return false;
+      state.firstActivities.exploreReactionAcknowledged = true;
+      return true;
+    },
+    showChoiceDialog: (nextText, _entry, nextChoices) => {
+      text = nextText;
+      choices = nextChoices;
+    },
+    showDialog: () => {},
+    hideDialog: () => {},
+  });
+
+  assert.equal(controller.showActivityStatus(entry), true);
+  assert.match(text, /둘러보니 어느 쪽이 더 궁금했어요/);
+  assert.doesNotMatch(text, /세아와 첫 물건/);
+
+  choices.find((choice) => choice.label === "그냥 더 둘러보고 싶어요").onSelect();
+  assert.equal(state.firstActivities.exploreReactionAcknowledged, true);
+});
+
 test("records the chosen introduction target only after a completed activity response", () => {
   const entry = { obj: {} };
   const state = {

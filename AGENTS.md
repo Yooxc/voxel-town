@@ -16,6 +16,7 @@ These rules apply when working in this project.
 ## Patch Workflow
 
 - Before modifying code, inspect the relevant implementation and identify the module that owns the behavior.
+- Before creating or modifying maps, terrain, or movement boundaries, read [MAP_DESIGN_RULES.md](MAP_DESIGN_RULES.md) and the latest approved spatial study or agreement for the affected area; follow them within the existing approval workflow.
 - Present a concise review template before the patch. Include the problem, expected behavior, behavior that must remain unchanged, exact files and ownership, commands, verification method, assumptions, and risk level.
 - Wait for XC to clearly say `승인` or `진행해` before creating or modifying files or running approval-required commands.
 - After approval, implement only the reviewed scope, run proportionate verification, and report the result, relevant limitations, exact commands, and how XC can verify the behavior.

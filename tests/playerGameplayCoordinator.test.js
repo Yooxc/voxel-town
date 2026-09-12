@@ -174,3 +174,28 @@ test("controls gameplay camera input without overriding the build camera", () =>
   assert.equal(coordinator.setCameraControlsEnabled(true), false);
   assert.equal(controls.enabled, false);
 });
+
+test("gives build framing priority over an active dialogue camera", () => {
+  const { coordinator, player } = createCoordinator();
+  const scene = new THREE.Scene();
+  const npc = new THREE.Group();
+  npc.position.set(2, 0, 0);
+  scene.add(npc);
+  const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
+  camera.position.set(0, 5, 10);
+  const controls = {
+    target: new THREE.Vector3(0, 1, 0), enabled: true,
+    minPolarAngle: 0.1, maxPolarAngle: 1.4, update: () => {},
+  };
+  coordinator.initializeCamera({ camera, controls, colliders: [], scene, config: {} });
+
+  assert.equal(coordinator.enterDialogueCamera(npc), true);
+  assert.equal(coordinator.isDialogueCameraActive(), true);
+  assert.equal(coordinator.setCameraControlsEnabled(true), false);
+  coordinator.updateCameraFollow(0.5);
+  assert.equal(coordinator.isDialogueCameraFocused(), true);
+
+  assert.equal(coordinator.enterBuildCamera({ center: { x: 5, y: 0, z: 5 } }), true);
+  assert.equal(coordinator.isDialogueCameraActive(), false);
+  assert.equal(coordinator.isBuildCameraActive(), true);
+});

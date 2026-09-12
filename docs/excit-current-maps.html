@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EXCIT 현재 배치 지도</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f5f7;color:#243136;font:15px/1.6 system-ui,sans-serif}header,main{max-width:1320px;margin:auto;padding:24px}h1{font-size:28px;margin:0}h2{font-size:21px;margin:0 0 12px}p{margin:8px 0 20px;color:#52616a}section{margin:24px 0 48px}.toolbar{display:flex;gap:20px;flex-wrap:wrap;padding:12px 0}label{white-space:nowrap}.canvas{overflow:auto;background:white;border:1px solid #ccd4da}svg{display:block;width:100%;height:auto}#detail{min-width:700px}text{font-family:system-ui,sans-serif;fill:#243136}.label{font-size:13px;paint-order:stroke;stroke:white;stroke-width:4px;stroke-linejoin:round}.grid{stroke:#d8e0df;stroke-width:.6}table{border-collapse:collapse;width:100%;background:white}td,th{padding:8px 12px;border-bottom:1px solid #ddd;text-align:left}th{background:#e7edf0}small{color:#637078}.note{padding:12px 0;border-top:1px solid #ccd4da}button{padding:5px 12px;font:inherit;cursor:pointer}a{color:#276782}
+</style>
+<header><h1>EXCIT · 현재 배치 지도</h1><p>2026-09-11 코드 기준 · 재배치 제안이 아닌 현재 배치의 기록</p></header>
+<main>
+<section><h2>01 전체 지역 연결도</h2><div class="canvas">
+<svg viewBox="0 0 1100 280" role="img" aria-label="마을과 일반 광산, 폐광, 개척지 연결도">
+<path d="M245 135H445M645 135H810M155 180V220H335" fill="none" stroke="#87969e" stroke-width="4"/>
+<g fill="#e1f0e7" stroke="#75a38a"><rect x="45" y="80" width="200" height="100" rx="6"/></g>
+<g fill="#edf0f2" stroke="#87969e"><rect x="445" y="80" width="200" height="100" rx="6"/><rect x="810" y="80" width="230" height="100" rx="6"/><rect x="335" y="200" width="235" height="60" rx="6"/></g>
+<g text-anchor="middle" font-size="21"><text x="145" y="118">도착 마을</text><text x="545" y="118">폐광</text><text x="925" y="118">개척지</text><text x="450" y="237">일반 광산</text></g>
+<g text-anchor="middle" font-size="13"><text x="145" y="148">안내 · 장터 · 제작 · 채집</text><text x="545" y="148">탐험 지역</text><text x="925" y="148">개간 · 건축</text><text x="345" y="111">울타리 / 해금 조건</text><text x="725" y="111">연결 통로</text><text x="245" y="249">마을 서쪽 도보 진입</text></g>
+</svg></div><p>연결 관계도이므로 거리 비례는 아닙니다. 마을과 일반 광산은 내부 mapId가 같은 ‘광산’ 구역입니다. 개인 공간·실험장은 이 주 동선 도식에서 제외했습니다.</p></section>
+<section><h2>02 마을 상세 평면도</h2><p>위쪽 = 탐험 통로 방향(−Z), 왼쪽 = 서쪽(−X). 위치는 동일 축척이며 번호 표식은 식별을 위해 확대했습니다.</p>
+<div class="toolbar"><label><input type="checkbox" data-layer="gather" checked> 채집 가능 구역</label><label><input type="checkbox" data-layer="boundary" checked> 외곽 지형·나무</label><label><input type="checkbox" data-layer="grid" checked> 좌표 격자</label><label>확대 <input id="zoom" type="range" min="100" max="240" value="100" step="20"></label><button id="reset" title="기본 배율로 복원">↺</button></div>
+<div class="canvas"><svg id="detail" viewBox="0 0 1060 1160" role="img" aria-label="현재 마을의 좌표 기반 평면도"></svg></div>
+<p class="note">채집 표시는 생성 가능 범위입니다. 꽃·풀의 실시간 위치와 재생성된 돌 위치는 포함하지 않습니다. 일반 광산 돌은 최초 배치 기준, 다온은 대기 위치 기준입니다. 외곽 언덕은 모델의 명목 크기를 타원으로 단순화했으며 충돌 경계가 아닙니다.</p>
+<table><thead><tr><th>번호</th><th>대상</th><th>로컬 X / Z</th></tr></thead><tbody id="legend"></tbody></table>
+<p>출처: src/world/rebuildLayout.js · rebuildBlockout.js · rebuildMine.js · worldBootstrap.js<br>좌표 원점은 getRebuildLayout(0, 0, 0) 기준입니다. 게임의 실제 월드 오프셋과 무관하게 상대 배치를 보존했습니다.</p>
+</section></main>
+<script>
+const d={"mapId":"광산","origin":{"x":0,"y":0,"z":0},"arrival":{"spawn":{"x":0,"y":2.4,"z":15.1},"door":{"x":0,"y":2.4,"z":18.2}},"welcomeArea":{"anchor":{"x":7.1,"y":2.4,"z":10.2},"tree":{"x":-6.2,"y":3.75,"z":14.7},"bench":{"x":-5,"y":2.4,"z":11.9},"resident":{"x":7.1,"y":2.4,"z":10.2},"guideMeeting":{"x":5.25,"y":2.4,"z":10.2}},"workArea":{"stall":{"x":-8,"y":0,"z":-24},"approach":{"x":-5.7,"y":0,"z":-23.2}},"miningArea":{"x":19,"y":0,"z":-23},"miningDemo":{"rockBounds":{"minX":16.5,"maxX":24.5,"minZ":-28.5,"maxZ":-19.5}},"gathering":{"interactionRadius":2,"collectDurationMs":1000,"minSpacing":0.85,"types":[{"kind":"grass","itemId":"wildGrass","count":30,"respawnMinMs":20000,"respawnMaxMs":30000},{"kind":"flower","itemId":"wildFlower","count":15,"respawnMinMs":30000,"respawnMaxMs":45000}],"zones":[{"id":"arrival-west","minX":-15,"maxX":-8,"minZ":6,"maxZ":19},{"id":"arrival-east","minX":10,"maxX":18,"minZ":4,"maxZ":18},{"id":"slope-west","minX":-17,"maxX":-10,"minZ":-16,"maxZ":4},{"id":"slope-east","minX":10,"maxX":18,"minZ":-16,"maxZ":2},{"id":"market-west","minX":-19,"maxX":-12,"minZ":-34,"maxZ":-18},{"id":"market-east","minX":13,"maxX":21,"minZ":-35,"maxZ":-18}],"mapId":"광산"},"generalMine":{"entrance":{"x":-11.5,"y":0,"z":-27.5},"center":{"x":-26,"y":0,"z":-34},"pathPoints":[{"x":-10,"y":0,"z":-26.5},{"x":-14,"y":0,"z":-21.5},{"x":-20,"y":0,"z":-23},{"x":-23,"y":0,"z":-28},{"x":-26,"y":0,"z":-34}],"rockBounds":{"minX":-31,"maxX":-21,"minZ":-38,"maxZ":-29},"initialRocks":[{"x":-29,"y":0,"z":-36,"sizeIndex":1},{"x":-25.5,"y":0,"z":-36.8,"sizeIndex":0},{"x":-22.5,"y":0,"z":-35,"sizeIndex":1},{"x":-29.5,"y":0,"z":-32.3,"sizeIndex":0},{"x":-25.8,"y":0,"z":-31.5,"sizeIndex":1},{"x":-22.2,"y":0,"z":-30.5,"sizeIndex":0}]},"market":{"stalls":[{"id":"materials","x":-8,"y":0,"z":-24,"accentColor":12884577,"displayItems":[{"id":"stone-sample","kind":"stone","name":"돌 견본","color":7830396,"description":"표면과 모서리를 조금씩 다듬은 돌 견본이에요. 단단한 생활 도구나 작은 장식의 재료로 쓸 수 있어요."},{"id":"wood-sample","kind":"wood","name":"나무 견본","color":9199675,"description":"결과 색이 서로 다른 나무 견본이에요. 가구나 생활용품을 만들 때 재료의 느낌을 비교할 수 있어요."}]},{"id":"craft","x":0.2,"y":0,"z":-27,"accentColor":7113885,"displayItems":[{"id":"crafted-box","kind":"crafted","name":"작은 상자","color":7443104,"description":"모서리를 단정하게 다듬은 작은 상자예요. 자주 쓰는 물건을 가지런히 보관하기 좋아 보여요.","interestResponse":"작은 물건들을 정리해 두기 좋은 상자예요. 이런 단정한 모양이 마음에 드는군요."},{"id":"small-tool","kind":"tool","name":"작업 도구","color":6581104,"description":"손에 쥐기 편하도록 손잡이를 다듬은 작업 도구 견본이에요. 무엇을 만들지 상상하게 해요.","interestResponse":"손으로 무언가 만드는 데 관심이 있나 봐요. 쓰기 편하도록 손잡이를 다듬은 견본이에요."}]},{"id":"living","x":8.2,"y":0,"z":-24,"accentColor":10319460,"displayItems":[{"id":"small-pot","kind":"pot","name":"작은 화분","color":9859165,"description":"작은 식물을 곁에 둘 수 있는 화분이에요. 머무는 자리에 생기를 더해 줍니다."},{"id":"table-lamp","kind":"lamp","name":"탁상 조명","color":14862712,"description":"자리를 은은하게 밝혀 주는 작은 조명이에요. 쉬거나 무언가 만들 때 편안한 빛을 냅니다."}]}],"residents":[{"id":"materials-resident","stallId":"materials","name":"도윤","x":-3,"y":0,"z":-22.4,"rotationY":-0.4,"color":7503466,"aboutText":"돌과 나무 같은 재료를 모아 두고 있어요. 직접 구해도 좋고, 다른 사람에게 구해도 괜찮아요.","displayText":"돌 조각과 나무 견본이 놓여 있어요. 같은 재료도 쓰는 사람에 따라 전혀 다른 물건이 됩니다."},{"id":"craft-resident","stallId":"craft","name":"세아","x":3.4,"y":0,"z":-25.5,"rotationY":2.6,"color":8087679,"aboutText":"가져온 재료를 다듬고 조합해 보고 있어요. 정해진 답보다 무엇을 만들지가 더 중요하죠.","displayText":"작은 상자와 작업 도구 견본이 보여요. 같은 재료로도 여러 가지 형태를 만들 수 있습니다."},{"id":"living-resident","stallId":"living","name":"라온","x":10.5,"y":0,"z":-22.5,"rotationY":-1.8,"color":7759952,"aboutText":"머물 곳을 편하게 만드는 물건을 소개하고 있어요. 공간이 필요해질 때 천천히 시작하면 돼요.","displayText":"작은 화분과 조명이 놓여 있어요. 언젠가 자신만의 자리를 꾸밀 때 참고할 만합니다."}]},"navigationObstacles":[{"id":"arrival-door","type":"box","x":0,"z":18.2,"halfWidth":1.55,"halfDepth":0.35},{"id":"welcome-tree","type":"circle","x":-6.2,"z":14.7,"radius":0.55},{"id":"welcome-bench","type":"box","x":-5,"z":11.9,"halfWidth":1.05,"halfDepth":0.55},{"id":"maru","type":"circle","x":7.1,"z":10.2,"radius":0.58},{"id":"market-stall-1","type":"box","x":-8,"z":-24,"halfWidth":1.7,"halfDepth":0.58},{"id":"market-stall-2","type":"box","x":0.2,"z":-27,"halfWidth":1.7,"halfDepth":0.58},{"id":"market-stall-3","type":"box","x":8.2,"z":-24,"halfWidth":1.7,"halfDepth":0.58},{"id":"market-resident-1","type":"circle","x":-3,"z":-22.4,"radius":0.55},{"id":"market-resident-2","type":"circle","x":3.4,"z":-25.5,"radius":0.55},{"id":"market-resident-3","type":"circle","x":10.5,"z":-22.5,"radius":0.55},{"id":"guide-1-station-left","type":"circle","x":10.8,"z":-21.75,"radius":0.18},{"id":"guide-1-station-right","type":"circle","x":12.4,"z":-21.75,"radius":0.18}],"activityLocations":[{"id":"rest-area","mapId":"광산","position":{"x":-5,"y":2.4,"z":10.4}},{"id":"work-area","mapId":"광산","position":{"x":-5.7,"y":0,"z":-23.2}}],"tour":{"checkpoints":[{"id":"guide-intro","mapId":"광산","position":{"x":5.25,"y":2.4,"z":10.2},"text":"안녕하세요. 이번 투어를 맡은 {guideName}입니다. 저를 따라와 주세요."},{"id":"rest-area","mapId":"광산","position":{"x":-5,"y":2.4,"z":10.4},"text":"이 나무와 벤치는 누구든 쉬어 갈 수 있는 곳이에요. 서두르지 않아도 괜찮아요."},{"id":"work-area","mapId":"광산","position":{"x":-5.7,"y":0,"z":-23.2},"text":"저쪽에서는 가져온 재료를 다듬고 물건을 만들어요. 재료를 직접 구하지 않아도 다른 길이 생길 거예요."},{"id":"exploration-path","mapId":"광산","position":{"x":0.4,"y":0,"z":-39},"text":"이 길 너머에는 탐험할 곳이 있어요. 지금 가도 되고, 동네를 더 둘러본 뒤 가도 돼요."}],"guides":[{"id":"guide-1","name":"다온","coatColor":5797258,"origin":{"x":11,"y":0,"z":-21}}]}};
+const svg=document.querySelector('#detail'), NS='http://www.w3.org/2000/svg';
+const X=x=>530+x*9,Y=z=>70+(z+60)*9;
+function el(tag,attrs={},parent=svg){const n=document.createElementNS(NS,tag);for(const [k,v]of Object.entries(attrs))n.setAttribute(k,v);parent.append(n);return n}
+function txt(x,y,t,attrs={},parent=svg){const n=el('text',{x,y,...attrs},parent);n.textContent=t;return n}
+function group(id){return el('g',{id})}
+function circle(x,z,r,fill,parent=svg){return el('circle',{cx:X(x),cy:Y(z),r:r*9,fill},parent)}
+function rect(x,z,w,h,fill,parent=svg,more={}){return el('rect',{x:X(x),y:Y(z),width:w*9,height:h*9,fill,...more},parent)}
+rect(-48,-60,96,110,'#e8f0e7');
+rect(-30,10,60,22,'#d5e6ca');
+txt(40,32,'−Z / 탐험 통로 방향 ↑',{'font-size':16});
+txt(740,32,'도착 언덕: 장터보다 +2.4 높이',{'font-size':14});
+const grid=group('grid');
+for(let x=-40;x<=40;x+=10){el('line',{x1:X(x),y1:Y(-60),x2:X(x),y2:Y(50),class:'grid'},grid);txt(X(x),Y(50)+20,x,{'font-size':11,'text-anchor':'middle'},grid)}
+for(let z=-60;z<=50;z+=10){el('line',{x1:X(-48),y1:Y(z),x2:X(48),y2:Y(z),class:'grid'},grid);txt(X(-48)-28,Y(z)+4,z,{'font-size':11},grid)}
+const boundary=group('boundary');
+for(const [x,z,w,h]of [[-43,15,10,8],[-43,-9,12,10],[-41,-34,11,9],[43,16,10,8],[43,-10,13,10],[41,-35,11,9],[-31,-50,13,9],[31,-50,13,9],[-25,43,12,9],[25,43,12,9]])el('ellipse',{cx:X(x),cy:Y(z),rx:w*9,ry:h*9,fill:'#b6c7b3',opacity:.75},boundary);
+for(const [x,z]of [[-18,11],[-13,16],[17,12],[23,5],[-25,-3],[26,-13],[16,-25]])circle(x,z,1.7,'#5c916f',boundary);
+for(const [x,z,r]of [[-30,17,1.8],[30,16,1.7],[-32,-9,2.1],[31,-19,2],[13,-31,1.7]])circle(x,z,r,'#8b9893',boundary);
+const gather=group('gather');
+for(const q of d.gathering.zones)rect(q.minX,q.minZ,q.maxX-q.minX,q.maxZ-q.minZ,'#87bb87',gather,{opacity:.25,stroke:'#518b61','stroke-dasharray':'5 4'});
+const points=[[-.2,16,4.8],[-.7,10,5.1],[.4,2.5,5.4],[.9,-6,5.8],[.1,-14.5,6.2],[.2,-23,7],[.2,-29.5,8.2]];
+const sides=points.map((p,i)=>{const a=points[Math.max(0,i-1)],b=points[Math.min(points.length-1,i+1)],dx=b[0]-a[0],dz=b[1]-a[1],l=Math.hypot(dx,dz);return [[p[0]-dz/l*p[2]/2,p[1]+dx/l*p[2]/2],[p[0]+dz/l*p[2]/2,p[1]-dx/l*p[2]/2]]});
+el('polygon',{points:[...sides.map(p=>p[0]),...sides.map(p=>p[1]).reverse()].map(p=>X(p[0])+','+Y(p[1])).join(' '),fill:'#d8c8b1'});
+circle(-26,-34,9.4,'#c2c7ca');
+el('polyline',{points:d.generalMine.pathPoints.map(p=>X(p.x)+','+Y(p.z)).join(' '),fill:'none',stroke:'#c6b59c','stroke-width':30.6,'stroke-linecap':'square'});
+for(const r of d.generalMine.initialRocks)circle(r.x,r.z,r.sizeIndex?1:.65,'#68757d');
+for(const [x,z,s]of [[-8.2,-4.8,1.7],[-5.2,-8,1.5],[-1.5,-9,1.6],[2.5,-8.5,1.45],[6,-6.5,1.7],[8.2,-3,1.55],[8.8,1.2,1.5],[6.8,5.5,1.65],[-7.8,4.2,1.55],[-9,0,1.7]])circle(-26+x,-34+z,s,'#87948e',boundary);
+for(const s of d.market.stalls)rect(s.x-1.95,s.z-.85,3.9,1.7,'#c28b47');
+rect(-5-1.05,11.9-.55,2.1,1.1,'#ab8158');
+circle(-6.2,14.7,1.8,'#5c916f');
+rect(-1.4,18,2.8,.42,'#425e78');
+rect(-5.1,-50.25,10.2,.25,'#425e78');
+el('line',{x1:X(0),y1:Y(-50.25),x2:X(0),y2:Y(-57),stroke:'#425e78','stroke-width':2,'stroke-dasharray':'4 4'});
+txt(X(0),Y(-57)-8,'폐광 연결 통로',{'text-anchor':'middle',class:'label'});
+txt(X(3.5),Y(-5),'내리막', {class:'label'});
+const marks=[
+['도착 문',0,18.2],['첫 등장 위치',0,15.1],['나무',-6.2,14.7],['벤치',-5,11.9],['마루',7.1,10.2],
+['재료 가판 / 도구 지원',-8,-24],['도윤',-3,-22.4],['제작 가판',.2,-27],['세아',3.4,-25.5],['생활 가판',8.2,-24],['라온',10.5,-22.5],['다온 대기',11,-21],
+['모루',-14.2,-24],['정제 시설',-10.95,-24],['NFT 전시판',-16.55,-26.55],['일반 광산 중심',-26,-34],
+['체험용 돌',19,-23],['체험용 돌',22.1,-25.3],['탐험 안내 지점',.4,-39],['출구 울타리',0,-50.25]];
+for(let i=0;i<marks.length;i++){const [name,x,z]=marks[i];const g=el('g');const c=circle(x,z,.6,i<5?'#286c7c':'#384858',g);const title=el('title',{},g);title.textContent=(i+1)+'. '+name+' ('+x+', '+z+')';txt(X(x),Y(z)+3,String(i+1),{'font-size':8,'text-anchor':'middle',style:'fill:white'},g);
+const row=document.createElement('tr');for(const t of [i+1,name,x+' / '+z]){const td=document.createElement('td');td.textContent=t;row.append(td)}document.querySelector('#legend').append(row)}
+txt(X(-26),Y(-45),'일반 광산',{'text-anchor':'middle',class:'label'});
+txt(X(22),Y(-16),'체험 채광', {class:'label'});
+txt(X(2),Y(-31),'장터 · 제작', {class:'label'});
+txt(X(11),Y(20),'도착 언덕', {class:'label'});
+el('line',{x1:45,y1:1120,x2:135,y2:1120,stroke:'#243136','stroke-width':3});txt(45,1143,'10 게임 좌표 단위',{'font-size':12});
+document.querySelectorAll('[data-layer]').forEach(c=>c.onchange=()=>document.getElementById(c.dataset.layer).style.display=c.checked?'':'none');
+const zoom=document.querySelector('#zoom');zoom.oninput=()=>svg.style.width=zoom.value+'%';document.querySelector('#reset').onclick=()=>{zoom.value=100;zoom.oninput()};
+</script></html>

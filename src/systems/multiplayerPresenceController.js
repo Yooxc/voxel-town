@@ -69,6 +69,15 @@ export function createMultiplayerPresenceController({
   return {
     update,
     leave,
+    gather: (resourceId, requestId) => {
+      if (!getEnabled()) return Promise.resolve({ ok: false, error: "채집 서버에 연결되어 있지 않습니다." });
+      return client.gather({
+        clientId: getIdentity(),
+        displayName: getDisplayName(),
+        resourceId,
+        requestId,
+      });
+    },
     requestTour: (checkpointId) => queueCommand("tour.request", checkpointId),
     advanceTour: () => queueCommand("tour.advance"),
     cancelTour: () => queueCommand("tour.cancel"),

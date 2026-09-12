@@ -4,6 +4,7 @@ import {
   buildPickaxeModel,
   buildShovelModel,
   buildSafetyHelmetModel,
+  buildFlowerCrownModel,
   buildBasicShoesModel,
   buildSingleBasicShoeModel,
   buildFreshAirCanisterModel,
@@ -35,7 +36,9 @@ import { createResidenceSceneController } from "./world/residenceSceneController
 import { createMapEnvironmentController } from "./world/mapEnvironmentController.js";
 import { createWorldFeatureCoordinator } from "./world/worldFeatureCoordinator.js";
 import { createWorldRuntimeIntegration } from "./world/worldRuntimeIntegration.js";
-import { getRebuildLayout } from "./world/rebuildLayout.js";
+import { getRebuildLayout, getRebuildTerrainHeight, isPositionInRebuildArea } from "./world/rebuildLayout.js";
+import { createRebuildTraversal } from "./world/rebuildTraversal.js";
+import { getRebuildFogSettings } from "./world/rebuildSettings.js";
 import { createDeformableTerrainMap, TERRAIN_LAB_MAP_ID } from "./world/deformableTerrainMap.js";
 import { renderResidenceNoticeBoardTexture } from "./world/residenceNoticeBoard.js";
 import { createDynamicPropsRuntime } from "./world/dynamicProps.js";
@@ -53,9 +56,13 @@ import { createSharedTourController } from "./systems/sharedTourController.js";
 import { createActivityHelpController } from "./systems/activityHelpController.js";
 import { createMarketResidentController } from "./systems/marketResidentController.js";
 import { createFirstCraftController } from "./systems/firstCraftController.js";
+import { createFlowerCrownQuestController } from "./systems/flowerCrownQuestController.js";
+import { createRebuildQuestJournal } from "./systems/rebuildQuestJournal.js";
 import { createMultiplayerPresenceController } from "./systems/multiplayerPresenceController.js";
+import { createGatheringController } from "./systems/gatheringController.js";
 import { createPresenceClient } from "./network/presenceClient.js";
 import { createRemotePlayerRuntime } from "./world/remotePlayers.js";
+import { createGatheringPlantsRuntime } from "./world/gatheringPlants.js";
 import {
   completeOnboardingTour,
   completeOnboardingWelcome,
@@ -70,8 +77,11 @@ import {
   recordOnboardingFirstCraftMineVisit,
   completeOnboardingResidentIntroduction,
   completeOnboardingFirstCraft,
+  claimOnboardingStarterPickaxe,
+  completeOnboardingFlowerCrownQuest,
   setOnboardingMarketItemInterest,
   startOnboardingFirstCraft,
+  startOnboardingFlowerCrownQuest,
   selectOnboardingFirstActivity,
   startOnboardingTour,
 } from "./systems/onboarding.js";
@@ -254,7 +264,6 @@ import {
   updateAirHudUi,
   updateWastelandHudUi,
   updateWastelandFenceHudUi,
-  updateFirstActivityHudUi,
   createWastelandHudActionButtons,
   createWastelandBuildModeUi,
   createWastelandClaimConfirmDialogUi,
@@ -470,11 +479,13 @@ import {
 const LAST_PATCHED_AT = "2026-06-15 17:09:11 KST";
 
 const scene = createMainScene();
+const runtimeEnvironment = createRuntimeEnvironment(import.meta.env.MODE);
+const rebuildFogSettings = getRebuildFogSettings();
 // ===== Atmosphere: Sky / Fog =====
-const WORLD_FOG_COLOR = 0xd6d8db;
+const WORLD_FOG_COLOR = runtimeEnvironment.isRebuild ? 0xb9d6e4 : 0xd6d8db;
 const CAVE_FOG_COLOR = 0x120e0b;
-const WORLD_FOG_NEAR = 15;
-const WORLD_FOG_FAR = 60;
+const WORLD_FOG_NEAR = runtimeEnvironment.isRebuild ? rebuildFogSettings.near : 15;
+const WORLD_FOG_FAR = runtimeEnvironment.isRebuild ? rebuildFogSettings.far : 60;
 const CAVE_DARKENING_ENABLED = false;
 const CAVE_FOG_EFFECT_ENABLED = false;
 applyMainSceneAtmosphere(scene, {
@@ -489,7 +500,6 @@ const CAVE_POLLUTION_PARTICLE_COUNT = 360;
 const CAVE_POLLUTION_PARTICLE_SWAY = 0.12;
 const CAVE_POLLUTION_OVERLAY_MAX_OPACITY = 0.96;
 const LOW_AIR_EDGE_BLUR_MAX_PX = 26;
-const runtimeEnvironment = createRuntimeEnvironment(import.meta.env.MODE);
 const AIR_HUD_POSITION_KEY = runtimeEnvironment.airHudPositionKey;
 const SHIFT_CAMERA_ROTATE_SENSITIVITY = 0.0062;
 const FRONTIER_PARCEL_BORDER_COLOR = 0xf3b24e;
@@ -586,10 +596,6 @@ const {
   compassFace,
   compassNeedle,
   compassText,
-  firstActivityHudWrap,
-  firstActivityHudTitle,
-  firstActivityHudObjectives,
-  firstActivityHudStatus,
   wastelandHudWrap,
   wastelandHudTitle,
   wastelandHudValue,
@@ -785,6 +791,7 @@ function isUiEscapeCloseHandled() {
 
 function isWorkUiMovementLocked() {
   return (
+    playerGameplayCoordinator?.isDialogueCameraActive() ||
     inventoryUiController.isPersonalStorageOpen() ||
     !!inventoryUiController.getTransferState() ||
     frontierParcelCoordinator?.isBuildOpen() ||
@@ -965,8 +972,11 @@ const gameSessionCoordinator = createGameSessionCoordinator({
     completeResidentIntroduction: (activityId, residentId) => completeOnboardingResidentIntroduction(onboardingState, activityId, residentId),
     setMarketItemInterest: (itemId, interested) => setOnboardingMarketItemInterest(onboardingState, itemId, interested),
     startFirstCraft: () => startOnboardingFirstCraft(onboardingState),
+    claimStarterPickaxe: () => claimOnboardingStarterPickaxe(onboardingState),
     completeFirstCraft: () => completeOnboardingFirstCraft(onboardingState),
     recordFirstCraftMineVisit: () => recordOnboardingFirstCraftMineVisit(onboardingState),
+    startFlowerCrownQuest: () => startOnboardingFlowerCrownQuest(onboardingState),
+    completeFlowerCrownQuest: () => completeOnboardingFlowerCrownQuest(onboardingState),
   },
   playerSave: {
     runtime: playerSaveRuntime, storage: localStorage, authApiBaseUrl: AUTH_API_BASE_URL,
@@ -1096,8 +1106,11 @@ const {
   completeOnboardingResidentIntroduction: commitOnboardingResidentIntroductionComplete,
   setOnboardingMarketItemInterest: commitOnboardingMarketItemInterest,
   startOnboardingFirstCraft: commitOnboardingFirstCraftStart,
+  claimOnboardingStarterPickaxe: commitOnboardingStarterPickaxe,
   completeOnboardingFirstCraft: commitOnboardingFirstCraftComplete,
   recordOnboardingFirstCraftMineVisit: commitOnboardingFirstCraftMineVisit,
+  startOnboardingFlowerCrownQuest: commitOnboardingFlowerCrownQuestStart,
+  completeOnboardingFlowerCrownQuest: commitOnboardingFlowerCrownQuestComplete,
   recordOnboardingActivityHelpRequest: commitOnboardingActivityHelpRequest,
 } = gameSessionCoordinator;
 
@@ -1281,6 +1294,7 @@ function setInvOpen(v) {
 
 let questOpen = false;
 let questUiController = null;
+let rebuildQuestJournal = null;
 function setQuestOpen(v) {
   if (v && frontierParcelCoordinator?.isBuildOpen()) {
     setFrontierBuildOpen(false);
@@ -1404,13 +1418,19 @@ const HUD_MSG = {
   AIR_CAN_GET: "🫧 신선한 공기 캔 획득!",
 };
 
-const { npcDialog, npcDialogText, npcDialogChoices, tutorialNpcNameTag, playerNameTag } = createGameHudOverlays({ uiLayer });
+const {
+  npcDialog, npcDialogPanel, npcDialogName, npcDialogText, npcDialogChoices, npcDialogTail,
+  tutorialNpcNameTag, playerNameTag,
+} = createGameHudOverlays({ uiLayer });
 const gameHudController = createGameHudController({
   Vector3: THREE.Vector3,
   MathUtils: THREE.MathUtils,
   dialog: npcDialog,
+  dialogPanel: npcDialogPanel,
+  dialogName: npcDialogName,
   dialogText: npcDialogText,
   dialogChoices: npcDialogChoices,
+  dialogTail: npcDialogTail,
   tooltip: { element: itemTooltip, title: itemTooltipTitle, body: itemTooltipBody },
   npcNameTag: tutorialNpcNameTag,
   playerNameTag,
@@ -1422,6 +1442,10 @@ const gameHudController = createGameHudController({
   getPlayer: () => player,
   getTutorialNpcs: () => tutorialNpcs,
   getActiveNpc: () => activeTutorialNpc,
+  isDialogueCameraFocused: () => playerGameplayCoordinator?.isDialogueCameraFocused() ?? false,
+  onNpcDialogHidden: () => playerGameplayCoordinator?.exitDialogueCamera(),
+  onNpcDialogCompact: () => playerGameplayCoordinator?.exitDialogueCamera(),
+  onNpcDialogLayoutChange: () => playerGameplayCoordinator?.refreshDialogueCamera(),
   canPlayGame,
   hasNickname,
   getNickname: () => walletProfile.nickname,
@@ -1516,8 +1540,18 @@ function renderQuestWindow() {
   questUiController.render();
 }
 
+function getQuestWindowData() {
+  if (!runtimeEnvironment.isRebuild) return tutorialQuest;
+  return rebuildQuestJournal?.getQuest() ?? {
+    kind: "rebuild-journal",
+    title: "퀘스트",
+    description: "수락한 퀘스트와 현재 목표를 확인하세요.",
+    entries: [],
+  };
+}
+
 questUiController = createQuestUiController({
-  getQuest: () => tutorialQuest,
+  getQuest: getQuestWindowData,
   isOpen: () => questOpen,
   getCurrentStep: getCurrentQuestStep,
   canArchive: canArchiveTutorialQuestStep,
@@ -1711,6 +1745,7 @@ if (!runtimeEnvironment.isRebuild) scene.add(startCircle);
 
 // ===== Auto foot offset (based on player mesh bounds) =====
 const PLAYER_FOOT_OFFSET = 0; // Blender 캐릭터는 발바닥이 로컬 Y=0에 맞춰져 있다.
+const rebuildTraversal = runtimeEnvironment.isRebuild ? createRebuildTraversal(rebuildEntryLayout, PLAYER_FOOT_OFFSET) : null;
 
 // Colliders
 const colliderRegistry = createColliderRegistry();
@@ -1757,25 +1792,36 @@ const playerGameplayCoordinator = createPlayerGameplayCoordinator({
 });
 const { mineRocks, harvestTrees } = playerGameplayCoordinator;
 
-function getRockSpawnBounds(regionId = "") {
+function getRockSpawnArea(regionId = "") {
   if (runtimeEnvironment.isRebuild) {
     return regionId === "village-demo"
-      ? rebuildEntryLayout.miningDemo.rockBounds
-      : rebuildEntryLayout.generalMine.rockBounds;
+      ? { bounds: rebuildEntryLayout.miningDemo.rockBounds }
+      : rebuildEntryLayout.generalMine.resourceArea;
   }
-  return getRockSpawnBoundsFromModule(GROUND_SIZE, ROCK_SPAWN_MARGIN);
+  return { bounds: getRockSpawnBoundsFromModule(GROUND_SIZE, ROCK_SPAWN_MARGIN) };
 }
 
 function findRockSpawnPosition(s, tries = 80, regionId = "") {
-  return findMineRockSpawnPosition({
+  const area = getRockSpawnArea(regionId);
+  const position = findMineRockSpawnPosition({
     scale: s,
     tries,
-    bounds: getRockSpawnBounds(regionId),
+    bounds: area.bounds,
     rocks: mineRocks,
     safeRadius: runtimeEnvironment.isRebuild ? 0 : ROCK_SAFE_RADIUS,
     minGap: ROCK_MIN_GAP,
+    polygon: area.polygon,
+    exclusions: area.exclusions,
+    playerPosition: runtimeEnvironment.isRebuild && regionId === "general-mine" ? player.position : null,
     randomRange: randRange,
   });
+  if (!position || !runtimeEnvironment.isRebuild) return position;
+  return {
+    ...position,
+    y: regionId === "general-mine"
+      ? rebuildEntryLayout.generalMine.floorHeight
+      : getRebuildTerrainHeight(position.x, position.z, rebuildEntryLayout.origin),
+  };
 }
 
 function findCampStoneSpawnPosition(s, tries = 120) {
@@ -1809,6 +1855,7 @@ const inventoryFeatureCoordinator = createInventoryFeatureCoordinator({
     buildPickaxeModel,
     buildShovelModel,
     buildSafetyHelmetModel,
+    buildFlowerCrownModel,
     buildBasicShoesModel,
     buildFreshAirCanisterModel,
     buildPurifyPowderModel,
@@ -1864,7 +1911,7 @@ const inventoryFeatureCoordinator = createInventoryFeatureCoordinator({
   integration: {
     createEquipmentVisuals: createPlayerEquipmentVisuals,
     rigParts: { head, leftArm, rightArm, leftLegPivot, rightLegPivot },
-    equipmentBuilders: { buildSafetyHelmetModel, buildSingleBasicShoeModel, alignWearableOnHead },
+    equipmentBuilders: { buildSafetyHelmetModel, buildFlowerCrownModel, buildSingleBasicShoeModel, alignWearableOnHead },
     buildShovelModel,
     buildPickaxeModel,
     alignEquippedToolModel,
@@ -1920,6 +1967,7 @@ const {
     equippedPickaxe,
     equippedSafetyHelmet,
     equippedNftHelmet,
+    equippedFlowerCrown,
     equippedLeftShoe,
     equippedRightShoe,
   },
@@ -2318,8 +2366,8 @@ const activityHelpController = createActivityHelpController({
   recordResidentIntroduction: commitOnboardingResidentIntroduction,
   getOnboardingState,
   notify: (message, duration) => { showUI(message, duration); lastMessageUntil = performance.now() + duration; },
-  showChoiceDialog: (text, entry, choices) => showNpcDialog(text, null, entry?.obj, { choices }),
-  showDialog: (text, entry) => showNpcDialog(text, null, entry?.obj),
+  showChoiceDialog: (text, entry, choices) => showNpcDialog(text, null, entry?.obj, { choices, speakerName: entry?.name }),
+  showDialog: (text, entry, options = {}) => showNpcDialog(text, null, entry?.obj, { ...options, speakerName: entry?.name }),
   hideDialog: hideNpcDialog,
 });
 const firstCraftController = createFirstCraftController({
@@ -2333,20 +2381,33 @@ const firstCraftController = createFirstCraftController({
   hasOwnedPickaxe: () => findFirstSlotWithItem("pickaxe") !== -1,
   hasEquippedPickaxe: () => hasEquippedTool("pickaxe"),
   isInMineArea: (position, mapId) => {
-    const bounds = rebuildEntryLayout.generalMine.rockBounds;
     return runtimeEnvironment.isRebuild
       && mapId === rebuildEntryLayout.mapId
-      && position.x >= bounds.minX && position.x <= bounds.maxX
-      && position.z >= bounds.minZ && position.z <= bounds.maxZ;
+      && isPositionInRebuildArea(position, rebuildEntryLayout.generalMine.visitArea);
   },
   recordMineVisit: commitOnboardingFirstCraftMineVisit,
+});
+const flowerCrownQuestController = createFlowerCrownQuestController({
+  getOnboardingState,
+  startQuest: commitOnboardingFlowerCrownQuestStart,
+  completeQuest: commitOnboardingFlowerCrownQuestComplete,
+  getItemCount,
+  consumeItem,
+  addItem,
+  updateInventoryUi: updateInventoryUI,
+});
+rebuildQuestJournal = createRebuildQuestJournal({
+  getOnboardingState,
+  getFirstCraftController: () => firstCraftController,
+  getFlowerCrownQuestController: () => flowerCrownQuestController,
 });
 const marketResidentController = createMarketResidentController({
   getOnboardingState,
   completeResidentIntroduction: commitOnboardingResidentIntroductionComplete,
   setMarketItemInterest: commitOnboardingMarketItemInterest,
   firstCraftController,
-  showChoiceDialog: (text, entry, choices) => showNpcDialog(text, null, entry?.obj, { choices }),
+  flowerCrownQuestController,
+  showChoiceDialog: (text, entry, choices) => showNpcDialog(text, null, entry?.obj, { choices, speakerName: entry?.name }),
   hideDialog: hideNpcDialog,
 });
 const welcomeController = createWelcomeController({
@@ -2356,8 +2417,8 @@ const welcomeController = createWelcomeController({
   requestTour: () => presenceController?.requestTour(getOnboardingState()?.tourCheckpointId) ?? false,
   openActivityHelp: (entry) => activityHelpController.openFor(entry),
   showActivityStatus: (entry) => activityHelpController.showActivityStatus(entry),
-  showTourChoices: (text, entry, choices) => showNpcDialog(text, null, entry?.obj, { choices }),
-  showDialog: (text, entry) => showNpcDialog(text, null, entry?.obj),
+  showTourChoices: (text, entry, choices) => showNpcDialog(text, null, entry?.obj, { choices, speakerName: entry?.name }),
+  showDialog: (text, entry, options = {}) => showNpcDialog(text, null, entry?.obj, { ...options, speakerName: entry?.name }),
   hideDialog: hideNpcDialog,
 });
 let forgeStation = null;
@@ -2414,6 +2475,7 @@ const mapRuntime = createMapRuntime({
   residenceMapId: RESIDENCE_MAP_ID,
 });
 worldFeatureCoordinator.setMapRuntime(mapRuntime);
+if (runtimeEnvironment.isRebuild) mapRuntime.registerIsolatedMapZone(rebuildEntryLayout.outdoorZone);
 let torchEquipped = false;
 let playerAirCurrent = AIR_GAUGE_MAX;
 let playerAirMax = AIR_GAUGE_MAX;
@@ -2644,7 +2706,8 @@ function normalizeFrontierBuildState(rawState) {
 }
 
 const mapEnvironmentController = createMapEnvironmentController({
-  getState: () => ({ player, mineGate, campGate, ambientLight, sunLight, torchLight, torchEquipped }),
+  getState: () => ({ player, mineGate, campGate, ambientLight, sunLight, torchLight, torchEquipped,
+    isOutdoor: runtimeEnvironment.isRebuild && currentMapId === rebuildEntryLayout.mapId }),
   MathUtils: THREE.MathUtils,
   createColor: (value) => new THREE.Color(value),
   createVector3: (x, y, z) => new THREE.Vector3(x, y, z),
@@ -2786,8 +2849,8 @@ survivalWorkstationCoordinator = createSurvivalWorkstationCoordinator({
 });
 airRuntime = survivalWorkstationCoordinator.airRuntime;
 
-function registerPickupItem(obj, itemId, text = null) {
-  return worldPickups.register(obj, itemId, text);
+function registerPickupItem(obj, itemId, text = null, metadata = {}) {
+  return worldPickups.register(obj, itemId, text, metadata);
 }
 
 function unregisterPickupItem(obj) {
@@ -3035,6 +3098,9 @@ playerGameplayCoordinator.initializeCamera({
     fadeOpacity: CAMERA_OCCLUSION_FADE_OPACITY,
     returnSpeed: CAMERA_OCCLUSION_RETURN_SPEED,
   },
+  dialogue: {
+    getViewportState: () => gameHudController.getDialogueViewportState(),
+  },
 });
 
 function snapCameraToPlayer() {
@@ -3154,6 +3220,51 @@ const remotePlayerRuntime = createRemotePlayerRuntime({
   uiLayer,
   camera,
   createPlayerRig,
+  buildFlowerCrownModel,
+});
+const gatheringPlantsRuntime = createGatheringPlantsRuntime({
+  scene,
+  mapId: rebuildEntryLayout.gathering.mapId,
+});
+
+function canReceiveGatheringItem(itemId, count = 1) {
+  const stackMax = getInventoryStackMax(itemId);
+  let capacity = 0;
+  for (const slot of inventory.slots) {
+    if (!slot) {
+      capacity += stackMax;
+    } else if (!isNftInventoryEntry(slot) && getSlotItemId(slot) === itemId) {
+      capacity += Math.max(0, stackMax - getSlotItemCount(slot));
+    }
+    if (capacity >= count) return true;
+  }
+  return false;
+}
+
+const gatheringController = createGatheringController({
+  getPlayerPosition: () => player.position,
+  getCurrentMapId: () => currentMapId,
+  findNearestPlant: () => gatheringPlantsRuntime.findNearest(
+    player.position,
+    currentMapId,
+    rebuildEntryLayout.gathering.interactionRadius
+  ),
+  isPlantActive: gatheringPlantsRuntime.isActive,
+  canReceiveItem: canReceiveGatheringItem,
+  claimPlant: (resourceId, requestId) => (
+    presenceController?.gather(resourceId, requestId)
+      ?? Promise.resolve({ ok: false, error: "채집 서버에 연결되어 있지 않습니다." })
+  ),
+  addItem,
+  applySnapshot: gatheringPlantsRuntime.applySnapshot,
+  deactivatePlant: gatheringPlantsRuntime.deactivate,
+  updateInventoryUi: updateInventoryUI,
+  refreshQuestProgress,
+  notify: (message, duration) => {
+    showUI(message, duration);
+    lastMessageUntil = performance.now() + duration;
+  },
+  durationMs: rebuildEntryLayout.gathering.collectDurationMs,
 });
 tourController = createSharedTourController({
   guides: bootstrappedWorldState.tourGuides,
@@ -3163,7 +3274,7 @@ tourController = createSharedTourController({
   pauseTour: commitOnboardingTourPause,
   completeTour: commitOnboardingTourComplete,
   requestAdvance: () => presenceController?.advanceTour(),
-  showDialog: (text, entry) => showNpcDialog(text, null, entry?.obj),
+  showDialog: (text, entry, options = {}) => showNpcDialog(text, null, entry?.obj, { ...options, speakerName: entry?.name }),
   hideDialog: hideNpcDialog,
   notify: (message, duration) => {
     showUI(message, duration);
@@ -3192,16 +3303,20 @@ presenceController = createMultiplayerPresenceController({
     rotationY: player.rotation.y,
     mapId: currentMapId,
     sprinting: Boolean(playerRuntimeController?.getKeys().shift),
+    headItemId: getEquippedItemForSlot("head") ?? "",
   }),
   onSnapshot: (snapshot) => {
     presenceSelfId = snapshot.selfId;
     remotePlayerRuntime.applySnapshot(snapshot.players, presenceSelfId);
     tourController.applySnapshot(snapshot);
+    gatheringPlantsRuntime.applySnapshot(snapshot.gathering);
   },
   onInactive: () => {
     presenceSelfId = "";
     remotePlayerRuntime.clear();
     tourController.clear();
+    gatheringController.cancel();
+    gatheringPlantsRuntime.clear();
   },
 });
 mansionOneRoomInstances["101"] = bootstrappedWorldState.mansionOneRoomInstances["101"];
@@ -3463,6 +3578,7 @@ function isPlayerRecoveryPositionSafe(position, mapId = currentMapId) {
   };
   const bounds = getCurrentMapBoundsFromSurfaces(surfaces, defaultBounds);
   if (!isInsideMapBoundsFromSurfaces(position.x, position.z, surfaces, bounds)) return false;
+  if (mapId === rebuildEntryLayout.mapId && rebuildTraversal && !rebuildTraversal.isInside(position.x, position.z)) return false;
   const candidateBox = getPlayerBoxFromPosition(new THREE.Vector3(position.x, position.y, position.z));
   return getPlayerColliderPenetrationDepth(candidateBox, colliderBoxes) <= 0.0001;
 }
@@ -3553,6 +3669,13 @@ const playerInteractionContext = {
   setLastMessageUntil: (until) => { lastMessageUntil = until; },
   findNearestPickupItem, triggerPickupReach, addInventoryEntry, createInventorySlotEntry,
   addItem, updateInventoryUI, refreshQuestProgress,
+  hasItem: (itemId) => findFirstSlotWithItem(itemId) !== -1,
+  isStarterPickaxeClaimed: () => Boolean(getOnboardingState()?.firstCraft?.starterPickaxeClaimed),
+  claimStarterPickaxe: commitOnboardingStarterPickaxe,
+  tryStartGathering: gatheringController.begin,
+  cancelGathering: gatheringController.cancel,
+  isGatheringActive: gatheringController.isActive,
+  getGatheringHint: gatheringController.getHint,
   getItemDef: (itemId) => ITEM_DEFS[itemId],
   unregisterDynamicProp, unregisterPickupItem, canUseMapGate, tryUnlockMapGate,
   hasNearbyForgeStation: () => forgeStation?.parent && getForgeDistance() < 2.4,
@@ -3570,9 +3693,17 @@ const playerInteractionContext = {
   isMineKeyIssued: () => inventory.mineKeyIssued,
   setMineKeyIssued: () => { inventory.mineKeyIssued = true; },
   showNpcDialog, getTutorialNpcLine,
+  beginNpcDialogue: (target) => playerGameplayCoordinator.enterDialogueCamera(target),
+  isDialogueCameraActive: () => playerGameplayCoordinator.isDialogueCameraActive(),
+  isDialogueCameraFocused: () => playerGameplayCoordinator.isDialogueCameraFocused(),
+  isDialogueCameraTarget: (target) => playerGameplayCoordinator.isDialogueCameraTarget(target),
   interactWithWelcomeNpc: (entry, event) => {
     if (entry?.role !== "welcome") return false;
-    if (!event.repeat) welcomeController.interact(entry);
+    if (!event.repeat) {
+      playerGameplayCoordinator.enterDialogueCamera(entry.obj);
+      const result = welcomeController.interact(entry);
+      if (!result?.handled) playerGameplayCoordinator.exitDialogueCamera();
+    }
     return true;
   },
   closeWelcomeConversation: () => welcomeController.close(),
@@ -3581,13 +3712,20 @@ const playerInteractionContext = {
   isActivityHelpOpen: () => activityHelpController.isOpen(),
   interactWithTourGuide: (entry, event) => {
     if (entry?.role !== "tour-guide") return false;
-    if (!event.repeat) tourController?.interact(entry);
+    if (!event.repeat) {
+      const result = tourController?.interact(entry);
+      if (result?.action === "repeat") playerGameplayCoordinator.enterDialogueCamera(entry.obj);
+    }
     return true;
   },
   closeTourConversation: () => tourController?.closeDialog() ?? false,
   interactWithMarketResident: (entry, event) => {
     if (entry?.role !== "market-resident") return false;
-    if (!event.repeat) marketResidentController.interact(entry);
+    if (!event.repeat) {
+      playerGameplayCoordinator.enterDialogueCamera(entry.obj);
+      const result = marketResidentController.interact(entry);
+      if (!result?.handled) playerGameplayCoordinator.exitDialogueCamera();
+    }
     return true;
   },
   closeMarketResidentConversation: () => marketResidentController.close(),
@@ -3747,6 +3885,10 @@ playerRuntimeController = createPlayerRuntimeIntegration({
     },
     startHardClamp: START_HARD_CLAMP,
     getWalkableSurfaces: () => walkableMapSurfaces.get(currentMapId) ?? [],
+    isInsidePlayableArea: (x, z) => currentMapId !== rebuildEntryLayout.mapId || !rebuildTraversal || rebuildTraversal.isInside(x, z),
+    prepareMovement: () => {
+      if (currentMapId === rebuildEntryLayout.mapId) rebuildTraversal?.prepare(player);
+    },
     defaultMapBounds: {
       minX: -GROUND_SIZE * 0.5 + 1.4,
       maxX: GROUND_SIZE * 0.5 - 1.4,
@@ -3793,15 +3935,10 @@ playerRuntimeController = createPlayerRuntimeIntegration({
     updateOnboardingTour: (dt) => {
       presenceController?.update();
       tourController?.update(dt);
+      gatheringController.update();
       activityHelpController.updatePlayerPosition(player.position, currentMapId);
       firstCraftController.updatePlayerPosition(player.position, currentMapId);
-      const activityProgressView = activityHelpController.getProgressView();
-      updateFirstActivityHudUi({
-        wrap: firstActivityHudWrap,
-        title: firstActivityHudTitle,
-        objectives: firstActivityHudObjectives,
-        status: firstActivityHudStatus,
-      }, firstCraftController.getProgressView(activityProgressView));
+      questUiController.refreshDisplay();
       remotePlayerRuntime.update(dt);
     },
     updateSceneFogForCurrentMap,
@@ -3841,4 +3978,5 @@ window.addEventListener("resize", () => {
   syncMainCameraAspect(camera, viewportState);
   syncMainViewport(renderer, viewportState);
   resizeEquipmentPreview();
+  playerGameplayCoordinator.refreshDialogueCamera();
 });

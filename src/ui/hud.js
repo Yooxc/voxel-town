@@ -165,43 +165,6 @@ export function createHudUi({ uiLayer, lastPatchedAt }) {
   compassWrap.appendChild(compassText);
   uiLayer.appendChild(compassWrap);
 
-  const firstActivityHudWrap = document.createElement("div");
-  firstActivityHudWrap.id = "firstActivityHudWrap";
-  firstActivityHudWrap.style.position = "fixed";
-  firstActivityHudWrap.style.right = "12px";
-  firstActivityHudWrap.style.top = "78px";
-  firstActivityHudWrap.style.width = "246px";
-  firstActivityHudWrap.style.padding = "12px 14px";
-  firstActivityHudWrap.style.background = "rgba(20,20,20,0.58)";
-  firstActivityHudWrap.style.border = "1px solid rgba(218,236,193,0.34)";
-  firstActivityHudWrap.style.borderRadius = "12px";
-  firstActivityHudWrap.style.backdropFilter = "blur(4px)";
-  firstActivityHudWrap.style.color = "white";
-  firstActivityHudWrap.style.fontFamily = "system-ui, -apple-system, sans-serif";
-  firstActivityHudWrap.style.fontSize = "12px";
-  firstActivityHudWrap.style.lineHeight = "1.45";
-  firstActivityHudWrap.style.userSelect = "none";
-  firstActivityHudWrap.style.pointerEvents = "none";
-  firstActivityHudWrap.style.zIndex = "1000001";
-  firstActivityHudWrap.style.display = "none";
-  uiLayer.appendChild(firstActivityHudWrap);
-
-  const firstActivityHudTitle = document.createElement("div");
-  firstActivityHudTitle.style.fontWeight = "800";
-  firstActivityHudTitle.style.color = "#f4fbff";
-  firstActivityHudWrap.appendChild(firstActivityHudTitle);
-
-  const firstActivityHudObjectives = document.createElement("div");
-  firstActivityHudObjectives.style.display = "grid";
-  firstActivityHudObjectives.style.gap = "5px";
-  firstActivityHudObjectives.style.marginTop = "9px";
-  firstActivityHudWrap.appendChild(firstActivityHudObjectives);
-
-  const firstActivityHudStatus = document.createElement("div");
-  firstActivityHudStatus.style.marginTop = "9px";
-  firstActivityHudStatus.style.fontWeight = "700";
-  firstActivityHudWrap.appendChild(firstActivityHudStatus);
-
   const wastelandHudWrap = document.createElement("div");
   wastelandHudWrap.id = "wastelandHudWrap";
   wastelandHudWrap.style.position = "fixed";
@@ -356,10 +319,6 @@ export function createHudUi({ uiLayer, lastPatchedAt }) {
     compassFace,
     compassNeedle,
     compassText,
-    firstActivityHudWrap,
-    firstActivityHudTitle,
-    firstActivityHudObjectives,
-    firstActivityHudStatus,
     wastelandHudWrap,
     wastelandHudTitle,
     wastelandHudValue,
@@ -380,22 +339,42 @@ export function createGameHudOverlays({ uiLayer }) {
   const npcDialog = document.createElement("div");
   Object.assign(npcDialog.style, {
     position: "fixed", left: "0", top: "0", transform: "translate(-50%, -100%)",
-    maxWidth: "min(460px, calc(100vw - 32px))", padding: "12px 14px",
-    background: "rgba(255,255,255,0.94)", border: "1px solid rgba(0,0,0,0.16)",
-    borderRadius: "14px", boxShadow: "0 12px 26px rgba(0,0,0,0.18)",
-    fontFamily: "system-ui, -apple-system, sans-serif", fontSize: "13px", lineHeight: "1.6",
+    width: "min(620px, calc(100vw - 32px))",
+    fontFamily: "system-ui, -apple-system, sans-serif",
     color: "#333", display: "none", pointerEvents: "none", zIndex: "1000002",
     willChange: "transform, left, top",
   });
   uiLayer.appendChild(npcDialog);
 
+  const npcDialogPanel = document.createElement("div");
+  Object.assign(npcDialogPanel.style, {
+    boxSizing: "border-box", width: "100%", maxHeight: "min(360px, calc(100vh - 32px))",
+    padding: "16px 18px 14px", overflowY: "auto", overflowX: "hidden",
+    background: "rgba(252,253,250,0.97)", border: "1px solid rgba(56,74,57,0.2)",
+    borderRadius: "8px", boxShadow: "0 12px 28px rgba(20,31,22,0.2)",
+    scrollbarWidth: "thin", scrollbarColor: "rgba(84,105,84,0.5) transparent",
+  });
+  npcDialog.appendChild(npcDialogPanel);
+
+  const npcDialogName = document.createElement("div");
+  Object.assign(npcDialogName.style, {
+    marginBottom: "7px", color: "#58715b", fontSize: "12px", fontWeight: "800",
+  });
+  npcDialogPanel.appendChild(npcDialogName);
+
   const npcDialogText = document.createElement("div");
-  npcDialog.appendChild(npcDialogText);
+  Object.assign(npcDialogText.style, {
+    color: "#263329", fontSize: "17px", fontWeight: "600", lineHeight: "1.6",
+    whiteSpace: "pre-wrap", overflowWrap: "anywhere",
+  });
+  npcDialogPanel.appendChild(npcDialogText);
   const npcDialogChoices = document.createElement("div");
   Object.assign(npcDialogChoices.style, {
-    display: "none", marginTop: "10px", gap: "7px", pointerEvents: "auto",
+    display: "none", marginTop: "14px", paddingTop: "5px",
+    borderTop: "1px solid rgba(63,83,65,0.14)", gap: "0", pointerEvents: "auto",
+    maxHeight: "210px", overflowY: "auto", overflowX: "hidden",
   });
-  npcDialog.appendChild(npcDialogChoices);
+  npcDialogPanel.appendChild(npcDialogChoices);
   const npcDialogTail = document.createElement("div");
   Object.assign(npcDialogTail.style, {
     position: "absolute", left: "50%", bottom: "-10px", width: "0", height: "0",
@@ -424,7 +403,10 @@ export function createGameHudOverlays({ uiLayer }) {
   const playerNameTag = createNameTag("#dff7ff");
   playerNameTag.style.zIndex = "999997";
 
-  return { npcDialog, npcDialogText, npcDialogChoices, tutorialNpcNameTag, playerNameTag };
+  return {
+    npcDialog, npcDialogPanel, npcDialogName, npcDialogText, npcDialogChoices, npcDialogTail,
+    tutorialNpcNameTag, playerNameTag,
+  };
 }
 
 export function createWastelandHudActionButtons(wastelandHudWrap) {
@@ -769,25 +751,6 @@ export function updateWastelandHudUi(
   wastelandHudValue.textContent = `${completed} / ${total}`;
   wastelandHudBarFill.style.width = `${Math.max(0, Math.min(100, percent))}%`;
   wastelandHudStatus.textContent = statusText || `개간률 ${percent.toFixed(1)}%`;
-}
-
-export function updateFirstActivityHudUi(firstActivityHud, view) {
-  const { wrap, title, objectives, status } = firstActivityHud;
-  if (!view) {
-    wrap.style.display = "none";
-    return;
-  }
-  wrap.style.display = "block";
-  title.textContent = view.title;
-  objectives.replaceChildren();
-  for (const objective of view.objectives) {
-    const row = document.createElement("div");
-    row.textContent = objective.display ?? `${objective.label}  ${objective.current} / ${objective.target}`;
-    row.style.color = objective.current >= objective.target ? "#c9f5bd" : "rgba(255,255,255,0.82)";
-    objectives.appendChild(row);
-  }
-  status.textContent = view.status;
-  status.style.color = view.completed ? "#fff0a8" : "rgba(255,255,255,0.72)";
 }
 
 export function updateWastelandFenceHudUi(

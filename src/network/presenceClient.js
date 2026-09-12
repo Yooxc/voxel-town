@@ -31,6 +31,7 @@ export function createPresenceClient({ apiBaseUrl, fetchImpl = fetch, getToken =
 
   return {
     sync: (payload) => post("/sync", payload),
+    gather: (payload) => post("/gather", payload),
     leave: (payload) => post("/leave", payload),
   };
 }

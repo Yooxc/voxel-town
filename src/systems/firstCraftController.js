@@ -30,6 +30,7 @@ export function createFirstCraftController({
       started: Boolean(getOnboardingState()?.firstCraft?.started),
       completed: Boolean(getOnboardingState()?.firstCraft?.completed),
       mineVisited: Boolean(getOnboardingState()?.firstCraft?.mineVisited),
+      starterPickaxeClaimed: Boolean(getOnboardingState()?.firstCraft?.starterPickaxeClaimed),
       pickaxeOwned,
       pickaxeEquipped,
     };
@@ -69,14 +70,15 @@ export function createFirstCraftController({
     const dustCount = Math.min(status.owned, status.inputCount);
     let nextAction = "돌 앞으로 이동한 뒤 Space로 채광하세요";
     if (dustCount >= status.inputCount) nextAction = "세아에게 돌아가세요";
-    else if (!status.pickaxeOwned) nextAction = "작업대에서 곡괭이를 획득하세요";
+    else if (!status.pickaxeOwned) nextAction = status.starterPickaxeClaimed
+      ? "받은 기본 곡괭이가 가방에 있는지 확인하세요"
+      : "작업대에서 기본 곡괭이를 받으세요";
     else if (!status.pickaxeEquipped) nextAction = "인벤토리에서 곡괭이를 장착하세요";
     else if (!status.mineVisited) nextAction = "마을 서쪽 광산지대로 이동하세요";
     const craftView = {
       title: "첫 제작 준비: 돌 컵",
       objectives: [
-        { label: "곡괭이 보유", current: status.pickaxeOwned ? 1 : 0, target: 1, display: `곡괭이 ${status.pickaxeOwned ? 1 : 0}/1` },
-        { label: "작업대에서 곡괭이 획득하기", current: status.pickaxeOwned ? 1 : 0, target: 1, display: `작업대에서 곡괭이 획득하기 ${status.pickaxeOwned ? "O" : "X"}` },
+        { label: "기본 곡괭이 받기", current: status.pickaxeOwned ? 1 : 0, target: 1, display: `기본 곡괭이 받기 ${status.pickaxeOwned ? "O" : "X"}` },
         { label: "곡괭이 장착", current: status.pickaxeEquipped ? 1 : 0, target: 1, display: `곡괭이 장착 ${status.pickaxeEquipped ? "O" : "X"}` },
         { label: "마을 서쪽 광산지대 방문", current: status.mineVisited ? 1 : 0, target: 1, display: `마을 서쪽 광산지대 방문 ${status.mineVisited ? "O" : "X"}` },
         { label: "돌가루 준비", current: dustCount, target: status.inputCount, display: `돌가루 준비 ${dustCount}/${status.inputCount}` },
@@ -92,7 +94,10 @@ export function createFirstCraftController({
           ...objective,
           display: `${activityView.title}: ${objective.label} ${objective.current}/${objective.target}`,
         })),
-        ...craftView.objectives,
+        ...craftView.objectives.map((objective) => ({
+          ...objective,
+          display: `${craftView.title}: ${objective.display}`,
+        })),
       ],
       status: craftView.status,
       completed: false,

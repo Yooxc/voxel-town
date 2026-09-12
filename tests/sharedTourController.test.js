@@ -76,3 +76,30 @@ test("shows the assigned guide name in the introduction", () => {
 
   assert.deepEqual(shown, ["이번 투어를 맡은 다온입니다."]);
 });
+
+test("hides a guide snapshot owned by another visitor", () => {
+  const guide = {
+    id: "guide-1",
+    entry: { role: "tour-guide", guideId: "guide-1" },
+    root: { visible: true, position: { x: 0, y: 0, z: 0 }, rotation: { y: 0 } },
+    origin: { x: 0, y: 0, z: 0 },
+    leftArm: { rotation: {} }, rightArm: { rotation: {} }, leftLeg: { rotation: {} }, rightLeg: { rotation: {} },
+  };
+  const controller = createSharedTourController({
+    guides: [guide],
+    getSelfId: () => "player-1",
+    startTour: () => {}, pauseTour: () => {}, completeTour: () => {}, requestAdvance: () => {},
+    showDialog: () => {}, hideDialog: () => {}, notify: () => {},
+  });
+
+  controller.applySnapshot({
+    guides: [{
+      id: "guide-1", name: "다온", status: "moving", ownerId: "player-2",
+      checkpointId: "rest-area", dialogVersion: 1, x: 4, y: 0, z: 2, rotationY: 0,
+    }],
+    selfId: "player-1",
+  });
+
+  assert.equal(guide.root.visible, false);
+  assert.deepEqual(controller.interact(guide.entry), { handled: false });
+});

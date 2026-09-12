@@ -6,7 +6,14 @@ function lerpAngle(current, target, alpha) {
   return current + difference * alpha;
 }
 
-export function createRemotePlayerRuntime({ scene, uiLayer, camera, viewport = globalThis.window, createPlayerRig }) {
+export function createRemotePlayerRuntime({
+  scene,
+  uiLayer,
+  camera,
+  viewport = globalThis.window,
+  createPlayerRig,
+  buildFlowerCrownModel = () => null,
+}) {
   const players = new Map();
   const projected = new THREE.Vector3();
 
@@ -31,8 +38,16 @@ export function createRemotePlayerRuntime({ scene, uiLayer, camera, viewport = g
     root.position.set(snapshot.x, snapshot.y, snapshot.z);
     root.rotation.y = snapshot.rotationY;
     scene.add(root);
+    const flowerCrown = buildFlowerCrownModel();
+    const headSocket = root.getObjectByName?.("EXCIT_SOCKET_HEAD") ?? null;
+    if (flowerCrown && headSocket) {
+      flowerCrown.name = "remoteFlowerCrown";
+      flowerCrown.position.set(0, 0.31, 0.015);
+      flowerCrown.visible = snapshot.headItemId === "flowerCrown";
+      headSocket.add(flowerCrown);
+    }
     const label = createLabel(snapshot.name);
-    remote = { root, label, animation: createPlayerAnimationRuntime(root), target: { ...snapshot } };
+    remote = { root, label, flowerCrown, animation: createPlayerAnimationRuntime(root), target: { ...snapshot } };
     players.set(snapshot.id, remote);
     return remote;
   }
@@ -52,6 +67,7 @@ export function createRemotePlayerRuntime({ scene, uiLayer, camera, viewport = g
       activeIds.add(snapshot.id);
       const remote = ensurePlayer(snapshot);
       remote.target = { ...snapshot };
+      if (remote.flowerCrown) remote.flowerCrown.visible = snapshot.headItemId === "flowerCrown";
       remote.label.textContent = snapshot.name;
     }
     for (const id of players.keys()) if (!activeIds.has(id)) removePlayer(id);

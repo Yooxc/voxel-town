@@ -64,3 +64,21 @@ test("returns the empty active view after all completed steps are archived", () 
   assert.equal(view.visibleSteps.length, 0);
   assert.equal(view.emptyText, "진행 중인 퀘스트가 없습니다.");
 });
+
+test("separates rebuild quests into active and completed views", () => {
+  const quest = {
+    kind: "rebuild-journal",
+    title: "퀘스트",
+    description: "수락한 퀘스트를 확인하세요.",
+    entries: [
+      { id: "explore", title: "동네 더 둘러보기", completed: false, objectives: [] },
+      { id: "flower-crown", title: "화관 만들기", completed: true, objectives: [] },
+    ],
+  };
+
+  const active = getQuestWindowView({ quest, viewMode: "active", currentStep: null });
+  const completed = getQuestWindowView({ quest, viewMode: "completed", currentStep: null });
+  assert.equal(active.journalMode, true);
+  assert.deepEqual(active.visibleEntries.map((entry) => entry.id), ["explore"]);
+  assert.deepEqual(completed.visibleEntries.map((entry) => entry.id), ["flower-crown"]);
+});

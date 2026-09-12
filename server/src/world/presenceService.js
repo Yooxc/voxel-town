@@ -7,6 +7,7 @@ import {
 } from "../../../src/systems/tourPlan.js";
 import { buildGuideNavigationPath } from "../../../src/systems/guideNavigation.js";
 import { getRebuildLayout, getRebuildTerrainHeight } from "../../../src/world/rebuildLayout.js";
+import { createGatheringService } from "./gatheringService.js";
 
 const PLAYER_TTL_MS = 12_000;
 const GUIDE_SPEED = 2.15;
@@ -20,6 +21,7 @@ function clampNumber(value, min, max, fallback = 0) {
 }
 
 function normalizePlayer(raw = {}) {
+  const headItemId = raw.headItemId === "flowerCrown" ? "flowerCrown" : "";
   return {
     x: clampNumber(raw.x, -10_000, 10_000),
     y: clampNumber(raw.y, -100, 100),
@@ -28,6 +30,7 @@ function normalizePlayer(raw = {}) {
     mapId: String(raw.mapId ?? "광산").slice(0, 32),
     moving: Boolean(raw.moving),
     sprinting: Boolean(raw.sprinting),
+    headItemId,
   };
 }
 
@@ -75,20 +78,38 @@ function createGuideSnapshot(guide) {
   };
 }
 
-export function createPresenceService({ now = () => Date.now() } = {}) {
+export function createPresenceService({ now = () => Date.now(), random = Math.random } = {}) {
   const players = new Map();
   const layout = getRebuildLayout();
   const checkpoints = getTourCheckpoints();
   const navigationObstacles = layout.navigationObstacles;
-  const guides = getTourGuideDefinitions().map((definition) => createGuideState(definition, checkpoints));
+  const gatheringService = createGatheringService({
+    config: layout.gathering,
+    obstacles: navigationObstacles,
+    heightAt: (x, z, fallbackY) => getRebuildTerrainHeight(x, z, layout.origin) ?? fallbackY,
+    now,
+    random,
+  });
+  const guideDefinition = getTourGuideDefinitions()[0];
+  const guidesByOwner = new Map();
   let lastGuideUpdateAt = now();
 
   function getCheckpoint(id) {
     return checkpoints.find((checkpoint) => checkpoint.id === id) ?? checkpoints[0];
   }
 
-  function getOwnerGuide(ownerId) {
-    return guides.find((guide) => guide.ownerId === ownerId && guide.status !== "idle") ?? null;
+  function getPersonalGuide(ownerId) {
+    let guide = guidesByOwner.get(ownerId);
+    if (!guide && guideDefinition) {
+      guide = createGuideState(guideDefinition, checkpoints);
+      guidesByOwner.set(ownerId, guide);
+    }
+    return guide ?? null;
+  }
+
+  function getActiveGuide(ownerId) {
+    const guide = guidesByOwner.get(ownerId);
+    return guide?.status !== "idle" ? guide : null;
   }
 
   function beginPath(guide, path, status, { returnReason = "" } = {}) {
@@ -109,10 +130,10 @@ export function createPresenceService({ now = () => Date.now() } = {}) {
   }
 
   function assignGuide(ownerId, checkpointId) {
-    const existing = getOwnerGuide(ownerId);
+    const existing = getActiveGuide(ownerId);
     if (existing) return { ok: true, guide: existing };
-    const guide = guides.find((entry) => entry.status === "idle");
-    if (!guide) return { ok: false, error: "현재 모든 길잡이가 안내 중이에요. 잠시 후 다시 요청해 주세요." };
+    const guide = getPersonalGuide(ownerId);
+    if (!guide) return { ok: false, error: "길잡이 정보를 불러오지 못했습니다." };
     const checkpoint = getCheckpoint(checkpointId);
     const checkpointIndex = checkpoints.findIndex((entry) => entry.id === checkpoint.id);
     guide.ownerId = ownerId;
@@ -126,7 +147,7 @@ export function createPresenceService({ now = () => Date.now() } = {}) {
   }
 
   function advanceGuide(ownerId) {
-    const guide = getOwnerGuide(ownerId);
+    const guide = getActiveGuide(ownerId);
     if (!guide || guide.status !== "waiting") return { ok: false, error: "현재 진행할 안내가 없습니다." };
     const index = checkpoints.findIndex((checkpoint) => checkpoint.id === guide.checkpointId);
     if (index < 0 || index >= checkpoints.length - 1) {
@@ -145,7 +166,7 @@ export function createPresenceService({ now = () => Date.now() } = {}) {
     if (command.type === "tour.request") return assignGuide(ownerId, command.checkpointId);
     if (command.type === "tour.advance") return advanceGuide(ownerId);
     if (command.type === "tour.cancel") {
-      const guide = getOwnerGuide(ownerId);
+      const guide = getActiveGuide(ownerId);
       if (guide) beginReturn(guide, "paused");
       return { ok: true, guide };
     }
@@ -156,8 +177,7 @@ export function createPresenceService({ now = () => Date.now() } = {}) {
     for (const [id, player] of players) {
       if (time - player.updatedAt <= PLAYER_TTL_MS) continue;
       players.delete(id);
-      const guide = getOwnerGuide(id);
-      if (guide) beginReturn(guide, "paused");
+      guidesByOwner.delete(id);
     }
   }
 
@@ -183,7 +203,7 @@ export function createPresenceService({ now = () => Date.now() } = {}) {
   function updateGuides(time) {
     const dt = Math.min(MAX_STEP_SECONDS, Math.max(0, (time - lastGuideUpdateAt) / 1000));
     lastGuideUpdateAt = time;
-    for (const guide of guides) {
+    for (const guide of guidesByOwner.values()) {
       const owner = players.get(guide.ownerId);
       if (guide.status === "waiting") {
         if (owner) {
@@ -232,6 +252,7 @@ export function createPresenceService({ now = () => Date.now() } = {}) {
       player: normalizePlayer(player),
       updatedAt: time,
     });
+    const personalGuide = getPersonalGuide(identity);
     const commandResult = applyCommand(identity, command);
     updateGuides(time);
     return {
@@ -239,17 +260,27 @@ export function createPresenceService({ now = () => Date.now() } = {}) {
       error: commandResult.error ?? "",
       selfId: identity,
       players: [...players.values()].map((entry) => ({ id: entry.id, name: entry.name, ...entry.player })),
-      guides: guides.map(createGuideSnapshot),
+      guides: personalGuide ? [createGuideSnapshot(personalGuide)] : [],
+      gathering: gatheringService.getSnapshot(time),
     };
   }
 
+  function gather({ identity, resourceId, requestId }) {
+    const player = players.get(identity)?.player ?? null;
+    return gatheringService.gather({ identity, resourceId, requestId, player, time: now() });
+  }
+
   function leave(identity) {
-    const guide = getOwnerGuide(identity);
-    if (guide) beginReturn(guide, "paused");
     players.delete(identity);
-    updateGuides(now());
+    guidesByOwner.delete(identity);
     return { ok: true };
   }
 
-  return { sync, leave, getGuides: () => guides.map(createGuideSnapshot) };
+  return {
+    sync,
+    gather,
+    leave,
+    getGatheringResources: gatheringService.getResources,
+    getGuides: () => [...guidesByOwner.values()].map(createGuideSnapshot),
+  };
 }

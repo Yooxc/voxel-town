@@ -39,8 +39,11 @@ test("exposes player-save transport methods from the session coordinator", () =>
       completeResidentIntroduction: (activityId, residentId) => activityId === "gather" && residentId === "craft-resident",
       setMarketItemInterest: (itemId, interested) => itemId === "crafted-box" && interested,
       startFirstCraft: () => true,
+      claimStarterPickaxe: () => true,
       completeFirstCraft: () => true,
       recordFirstCraftMineVisit: () => true,
+      startFlowerCrownQuest: () => true,
+      completeFlowerCrownQuest: () => true,
     },
     playerSave: {
       getTransport: () => ({ apiFetchJson: "fetch", getAuthHeaders: "headers" }),
@@ -81,12 +84,18 @@ test("exposes player-save transport methods from the session coordinator", () =>
   assert.equal(coordinator.completeOnboardingResidentIntroduction("gather", "craft-resident"), true);
   assert.equal(coordinator.setOnboardingMarketItemInterest("crafted-box", true), true);
   assert.equal(coordinator.startOnboardingFirstCraft(), true);
+  assert.equal(coordinator.claimOnboardingStarterPickaxe(), true);
   assert.equal(coordinator.completeOnboardingFirstCraft(), true);
   assert.equal(coordinator.recordOnboardingFirstCraftMineVisit(), true);
+  assert.equal(coordinator.startOnboardingFlowerCrownQuest(), true);
+  assert.equal(coordinator.completeOnboardingFlowerCrownQuest(), true);
 
   assert.deepEqual(calls, [
     ["hydrate", { apiFetchJson: "fetch", getAuthHeaders: "headers" }],
     ["push", { apiFetchJson: "fetch", getAuthHeaders: "headers" }],
+    ["schedule", true, { apiFetchJson: "fetch", getAuthHeaders: "headers" }],
+    ["schedule", true, { apiFetchJson: "fetch", getAuthHeaders: "headers" }],
+    ["schedule", true, { apiFetchJson: "fetch", getAuthHeaders: "headers" }],
     ["schedule", true, { apiFetchJson: "fetch", getAuthHeaders: "headers" }],
     ["schedule", true, { apiFetchJson: "fetch", getAuthHeaders: "headers" }],
     ["schedule", true, { apiFetchJson: "fetch", getAuthHeaders: "headers" }],

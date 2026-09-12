@@ -1,13 +1,21 @@
 export function createQuestUiController(ctx) {
   let viewMode = "active";
   let dragState = null;
+  let lastRenderSignature = "";
+
+  function getRenderSignature(quest) {
+    return JSON.stringify(quest);
+  }
 
   function render() {
-    ctx.renderWindow({ quest: ctx.getQuest(), viewMode, currentStep: ctx.getCurrentStep(), onArchive: archiveStep }, ctx.elements);
+    const quest = ctx.getQuest();
+    ctx.renderWindow({ quest, viewMode, currentStep: ctx.getCurrentStep(), onArchive: archiveStep }, ctx.elements);
+    lastRenderSignature = getRenderSignature(quest);
   }
 
   function archiveStep(stepIndex) {
     const quest = ctx.getQuest();
+    if (quest?.kind === "rebuild-journal") return;
     if (ctx.canArchive({ stepIndex, currentStep: quest.currentStep, completed: quest.completed, archivedSteps: quest.archivedSteps })) {
       quest.archivedSteps.push(stepIndex);
       ctx.scheduleSave();
@@ -17,12 +25,25 @@ export function createQuestUiController(ctx) {
 
   function refreshProgress() {
     const quest = ctx.getQuest();
+    if (quest?.kind === "rebuild-journal") {
+      refreshDisplay(quest);
+      return;
+    }
     const progress = ctx.getProgress({ state: quest, steps: quest.steps });
     quest.currentStep = progress.currentStep;
     quest.completed = progress.completed;
     for (const event of progress.events) ctx.notify(event.type === "completed" ? "튜토리얼 퀘스트 완료!" : `퀘스트 갱신: ${event.step.title}`, event.type === "completed" ? 1200 : 1100);
     if (progress.advanced) ctx.scheduleSave();
     if (progress.advanced && ctx.isOpen()) render();
+  }
+
+  function refreshDisplay(quest = ctx.getQuest()) {
+    if (!ctx.isOpen()) return false;
+    const nextSignature = getRenderSignature(quest);
+    if (nextSignature === lastRenderSignature) return false;
+    ctx.renderWindow({ quest, viewMode, currentStep: ctx.getCurrentStep(), onArchive: archiveStep }, ctx.elements);
+    lastRenderSignature = nextSignature;
+    return true;
   }
 
   function endDrag(pointerId = null) {
@@ -48,5 +69,5 @@ export function createQuestUiController(ctx) {
   ctx.elements.header.addEventListener("pointerup", (event) => endDrag(event.pointerId));
   ctx.elements.header.addEventListener("pointercancel", (event) => endDrag(event.pointerId));
   ctx.elements.archiveToggleButton.addEventListener("click", (event) => { event.stopPropagation(); viewMode = viewMode === "active" ? "completed" : "active"; render(); });
-  return { render, refreshProgress, archiveStep, endDrag };
+  return { render, refreshProgress, refreshDisplay, archiveStep, endDrag };
 }

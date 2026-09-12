@@ -7,6 +7,8 @@ import {
   completeOnboardingGatheringActivity,
   completeOnboardingResidentIntroduction,
   completeOnboardingFirstCraft,
+  completeOnboardingFlowerCrownQuest,
+  claimOnboardingStarterPickaxe,
   completeOnboardingWelcome,
   createDefaultOnboardingState,
   markOnboardingWorldEntered,
@@ -18,6 +20,7 @@ import {
   recordOnboardingFirstCraftMineVisit,
   setOnboardingMarketItemInterest,
   startOnboardingFirstCraft,
+  startOnboardingFlowerCrownQuest,
   selectOnboardingFirstActivity,
   startOnboardingTour,
 } from "../src/systems/onboarding.js";
@@ -43,14 +46,15 @@ function createSaveOptions(overrides = {}) {
 
 test("creates an untouched onboarding state for a new rebuild player", () => {
   assert.deepEqual(createDefaultOnboardingState(), {
-    version: 7,
+    version: 9,
     hasEnteredWorld: false,
     welcomeCompleted: false,
     tourStatus: TOUR_STATUS.NOT_STARTED,
     tourCheckpointId: "",
     activityHelpRequested: false,
     marketInterestItemIds: [],
-    firstCraft: { started: false, completed: false, mineVisited: false },
+    firstCraft: { started: false, completed: false, mineVisited: false, starterPickaxeClaimed: false },
+    flowerCrownQuest: { started: false, completed: false },
     firstActivities: {
       selectedId: "",
       exploreRestVisited: false,
@@ -114,13 +118,20 @@ test("onboarding transitions are explicit and idempotent", () => {
   assert.equal(setOnboardingMarketItemInterest(state, "crafted-box", false), true);
   assert.deepEqual(state.marketInterestItemIds, []);
   assert.equal(setOnboardingMarketItemInterest(state, "unknown-item", true), false);
+  assert.equal(claimOnboardingStarterPickaxe(state), true);
+  assert.equal(claimOnboardingStarterPickaxe(state), false);
   assert.equal(startOnboardingFirstCraft(state), true);
   assert.equal(startOnboardingFirstCraft(state), false);
   assert.equal(recordOnboardingFirstCraftMineVisit(state), true);
   assert.equal(recordOnboardingFirstCraftMineVisit(state), false);
   assert.equal(completeOnboardingFirstCraft(state), true);
   assert.equal(completeOnboardingFirstCraft(state), false);
-  assert.deepEqual(state.firstCraft, { started: true, completed: true, mineVisited: true });
+  assert.deepEqual(state.firstCraft, { started: true, completed: true, mineVisited: true, starterPickaxeClaimed: true });
+  assert.equal(startOnboardingFlowerCrownQuest(state), true);
+  assert.equal(startOnboardingFlowerCrownQuest(state), false);
+  assert.equal(completeOnboardingFlowerCrownQuest(state), true);
+  assert.equal(completeOnboardingFlowerCrownQuest(state), false);
+  assert.deepEqual(state.flowerCrownQuest, { started: true, completed: true });
 });
 
 test("keeps resident introductions independent for each first activity", () => {
@@ -139,7 +150,7 @@ test("migrates version 3 activity saves with empty introduction records", () => 
     firstActivities: { selectedId: "gather", gatherCompleted: true },
   });
 
-  assert.equal(normalized.version, 7);
+  assert.equal(normalized.version, 9);
   assert.deepEqual(normalized.firstActivities.introductions, {
     explore: { residentId: "", conversationCompleted: false },
     gather: { residentId: "", conversationCompleted: false },
@@ -150,7 +161,8 @@ test("migrates old saves with a pending first craft default", () => {
   const normalized = normalizeOnboardingState({ version: 5, welcomeCompleted: true });
 
   assert.equal(normalized.welcomeCompleted, true);
-  assert.deepEqual(normalized.firstCraft, { started: false, completed: false, mineVisited: false });
+  assert.deepEqual(normalized.firstCraft, { started: false, completed: false, mineVisited: false, starterPickaxeClaimed: false });
+  assert.deepEqual(normalized.flowerCrownQuest, { started: false, completed: false });
 });
 
 test("normalizes saved market interests to known unique item ids", () => {

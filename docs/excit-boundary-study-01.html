@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EXCIT · 외곽 배치안 01</title>
+<style>
+:root{--ink:#25393d;--muted:#5c7077;--line:#cedadd;--green:#267256;--blue:#357ca2;--amber:#a77822;--pink:#ac4980}*{box-sizing:border-box}body{margin:0;background:#f6f8f8;color:var(--ink);font:16px/1.7 system-ui,-apple-system,"Malgun Gothic",sans-serif;letter-spacing:0}header,main,footer{max-width:1400px;margin:auto;padding:26px 32px}header{padding-top:36px;border-bottom:1px solid var(--line)}h1{font-size:30px;margin:5px 0 10px}h2{font-size:23px;margin:0 0 12px}h3{font-size:18px;margin:0 0 6px}p{margin:8px 0 15px}.eyebrow{font-size:12px;font-weight:750;color:var(--green)}.muted,small{color:var(--muted)}nav,.controls,.legend{display:flex;flex-wrap:wrap;gap:12px 22px;align-items:center}nav{margin-top:18px}a{color:#276a8a;text-underline-offset:4px}section{padding:25px 0;border-bottom:1px solid var(--line)}.controls{font-size:14px;margin:12px 0}label{display:inline-flex;gap:7px;align-items:center}input{accent-color:var(--green)}input[type=range]{width:125px}select,button{font:inherit;color:inherit;background:white;border:1px solid #b8c8cc;padding:7px 10px;border-radius:4px}button{cursor:pointer}button:hover{background:#eef3f3}.legend{font-size:13px;margin:12px 0}.key{width:15px;height:15px;display:inline-block;vertical-align:-2px;margin-right:7px;border:1px solid currentColor}.walk-key{color:#207b62;background:#66ceb064}.nature-key{color:#b27b19;background:repeating-linear-gradient(135deg,#eedca4 0 3px,#bb8a3b 3px 4px)}.far-key{color:#4287a3;background:#a6d4e29c}.future-key{color:#ac4980;background:#f1d5e3}.viewport{overflow:auto;border:1px solid var(--line);background:#e9eeee;max-height:850px}.map{width:100%;display:block;min-width:720px;height:auto}.map text{font-family:system-ui,"Malgun Gothic",sans-serif;fill:#203e44;letter-spacing:0}.map .label{font-size:32px;font-weight:750;paint-order:stroke;stroke:white;stroke-width:7px;stroke-linejoin:round}.map .sub{font-size:26px;font-weight:500;paint-order:stroke;stroke:#f5faf9;stroke-width:6px}.map .pin{cursor:pointer;outline:none}.map .pin circle{fill:#fff;stroke:#8c641b;stroke-width:4}.map .pin text{font-size:30px;font-weight:800;fill:#745318;text-anchor:middle;dominant-baseline:central}.map .pin:hover circle,.map .pin:focus circle,.map .pin[aria-pressed=true] circle{fill:#fff0b8;stroke:#273c40;stroke-width:6}.map .future circle{fill:#fff0f8;stroke:#ac4980;stroke-dasharray:10 6}.map .future text{fill:#8f3568}.note{border-left:3px solid #63a5b2;padding:6px 16px;margin:17px 0;background:#edf4f5}.detail{padding:20px 0;display:grid;grid-template-columns:230px 1fr;gap:25px}.detail dl{display:grid;grid-template-columns:90px 1fr;gap:8px 15px;margin:0}.detail dt{font-weight:700}.detail dd{margin:0}.grid{display:grid;grid-template-columns:1fr 1fr;gap:26px}.table-scroll{overflow:auto}table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eaf0f1}ul{padding-left:22px}.flow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:15px 0;font-weight:700}.flow span{padding:9px 0;border-bottom:2px solid #aabcc0}.checklist{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}.checklist article{border-top:3px solid #9fb9ba;padding-top:12px}footer{font-size:13px}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}@media(max-width:760px){header,main,footer{padding:20px 16px}h1{font-size:25px}.grid,.detail,.checklist{grid-template-columns:1fr;gap:15px}.controls{gap:10px 16px}.detail dl{grid-template-columns:75px 1fr}h2{font-size:21px}.viewport{max-height:650px}}@media print{.controls,nav{display:none}.viewport{max-height:none;overflow:visible}.map{min-width:0}section{break-inside:avoid}body{background:white}}
+</style>
+</head>
+<body>
+<header>
+<div class="eyebrow">EXCIT / BOUNDARY STUDY 01 / 검토용 초안</div>
+<h1>경계는 보이되, 세계는 이어지도록</h1>
+<p>사용자가 그린 붉은 선을 보행 범위의 출발점으로 삼고, 바깥쪽에 폭과 형태가 다른 자연 지형을 연결합니다.</p>
+<p class="muted">현재 탑뷰 위의 개념 배치입니다. 게임 좌표·충돌 경계·경사 한계는 확정하지 않았습니다. Blender와 게임에는 적용하지 않았습니다.</p>
+<nav><a href="#plan">외곽 배치</a><a href="#regions">구간별 구성</a><a href="#modules">확장 구조</a><a href="#review">합의할 세 가지</a></nav>
+</header>
+<main>
+<section id="plan">
+<h2>01 · 붉은 선을 기준으로 넓혀 가는 외곽</h2>
+<div class="controls">
+<label>표시 <select id="mode"><option value="plan">제안 배치안</option><option value="original">사용자 원본</option></select></label>
+<label><input type="checkbox" data-layer="walk" checked>보행 공간</label>
+<label><input type="checkbox" data-layer="nature" checked>자연 경계</label>
+<label><input type="checkbox" data-layer="far" checked>먼 풍경</label>
+<label><input type="checkbox" data-layer="future" checked>확장 후보</label>
+<label>확대 <input id="zoom" type="range" min="100" max="200" step="10" value="100"><output id="zoom-value">100%</output></label>
+</div>
+<div class="legend"><span><i class="key walk-key"></i>보행 후보 · 급경사 제외</span><span><i class="key nature-key"></i>자연 경계 구간 · 폭 미확정</span><span><i class="key far-key"></i>추가 지형·중경·원경</span><span><i class="key future-key"></i>미래 연결 후보 · 현재 통로 아님</span></div>
+<div class="viewport" tabindex="0" aria-label="외곽 배치 지도. 확대 시 가로와 세로로 스크롤할 수 있습니다.">
+<svg class="map" id="map" viewBox="-190 -160 2460 1570" role="img" aria-labelledby="map-title map-desc">
+<title id="map-title">EXCIT 마을과 채석장의 외곽 배치 제안</title>
+<desc id="map-desc">첨부된 붉은 경계선 탑뷰를 바탕으로 안쪽 보행 후보, A부터 E까지의 교체 가능한 자연 경계, F1 동쪽과 F2 채석장 확장 후보, 사각형 바닥 바깥까지 이어지는 풍경을 구분합니다. 실제 측량도가 아닙니다.</desc>
+<defs>
+<pattern id="hatch" width="22" height="22" patternUnits="userSpaceOnUse" patternTransform="rotate(35)"><rect width="22" height="22" fill="#e9cc81" fill-opacity=".22"/><path d="M0 0V22" stroke="#bb872b" stroke-width="3" stroke-opacity=".6"/></pattern>
+<pattern id="futureHatch" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(-35)"><rect width="20" height="20" fill="#f3cce2" fill-opacity=".6"/><path d="M0 0V20" stroke="#aa4d83" stroke-width="3"/></pattern>
+<marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0L10 5L0 10" fill="none" stroke="#3b7e9a" stroke-width="1.6"/></marker>
+</defs>
+<rect x="-190" y="-160" width="2460" height="1570" fill="#e9eeee"/>
+<image id="reference" href="excit-boundary-study-01-reference.png" x="0" y="0" width="1995" height="1248" opacity=".70"/>
+<g data-group="far" class="proposal">
+<path d="M-150 240 Q-70 -150 490 -120 Q800 -150 1060 -70 L1920 -85 Q2165 -55 2200 230 L2190 1090 Q2180 1360 1870 1370 L1110 1360 Q925 1335 870 1110 Q680 995 330 985 Q-95 1020 -145 650Z M-60 300 Q70 35 500 40 Q850 50 973 293 L1120 232 Q1230 201 1380 285 L1570 419L1670 352L1835 343L1990 462 Q2140 595 2085 781 Q2125 940 2070 1135 Q2040 1303 1855 1311L1510 1303L1340 1330L1118 1290 Q1075 1150 1055 1050 Q966 966 863 915L784 821Q600 940 300 895Q-80 850 -60 300Z" fill-rule="evenodd" fill="#8dc2d3" fill-opacity=".30" stroke="#3c86a3" stroke-width="4" stroke-dasharray="15 12"/>
+<text class="label" x="1110" y="-90">숲 · 먼 능선</text>
+<text class="sub" x="1150" y="-42">위치와 폭은 플레이 시야로 검증</text>
+<path d="M1905 785L2155 785" fill="none" stroke="#3b7e9a" stroke-width="5" marker-end="url(#arrow)"/>
+<text class="label" x="2030" y="645" text-anchor="middle">열린 전망</text>
+<text class="sub" x="2030" y="694" text-anchor="middle">낮은 지형 너머</text>
+<text class="sub" x="2030" y="730" text-anchor="middle">중경 → 먼 산</text>
+<text class="label" x="1310" y="1315">추가 지면과 풍경 확보</text>
+<text class="sub" x="1310" y="1360">기존 사각형 바닥 끝을 그대로 사용하지 않음</text>
+<text class="sub" x="215" y="-58">채석장 뒤로 이어지는 산줄기</text>
+</g>
+<g data-group="walk" class="proposal">
+<path d="M900 480L1038 403 Q1120 352 1230 357 Q1300 358 1400 475 L1480 532L1535 548L1868 562 Q1900 820 1904 1050 Q1905 1130 1870 1170 Q1770 1210 1615 1178 Q1480 1204 1272 1178 L1250 1030 Q1235 893 1210 875 Q1170 849 1110 844 Q1025 817 935 765 L967 668L940 570L865 551Z" fill="#4bb88f" fill-opacity=".25" stroke="#277e67" stroke-width="3" stroke-dasharray="10 7"/>
+<path d="M345 364L441 280L604 272L725 299L807 351L850 435L872 498L881 549L758 625L598 657L457 637L354 570L333 494Z" fill="#4bb88f" fill-opacity=".22" stroke="#277e67" stroke-width="3" stroke-dasharray="10 7"/>
+<text class="label" x="1465" y="940">유지할 활동 공간</text>
+<text class="sub" x="1465" y="982">마을 주변 평지 · 채집 · 이동</text>
+<text class="label" x="435" y="465">채석장 바닥 유지</text>
+<text class="sub" x="435" y="511">암벽·돌무더기 제외</text>
+</g>
+<g data-group="nature" class="proposal" fill="url(#hatch)" stroke="#b57d25" stroke-width="3">
+<path d="M1038 403 Q1120 352 1230 357 Q1300 358 1400 475 L1480 532L1578 548 L1570 419 Q1480 385 1380 285 Q1230 201 1120 232 L973 293Z"/>
+<path d="M1578 548L1578 518L1755 518L1755 550L1868 562 L1990 462L1835 343L1670 352L1570 419Z"/>
+<path d="M1868 562 Q1900 820 1904 1050 L2070 1135 Q2125 940 2085 781 Q2140 595 1990 462Z"/>
+<path d="M935 765 Q1025 817 1110 844 Q1170 849 1210 875 Q1235 893 1250 1030 L1272 1178 L1118 1290 Q1075 1150 1055 1050 Q966 966 863 915 L784 821Z"/>
+<path d="M1272 1178 Q1480 1204 1615 1178 Q1770 1210 1870 1170 Q1905 1130 1904 1050 L2070 1135 Q2040 1303 1855 1311 L1510 1303L1340 1330L1118 1290Z"/>
+<path d="M118 267Q70 465 145 670L264 766L335 672Q234 555 279 370L347 270L508 226L718 253L840 351L908 437L1005 400Q914 211 723 143L460 147L254 196Z" fill-opacity=".5" stroke-dasharray="10 8"/>
+<text class="sub" x="392" y="738" stroke="none">기존 채석장 산비탈 활용 · 경사 검증</text>
+</g>
+<g class="proposal" id="pins">
+<g class="pin" role="button" tabindex="0" data-region="A" aria-label="A 산자락 북측" aria-pressed="true" transform="translate(1200 305)"><circle r="34"/><text>A</text></g>
+<g class="pin" role="button" tabindex="0" data-region="B" aria-label="B 폐광 접근부" aria-pressed="false" transform="translate(1700 419)"><circle r="34"/><text>B</text></g>
+<g class="pin" role="button" tabindex="0" data-region="C" aria-label="C 마을 동측" aria-pressed="false" transform="translate(1995 890)"><circle r="34"/><text>C</text></g>
+<g class="pin" role="button" tabindex="0" data-region="D" aria-label="D 도착 언덕 서측" aria-pressed="false" transform="translate(1110 1005)"><circle r="34"/><text>D</text></g>
+<g class="pin" role="button" tabindex="0" data-region="E" aria-label="E 도착 언덕 남측" aria-pressed="false" transform="translate(1635 1250)"><circle r="34"/><text>E</text></g>
+<text class="label" x="1490" y="680">장터</text><text class="label" x="1445" y="1110">도착 언덕 +6</text>
+<text class="sub" x="1585" y="490">폐광 입구 · 사용자 표시</text>
+</g>
+<g data-group="future" class="proposal">
+<path d="M1860 795L2050 805L2045 870L1870 860Z" fill="url(#futureHatch)" stroke="#ad4d85" stroke-width="4" stroke-dasharray="12 7"/>
+<path d="M185 240L270 291L235 355L148 310Z" fill="url(#futureHatch)" stroke="#ad4d85" stroke-width="4" stroke-dasharray="12 7"/>
+<g class="pin future" role="button" tabindex="0" data-region="F1" aria-label="F1 동쪽 확장 후보" aria-pressed="false" transform="translate(1970 795)"><circle r="40"/><text>F1</text></g>
+<g class="pin future" role="button" tabindex="0" data-region="F2" aria-label="F2 채석장 바깥 확장 후보" aria-pressed="false" transform="translate(185 270)"><circle r="40"/><text>F2</text></g>
+<text class="sub" x="28" y="203">F2 · 정확한 절개 구간 미확정</text>
+</g>
+</svg>
+</div>
+<p class="muted"><small>붉은 선과 검은 ‘폐광입구’ 표시는 사용자 원본에 포함되어 있습니다. 제안 영역은 화면상 개념 표시이며 실제 좌표·면적 측정값이 아닙니다. 파란 바깥선은 추가 풍경의 검토 범위이지, 새 방벽이나 정확한 메시 끝이 아닙니다. 녹색 영역도 기존 능선·돌무더기·시설을 통과하는 이동 허용을 뜻하지 않습니다.</small></p>
+<div class="detail" aria-live="polite"><div><div class="eyebrow" id="detail-id">A / 경계 모듈</div><h3 id="detail-title">산자락 북측</h3></div><dl><dt>구성</dt><dd id="detail-build"></dd><dt>이동 인식</dt><dd id="detail-stop"></dd><dt>그 너머</dt><dd id="detail-view"></dd><dt>확장 시</dt><dd id="detail-expand"></dd></dl></div>
+</section>
+<section id="regions">
+<h2>02 · 같은 띠가 아닌, 서로 다른 지형</h2>
+<div class="table-scroll"><table><thead><tr><th>구간</th><th>제안</th><th>피할 모습</th></tr></thead><tbody>
+<tr><td>A · 산자락 북측</td><td>바위 비탈과 수풀 덩어리가 길에서 멀어졌다 가까워짐. 길 옆에 작은 보행 여유 공간 유지.</td><td>같은 간격의 나무 줄, 길을 따라가는 긴 암벽 복도.</td></tr>
+<tr><td>B · 폐광 접근부</td><td>입구를 품는 암반과 양옆 비탈. 입구 전면 접근 공간은 보존. 현재 폐광 기능과 연결 위치는 구현 전 별도 대조.</td><td>이번 배치안에서 새 폐광이나 포털을 임의로 구현.</td></tr>
+<tr><td>C · 마을 동측</td><td>짧은 급경사·드러난 바위·관목이 지형 굴곡을 따라 배치. 위쪽 시야는 열려 먼 산이 보임.</td><td>전망 방향을 높은 산으로 채우거나, 평지에 투명 벽을 세움.</td></tr>
+<tr><td>D · 도착 언덕 서측</td><td>기존 차폐 능선의 기슭에서 이어지는 불규칙한 언덕. 접근할수록 가팔라지는 형태.</td><td>완만하게 올라갈 수 있어 보이는 경사에서 갑자기 정지.</td></tr>
+<tr><td>E · 도착 언덕 남측</td><td>문 뒤 여유 공간을 남기고 낮은 능선·암반·군락을 다른 깊이로 배치. 바깥 지면 연장.</td><td>문 바로 뒤를 막거나, 붉은 선과 기존 판 끝을 일치시킴.</td></tr>
+<tr><td>채석장 외측</td><td>현재 산비탈과 절개면 활용. 먼 산줄기는 별도 구성. 접근 가능한 완경사 여부는 검증 후 결정.</td><td>채석장 주위에 또 다른 원형 방벽 추가.</td></tr>
+</tbody></table></div>
+<p class="note">사람이 지나갈 틈이 보이면 실제로 지나갈 수 있어야 합니다. 나무 사이의 빈 공간이나 낮은 덤불만으로 이동을 막지 않습니다. 이동 제한이 필요한 지점에는 외형으로 읽히는 경사·암반·밀도 있는 자연 지형이 있어야 합니다.</p>
+</section>
+<section id="modules">
+<h2>03 · 막힌 구간을 나중에 길로 바꾸는 구조</h2>
+<div class="grid"><div><h3>독립적으로 관리할 것</h3><ul><li>기반 지면과 보행 높이</li><li>A~E 및 채석장 구간별 자연 지형·식생</li><li>같은 구간 ID에 연결된 충돌·이동 판정</li><li>더 먼 풍경용 산·숲</li><li>장소 기준점과 연결 지형</li></ul></div><div><h3>F1 / F2</h3><p><b>F1:</b> 마을 동쪽 확장 후보.<br><b>F2:</b> 채석장 바깥쪽 확장 후보.</p><p>이전 합의의 방향을 유지한 개략 표시입니다. 실제 좌표는 미확정이며, 지금은 길·문·포털로 노출하지 않습니다. F1·F2 외의 모듈도 교체할 수 있습니다.</p></div></div>
+<div class="flow"><span>경계 구간 선택</span>→<span>외형·충돌 함께 해제</span>→<span>연결 지형 설치</span>→<span>보행·NPC·자원 검증</span></div>
+<p class="muted">Blender의 표시 숨김만으로 게임 충돌이 없어지지는 않습니다. 게임 적용 시 같은 구간 ID를 사용해 함께 제거·교체되도록 연결해야 합니다. 비탈을 없앤 자리에는 구멍이나 단차가 생길 수 있으므로 연결 지형도 함께 준비합니다.</p>
+</section>
+<section id="review">
+<h2>04 · 이번에 합의할 세 가지</h2>
+<div class="checklist"><article><h3>활동 공간 유지</h3><p>붉은 선 안쪽을 우선 보존하고, 특히 오른쪽과 아래쪽은 외부 지면을 늘리는 방향이 맞는가?</p></article><article><h3>동쪽 전망</h3><p>C 구간은 낮은 시야의 자연 경계와 먼 풍경으로 구성하고, 높은 산으로 둘러싸지 않는가?</p></article><article><h3>산자락의 여유</h3><p>A 구간은 길과 경계의 간격을 달리하고, 길 바깥에도 잠깐 걸어볼 공간을 남기는가?</p></article></div>
+<p class="note">합의 후 단순 지형으로 먼저 검증합니다. 허용된 게임 카메라의 회전·최대 줌아웃과 실제 도달 가능한 위치에서 빈 공간·바닥 끝·막힌 틈을 확인합니다. 기존 안개 값은 유지합니다. 경계 너머로 떨어지는 지형을 선택한다면 낙하 처리까지 별도 합의합니다.</p>
+</section>
+</main>
+<footer>출처: 사용자가 제공한 붉은 선 탑뷰 · EXCIT 맵 제작 규칙 · 기존 F1/F2 합의. 이번 산출물은 배치 검토 문서이며 Blender 씬, 게임 코드, 저장 데이터는 변경하지 않았습니다.</footer>
+<script>
+const regions={
+A:{title:'산자락 북측',build:'짧은 바위 비탈과 나무·관목 군락. 경계의 폭과 길과의 간격을 불규칙하게 조정합니다.',stop:'선 자체가 아니라 눈에 보이는 급경사·암반에서 이동이 제한됩니다. 옆으로 열린 평지는 보행 가능합니다.',view:'숲의 중경 뒤로 더 먼 능선이 겹칩니다. 반복되는 장애물 줄은 만들지 않습니다.',expand:'A의 필요한 하위 구간과 충돌을 함께 교체하고 새 연결 지형을 설치합니다.'},
+B:{title:'폐광 접근부',build:'사용자 표시 위치를 중심으로 입구 전면은 열고, 양옆 암반이 주변 자연 지형과 연결되도록 제안합니다.',stop:'폐광 주변의 암벽은 읽히되, 입구로 향하는 접근 공간을 막지 않습니다.',view:'입구 뒤의 암반과 먼 능선으로 공간이 이어집니다. 새 실내 공간은 이번 범위가 아닙니다.',expand:'기존 폐광 기준점·진입 조건을 먼저 대조합니다. 임의로 포털이나 기능 위치를 옮기지 않습니다.'},
+C:{title:'마을 동측',build:'짧은 급경사와 바위 노출, 관목 군락을 깊이가 다르게 배치합니다. 기존 판 밖으로 지면을 연장합니다.',stop:'평지가 갑자기 멈추지 않고 지형 자체가 통과 불가임을 보여야 합니다. 떨어질 수 있는 절벽 방식은 별도 합의합니다.',view:'높은 방벽 대신 낮은 지형 너머로 중경과 먼 산을 보여줍니다.',expand:'F1을 우선 후보로 두되, C의 다른 구간도 외형·충돌·연결 지형을 함께 교체할 수 있게 합니다.'},
+D:{title:'도착 언덕 서측',build:'기존 차폐 능선에서 이어지는 언덕 기슭과 드문 암석·나무 군락. 도착 공간을 압박하지 않습니다.',stop:'접근하며 경사가 가팔라지는 모습으로 이동 제한을 설명합니다. 완경사에 보이지 않는 벽을 두지 않습니다.',view:'비탈 위의 수목과 뒤쪽 능선이 서로 다른 깊이에서 보입니다.',expand:'언덕의 일부를 교체하고 기존 바닥과 높이가 이어지는 새 경사로를 마련합니다.'},
+E:{title:'도착 언덕 남측',build:'문 뒤의 여유를 확보한 뒤 낮은 능선·암반·군락으로 전환합니다. 붉은 선 바깥에 지면과 풍경을 추가합니다.',stop:'문 바로 뒤를 막지 않습니다. 남쪽 외곽의 실제 이동 한계는 단순 지형 검토에서 정합니다.',view:'바닥의 직선 끝 대신 지형과 숲이 더 이어져 보입니다.',expand:'E 구간을 나눠 독립적으로 교체합니다. 원래 지면을 유지하거나 연결용 지형으로 교체합니다.'},
+F1:{title:'동쪽 확장 후보',build:'현재는 자연 지형의 일부입니다. 이 분홍 표시를 게임에 길이나 문으로 만들지 않습니다.',stop:'지금의 자연 경계와 동일하게 작동합니다. 잠긴 포털이나 투명 벽을 새로 만들지 않습니다.',view:'열린 전망의 방향성을 유지합니다. 표시는 개략 위치이며 정확한 좌표는 미확정입니다.',expand:'경계 외형·충돌 해제와 연결 지형 설치를 함께 수행합니다. 확장 방향을 F1로 제한하지 않습니다.'},
+F2:{title:'채석장 바깥 확장 후보',build:'채석장 외측 산비탈 중 교체 가능한 구간을 확보합니다. 정확한 절개 위치는 아직 정하지 않습니다.',stop:'현재는 기존 암벽·급경사가 접근을 설명합니다. 새 갱구나 실내는 추가하지 않습니다.',view:'산비탈 뒤로 이어지는 산줄기는 별도 배경 모듈로 유지합니다.',expand:'채석장 활동 면적과 자원 생성 구역을 보존하며, 필요한 산비탈·암벽·충돌을 묶어 교체합니다.'}
+};
+function selectRegion(id){const d=regions[id];document.getElementById('detail-id').textContent=id+' / '+(id.startsWith('F')?'미래 연결 후보':'경계 모듈');document.getElementById('detail-title').textContent=d.title;for(const key of ['build','stop','view','expand'])document.getElementById('detail-'+key).textContent=d[key];document.querySelectorAll('[data-region]').forEach(el=>el.setAttribute('aria-pressed',String(el.dataset.region===id)));}
+document.querySelectorAll('[data-region]').forEach(el=>{el.addEventListener('click',()=>selectRegion(el.dataset.region));el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();selectRegion(el.dataset.region);}});});
+function updateLayers(){const original=document.getElementById('mode').value==='original';document.getElementById('reference').setAttribute('opacity',original?'1':'.70');document.querySelectorAll('.proposal').forEach(g=>{const check=g.dataset.group?document.querySelector('[data-layer="'+g.dataset.group+'"]'):null;g.style.display=original||(check&&!check.checked)?'none':'';});}
+document.getElementById('mode').addEventListener('change',updateLayers);document.querySelectorAll('[data-layer]').forEach(el=>el.addEventListener('change',updateLayers));
+document.getElementById('zoom').addEventListener('input',e=>{document.getElementById('map').style.width=e.target.value+'%';document.getElementById('zoom-value').textContent=e.target.value+'%';});selectRegion('A');
+</script>
+</body>
+</html>
